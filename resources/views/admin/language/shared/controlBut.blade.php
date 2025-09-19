@@ -1,0 +1,1 @@
+<x-action-button-lang :id="$row->id" routePrefix="admin.language" />

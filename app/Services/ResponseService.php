@@ -1,0 +1,86 @@
+<?php
+
+namespace App\Services;
+
+use Exception;
+use Illuminate\Contracts\Foundation\Application;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Routing\Redirector;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
+use Throwable;
+
+class ResponseService
+{
+    public static function validationError(string $message = 'Error Occurred', $data = null)
+    {
+        self::errorResponse($message, $data, config('constants.RESPONSE_CODE.VALIDATION_ERROR'));
+    }
+
+    public static function errorResponse(string $message = 'Error Occurred', $data = null, string|int $code = null, $e = null)
+    {
+        response()->json([
+            'error' => true,
+            'message' => trans($message),
+            'data' => $data,
+            'code' => $code ?? config('constants.RESPONSE_CODE.EXCEPTION_ERROR'),
+            'details' => (!empty($e) && is_object($e)) ? $e->getMessage() . ' --> ' . $e->getFile() . ' At Line : ' . $e->getLine() : ''
+        ])->send();
+        exit();
+    }
+
+    public static function successResponse(string|null $message = "Success", $data = null, array $customData = array(), $code = null): void
+    {
+        response()->json(array_merge([
+            'error' => false,
+            'message' => trans($message),
+            'data' => $data,
+            'code' => $code ?? config('constants.RESPONSE_CODE.SUCCESS')
+        ], $customData))->send();
+        exit();
+    }
+    public static function logErrorResponse(Throwable|Exception $e, string $logMessage = ' ', string $responseMessage = 'Error Occurred', bool $jsonResponse = true)
+    {
+        $userToken = request()->bearerToken() ?? '';
+        Log::error($logMessage . ' ' . $e->getMessage() . '---> ' . $e->getFile() . ' At Line : ' . $e->getLine() . "\n\n" . request()->method() . " : " . request()->fullUrl() . "\nUser Token : " . $userToken . "\nParams : ", request()->all());
+        if ($jsonResponse && config('app.debug')) {
+            self::errorResponse($responseMessage, null, null, $e);
+        }
+    }
+
+    public function toggleStatus(Model $model, $status)
+    {
+        $model->status = $status;
+        $model->save();
+        return $model;
+    }
+
+    public static function noPermissionThenSendJson($permission)
+    {
+        if (Auth::check() && Auth::user()->role == 'admin') {
+            // Admin skips permission checks
+            return true;
+        }
+
+        if (!Auth::user()->can($permission)) {
+            self::errorResponse("You Don't have enough permissions");
+        }
+        return true;
+    }
+    public static function noPermissionThenRedirect($permission)
+    {
+        if (Auth::check() && Auth::user()->role == 'admin') {
+            // Admin skips permission checks
+            return true;
+        }
+
+        if (!Auth::user()->can($permission)) {
+            return redirect(route('home'))->withErrors([
+                'message' => trans("You Don't have enough permissions")
+            ]);
+        }
+
+        return true;
+    }
+}
