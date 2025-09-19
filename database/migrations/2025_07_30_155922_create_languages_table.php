@@ -17,11 +17,13 @@ return new class extends Migration
             $table->string('name_en');
             $table->string('code');
             $table->string('country_code')->nullable();
+            $table->enum('default', ['true', 'false'])->default('false');
             $table->enum('is_rtl', ['true', 'false'])->default('false');
             $table->string('icon')->nullable();
             $table->enum('app_scope',['user','vendor']);
             $table->string('app_file')->nullable();
             $table->string('panel_file')->nullable();
+            $table->string('web_file')->nullable();
             $table->timestamps();
         });
     }

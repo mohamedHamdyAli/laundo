@@ -173,4 +173,46 @@ class LanguageController extends Controller
 
         return redirect()->back()->with('success', 'Mobile Language File Updated Successfully!');
     }
+    public function showWeb($id)
+    {
+        $language = Language::findOrFail($id);
+
+        $filePath = lang_path("{$language->code}_web.json");
+
+        if (!File::exists($filePath)) {
+            $translations = [];
+        } else {
+            $jsonContent = File::get($filePath);
+            $translations = json_decode($jsonContent, true);
+        }
+
+        return view('admin.language.web', compact('language', 'translations'));
+    }
+
+    public function updateWeb(Request $request, $id)
+    {
+        $language = Language::findOrFail($id);
+
+        $filePath = lang_path("{$language->code}_web.json");
+
+        $translations = $request->input('translations', []);
+        $newKeys = $request->input('new_key', []);
+        $newValues = $request->input('new_value', []);
+
+        if (!empty($newKeys)) {
+            foreach ($newKeys as $index => $key) {
+                if (!empty($key) && isset($newValues[$index])) {
+                    $translations[trim($key)] = trim($newValues[$index]);
+                }
+            }
+        }
+
+        $filteredTranslations = array_filter($translations);
+        ksort($filteredTranslations);
+        $jsonContent = json_encode($filteredTranslations, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
+
+        File::put($filePath, $jsonContent);
+
+        return redirect()->back()->with('success', 'web Language File Updated Successfully!');
+    }
 }

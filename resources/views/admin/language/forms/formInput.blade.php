@@ -35,7 +35,7 @@
 {{-- userRole / is_rtl --}}
 
 <div class="row g-1">
-    <div class="col-md-6">
+    <div class="col-md-4">
         <div class="form-group">
             <label class="form-label">{{ __('Status') }}</label>
             <div class="controls">
@@ -48,7 +48,7 @@
             </div>
         </div>
     </div>
-    <div class="col-md-6">
+    <div class="col-md-4">
         <div class="form-group">
             <label class="form-label">{{ __('Is Rtl') }}</label>
             <div class="controls">
@@ -57,6 +57,19 @@
                         {{ __('True') }}</option>
                     <option value="false" {{ isset($row) && $row->is_rtl == 'false' ? 'selected' : '' }}>
                         {{ __('False') }}</option>
+                </select>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="form-group">
+            <label class="form-label">{{ __('default') }}</label>
+            <div class="controls">
+                <select name="default" class="form-control">
+                    <option value="false" {{ isset($row) && $row->default == 'false' ? 'selected' : '' }}>
+                        {{ __('False') }}</option>
+                    <option value="true" {{ isset($row) && $row->default == 'true' ? 'selected' : '' }}>
+                        {{ __('True') }}</option>
                 </select>
             </div>
         </div>

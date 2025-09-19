@@ -2,3 +2,6 @@
 !private/
 !public/
 !.gitignore
+!mobileFile.php
+!PanelFile.php
+!webFile.php

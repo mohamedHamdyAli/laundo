@@ -34,12 +34,12 @@
         <div class="form-group">
             <label class="form-label">{{ __('Image Login Background') }}</label>
             <div class="controls">
-                <input type="file" name="IMG_LOGIN_BACKGROUND" class="form-control"
+                <input type="file" name="Login_Cover" class="form-control"
                     {{ Route::is('*.create') ? 'required' : '' }}>
-                @if (getSettingValue('IMG_LOGIN_BACKGROUND'))
-                    <a href='{{ getImageassetUrl(getSettingValue('IMG_LOGIN_BACKGROUND')) }}'>
+                @if (getSettingValue('Login_Cover'))
+                    <a href='{{ getImageassetUrl(getSettingValue('Login_Cover')) }}'>
                         <img class="rounded" style="height: 80px; width:80px;"
-                            src="{{ getImageassetUrl(getSettingValue('IMG_LOGIN_BACKGROUND')) }}" alt="flag Image">
+                            src="{{ getImageassetUrl(getSettingValue('Login_Cover')) }}" alt="flag Image">
                     </a>
                 @endif
             </div>

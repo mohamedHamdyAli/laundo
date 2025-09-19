@@ -6,7 +6,7 @@
             <div class="card-header d-flex justify-content-between align-items-center">
                 <h3 class="card-title mb-0">
                     Edit Language File: <strong class="text-primary">{{ $language->name }}</strong>
-                    ({{ $language->code }}_panel.json)
+                    ({{ $language->code }}_web.json)
                 </h3>
                 <a href="{{ route('admin.language.index') }}" class="btn btn-sm btn-secondary">Back to Languages</a>
             </div>
@@ -15,7 +15,7 @@
                 @if (session('success'))
                     <div class="alert alert-success" role="alert">{{ session('success') }}</div>
                 @endif
-                <form action="{{ route('admin.language.panel.update', $language->id) }}" method="POST">
+                <form action="{{ route('admin.language.web.update', $language->id) }}" method="POST">
                     @csrf
 
                     <div id="translations-container">

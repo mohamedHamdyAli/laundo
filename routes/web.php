@@ -43,6 +43,9 @@ Route::middleware(['auth', 'user-role:admin'])->prefix('/admin')->group(function
 
         Route::get('/language/mobile/{id}', 'showMobile')->name('admin.language.mobile');
         Route::post('/language/mobile/update/{id}', 'updateMobile')->name('admin.language.mobile.update');
+
+        Route::get('/language/web/{id}', 'showWeb')->name('admin.language.web');
+        Route::post('/language/web/update/{id}', 'updateWeb')->name('admin.language.web.update');
     });
 
     // start user route

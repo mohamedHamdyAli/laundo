@@ -20,25 +20,26 @@ class SettingsSeeder extends Seeder
 
 
         $this->create_new_config('App_Name', 'BaseCode');
-        $this->create_new_config('About', json_encode(['en' => $loreamEn, 'de' => $loreamDe], JSON_UNESCAPED_UNICODE));
+        $this->create_new_config('About', json_encode(['en' => $loreamEn, 'ar' => $loreamDe], JSON_UNESCAPED_UNICODE));
         $this->create_new_config('App_Logo', 'logo1.png');
+        $this->create_new_config('Login_Cover', 'cover.png');
 
-        $this->create_new_config('Privacy_Policy', json_encode(['en' => $loreamEn, 'de' => $loreamDe], JSON_UNESCAPED_UNICODE));
-        $this->create_new_config('Terms', json_encode(['en' => $loreamEn, 'de' => $loreamDe], JSON_UNESCAPED_UNICODE));
+        $this->create_new_config('Privacy_Policy', json_encode(['en' => $loreamEn, 'ar' => $loreamDe], JSON_UNESCAPED_UNICODE));
+        $this->create_new_config('Terms', json_encode(['en' => $loreamEn, 'ar' => $loreamDe], JSON_UNESCAPED_UNICODE));
 
-        $this->create_new_config('Whats_App', 'web.whatsapp.com/');
-        $this->create_new_config('Facebook_Url', 'www.facebook.com/');
-        $this->create_new_config('Twitter_Url', 'twitter.com/');
-        $this->create_new_config('Instagram_Url', 'www.instagram.com');
-        $this->create_new_config('Linkedin_Url', 'www.linkedin.com');
-        $this->create_new_config('Youtube_Url', 'www.youtube.com');
-        $this->create_new_config('Snapchat_Url', 'www.snapchat.com/en-GB');
-        $this->create_new_config('Gmail_Url', 'WWW.gmail.com');
+        $this->create_new_config('Whats_App', 'http://whatsapp.com/');
+        $this->create_new_config('Facebook_Url', 'http://facebook.com/');
+        $this->create_new_config('Twitter_Url', 'http://twitter.com/');
+        $this->create_new_config('Instagram_Url', 'http://instagram.com');
+        $this->create_new_config('Linkedin_Url', 'http://linkedin.com');
+        $this->create_new_config('Youtube_Url', 'http://youtube.com');
+        $this->create_new_config('Snapchat_Url', 'http://snapchat.com/en-GB');
+        $this->create_new_config('Gmail_Url', 'http://gmail.com');
         $this->create_new_config('Tax', 10);
         // Contact Us
         $this->create_new_config('Hotline', Null);
         $this->create_new_config('Call', Null);
-        $this->create_new_config('Email', 'WWW.Iplace24.com');
+        $this->create_new_config('Email', 'nahrPhpTeam@nahrPhpTeam.com');
     }
     function create_new_config($key, $value)
     {

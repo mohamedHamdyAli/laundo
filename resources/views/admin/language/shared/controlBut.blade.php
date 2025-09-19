@@ -1,1 +1,1 @@
-<x-action-button-lang :id="$row->id" routePrefix="admin.language" />
+<x-action-button-lang :row="$row" routePrefix="admin.language" />
