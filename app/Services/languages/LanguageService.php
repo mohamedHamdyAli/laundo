@@ -91,7 +91,7 @@ class LanguageService
                             $defaultFile = base_path('resources/lang/en_mobile.json');
                             break;
                         case 'web':
-                            $fileName = $language->app_file ?: "{$languageCode}_web.json";
+                            $fileName = $language->web_file ?: "{$languageCode}_web.json";
                             $defaultFile = base_path('resources/lang/en_web.json');
                             break;
                         default:
