@@ -52,7 +52,7 @@ class LanguageHelper
         $webPath = "$langDir/$webFileName";
         $defaultPath = "$langDir/$defaultFileName";
 
-        $defaultTranslations = array_merge($panelTranslations, $mobileTranslations);
+        $defaultTranslations = array_merge($panelTranslations, $mobileTranslations, $webTranslations);
 
         // save files
         File::put($panelPath, json_encode($panelTranslations, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
@@ -71,6 +71,7 @@ class LanguageHelper
         return [
             'app_file' => "lang/{$mobileFileName}",
             'panel_file' => "lang/{$panelFileName}",
+            'web_file' => "lang/{$webFileName}",
             'default_file' => "lang/{$defaultFileName}",
         ];
     }
