@@ -5,11 +5,6 @@
         <td>{{ getLocalizedValueDashboard($banner, 'name') ?? '-' }}</td>
         <td>{{ getLocalizedValueDashboard($banner, 'description') ?? '-' }}</td>
         <td>
-            <label class="form-check-label ms-2 btn-sm">
-                {{ $banner->app_type === 'user' ? 'User' : 'Vendor' }}
-            </label>
-        </td>
-        <td>
             <x-status-toggle-button :id="$banner->id" :status="$banner->status"
                 endpoint="{{ route('admin.banner.toggleStatus', $banner->id) }}" />
         </td>

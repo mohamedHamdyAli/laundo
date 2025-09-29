@@ -1,12 +1,14 @@
 <?php
 
-use App\Http\Controllers\Admin\banner\BannerController;
 use App\Http\Controllers\Admin\Category\CategoryController;
-use App\Http\Controllers\Admin\intro\IntroController;
 use App\Http\Controllers\Admin\LanguageController;
 use App\Http\Controllers\Admin\setting\SettingController;
-use App\Http\Controllers\Admin\user\UserController;
 use App\Http\Controllers\HomeController;
+use App\Modules\Banner\Controllers\BannerController;
+use App\Modules\City\Controllers\CityController;
+use App\Modules\Country\Controllers\CountryController;
+use App\Modules\Intro\Controllers\IntroController;
+use App\Modules\User\Controllers\UserController;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Auth;
 
@@ -113,6 +115,34 @@ Route::middleware(['auth', 'user-role:admin'])->prefix('/admin')->group(function
         Route::put('/category/update/{id}', 'update')->name('admin.category.update');
         Route::delete('/category/delete/{id}', 'destroy')->name('admin.category.delete');
         Route::post('/category/status/{id}', 'toggleStatus')->name('admin.category.toggleStatus');
+    });
+    // end CategoryController route
+
+    // start CountryController route
+    Route::controller(CountryController::class)->group(function () {
+        Route::get('/country', 'index')->name('admin.country.index');
+        Route::get('/country/search', 'search')->name('admin.country.search');
+        Route::get('/country/create', 'create')->name('admin.country.create');
+        Route::post('/country/store', 'store')->name('admin.country.store');
+        Route::get('/country/show/{id}', 'show')->name('admin.country.show');
+        Route::get('/country/edit/{id}', 'edit')->name('admin.country.edit');
+        Route::put('/country/update/{id}', 'update')->name('admin.country.update');
+        Route::delete('/country/delete/{id}', 'destroy')->name('admin.country.delete');
+        Route::post('/country/status/{id}', 'toggleStatus')->name('admin.country.toggleStatus');
+    });
+    // end CountryController route
+
+    // start CategoryController route
+    Route::controller(CityController::class)->group(function () {
+        Route::get('/city', 'index')->name('admin.city.index');
+        Route::get('/city/search', 'search')->name('admin.city.search');
+        Route::get('/city/create', 'create')->name('admin.city.create');
+        Route::post('/city/store', 'store')->name('admin.city.store');
+        Route::get('/city/show/{id}', 'show')->name('admin.city.show');
+        Route::get('/city/edit/{id}', 'edit')->name('admin.city.edit');
+        Route::put('/city/update/{id}', 'update')->name('admin.city.update');
+        Route::delete('/city/delete/{id}', 'destroy')->name('admin.city.delete');
+        Route::post('/city/status/{id}', 'toggleStatus')->name('admin.city.toggleStatus');
     });
     // end CategoryController route
 });
