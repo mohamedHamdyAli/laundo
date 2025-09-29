@@ -34,17 +34,36 @@
 
                 <li class="sidebar-item">
                     <a href="{{ route('admin.user.index') }}" class='sidebar-link'> <i class="bi bi-people"></i>
-                        <span class="menu-item">{{ __('User') }}</span>
+                        <span class="menu-item">{{ __('Users') }}</span>
                     </a>
                 </li>
 
-                <div class="sidebar-new-title">{{ __('Banner') }}</div>
+                <div class="sidebar-new-title">{{ __('Banners') }}</div>
                 <li class="sidebar-item sidebar-submenus">
                     <a href="{{ route('admin.banner.index') }}" class='sidebar-link'>
                         <i class="bi bi-image"></i>
-                        <span class="menu-item">{{ __('Banner') }}</span>
+                        <span class="menu-item">{{ __('Banners') }}</span>
                     </a>
                 </li>
+
+                <div class="sidebar-new-title">{{ __('Countries') }}</div>
+                <li class="sidebar-item sidebar-submenus">
+                    <a href="{{ route('admin.country.index') }}" class='sidebar-link'>
+                        <i class="bi bi-globe2"></i>
+                        <span class="menu-item">{{ __('Countries') }}</span>
+                    </a>
+                </li>
+
+                <div class="sidebar-new-title">{{ __('Cities') }}</div>
+                <li class="sidebar-item sidebar-submenus">
+                    <a href="{{ route('admin.city.index') }}" class='sidebar-link'>
+                        <i class="bi bi-geo-alt"></i>
+                        <span class="menu-item">{{ __('Cities') }}</span>
+                    </a>
+                </li>
+
+
+
 
                 <div class="sidebar-new-title">{{ __('Categories') }}</div>
 
