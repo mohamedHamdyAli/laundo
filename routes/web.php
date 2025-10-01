@@ -1,13 +1,13 @@
 <?php
 
-use App\Http\Controllers\Admin\Category\CategoryController;
 use App\Http\Controllers\Admin\LanguageController;
-use App\Http\Controllers\Admin\setting\SettingController;
 use App\Http\Controllers\HomeController;
 use App\Modules\Banner\Controllers\BannerController;
+use App\Modules\Category\Controllers\CategoryController;
 use App\Modules\City\Controllers\CityController;
 use App\Modules\Country\Controllers\CountryController;
 use App\Modules\Intro\Controllers\IntroController;
+use App\Modules\setting\Controllers\SettingController;
 use App\Modules\User\Controllers\UserController;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Auth;

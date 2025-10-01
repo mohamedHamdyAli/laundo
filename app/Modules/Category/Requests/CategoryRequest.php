@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Requests\Admin\category;
+namespace App\Modules\category\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
 
@@ -27,7 +27,7 @@ class CategoryRequest extends FormRequest
                 'name'          => 'nullable|array',
                 'name.*'        => 'nullable|max:191',
                 'parent_id'     => 'nullable|exists:categories,id',
-                'default_price' => 'nullable|required_with:parent_id|numeric|min:0',
+                // 'default_price' => 'nullable|required_with:parent_id|numeric|min:0',
                 'status'        => 'nullable|in:active,inactive',
             ];
         } else {
@@ -36,7 +36,7 @@ class CategoryRequest extends FormRequest
                 'name'          => 'required|array',
                 'name.*'        => 'required|max:191',
                 'parent_id'     => 'nullable|exists:categories,id',
-                'default_price' => 'nullable|required_with:parent_id|numeric|min:0',
+                // 'default_price' => 'nullable|required_with:parent_id|numeric|min:0',
                 'status'        => 'required|in:active,inactive',
             ];
         }

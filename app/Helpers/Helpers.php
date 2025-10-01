@@ -1,7 +1,7 @@
 <?php
 
 use App\Models\Language;
-use App\Models\Setting;
+use App\Modules\Setting\Models\Setting;
 use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Http\UploadedFile;

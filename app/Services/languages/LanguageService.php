@@ -125,7 +125,6 @@ class LanguageService
                         // clear language cache (we changed model)
                         clearLanguageCache($language->code);
                         rebuildLanguageCache();
-
                     }
 
                     // Read default and target content
@@ -229,10 +228,8 @@ class LanguageService
         if ($languageCode) {
             clearLanguageCache($languageCode);
             rebuildLanguageCache();
-
         }
 
         return true;
     }
-
 }

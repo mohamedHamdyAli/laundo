@@ -3,7 +3,7 @@
 namespace App\Services;
 
 use App\Models\Language;
-use App\Models\Setting;
+use App\Modules\Setting\Models\Setting;
 use Illuminate\Support\Facades\Cache;
 
 class CachingService {

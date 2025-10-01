@@ -1,18 +1,18 @@
 <?php
 
-namespace App\Models;
+namespace App\Modules\Category\Models;
 
 use App\Trait\Scopes\Searchable;
 use Illuminate\Database\Eloquent\Model;
 
 class Category extends Model
 {
-        use Searchable;
+    use Searchable;
     protected $fillable = [
         'name',
         'image',
         'parent_id',
-        'default_price',
+        // 'default_price',
         'status',
     ];
 

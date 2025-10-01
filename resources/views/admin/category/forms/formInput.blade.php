@@ -20,7 +20,7 @@
                 {{ Route::is('*.show') ? 'disabled' : '' }}>
                 <option value="">{{ __('Select Category') }}</option>
                 @include('admin.category.partials._category_options', [
-                    'categories' => $Categories,
+                    'categories' => $categories,
                     'level' => 0,
                 ])
             </select>
