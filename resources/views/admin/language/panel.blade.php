@@ -6,10 +6,18 @@
             <div class="card-header d-flex justify-content-between align-items-center">
                 <h3 class="card-title mb-0">
                     Edit Language File: <strong class="text-primary">{{ $language->name }}</strong>
-                    ({{ $language->code }}_panel.json)
+                    ({{ $language->code }}.json)
                 </h3>
-                <a href="{{ route('admin.language.index') }}" class="btn btn-sm btn-secondary">Back to Languages</a>
+                <div>
+                    <a href="{{ route('admin.language.download', ['type' => 'main', 'code' => $language->code]) }}"
+                        class="btn btn-sm btn-success me-2">
+                        <i class="fa fa-download me-1"></i> Download JSON
+                    </a>
+
+                    <a href="{{ route('admin.language.index') }}" class="btn btn-sm btn-secondary">Back to Languages</a>
+                </div>
             </div>
+
             <div class="card-body">
 
                 @if (session('success'))

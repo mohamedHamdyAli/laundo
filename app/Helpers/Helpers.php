@@ -7,6 +7,7 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Http\UploadedFile;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\File;
 
 // ===================================================
 // =============== Upload & Image Helpers ============
@@ -19,18 +20,15 @@ if (!function_exists('uploadOrUpdateImage')) {
     function uploadOrUpdateImage(?UploadedFile $image, string $directory, ?string $existingImagePath = null): ?string
     {
         if ($image) {
-            // Validate extension
             $allowedExt = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
             if (!in_array(strtolower($image->extension()), $allowedExt)) {
                 throw new HttpResponseException(response()->json(['msg' => 'Invalid image type'], 422));
             }
 
-            // Validate size (max 5MB)
             if ($image->getSize() > 5 * 1024 * 1024) {
                 throw new HttpResponseException(response()->json(['msg' => 'Image size too large'], 422));
             }
 
-            // Delete old image if exists
             if ($existingImagePath && Storage::disk('public')->exists($existingImagePath)) {
                 Storage::disk('public')->delete($existingImagePath);
             }
@@ -166,6 +164,39 @@ if (!function_exists('getLocalizedValueDashboard')) {
 
         $locale = getDefaultLanguage('code');
         return $model->{$attribute}->{$locale} ?? $model->{$attribute}->ar;
+    }
+}
+if (!function_exists('replaceLanguageFile')) {
+    function replaceLanguageFile(Language $language, string $field, $file): void
+    {
+        $langPath = resource_path('lang');
+        $code = $language->code;
+
+        // تحديد اسم الملف حسب النوع
+        $map = [
+            'panel_file' => "{$code}.json",
+            'app_file'   => "{$code}_mobile.json",
+            'web_file'   => "{$code}_web.json",
+        ];
+
+        if (!isset($map[$field])) {
+            return;
+        }
+
+        $targetFile = "{$langPath}/{$map[$field]}";
+
+        // حذف القديم لو موجود
+        if (File::exists($targetFile)) {
+            File::delete($targetFile);
+        }
+
+        // رفع الجديد بنفس الاسم داخل resources/lang
+        $extension = strtolower($file->getClientOriginalExtension());
+        if (!in_array($extension, ['json', 'txt'])) {
+            throw new \Exception("Invalid file type: must be .json or .txt");
+        }
+
+        $file->move($langPath, $map[$field]);
     }
 }
 

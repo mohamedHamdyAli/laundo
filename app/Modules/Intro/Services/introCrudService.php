@@ -26,12 +26,6 @@ class introCrudService
     {
         return $this->introRepository->search($query, $perPage);
     }
-
-    public function getIntro($id)
-    {
-        return $this->introRepository->find($id);
-    }
-
     public function addIntro(array $data)
     {
         $data['image'] = uploadOrUpdateImage($data['image'] ?? null, 'images/intros/image');
@@ -69,5 +63,13 @@ class introCrudService
     {
         $intro = $this->introRepository->find($id);
         return $this->responseService->toggleStatus($intro, $status);
+    }
+    public function shredData($id = null)
+    {
+        $data = [];
+        if ($id) {
+            $data['row'] = $this->introRepository->find($id);
+        }
+        return $data;
     }
 }

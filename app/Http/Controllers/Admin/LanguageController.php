@@ -215,4 +215,32 @@ class LanguageController extends Controller
 
         return redirect()->back()->with('success', 'web Language File Updated Successfully!');
     }
+    public function downloadJson($type, $code)
+    {
+        $langPath = resource_path("lang");
+
+        switch ($type) {
+            case 'main':
+            case 'panel':
+                $filePath = "{$langPath}/{$code}.json";
+                break;
+
+            case 'mobile':
+                $filePath = "{$langPath}/{$code}_mobile.json";
+                break;
+
+            case 'web':
+                $filePath = "{$langPath}/{$code}_web.json";
+                break;
+
+            default:
+                abort(404, "Invalid language type");
+        }
+
+        if (!file_exists($filePath)) {
+            abort(404, "Language file not found: {$filePath}");
+        }
+
+        return response()->download($filePath, "{$code}_{$type}.json");
+    }
 }

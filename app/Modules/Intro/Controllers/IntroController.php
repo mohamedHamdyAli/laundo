@@ -48,14 +48,14 @@ class IntroController extends Controller
 
     public function show($id)
     {
-        $intro = $this->introService->getIntro($id);
-        return view('admin.intro.show', compact('intro'));
+        $intro = $this->introService->shredData($id);
+        return view('admin.intro.show', $intro);
     }
 
     public function edit($id)
     {
-        $intro = $this->introService->getIntro($id);
-        return view('admin.intro.edit', compact('intro'));
+        $intro = $this->introService->shredData($id);
+        return view('admin.intro.edit', $intro);
     }
 
     public function update(IntroRequest $request, $id)

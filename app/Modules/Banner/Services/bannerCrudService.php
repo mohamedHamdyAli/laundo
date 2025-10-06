@@ -27,11 +27,6 @@ class bannerCrudService
         return $this->bannerRepository->search($query, $perPage);
     }
 
-    public function getBanner($id)
-    {
-        return $this->bannerRepository->find($id);
-    }
-
     public function addBanner(array $data)
     {
         $data['image'] = uploadOrUpdateImage($data['image'] ?? null, 'images/banners/image');
@@ -69,5 +64,13 @@ class bannerCrudService
     {
         $banner = $this->bannerRepository->find($id);
         return $this->responseService->toggleStatus($banner, $status);
+    }
+    public function shredData($id = null)
+    {
+        $data = [];
+        if ($id) {
+            $data['row'] = $this->bannerRepository->find($id);
+        }
+        return $data;
     }
 }

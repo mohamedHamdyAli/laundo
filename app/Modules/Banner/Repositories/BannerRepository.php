@@ -40,4 +40,12 @@ class BannerRepository
         $banner->delete();
         return true;
     }
+    public function shredData($id = null)
+    {
+        $data = [];
+        if ($id != null) {
+            $data['row'] = banner::findOrFail($id);
+        }
+        return $data;
+    }
 }

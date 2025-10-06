@@ -40,4 +40,12 @@ class IntroRepository
         $intro->delete();
         return true;
     }
+    public function shredData($id = null)
+    {
+        $data = [];
+        if ($id != null) {
+            $data['row'] = intro::findOrFail($id);
+        }
+        return $data;
+    }
 }

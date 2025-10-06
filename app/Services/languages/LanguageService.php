@@ -36,26 +36,33 @@ class LanguageService
 
     public function updateRecord($request)
     {
-        $filteredRequest = array_filter($request, function ($value) {
-            return !is_null($value);
-        });
+        $filteredRequest = array_filter($request, fn($value) => !is_null($value));
 
         $language = DB::transaction(function () use ($filteredRequest) {
             $existingLanguage = Language::findOrFail($filteredRequest['id']);
 
             if (isset($filteredRequest['icon'])) {
                 $existingPath = $existingLanguage?->icon;
-                $filteredRequest['icon'] = uploadOrUpdateImage($filteredRequest['icon'], 'images/lang/icon', $existingPath);
+                $filteredRequest['icon'] = uploadOrUpdateImage(
+                    $filteredRequest['icon'],
+                    'images/lang/icon',
+                    $existingPath
+                );
+            }
+
+            $fileFields = ['panel_file', 'app_file', 'web_file'];
+            foreach ($fileFields as $field) {
+                if (request()->hasFile($field)) {
+                    replaceLanguageFile($existingLanguage, $field, request()->file($field));
+                }
             }
 
             $existingLanguage->update($filteredRequest);
             return $existingLanguage;
         });
 
-        // clear cache related to this language
         clearLanguageCache($language->code);
         rebuildLanguageCache();
-
 
         return $language;
     }

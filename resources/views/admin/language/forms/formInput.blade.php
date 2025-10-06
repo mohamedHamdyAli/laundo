@@ -103,4 +103,28 @@
             </div>
         </div>
     </div>
+    {{-- app_file / panel_file / web_file --}}
+    <div class="row g-1 mt-2">
+        @foreach (['app_file' => 'App File', 'panel_file' => 'Panel File', 'web_file' => 'Web File'] as $field => $label)
+            <div class="col-md-4">
+                <div class="mb-6">
+                    <label class="form-label">{{ __($label) }}</label>
+                    <div class="card p-2 shadow-sm" style="border: 2px dashed #ddd;">
+                        <div class="text-center">
+                            @if (isset($row) && $row->$field)
+                                <a href="{{ getImageassetUrl($row->$field) }}" target="_blank"
+                                    class="d-block text-primary mb-2">{{ __('View Current File') }}</a>
+                            @endif
+
+                            @if (!Route::is('*.show'))
+                                <input type="file" name="{{ $field }}" class="form-control"
+                                    accept=".pdf,.zip,.rar,.doc,.docx,.xls,.xlsx,.txt">
+                                <div class="form-text mt-2">Upload {{ strtolower($label) }} (PDF, DOC, ZIP, etc.)</div>
+                            @endif
+                        </div>
+                    </div>
+                </div>
+            </div>
+        @endforeach
+    </div>
 </div>

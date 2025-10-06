@@ -5,7 +5,7 @@
 
 return [
 
-        'dashboard' => 'MobileDashboard',
+        'Dashboard' => 'MobileDashboard',
         'users' => 'Mobile Dashboard Users',
         'settings' => 'Settings',
         'profile' => 'Profile',

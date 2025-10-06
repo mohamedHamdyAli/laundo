@@ -32,7 +32,20 @@
             </div>
         </div>
     </div>
-    <div class="col-lg-6">
+    <div class="col-md-4">
+        <div class="form-group">
+            <label class="form-label">{{ __('Status') }}</label>
+            <div class="controls">
+                <select name="status" class="form-control" {{ Route::is('*.show') ? 'disabled' : '' }}>
+                    <option value="active" {{ isset($row) && $row->status == 'active' ? 'selected' : '' }}>
+                        {{ __('active') }}</option>
+                    <option value="inactive" {{ isset($row) && $row->status == 'inactive' ? 'selected' : '' }}>
+                        {{ __('inactive') }}</option>
+                </select>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-12">
         <div class="mb-3">
             <label class="form-label">{{ __('Image') }}<span class="text-danger">*</span></label>
             <div class="card p-2 shadow-sm" style="border: 2px dashed #ddd;">
@@ -47,19 +60,6 @@
                         <div class="form-text mt-2">Upload a clear image for the Banner.</div>
                     @endif
                 </div>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-4">
-        <div class="form-group">
-            <label class="form-label">{{ __('Status') }}</label>
-            <div class="controls">
-                <select name="status" class="form-control" {{ Route::is('*.show') ? 'disabled' : '' }}>
-                    <option value="active" {{ isset($row) && $row->status == 'active' ? 'selected' : '' }}>
-                        {{ __('active') }}</option>
-                    <option value="inactive" {{ isset($row) && $row->status == 'inactive' ? 'selected' : '' }}>
-                        {{ __('inactive') }}</option>
-                </select>
             </div>
         </div>
     </div>

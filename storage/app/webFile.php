@@ -5,7 +5,7 @@
 
 return [
 
-        'dashboard' => 'web Dashboard',
+        'Dashboard' => 'web Dashboard',
         'users' => 'Users',
         'settings' => 'Settings',
         'profile' => 'Profile',

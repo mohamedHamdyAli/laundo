@@ -48,14 +48,14 @@ class BannerController extends Controller
 
     public function show($id)
     {
-        $banner = $this->bannerService->getBanner($id);
-        return view('admin.banner.show', compact('banner'));
+        $data = $this->bannerService->shredData($id);
+        return view('admin.banner.show', $data);
     }
 
-    public function edit($id)
+    public function edit(string $id)
     {
-        $banner = $this->bannerService->getBanner($id);
-        return view('admin.banner.edit', compact('banner'));
+        $data = $this->bannerService->shredData($id);
+        return view('admin.banner.edit', $data);
     }
 
     public function update(BannerRequest $request, $id)
