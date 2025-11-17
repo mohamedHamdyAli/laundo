@@ -30,7 +30,7 @@ class LanguageController extends Controller
             $table = view('admin.language.partials._language_table_body', ['languages' => $language])->render();
             return response()->json([
                 'table' => $table,
-                'pagination' => (string) $language->withQueryString()->links(),
+                'pagination' => $language->withQueryString()->links()->toHtml(),
             ]);
         }
     }

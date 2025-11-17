@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Modules\category\Services;
+namespace App\Modules\Category\Services;
 
 use App\Modules\Category\Repositories\CategoryRepository;
 use App\Services\ResponseService;

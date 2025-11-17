@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Modules\setting\Controllers;
+namespace App\Modules\Setting\Controllers;
 
 use App\Http\Controllers\Controller;
 use App\Modules\setting\Requests\GeneralSettingRequest;

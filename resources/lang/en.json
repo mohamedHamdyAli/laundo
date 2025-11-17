@@ -1,12 +1,12 @@
 {
-    "Dashboard": "gdsgds",
-    "about": "About",
-    "contact": "Contact Us",
-    "help": "Help",
-    "language": "Language",
-    "logout": "Logout",
-    "notifications": "Notifications",
-    "profile": "Profile",
+    "Dashboard": "web Dashboard",
+    "users": "Users",
     "settings": "Settings",
-    "users": "Users"
+    "profile": "Profile",
+    "logout": "Logout",
+    "language": "Language",
+    "notifications": "Notifications",
+    "help": "Help",
+    "about": "About",
+    "contact": "Contact Us"
 }

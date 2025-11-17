@@ -6,7 +6,6 @@ use Illuminate\Support\Facades\File;
 
 class LanguageHelper
 {
-
     public static function generateJsonLanguageFiles($code)
     {
         $panelSource = storage_path('app/panelFile.php');

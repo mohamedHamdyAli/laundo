@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Modules\setting\Services;
+namespace App\Modules\Setting\Services;
 
 use App\Modules\Setting\Repositories\SettingRepository;
 

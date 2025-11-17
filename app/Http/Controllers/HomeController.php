@@ -31,12 +31,14 @@ class HomeController extends Controller
         return view('admin.home');
     }
 
-    public function changePasswordIndex() {
+    public function changePasswordIndex()
+    {
         return view('admin.changePassword.index');
     }
 
 
-    public function changePasswordUpdate(Request $request) {
+    public function changePasswordUpdate(Request $request)
+    {
         $validator = Validator::make($request->all(), [
             'old_password'     => 'required',
             'new_password'     => 'required|min:8',
@@ -58,5 +60,5 @@ class HomeController extends Controller
             ResponseService::errorResponse();
         }
     }
-    
+
 }

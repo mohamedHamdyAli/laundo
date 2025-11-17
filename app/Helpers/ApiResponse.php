@@ -1,20 +1,19 @@
 <?php
 
-use Illuminate\Support\Facades\Log;
 
 /**
  * keys : success, fail, needActive, exit, blocked , failDeleted ,needAdminActivation
  */
 
- function successReturnData($data = [], $msg = '')
- {
-     return response()->json([
-         'key' => 'success',
-         'data' => $data,
-         'msg' => $msg,
-         'code' => 200,
-     ]);
- }
+function successReturnData($data = [], $msg = '')
+{
+    return response()->json([
+        'key' => 'success',
+        'data' => $data,
+        'msg' => $msg,
+        'code' => 200,
+    ]);
+}
 
 function failReturnAuth($msg = '')
 {

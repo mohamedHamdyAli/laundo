@@ -6,19 +6,21 @@ use App\Models\Language;
 use App\Modules\Setting\Models\Setting;
 use Illuminate\Support\Facades\Cache;
 
-class CachingService {
-
+class CachingService
+{
     /**
      * @param $key
      * @param callable $callback - Callback function must return a value
      * @param int $time = 3600
      * @return mixed
      */
-    public static function cacheRemember($key, callable $callback, int $time = 3600) {
+    public static function cacheRemember($key, callable $callback, int $time = 3600)
+    {
         return Cache::remember($key, $time, $callback);
     }
 
-    public static function removeCache($key) {
+    public static function removeCache($key)
+    {
         Cache::forget($key);
     }
 
@@ -26,7 +28,8 @@ class CachingService {
      * @param array|string $key
      * @return mixed|string
      */
-    public static function getSystemSettings(array|string $key = '*') {
+    public static function getSystemSettings(array|string $key = '*')
+    {
         $settings = self::cacheRemember(config('constants.CACHE.SETTINGS'), static function () {
             return Setting::all()->pluck('value', 'name');
         });
@@ -58,13 +61,15 @@ class CachingService {
         return $settings;
     }
 
-    public static function getLanguages() {
+    public static function getLanguages()
+    {
         return self::cacheRemember(config('constants.CACHE.LANGUAGE'), static function () {
             return Language::all();
         });
     }
 
-    public static function getDefaultLanguage() {
+    public static function getDefaultLanguage()
+    {
         return Language::where('code', 'en')->first();
     }
 }

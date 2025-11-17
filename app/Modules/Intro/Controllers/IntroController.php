@@ -3,7 +3,6 @@
 namespace App\Modules\Intro\Controllers;
 
 use App\Http\Controllers\Controller;
-use App\Models\intro;
 use App\Modules\Intro\Requests\IntroRequest;
 use App\Modules\Intro\Services\introCrudService;
 use Illuminate\Http\Request;

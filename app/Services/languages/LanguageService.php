@@ -36,7 +36,7 @@ class LanguageService
 
     public function updateRecord($request)
     {
-        $filteredRequest = array_filter($request, fn($value) => !is_null($value));
+        $filteredRequest = array_filter($request, fn ($value) => !is_null($value));
 
         $language = DB::transaction(function () use ($filteredRequest) {
             $existingLanguage = Language::findOrFail($filteredRequest['id']);

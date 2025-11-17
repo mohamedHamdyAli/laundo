@@ -3,7 +3,6 @@
 namespace Database\Seeders;
 
 use App\Modules\Setting\Models\Setting;
-use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 
 class SettingsSeeder extends Seeder
@@ -37,11 +36,11 @@ class SettingsSeeder extends Seeder
         $this->create_new_config('Gmail_Url', 'http://gmail.com');
         $this->create_new_config('Tax', 10);
         // Contact Us
-        $this->create_new_config('Hotline', Null);
-        $this->create_new_config('Call', Null);
+        $this->create_new_config('Hotline', null);
+        $this->create_new_config('Call', null);
         $this->create_new_config('Email', 'nahrPhpTeam@nahrPhpTeam.com');
     }
-    function create_new_config($key, $value)
+    public function create_new_config($key, $value)
     {
         Setting::updateOrCreate(
             ['key' => $key],

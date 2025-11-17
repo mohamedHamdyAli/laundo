@@ -3,6 +3,7 @@
 namespace App\Modules\Country\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class CountryRequest extends FormRequest
 {
@@ -21,22 +22,29 @@ class CountryRequest extends FormRequest
      */
     public function rules(): array
     {
-        if ($this->getMethod() === 'PUT') {
+        $countryId = $this->route('country');
+
+        if ($this->isMethod('PUT') || $this->isMethod('PATCH')) {
             return [
-                'name'          => 'nullable|array',
-                'name.*'        => 'nullable|max:191',
-                'code'          => 'nullable|string|max:5|unique:countries,code,' . $this->route('country'),
+                'name'          => 'nullable|array|min:1',
+                'name.*'        => 'nullable|string|max:191',
+                'code'          => [
+                    'nullable',
+                    'string',
+                    'max:5',
+                    Rule::unique('countries', 'code')->ignore($countryId)
+                ],
                 'phone_code'    => 'nullable|string|max:10',
                 'status'        => 'nullable|in:active,inactive',
             ];
-        } else {
-            return [
-                'name'          => 'required|array',
-                'name.*'        => 'required|max:191',
-                'code'          => 'required|string|max:5|unique:countries,code',
-                'phone_code'    => 'nullable|string|max:10',
-                'status'        => 'required|in:active,inactive',
-            ];
         }
+
+        return [
+            'name'          => 'required|array|min:1',
+            'name.*'        => 'required|string|max:191',
+            'code'          => 'required|string|max:5|unique:countries,code',
+            'phone_code'    => 'nullable|string|max:10',
+            'status'        => 'nullable|in:active,inactive',
+        ];
     }
 }

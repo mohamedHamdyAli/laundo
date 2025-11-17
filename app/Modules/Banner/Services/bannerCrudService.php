@@ -33,12 +33,12 @@ class bannerCrudService
         $data['name'] = json_encode($data['name'], JSON_UNESCAPED_UNICODE);
         $data['description'] = json_encode($data['description'], JSON_UNESCAPED_UNICODE);
 
-        return DB::transaction(fn() => $this->bannerRepository->create($data));
+        return DB::transaction(fn () => $this->bannerRepository->create($data));
     }
 
     public function updateBanner(array $data)
     {
-        $filteredData = array_filter($data, fn($v) => !is_null($v));
+        $filteredData = array_filter($data, fn ($v) => !is_null($v));
 
         return DB::transaction(function () use ($filteredData) {
             $existingBanner = $this->bannerRepository->find($filteredData['id']);
@@ -57,7 +57,7 @@ class bannerCrudService
 
     public function deleteBanner($id)
     {
-        return DB::transaction(fn() => $this->bannerRepository->delete($id));
+        return DB::transaction(fn () => $this->bannerRepository->delete($id));
     }
 
     public function toggleStatus($id, $status)

@@ -42,7 +42,7 @@ class userCrudService
 
     public function updateUser(array $data)
     {
-        $filteredData = array_filter($data, fn($v) => !is_null($v));
+        $filteredData = array_filter($data, fn ($v) => !is_null($v));
         return DB::transaction(function () use ($filteredData) {
             if (isset($filteredData['image_profile'])) {
                 $existingUser = $this->userRepository->find($filteredData['id']);
@@ -55,7 +55,7 @@ class userCrudService
 
     public function deleteUser($id)
     {
-        return DB::transaction(fn() => $this->userRepository->delete($id));
+        return DB::transaction(fn () => $this->userRepository->delete($id));
     }
 
     public function toggleStatus($id, $status)

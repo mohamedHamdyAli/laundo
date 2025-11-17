@@ -27,17 +27,17 @@ class countryCrudService
     }
     public function addNew(array $data)
     {
-        return DB::transaction(fn() => $this->countryRepository->create($data));
+        return DB::transaction(fn () => $this->countryRepository->create($data));
     }
 
     public function updateRecord(array $data)
     {
-        return DB::transaction(fn() => $this->countryRepository->update($data['id'], $data));
+        return DB::transaction(fn () => $this->countryRepository->update($data['id'], $data));
     }
 
     public function deleteRecord($id)
     {
-        return DB::transaction(fn() => $this->countryRepository->delete($id));
+        return DB::transaction(fn () => $this->countryRepository->delete($id));
     }
 
     public function shredData($id = null)

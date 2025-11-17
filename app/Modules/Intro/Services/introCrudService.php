@@ -32,12 +32,12 @@ class introCrudService
         $data['title'] = json_encode($data['title'], JSON_UNESCAPED_UNICODE);
         $data['description'] = json_encode($data['description'], JSON_UNESCAPED_UNICODE);
 
-        return DB::transaction(fn() => $this->introRepository->create($data));
+        return DB::transaction(fn () => $this->introRepository->create($data));
     }
 
     public function updateIntro(array $data)
     {
-        $filteredData = array_filter($data, fn($v) => !is_null($v));
+        $filteredData = array_filter($data, fn ($v) => !is_null($v));
 
         return DB::transaction(function () use ($filteredData) {
             $existingIntro = $this->introRepository->find($filteredData['id']);
@@ -56,7 +56,7 @@ class introCrudService
 
     public function deleteIntro($id)
     {
-        return DB::transaction(fn() => $this->introRepository->delete($id));
+        return DB::transaction(fn () => $this->introRepository->delete($id));
     }
 
     public function toggleStatus($id, $status)

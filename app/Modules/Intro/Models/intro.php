@@ -8,7 +8,8 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 class intro extends Model
 {
-    use HasFactory, Searchable;
+    use HasFactory;
+    use Searchable;
     protected $fillable = [
         'image',
         'title',

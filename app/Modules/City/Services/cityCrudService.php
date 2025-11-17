@@ -2,7 +2,6 @@
 
 namespace App\Modules\City\Services;
 
-use App\Models\City;
 use App\Modules\City\Repositories\CityRepository;
 use App\Modules\Country\Models\Country;
 use App\Services\ResponseService;

@@ -3,10 +3,7 @@
 namespace App\Services;
 
 use Exception;
-use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Http\RedirectResponse;
-use Illuminate\Routing\Redirector;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 use Throwable;
@@ -30,7 +27,7 @@ class ResponseService
         exit();
     }
 
-    public static function successResponse(string|null $message = "Success", $data = null, array $customData = array(), $code = null): void
+    public static function successResponse(string|null $message = "Success", $data = null, array $customData = [], $code = null): void
     {
         response()->json(array_merge([
             'error' => false,

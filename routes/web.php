@@ -12,8 +12,6 @@ use App\Modules\User\Controllers\UserController;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Auth;
 
-
-
 Route::get('/', static function () {
     if (Auth::user()) {
         return redirect('/admin/home');
@@ -49,7 +47,7 @@ Route::middleware(['auth', 'user-role:admin'])->prefix('/admin')->group(function
         Route::get('/language/web/{id}', 'showWeb')->name('admin.language.web');
         Route::post('/language/web/update/{id}', 'updateWeb')->name('admin.language.web.update');
 
-        Route::get('/language/download/{type}/{code}','downloadJson')->name('admin.language.download');
+        Route::get('/language/download/{type}/{code}', 'downloadJson')->name('admin.language.download');
     });
 
     // start user route
