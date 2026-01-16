@@ -4,7 +4,6 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use App\Trait\Scopes\Searchable;
-use Illuminate\Support\Facades\Cache;
 
 class Language extends Model
 {
@@ -26,7 +25,7 @@ class Language extends Model
     {
         return cache()->rememberForever(
             "language_{$code}",
-            fn() => self::where('code', $code)->first()
+            fn () => self::where('code', $code)->first()
         );
     }
 
@@ -34,7 +33,7 @@ class Language extends Model
     {
         return cache()->rememberForever(
             'all_languages',
-            fn() => self::all()
+            fn () => self::all()
         );
     }
 

@@ -2043,7 +2043,7 @@ namespace PHPSTORM_META {
     override(\optional(0), type(0));
 
             registerArgumentsSet('auth', );
-        registerArgumentsSet('configs', 
+        registerArgumentsSet('configs',
 'broadcasting.default','broadcasting.connections.reverb.driver','broadcasting.connections.reverb.key','broadcasting.connections.reverb.secret','broadcasting.connections.reverb.app_id',
 'broadcasting.connections.reverb.options.host','broadcasting.connections.reverb.options.port','broadcasting.connections.reverb.options.scheme','broadcasting.connections.reverb.options.useTLS','broadcasting.connections.reverb.client_options',
 'broadcasting.connections.pusher.driver','broadcasting.connections.pusher.key','broadcasting.connections.pusher.secret','broadcasting.connections.pusher.app_id','broadcasting.connections.pusher.options.cluster',
@@ -2127,7 +2127,7 @@ namespace PHPSTORM_META {
 'ide-helper.model_camel_case_properties','ide-helper.type_overrides.integer','ide-helper.type_overrides.boolean','ide-helper.include_class_docblocks','ide-helper.force_fqn',
 'ide-helper.use_generics_annotations','ide-helper.macro_default_return_types.Illuminate\\Http\\Client\\Factory','ide-helper.additional_relation_types','ide-helper.additional_relation_return_types','ide-helper.enforce_nullable_relationships',
 'ide-helper.post_migrate','tinker.commands','tinker.alias','tinker.dont_alias',);
-        registerArgumentsSet('middleware', 
+        registerArgumentsSet('middleware',
 'web','api',);
         registerArgumentsSet('routes', 'login','logout',
 'password.request','password.email','password.reset','password.update','password.confirm','home','change-password.index','change-password.update','admin.language.index',
@@ -2146,7 +2146,7 @@ namespace PHPSTORM_META {
 'admin.country.show','admin.country.edit','admin.country.update','admin.country.delete','admin.country.toggleStatus',
 'admin.city.index','admin.city.search','admin.city.create','admin.city.store','admin.city.show',
 'admin.city.edit','admin.city.update','admin.city.delete','admin.city.toggleStatus','storage.local',);
-        registerArgumentsSet('views', 
+        registerArgumentsSet('views',
 'admin.banner.create','admin.banner.edit','admin.banner.forms.formInput','admin.banner.index','admin.banner.partials._banner_table_body',
 'admin.banner.shared.controlBut','admin.banner.show','admin.category.create','admin.category.edit','admin.category.forms.formInput',
 'admin.category.index','admin.category.partials._category_options','admin.category.partials._category_table_body','admin.category.shared.controlBut','admin.category.show',
@@ -2176,7 +2176,7 @@ namespace PHPSTORM_META {
 'laravel-exceptions::503','laravel-exceptions::layout','laravel-exceptions::minimal','notifications::email','pagination::bootstrap-4',
 'pagination::bootstrap-5','pagination::default','pagination::semantic-ui','pagination::simple-bootstrap-4','pagination::simple-bootstrap-5',
 'pagination::simple-default','pagination::simple-tailwind','pagination::tailwind',);
-        registerArgumentsSet('translations', 
+        registerArgumentsSet('translations',
 'E:.work.BaseCodeLaravel.vendor.laravel.framework.src.Illuminate.Translation.lang.en.auth.failed','E:.work.BaseCodeLaravel.vendor.laravel.framework.src.Illuminate.Translation.lang.en.auth.password','E:.work.BaseCodeLaravel.vendor.laravel.framework.src.Illuminate.Translation.lang.en.auth.throttle','E:.work.BaseCodeLaravel.vendor.laravel.framework.src.Illuminate.Translation.lang.en.pagination.previous','E:.work.BaseCodeLaravel.vendor.laravel.framework.src.Illuminate.Translation.lang.en.pagination.next',
 'E:.work.BaseCodeLaravel.vendor.laravel.framework.src.Illuminate.Translation.lang.en.passwords.reset','E:.work.BaseCodeLaravel.vendor.laravel.framework.src.Illuminate.Translation.lang.en.passwords.sent','E:.work.BaseCodeLaravel.vendor.laravel.framework.src.Illuminate.Translation.lang.en.passwords.throttled','E:.work.BaseCodeLaravel.vendor.laravel.framework.src.Illuminate.Translation.lang.en.passwords.token','E:.work.BaseCodeLaravel.vendor.laravel.framework.src.Illuminate.Translation.lang.en.passwords.user',
 'E:.work.BaseCodeLaravel.vendor.laravel.framework.src.Illuminate.Translation.lang.en.validation.accepted','E:.work.BaseCodeLaravel.vendor.laravel.framework.src.Illuminate.Translation.lang.en.validation.accepted_if','E:.work.BaseCodeLaravel.vendor.laravel.framework.src.Illuminate.Translation.lang.en.validation.active_url','E:.work.BaseCodeLaravel.vendor.laravel.framework.src.Illuminate.Translation.lang.en.validation.after','E:.work.BaseCodeLaravel.vendor.laravel.framework.src.Illuminate.Translation.lang.en.validation.after_or_equal',
@@ -2206,7 +2206,7 @@ namespace PHPSTORM_META {
 'E:.work.BaseCodeLaravel.vendor.laravel.framework.src.Illuminate.Translation.lang.en.validation.same','E:.work.BaseCodeLaravel.vendor.laravel.framework.src.Illuminate.Translation.lang.en.validation.size.array','E:.work.BaseCodeLaravel.vendor.laravel.framework.src.Illuminate.Translation.lang.en.validation.size.file','E:.work.BaseCodeLaravel.vendor.laravel.framework.src.Illuminate.Translation.lang.en.validation.size.numeric','E:.work.BaseCodeLaravel.vendor.laravel.framework.src.Illuminate.Translation.lang.en.validation.size.string',
 'E:.work.BaseCodeLaravel.vendor.laravel.framework.src.Illuminate.Translation.lang.en.validation.starts_with','E:.work.BaseCodeLaravel.vendor.laravel.framework.src.Illuminate.Translation.lang.en.validation.string','E:.work.BaseCodeLaravel.vendor.laravel.framework.src.Illuminate.Translation.lang.en.validation.timezone','E:.work.BaseCodeLaravel.vendor.laravel.framework.src.Illuminate.Translation.lang.en.validation.unique','E:.work.BaseCodeLaravel.vendor.laravel.framework.src.Illuminate.Translation.lang.en.validation.uploaded',
 'E:.work.BaseCodeLaravel.vendor.laravel.framework.src.Illuminate.Translation.lang.en.validation.uppercase','E:.work.BaseCodeLaravel.vendor.laravel.framework.src.Illuminate.Translation.lang.en.validation.url','E:.work.BaseCodeLaravel.vendor.laravel.framework.src.Illuminate.Translation.lang.en.validation.ulid','E:.work.BaseCodeLaravel.vendor.laravel.framework.src.Illuminate.Translation.lang.en.validation.uuid','E:.work.BaseCodeLaravel.vendor.laravel.framework.src.Illuminate.Translation.lang.en.validation.custom.attribute-name.rule-name',);
-        registerArgumentsSet('env', 
+        registerArgumentsSet('env',
 'APP_NAME','APP_ENV','APP_KEY','APP_DEBUG','APP_URL',
 'MIX_ASSET_URL','MIX_APP_URL','MIX_PUBLIC_PATH','IS_FAKE_DATA','IS_DUMMY_DATA',
 'IS_DUMMY_DATA_IMAGE','IS_DEMO','APP_TINY_MCE_KEY','TELESCOPE_PATH_LIVE','MEDIA_DISK',
@@ -2221,7 +2221,7 @@ namespace PHPSTORM_META {
 'FACEBOOK_CLIENT_ID','FACEBOOK_CLIENT_SECRET','FACEBOOK_REDIRECT','GITHUB_ACTIVE','GITHUB_CLIENT_ID',
 'GITHUB_CLIENT_SECRET','GITHUB_REDIRECT','GOOGLE_ACTIVE','GOOGLE_CLIENT_ID','GOOGLE_CLIENT_SECRET',
 'GOOGLE_REDIRECT',);
-        
+
                 expectedArguments(\Illuminate\Support\Facades\Gate::has(), 0, argumentsSet('auth'));
     expectedArguments(\Illuminate\Support\Facades\Gate::allows(), 0, argumentsSet('auth'));
     expectedArguments(\Illuminate\Support\Facades\Gate::denies(), 0, argumentsSet('auth'));
@@ -2285,5 +2285,5 @@ namespace PHPSTORM_META {
                 expectedArguments(\Illuminate\Contracts\Translation\Translator::get(), 0, argumentsSet('translations'));
                 expectedArguments(\env(), 0, argumentsSet('env'));
                 expectedArguments(\Illuminate\Support\Env::get(), 0, argumentsSet('env'));
-            
+
 }

@@ -5,6 +5,7 @@ $finder = PhpCsFixer\Finder::create()
         __DIR__ . '/app',
         __DIR__ . '/routes',
         __DIR__ . '/database',
+        __DIR__ . '/resources',
     ])
     ->name('*.php')
     ->ignoreDotFiles(true)
