@@ -4,6 +4,8 @@ namespace App\Modules\Category\Models;
 
 use App\Trait\Scopes\Searchable;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
  * @property int $id
@@ -65,11 +67,11 @@ class Category extends Model
     {
         return self::with('children')->whereParentId($id)->orderBy('id', 'asc')->get();
     }
-    public function parent()
+    public function parent(): BelongsTo
     {
         return $this->belongsTo(Category::class, 'parent_id');
     }
-    public function children()
+    public function children(): HasMany
     {
         return $this->hasMany(Category::class, 'parent_id');
     }

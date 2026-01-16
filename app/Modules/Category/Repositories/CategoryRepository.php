@@ -40,7 +40,7 @@ class CategoryRepository
     }
     public function getSubCategories($id, $perPage = 10)
     {
-        $parentCategory = Category::with('children.children')->findOrFail($id);
+        $parentCategory = Category::with('children')->findOrFail($id);
         $subcategories = $parentCategory->children()->paginate($perPage);
         return compact('parentCategory', 'subcategories');
     }

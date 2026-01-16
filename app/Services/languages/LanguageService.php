@@ -42,7 +42,7 @@ class LanguageService
             $existingLanguage = Language::findOrFail($filteredRequest['id']);
 
             if (isset($filteredRequest['icon'])) {
-                $existingPath = $existingLanguage?->icon;
+                $existingPath = $existingLanguage->icon;
                 $filteredRequest['icon'] = uploadOrUpdateImage(
                     $filteredRequest['icon'],
                     'images/lang/icon',

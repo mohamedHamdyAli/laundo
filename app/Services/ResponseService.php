@@ -46,12 +46,17 @@ class ResponseService
         }
     }
 
-    public function toggleStatus(Model $model, $status)
+    /**
+     * @param Model&object{status: string|int} $model
+     */
+    public function toggleStatus(Model $model, string|int $status): Model
     {
         $model->status = $status;
         $model->save();
+
         return $model;
     }
+
 
     public static function noPermissionThenSendJson($permission)
     {

@@ -4,14 +4,14 @@ namespace App\Modules\Country\Controllers;
 
 use App\Http\Controllers\Controller;
 use App\Modules\Country\Requests\CountryRequest;
-use App\Modules\Country\Services\CountryCrudService;
+use App\Modules\Country\Services\countryCrudService;
 use Illuminate\Http\Request;
 
 class CountryController extends Controller
 {
-    private CountryCrudService $countryCrudService;
+    private countryCrudService $countryCrudService;
 
-    public function __construct(CountryCrudService $countryCrudService)
+    public function __construct(countryCrudService $countryCrudService)
     {
         $this->countryCrudService = $countryCrudService;
     }

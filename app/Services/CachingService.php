@@ -30,9 +30,11 @@ class CachingService
      */
     public static function getSystemSettings(array|string $key = '*')
     {
-        $settings = self::cacheRemember(config('constants.CACHE.SETTINGS'), static function () {
-            return Setting::all()->pluck('value', 'name');
-        });
+        $settings = self::cacheRemember(
+            config('constants.CACHE.SETTINGS'),
+            static fn() => Setting::pluck('value', 'name')
+        );
+
 
         if (($key != '*')) {
             /* There is a minor possibility of getting a specific key from the $systemSettings

@@ -3,15 +3,15 @@
 namespace App\Modules\Setting\Controllers;
 
 use App\Http\Controllers\Controller;
-use App\Modules\setting\Requests\GeneralSettingRequest;
-use App\Modules\setting\Services\SettingCrudService;
+use App\Modules\Setting\Requests\GeneralSettingRequest;
+use App\Modules\Setting\Services\settingCrudService;
 use App\Services\ResponseService;
 
 class SettingController extends Controller
 {
     private $settingService;
 
-    public function __construct(SettingCrudService $settingService)
+    public function __construct(settingCrudService $settingService)
     {
         $this->settingService = $settingService;
     }

@@ -4,7 +4,7 @@ namespace App\Modules\Setting\Services;
 
 use App\Modules\Setting\Repositories\SettingRepository;
 
-class SettingCrudService
+class settingCrudService
 {
     private $repository;
 
