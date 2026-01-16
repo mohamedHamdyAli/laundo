@@ -9,11 +9,8 @@ use Illuminate\Http\Request;
 
 class IntroController extends Controller
 {
-    private introCrudService $introService;
-
-    public function __construct(introCrudService $introService)
+    public function __construct(private readonly introCrudService $introService)
     {
-        $this->introService = $introService;
     }
 
     public function index()

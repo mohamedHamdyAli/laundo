@@ -4,16 +4,13 @@ namespace App\Modules\Category\Controllers;
 
 use App\Http\Controllers\Controller;
 use App\Modules\Category\Requests\CategoryRequest;
-use App\Modules\Category\Services\CategoryCrudService;
+use App\Modules\Category\Services\categoryCrudService;
 use Illuminate\Http\Request;
 
 class CategoryController extends Controller
 {
-    private CategoryCrudService $categoryCrudService;
-
-    public function __construct(CategoryCrudService $categoryCrudService)
+    public function __construct(private readonly categoryCrudService $categoryCrudService)
     {
-        $this->categoryCrudService = $categoryCrudService;
     }
 
     public function index(Request $request)

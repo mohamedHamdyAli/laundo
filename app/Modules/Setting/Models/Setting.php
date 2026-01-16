@@ -21,14 +21,14 @@ class Setting extends Model
     }
     public function getAboutAttribute($value)
     {
-        return json_decode($value);
+        return json_decode((string) $value);
     }
     public function getPrivacyPolicyAttribute($value)
     {
-        return json_decode($value);
+        return json_decode((string) $value);
     }
     public function getTermsAttribute($value)
     {
-        return json_decode($value);
+        return json_decode((string) $value);
     }
 }

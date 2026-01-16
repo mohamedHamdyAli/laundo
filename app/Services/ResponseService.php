@@ -15,7 +15,7 @@ class ResponseService
         self::errorResponse($message, $data, config('constants.RESPONSE_CODE.VALIDATION_ERROR'));
     }
 
-    public static function errorResponse(string $message = 'Error Occurred', $data = null, string|int $code = null, $e = null)
+    public static function errorResponse(string $message = 'Error Occurred', $data = null, string|int $code = null, $e = null): never
     {
         response()->json([
             'error' => true,

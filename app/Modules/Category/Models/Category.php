@@ -51,11 +51,11 @@ class Category extends Model
     }
     public function getNameAttribute($value)
     {
-        return json_decode($value);
+        return json_decode((string) $value);
     }
     public function getDescriptionAttribute($value)
     {
-        return json_decode($value);
+        return json_decode((string) $value);
     }
 
     public static function getAllActiveCatgories()

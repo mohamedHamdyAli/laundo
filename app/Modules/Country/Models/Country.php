@@ -17,7 +17,7 @@ class Country extends Model
     }
     public function getNameAttribute($value)
     {
-        return json_decode($value);
+        return json_decode((string) $value);
     }
     public function cities()
     {

@@ -23,11 +23,11 @@ class intro extends Model
     }
     public function getTitleAttribute($value)
     {
-        return json_decode($value);
+        return json_decode((string) $value);
     }
     public function getDescriptionAttribute($value)
     {
-        return json_decode($value);
+        return json_decode((string) $value);
     }
     protected function casts(): array
     {

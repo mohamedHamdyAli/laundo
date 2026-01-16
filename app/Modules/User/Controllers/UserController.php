@@ -9,11 +9,8 @@ use Illuminate\Http\Request;
 
 class UserController extends Controller
 {
-    private userCrudService $userService;
-
-    public function __construct(userCrudService $userService)
+    public function __construct(private readonly userCrudService $userService)
     {
-        $this->userService = $userService;
     }
 
     public function index()

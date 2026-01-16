@@ -96,7 +96,7 @@ if (!function_exists('failedValidation')) {
     /**
      * Return custom validation error response.
      */
-    function failedValidation($validator)
+    function failedValidation($validator): never
     {
         $errors = collect($validator->errors()->toArray())->flatten()->first();
         $response = response()->json([
@@ -191,7 +191,7 @@ if (!function_exists('replaceLanguageFile')) {
         }
 
         // رفع الجديد بنفس الاسم داخل resources/lang
-        $extension = strtolower($file->getClientOriginalExtension());
+        $extension = strtolower((string) $file->getClientOriginalExtension());
         if (!in_array($extension, ['json', 'txt'])) {
             throw new \Exception("Invalid file type: must be .json or .txt");
         }
@@ -221,7 +221,7 @@ if (!function_exists('isAdmin')) {
      */
     function isAdmin($user = null): bool
     {
-        $user = $user ?? auth('api')->user();
+        $user ??= auth('api')->user();
         return $user && strtolower($user->role ?? '') === 'admin';
     }
 }

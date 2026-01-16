@@ -6,7 +6,7 @@ use App\Modules\Category\Repositories\CategoryRepository;
 use App\Services\ResponseService;
 use Illuminate\Support\Facades\DB;
 
-class CategoryCrudService
+class categoryCrudService
 {
     protected $categoryRepository;
     protected $responseService;

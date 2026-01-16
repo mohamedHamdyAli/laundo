@@ -12,10 +12,8 @@ use Illuminate\Support\Facades\File;
 
 class LanguageController extends Controller
 {
-    private LanguageService $languageService;
-    public function __construct(LanguageService $languageService)
+    public function __construct(private readonly LanguageService $languageService)
     {
-        $this->languageService = $languageService;
     }
     public function index()
     {
@@ -111,14 +109,14 @@ class LanguageController extends Controller
             $value = $translations[$oldKey] ?? null;
 
             if (!empty($newKey) && $value !== null) {
-                $finalTranslations[trim($newKey)] = trim($value);
+                $finalTranslations[trim((string) $newKey)] = trim($value);
             }
         }
 
         if (!empty($newKeysAdded)) {
             foreach ($newKeysAdded as $index => $key) {
                 if (!empty($key) && isset($newValuesAdded[$index])) {
-                    $finalTranslations[trim($key)] = trim($newValuesAdded[$index]);
+                    $finalTranslations[trim((string) $key)] = trim($newValuesAdded[$index]);
                 }
             }
         }
@@ -160,7 +158,7 @@ class LanguageController extends Controller
         if (!empty($newKeys)) {
             foreach ($newKeys as $index => $key) {
                 if (!empty($key) && isset($newValues[$index])) {
-                    $translations[trim($key)] = trim($newValues[$index]);
+                    $translations[trim((string) $key)] = trim($newValues[$index]);
                 }
             }
         }
@@ -202,7 +200,7 @@ class LanguageController extends Controller
         if (!empty($newKeys)) {
             foreach ($newKeys as $index => $key) {
                 if (!empty($key) && isset($newValues[$index])) {
-                    $translations[trim($key)] = trim($newValues[$index]);
+                    $translations[trim((string) $key)] = trim($newValues[$index]);
                 }
             }
         }

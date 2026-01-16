@@ -6,11 +6,8 @@ use App\Modules\Setting\Repositories\SettingRepository;
 
 class settingCrudService
 {
-    private $repository;
-
-    public function __construct(SettingRepository $repository)
+    public function __construct(private readonly SettingRepository $repository)
     {
-        $this->repository = $repository;
     }
 
     public function updateSettings(array $data)

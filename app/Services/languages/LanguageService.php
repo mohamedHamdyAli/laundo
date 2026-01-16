@@ -167,8 +167,8 @@ class LanguageService
             $language = Language::findOrFail($id);
 
             $jsonFile = match ($type) {
-                'panel' => base_path("resources/lang/" . basename($language->panel_file)),
-                'app' => base_path("resources/lang/" . basename($language->app_file)),
+                'panel' => base_path("resources/lang/" . basename((string) $language->panel_file)),
+                'app' => base_path("resources/lang/" . basename((string) $language->app_file)),
                 'web' => base_path("resources/lang/" . basename($language->web_file ?? '')),
                 default => base_path('resources/lang/' . ($language->code . '.json')),
             };

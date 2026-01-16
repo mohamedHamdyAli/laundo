@@ -9,11 +9,8 @@ use App\Services\ResponseService;
 
 class SettingController extends Controller
 {
-    private $settingService;
-
-    public function __construct(settingCrudService $settingService)
+    public function __construct(private readonly settingCrudService $settingService)
     {
-        $this->settingService = $settingService;
     }
 
     public function viewGeneralSetting()

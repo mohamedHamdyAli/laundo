@@ -9,11 +9,8 @@ use Illuminate\Http\Request;
 
 class BannerController extends Controller
 {
-    private bannerCrudService $bannerService;
-
-    public function __construct(bannerCrudService $bannerService)
+    public function __construct(private readonly bannerCrudService $bannerService)
     {
-        $this->bannerService = $bannerService;
     }
 
     public function index(Request $request)

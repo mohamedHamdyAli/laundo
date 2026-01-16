@@ -65,9 +65,7 @@ class CachingService
 
     public static function getLanguages()
     {
-        return self::cacheRemember(config('constants.CACHE.LANGUAGE'), static function () {
-            return Language::all();
-        });
+        return self::cacheRemember(config('constants.CACHE.LANGUAGE'), static fn() => Language::all());
     }
 
     public static function getDefaultLanguage()

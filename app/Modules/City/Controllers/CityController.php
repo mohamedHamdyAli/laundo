@@ -9,11 +9,8 @@ use Illuminate\Http\Request;
 
 class CityController extends Controller
 {
-    private cityCrudService $cityCrudService;
-
-    public function __construct(CityCrudService $cityCrudService)
+    public function __construct(private readonly cityCrudService $cityCrudService)
     {
-        $this->cityCrudService = $cityCrudService;
     }
 
     public function index(Request $request)

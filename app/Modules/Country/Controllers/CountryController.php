@@ -9,11 +9,8 @@ use Illuminate\Http\Request;
 
 class CountryController extends Controller
 {
-    private countryCrudService $countryCrudService;
-
-    public function __construct(countryCrudService $countryCrudService)
+    public function __construct(private readonly countryCrudService $countryCrudService)
     {
-        $this->countryCrudService = $countryCrudService;
     }
 
     public function index(Request $request)
