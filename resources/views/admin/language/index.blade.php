@@ -3,9 +3,11 @@
 @section('content')
     <div class="card-header d-flex justify-content-between align-items-center">
         <h5 class="card-title mb-0">{{ __('Languages') }}</h5>
+        @if (canDo('language.create'))
         <a href="{{ route('admin.language.create') }}" class="badge alert-info primary-background-color">
             <i class="fa fa-plus"></i>{{ __('Add Language') }}
         </a>
+        @endif
     </div>
     <section class="section">
         <div class="row">

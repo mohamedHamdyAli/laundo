@@ -7,7 +7,7 @@
         <td>{{ $user->phone ?? 'None' }}</td>
         <td>
             <x-status-toggle-button :id="$user->id" :status="$user->status"
-                endpoint="{{ route('admin.user.toggleStatus', $user->id) }}" />
+                endpoint="{{ route('admin.user.toggleStatus', $user->id) }}" :permission="canDo('user.toggleStatus')" />
         </td>
         <td>{{ $user->created_at->format('Y-m-d H:i') ?? 'None' }}</td>
         <td class="text-center">

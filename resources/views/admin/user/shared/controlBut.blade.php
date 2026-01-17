@@ -1,1 +1,1 @@
-<x-action-buttons :id="$row->id" routePrefix="admin.user" />
+<x-action-buttons :id="$row->id" routePrefix="admin.user" roleKey="user"/>

@@ -2,7 +2,6 @@
 
 namespace App\Modules\User\Models;
 
-// use Illuminate\Contracts\Auth\MustVerifyEmail;
 use App\Trait\DashboardModel;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
@@ -30,6 +29,9 @@ class User extends Authenticatable
         'phone',
         'role_id',
         'image_profile',
+        'gender',
+        'otp',
+        'otp_expires_at',
         'status',
         'password',
     ];
@@ -58,7 +60,11 @@ class User extends Authenticatable
     }
     public function scopeAvailableUsers($query)
     {
-        return $query->where('role_id', 3)->orderByDesc('id');
+        return $query->whereHas(
+            'role',
+            fn($q) =>
+            $q->where('slug', Role::USER)
+        )->latest();
     }
 
 

@@ -5,7 +5,7 @@
         <td>{{ getLocalizedValueDashboard($city->country, 'name') ?? '-' }}</td>
         <td>
             <x-status-toggle-button :id="$city->id" :status="$city->status"
-                endpoint="{{ route('admin.city.toggleStatus', $city->id) }}" />
+                endpoint="{{ route('admin.city.toggleStatus', $city->id) }}" :permission="city.toggle" />
         </td>
         <td>{{ $city->created_at->format('Y-m-d H:i') ?? 'None' }}</td>
         <td class="text-center">

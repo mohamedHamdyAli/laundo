@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\Language;
+use App\Models\Role;
 use App\Modules\Setting\Models\Setting;
 use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Support\Facades\Storage;
@@ -123,7 +124,7 @@ if (!function_exists('getCurrentLocale')) {
 
         $availableLocales = cache()->rememberForever(
             'available_locales',
-            fn () => Language::pluck('code')->toArray()
+            fn() => Language::pluck('code')->toArray()
         );
 
         if (!in_array($locale, $availableLocales)) {
@@ -211,7 +212,7 @@ if (!function_exists('userAuth')) {
     function userAuth()
     {
         $user = auth('api')->user();
-        return ($user && strtolower($user->role->slug ?? '') === 'user') ? $user : null;
+        return ($user && strtolower($user->role->slug ?? '') === Role::USER) ? $user : null;
     }
 }
 
@@ -222,7 +223,17 @@ if (!function_exists('isAdmin')) {
     function isAdmin($user = null): bool
     {
         $user ??= auth('api')->user();
-        return $user && strtolower($user->role->slug ?? '') === 'admin';
+        return $user && strtolower($user->role->slug ?? '') === Role::ADMIN;
+    }
+}
+if (!function_exists('isEmployee')) {
+    /**
+     * Check if user is employee.
+     */
+    function isEmployee($user = null): bool
+    {
+        $user ??= auth('api')->user();
+        return $user && strtolower($user->role->slug ?? '') === Role::EMPLOYEE;
     }
 }
 
@@ -238,7 +249,7 @@ if (!function_exists('getDefaultLanguage')) {
     {
         $language = cache()->rememberForever(
             'default_language',
-            fn () => Language::where('default', 'true')->first()
+            fn() => Language::where('default', 'true')->first()
         );
 
         if (!$language) {
@@ -257,7 +268,7 @@ if (!function_exists('getAllLanguageWithoutDefault')) {
     {
         return cache()->rememberForever(
             'languages_without_default',
-            fn () => Language::where('default', 'false')->get()
+            fn() => Language::where('default', 'false')->get()
         );
     }
 }
@@ -320,10 +331,10 @@ if (!function_exists('rebuildLanguageCache')) {
     {
         clearCacheHelpers();
 
-        Cache::rememberForever('all_languages', fn () => Language::all());
-        Cache::rememberForever('available_locales', fn () => Language::pluck('code')->toArray());
-        Cache::rememberForever('default_language', fn () => Language::where('default', 'true')->first());
-        Cache::rememberForever('languages_without_default', fn () => Language::where('default', 'false')->get());
+        Cache::rememberForever('all_languages', fn() => Language::all());
+        Cache::rememberForever('available_locales', fn() => Language::pluck('code')->toArray());
+        Cache::rememberForever('default_language', fn() => Language::where('default', 'true')->first());
+        Cache::rememberForever('languages_without_default', fn() => Language::where('default', 'false')->get());
     }
 }
 
@@ -337,7 +348,7 @@ if (!function_exists('getSettingValue')) {
     {
         return cache()->rememberForever(
             "setting_{$key}",
-            fn () => Setting::where('key', $key)->value('value')
+            fn() => Setting::where('key', $key)->value('value')
         );
     }
 }

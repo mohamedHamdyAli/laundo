@@ -3,9 +3,11 @@
 @section('content')
     <div class="card-header d-flex justify-content-between align-items-center">
         <h5 class="card-title mb-0">{{ __('Users') }}</h5>
+        @if (canDo('user.create'))
         <a href="{{ route('admin.user.create') }}" class="badge alert-info primary-background-color">
             <i class="fa fa-plus"></i> {{ __('Add User') }}
         </a>
+        @endif
     </div>
 
     <section class="section">

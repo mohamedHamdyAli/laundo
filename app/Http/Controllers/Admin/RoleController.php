@@ -37,11 +37,6 @@ class RoleController extends Controller
             ->with('success', 'Permissions updated successfully');
     }
 
-    public function create()
-    {
-        return view('admin.roles.create');
-    }
-
     public function store(Request $request)
     {
         $request->validate([

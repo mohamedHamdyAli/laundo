@@ -16,6 +16,9 @@ return new class () extends Migration {
             $table->string('email')->unique();
             $table->string('phone')->unique()->nullable();
             $table->string('image_profile')->nullable();
+            $table->enum('gender', ['male', 'female'])->default('female');
+            $table->string('otp')->nullable();
+            $table->dateTime('otp_expires_at')->nullable();
             $table->enum('status', ['active', 'inactive'])->default('active');
             $table->timestamp('email_verified_at')->nullable();
             $table->string('password')->nullable();

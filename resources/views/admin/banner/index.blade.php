@@ -4,9 +4,11 @@
 @section('content')
     <div class="card-header d-flex justify-content-between align-items-center">
         <h5 class="card-title mb-0">{{ __('Banner') }}</h5>
-        <a href="{{ route('admin.banner.create') }}" class="badge alert-info primary-background-color">
-            <i class="fa fa-plus"></i>{{ __('Add Banner') }}
-        </a>
+        @if (canDo('banner.create'))
+            <a href="{{ route('admin.banner.create') }}" class="badge alert-info primary-background-color">
+                <i class="fa fa-plus"></i>{{ __('Add Banner') }}
+            </a>
+        @endif
     </div>
     <section class="section">
         <div class="row">
@@ -17,7 +19,8 @@
                         <div class="d-flex justify-content-end mb-3">
                             <div class="input-group" style="max-width: 350px;">
                                 <input type="text" id="bannerSearchInput" name="bannerSearch"
-                                    value="{{ request('bannerSearch') }}" class="form-control" placeholder="Search Banner...">
+                                    value="{{ request('bannerSearch') }}" class="form-control"
+                                    placeholder="Search Banner...">
                             </div>
                         </div>
                         <div id="search-info" class="mb-3 small text-muted text-end" style="display: none;"></div>

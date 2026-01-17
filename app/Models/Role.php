@@ -16,6 +16,11 @@ class Role extends Model
         'is_system',
     ];
 
+    public const USER = 'user';
+    public const ADMIN = 'admin';
+    public const EMPLOYEE = 'employee';
+
+
     public function permissions()
     {
         return $this->belongsToMany(Permission::class);

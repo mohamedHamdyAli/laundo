@@ -4,9 +4,11 @@
 @section('content')
     <div class="card-header d-flex justify-content-between align-items-center">
         <h5 class="card-title mb-0">{{ __('City') }}</h5>
+        @if (canDo('city.create'))
         <a href="{{ route('admin.city.create') }}" class="badge alert-info primary-background-color">
             <i class="fa fa-plus"></i>{{ __('Add City') }}
         </a>
+        @endif
     </div>
     <section class="section">
         <div class="row">

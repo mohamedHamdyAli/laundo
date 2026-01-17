@@ -4,11 +4,11 @@
 
         {{-- Header --}}
         <div class="d-flex justify-content-between align-items-center mb-4 p-3 role-header">
-            <h4 class="text-white mb-0">Permission</h4>
+            <h4 class="text-white mb-0">{{ __('Permission') }}</h4>
 
             @if (canDo('role.create'))
                 <button class="btn btn-role" data-bs-toggle="modal" data-bs-target="#createRoleModal">
-                    + Create Role
+                    + {{ __('Create Role') }}
                 </button>
             @endif
         </div>
@@ -21,7 +21,7 @@
                     <strong>{{ $role->name }}</strong>
 
                     <button type="button" class="btn btn-role toggle-permissions" data-role="{{ $role->id }}">
-                        Permission
+                        {{ __('Permission') }}
                     </button>
                 </div>
 
@@ -31,14 +31,14 @@
                         @csrf
 
                         <div class="permission-header row text-white">
-                            <div class="col-3">Module</div>
-                            <div class="col text-center">View</div>
-                            <div class="col text-center">Add</div>
-                            <div class="col text-center">Edit</div>
-                            <div class="col text-center">Delete</div>
-                            <div class="col text-center">toggle</div>
+                            <div class="col-3">{{ __('Module') }}</div>
+                            <div class="col text-center">{{ __('View') }}</div>
+                            <div class="col text-center">{{ __('Add') }}</div>
+                            <div class="col text-center">{{ __('Edit') }}</div>
+                            <div class="col text-center">{{ __('Delete') }}</div>
+                            <div class="col text-center">{{ __('Toggle') }}</div>
                             <div class="col text-end">
-                                <button class="btn btn-primary btn-sm">Save</button>
+                                <button class="btn btn-primary btn-sm">{{ __('Save') }}</button>
                             </div>
                         </div>
 
@@ -75,18 +75,18 @@
                     @csrf
 
                     <div class="modal-header">
-                        <h5 class="modal-title">Create New Role</h5>
+                        <h5 class="modal-title">{{ __('Create New Role') }}</h5>
                         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                     </div>
 
                     <div class="modal-body">
-                        <label class="mb-2">Role Name</label>
-                        <input type="text" name="name" class="form-control" placeholder="ex: Manager" required>
+                        <label class="mb-2">{{ __('Role Name') }}</label>
+                        <input type="text" name="name" class="form-control" placeholder="{{ __('ex: Manager') }}" required>
                     </div>
 
                     <div class="modal-footer">
                         <button type="submit" class="btn btn-role">
-                            Save Role
+                            {{ __('Save Role') }}
                         </button>
                     </div>
                 </form>

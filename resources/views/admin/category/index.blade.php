@@ -3,9 +3,11 @@
 @section('content')
     <div class="card-header d-flex justify-content-between align-items-center">
         <h5 class="card-title mb-0">{{ __('Categories') }}</h5>
-        <a href="{{ route('admin.category.create') }}" class="btn btn-primary btn-bg">
-            <i class="fa fa-plus"></i> {{ __('Add Category') }}
-        </a>
+        @if (canDo('category.create'))
+            <a href="{{ route('admin.category.create') }}" class="btn btn-primary btn-bg">
+                <i class="fa fa-plus"></i> {{ __('Add Category') }}
+            </a>
+        @endif
     </div>
 
     <section class="section">
@@ -18,7 +20,7 @@
                             <div class="input-group" style="max-width: 350px;">
                                 <input type="text" id="categorySearchInput" name="categorySearch"
                                     value="{{ request('categorySearch') }}" class="form-control"
-                                    placeholder="{{__('Search category...') }}">
+                                    placeholder="{{ __('Search category...') }}">
                             </div>
                         </div>
                         <div id="search-info" class="mb-3 small text-muted text-end" style="display: none;"></div>

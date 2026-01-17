@@ -270,3 +270,15 @@
         });
     }
 </script>
+
+<script>
+    document.addEventListener('click', function(e) {
+        const btn = e.target.closest('.toggle-status');
+        if (!btn) return;
+
+        const endpoint = btn.dataset.endpoint;
+        const status = btn.dataset.status;
+
+        // call ajax toggle
+    });
+</script>

@@ -194,10 +194,6 @@ Route::middleware(['auth', 'dashboard.only'])->prefix('/admin')->group(function 
             ->name('admin.roles.permissions.update');
 
 
-        Route::get('/roles/create', [RoleController::class, 'create'])
-            ->middleware('permission:role.create')
-            ->name('admin.roles.create');
-
         Route::post('/roles', [RoleController::class, 'store'])
             ->middleware('permission:role.create')
             ->name('admin.roles.store');
