@@ -3,10 +3,12 @@
 namespace App\Modules\User\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
+use App\Trait\DashboardModel;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use App\Trait\Scopes\Searchable;
+use App\Models\Role;
 
 class User extends Authenticatable
 {
@@ -14,6 +16,8 @@ class User extends Authenticatable
     use HasFactory;
     use Notifiable;
     use Searchable;
+    use DashboardModel;
+
 
     /**
      * The attributes that are mass assignable.
@@ -24,7 +28,7 @@ class User extends Authenticatable
         'name',
         'email',
         'phone',
-        'role',
+        'role_id',
         'image_profile',
         'status',
         'password',
@@ -54,6 +58,12 @@ class User extends Authenticatable
     }
     public function scopeAvailableUsers($query)
     {
-        return $query->whereRole('user')->orderByDesc('id');
+        return $query->where('role_id', 3)->orderByDesc('id');
+    }
+
+
+    public function role()
+    {
+        return $this->belongsTo(Role::class, 'role_id');
     }
 }

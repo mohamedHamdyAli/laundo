@@ -45,7 +45,7 @@ class cityCrudService
 
     public function deleteRecord($id)
     {
-        return DB::transaction(fn() => $this->cityRepository->delete($id));
+        return DB::transaction(fn () => $this->cityRepository->delete($id));
     }
 
     public function shredData($id = null)

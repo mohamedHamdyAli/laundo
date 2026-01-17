@@ -35,7 +35,7 @@ class userCrudService
     public function addUser(array $data)
     {
         $data['image_profile'] = uploadOrUpdateImage($data['image_profile'] ?? null, 'images/users/image');
-        return DB::transaction(fn() => $this->userRepository->create($data));
+        return DB::transaction(fn () => $this->userRepository->create($data));
     }
 
     public function updateUser(array $data)

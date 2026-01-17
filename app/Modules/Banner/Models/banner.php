@@ -2,6 +2,7 @@
 
 namespace App\Modules\Banner\Models;
 
+use App\Trait\DashboardModel;
 use App\Trait\Scopes\Searchable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -32,6 +33,7 @@ class banner extends Model
 {
     use HasFactory;
     use Searchable;
+    use DashboardModel;
 
     protected $fillable = [
         'image',

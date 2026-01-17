@@ -2,6 +2,7 @@
 
 namespace App\Modules\Intro\Models;
 
+use App\Trait\DashboardModel;
 use Illuminate\Database\Eloquent\Model;
 use App\Trait\Scopes\Searchable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -10,6 +11,7 @@ class intro extends Model
 {
     use HasFactory;
     use Searchable;
+    use DashboardModel;
     protected $fillable = [
         'image',
         'title',

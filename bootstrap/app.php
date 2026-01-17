@@ -16,10 +16,9 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
         $middleware->alias([
             'auth' => \App\Http\Middleware\Authenticate::class,
-            'user-role' => \App\Http\Middleware\UserRoleMiddleware::class,
+            'permission' => \App\Http\Middleware\CheckPermission::class,
+            'dashboard.only' => \App\Http\Middleware\EnsureDashboardRole::class,
 
         ]);
     })
-    ->withExceptions(function (Exceptions $exceptions): void {
-        //
-    })->create();
+    ->withExceptions(function (Exceptions $exceptions): void {})->create();

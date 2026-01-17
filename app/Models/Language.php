@@ -2,12 +2,14 @@
 
 namespace App\Models;
 
+use App\Trait\DashboardModel;
 use Illuminate\Database\Eloquent\Model;
 use App\Trait\Scopes\Searchable;
 
 class Language extends Model
 {
     use Searchable;
+    use DashboardModel;
 
     protected $table = 'languages';
     protected $fillable = [

@@ -60,7 +60,7 @@ class ResponseService
 
     public static function noPermissionThenSendJson($permission)
     {
-        if (Auth::check() && Auth::user()->role == 'admin') {
+        if (Auth::check() && Auth::user()->role->slug === 'super_admin') {
             // Admin skips permission checks
             return true;
         }
@@ -72,7 +72,7 @@ class ResponseService
     }
     public static function noPermissionThenRedirect($permission)
     {
-        if (Auth::check() && Auth::user()->role == 'admin') {
+        if (Auth::check() && Auth::user()->role->slug === 'super_admin') {
             // Admin skips permission checks
             return true;
         }

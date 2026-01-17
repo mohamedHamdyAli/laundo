@@ -32,7 +32,7 @@ class CachingService
     {
         $settings = self::cacheRemember(
             config('constants.CACHE.SETTINGS'),
-            static fn() => Setting::pluck('value', 'name')
+            static fn () => Setting::pluck('value', 'name')
         );
 
 
@@ -65,7 +65,7 @@ class CachingService
 
     public static function getLanguages()
     {
-        return self::cacheRemember(config('constants.CACHE.LANGUAGE'), static fn() => Language::all());
+        return self::cacheRemember(config('constants.CACHE.LANGUAGE'), static fn () => Language::all());
     }
 
     public static function getDefaultLanguage()

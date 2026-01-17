@@ -2,6 +2,7 @@
 
 namespace App\Modules\Category\Models;
 
+use App\Trait\DashboardModel;
 use App\Trait\Scopes\Searchable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -37,6 +38,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class Category extends Model
 {
     use Searchable;
+    use DashboardModel;
+
     protected $fillable = [
         'name',
         'image',

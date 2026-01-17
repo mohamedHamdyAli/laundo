@@ -211,7 +211,7 @@ if (!function_exists('userAuth')) {
     function userAuth()
     {
         $user = auth('api')->user();
-        return ($user && strtolower($user->role ?? '') === 'user') ? $user : null;
+        return ($user && strtolower($user->role->slug ?? '') === 'user') ? $user : null;
     }
 }
 
@@ -222,7 +222,7 @@ if (!function_exists('isAdmin')) {
     function isAdmin($user = null): bool
     {
         $user ??= auth('api')->user();
-        return $user && strtolower($user->role ?? '') === 'admin';
+        return $user && strtolower($user->role->slug ?? '') === 'admin';
     }
 }
 
@@ -414,5 +414,26 @@ if (!function_exists('moneyFormat')) {
         $locale = getCurrentLocale();
         $formatter = new \NumberFormatter($locale, \NumberFormatter::CURRENCY);
         return $formatter->formatCurrency($amount, $currency);
+    }
+}
+
+
+if (!function_exists('canDo')) {
+    function canDo(string $permission): bool
+    {
+        $user = Auth::user();
+
+        if (!$user || !$user->role) {
+            return false;
+        }
+
+        // Super Admin bypass
+        if ($user->role->slug === 'super_admin') {
+            return true;
+        }
+
+        return $user->role
+            ->permissions
+            ->contains('slug', $permission);
     }
 }

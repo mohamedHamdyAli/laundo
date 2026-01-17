@@ -3,6 +3,7 @@
 namespace App\Modules\City\Models;
 
 use App\Modules\Country\Models\Country;
+use App\Trait\DashboardModel;
 use App\Trait\Scopes\Searchable;
 use Illuminate\Database\Eloquent\Model;
 
@@ -29,6 +30,7 @@ use Illuminate\Database\Eloquent\Model;
 class City extends Model
 {
     use Searchable;
+    use DashboardModel;
 
     protected $fillable = ["name", "country_id", "status"];
 

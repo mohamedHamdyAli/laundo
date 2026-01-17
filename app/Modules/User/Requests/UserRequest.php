@@ -9,7 +9,7 @@ class UserRequest extends FormRequest
 {
     public function __construct(Request $request)
     {
-        $request['role'] = "user";
+        $request['role_id'] = "3";
         $request['status'] = "active";
     }
     public function authorize(): bool
@@ -30,7 +30,7 @@ class UserRequest extends FormRequest
                 'name'                  => 'nullable|max:191',
                 'email'                 => 'nullable|email|max:50|unique:users,email,' . $this->id . ',id',
                 'phone'                 => 'nullable|max:191|unique:users,phone,' . $this->id . ',id',
-                'role'                  => 'required|in:admin,user',
+                'role_id'                  => 'required',
                 'status'                => 'nullable|in:active,inactive',
             ];
         } else {
@@ -39,7 +39,7 @@ class UserRequest extends FormRequest
                 'name'                  => 'required|max:191',
                 'email'                 => 'required|email|max:50|unique:users',
                 'phone'                 => 'required|max:191|unique:users',
-                'role'                  => 'required|in:admin,user',
+                'role_id'                  => 'required',
                 'status'                => 'required|in:active,inactive',
             ];
         }
