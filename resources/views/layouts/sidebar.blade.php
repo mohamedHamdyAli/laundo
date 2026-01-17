@@ -23,16 +23,37 @@
                 </li>
 
                 @foreach ($dynamicMenu as $item)
-                    <li class="sidebar-item">
-                        <a href="{{ route($item['route']) }}" class="sidebar-link">
-                            <i class="{{ $item['icon'] }}"></i>
-                            <span>{{ __($item['title']) }}</span>
-                        </a>
-                    </li>
+                    {{-- Dropdown Group --}}
+                    @if ($item['type'] === 'group')
+                        <li class="sidebar-item has-sub">
+                            <a href="#" class="sidebar-link">
+                                <i class="{{ $item['icon'] }}"></i>
+                                <span>{{ __($item['title']) }}</span>
+                            </a>
+
+                            <ul class="submenu">
+                                @foreach ($item['items'] as $sub)
+                                    <li class="submenu-item">
+                                        <a href="{{ route($sub['route']) }}">
+                                            <i class="{{ $sub['icon'] }} me-2"></i>
+                                            {{ __($sub['title']) }}
+                                        </a>
+                                    </li>
+                                @endforeach
+                            </ul>
+                        </li>
+
+                        {{-- Single Item --}}
+                    @else
+                        <li class="sidebar-item">
+                            <a href="{{ route($item['route']) }}" class="sidebar-link">
+                                <i class="{{ $item['icon'] }}"></i>
+                                <span>{{ __($item['title']) }}</span>
+                            </a>
+                        </li>
+                    @endif
                 @endforeach
-
             </ul>
-
         </div>
     </div>
 </div>
