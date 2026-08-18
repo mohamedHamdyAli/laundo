@@ -54,6 +54,27 @@
                         </ul>
                     </div>
                     &nbsp;&nbsp;
+                    <label class="theme-toggle-btn" for="toggle-dark" title="{{ __('Toggle dark mode') }}">
+                        <input type="checkbox" id="toggle-dark" class="d-none">
+                        <i class="bi bi-moon-stars theme-icon-moon"></i>
+                        <i class="bi bi-sun theme-icon-sun"></i>
+                    </label>
+                    &nbsp;&nbsp;
+                    <div class="dropdown" id="notificationDropdown">
+                        <a href="#" id="notificationDropdownToggle" class="user-dropdown d-flex align-items-center"
+                            data-bs-toggle="dropdown" aria-expanded="false">
+                            <div class="avatar avatar-md2 position-relative">
+                                <i class="bi bi-bell fs-4"></i>
+                                <span id="notification-badge" class="badge rounded-pill bg-danger"
+                                    style="display:none;position:absolute;top:-4px;right:-4px;font-size:10px;">0</span>
+                            </div>
+                        </a>
+                        <ul class="dropdown-menu dropdown-menu-end" id="notification-list"
+                            style="min-width:320px;max-height:400px;overflow-y:auto;" aria-labelledby="notificationDropdownToggle">
+                            <li class="dropdown-item-text text-muted small" id="notification-empty">{{ __('No notifications') }}</li>
+                        </ul>
+                    </div>
+                    &nbsp;&nbsp;
                     <div class="dropdown">
                         <a href="#" id="topbarUserDropdown"
                             class="user-dropdown d-flex align-items-center dropend dropdown-toggle"

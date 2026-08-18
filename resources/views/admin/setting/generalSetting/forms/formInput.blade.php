@@ -203,3 +203,28 @@
         </div>
     </div>
 </div>
+
+{{-- Region / Timezone --}}
+<div class="row g-1 border rounded p-3 mb-3">
+    <h5 class="mb-3">{{ __('Region') }}</h5>
+    <div class="col-md-6">
+        <div class="form-group">
+            <label class="form-label">{{ __('Country') }}</label>
+            <div class="controls">
+                <select name="Country_Id" class="form-control">
+                    <option value="">{{ __('Select Country') }}</option>
+                    @foreach (\App\Modules\Country\Models\Country::where('status', 'active')->get() as $country)
+                        <option value="{{ $country->id }}"
+                            {{ getSettingValue('Country_Id') == $country->id ? 'selected' : '' }}>
+                            {{ getLocalizedValueDashboard($country, 'name') }}
+                            @if ($country->timezone)
+                                ({{ $country->timezone }})
+                            @endif
+                        </option>
+                    @endforeach
+                </select>
+                <div class="form-text mt-2">{{ __('The app uses this country\'s timezone for displaying dates and times.') }}</div>
+            </div>
+        </div>
+    </div>
+</div>

@@ -35,6 +35,7 @@ class CountryRequest extends FormRequest
                     Rule::unique('countries', 'code')->ignore($countryId)
                 ],
                 'phone_code'    => 'nullable|string|max:10',
+                'timezone'      => 'nullable|string|max:64',
                 'status'        => 'nullable|in:active,inactive',
             ];
         }
@@ -44,6 +45,7 @@ class CountryRequest extends FormRequest
             'name.*'        => 'required|string|max:191',
             'code'          => 'required|string|max:5|unique:countries,code',
             'phone_code'    => 'nullable|string|max:10',
+            'timezone'      => 'nullable|string|max:64',
             'status'        => 'nullable|in:active,inactive',
         ];
     }

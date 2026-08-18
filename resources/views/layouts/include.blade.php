@@ -6,10 +6,12 @@
     <link rel="stylesheet" href="{{ asset('assets/css/main/rtl.css') }}">
     <link rel="stylesheet" href="{{ asset('assets/css/pages/otherpages_rtl.css') }}" />
     <link rel="stylesheet" href="{{ asset('assets/css/custom.css') }}" />
+    <link rel="stylesheet" href="{{ asset('assets/css/theme.css') }}" />
 @else
     <link rel="stylesheet" href="{{ asset('assets/css/main/app.css') }}">
     <link rel="stylesheet" href="{{ asset('assets/css/pages/otherpages.css') }}" />
     <link rel="stylesheet" href="{{ asset('assets/css/custom.css') }}" />
+    <link rel="stylesheet" href="{{ asset('assets/css/theme.css') }}" />
 @endif
 {{-- Bootstrap Switch --}}
 <link rel="stylesheet" href="{{ asset('assets/css/bootstrap-switch-button.min.css') }}">

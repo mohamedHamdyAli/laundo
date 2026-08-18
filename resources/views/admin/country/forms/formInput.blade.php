@@ -40,6 +40,18 @@
         </div>
     </div>
 
+    {{-- Timezone --}}
+    <div class="col-md-4">
+        <div class="form-group">
+            <label for="country-timezone" class="form-label">{{ __('Timezone') }}</label>
+            <div class="controls">
+                <input type="text" name="timezone" id="country-timezone" class="form-control"
+                    placeholder="{{ __('e.g. Asia/Kuwait (auto-filled for known countries if left blank)') }}"
+                    value="{{ $row->timezone ?? '' }}" {{ Route::is('*.show') ? 'disabled' : '' }}>
+            </div>
+        </div>
+    </div>
+
     <div class="col-lg-6">
         <div class="mb-3">
             <label for="status-select" class="form-label">{{ __('Status') }}</label>

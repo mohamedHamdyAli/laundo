@@ -2,6 +2,10 @@
 
 namespace App\Http\Controllers;
 
+use App\Modules\Banner\Models\banner;
+use App\Modules\Category\Models\Category;
+use App\Modules\Country\Models\Country;
+use App\Modules\User\Models\User;
 use App\Services\ResponseService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
@@ -28,7 +32,34 @@ class HomeController extends Controller
      */
     public function index()
     {
-        return view('admin.home');
+        $dashboardStats = [
+            [
+                'title' => 'Total Customers',
+                'route' => 'admin.user.index',
+                'icon' => 'fa fa-users',
+                'count' => User::availableUsers()->count(),
+            ],
+            [
+                'title' => 'Total Categories',
+                'route' => 'admin.category.index',
+                'icon' => 'fa fa-layer-group',
+                'count' => Category::count(),
+            ],
+            [
+                'title' => 'Total Banners',
+                'route' => 'admin.banner.index',
+                'icon' => 'fa fa-image',
+                'count' => banner::count(),
+            ],
+            [
+                'title' => 'Total Countries',
+                'route' => 'admin.country.index',
+                'icon' => 'fa fa-globe',
+                'count' => Country::count(),
+            ],
+        ];
+
+        return view('admin.home', compact('dashboardStats'));
     }
 
     public function changePasswordIndex()

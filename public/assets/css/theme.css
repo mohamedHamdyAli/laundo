@@ -1,0 +1,393 @@
+/* ==========================================================================
+   Theme layer — design tokens, dark mode, sidebar/topbar/table restyle,
+   login split-screen, home 3D hero. Loaded after app.css/rtl.css/custom.css
+   so it can safely override without touching the vendored stylesheets.
+   ========================================================================== */
+
+:root {
+    --brand-navy: #101828;
+    --brand-navy-2: #1c2b4a;
+    --brand-gold: #c9a227;
+    --brand-gold-2: #e4c25a;
+    --surface-bg: #f2f7ff;
+    --surface-card: #ffffff;
+    --surface-border: #e5e9f0;
+    --text-strong: #101828;
+    --text-muted: #607080;
+}
+
+body.theme-dark {
+    --surface-bg: #0f1522;
+    --surface-card: #172033;
+    --surface-border: #2a3550;
+    --text-strong: #eef1f6;
+    --text-muted: #9aa5b8;
+
+    /* Remap the Bootstrap tokens most vendored components already consume via var() */
+    --bs-body-bg: var(--surface-bg);
+    --bs-body-color: var(--text-strong);
+    --bs-border-color: var(--surface-border);
+    --bs-card-bg: var(--surface-card);
+    --bs-card-cap-bg: var(--surface-card);
+}
+
+body.theme-dark {
+    background: var(--surface-bg);
+    color: var(--text-strong);
+}
+
+body.theme-dark .card,
+body.theme-dark .table {
+    background-color: var(--surface-card);
+    color: var(--text-strong);
+    border-color: var(--surface-border);
+}
+
+body.theme-dark .table thead.table-light th,
+body.theme-dark .table th {
+    background-color: var(--surface-card);
+    color: var(--text-strong);
+    border-color: var(--surface-border);
+}
+
+body.theme-dark .form-control,
+body.theme-dark .form-select {
+    background-color: var(--surface-card);
+    color: var(--text-strong);
+    border-color: var(--surface-border);
+}
+
+body.theme-dark nav.navbar {
+    background-color: var(--surface-card) !important;
+}
+
+body.theme-dark .dropdown-menu {
+    background-color: var(--surface-card);
+    color: var(--text-strong);
+}
+
+body.theme-dark .dropdown-item {
+    color: var(--text-strong);
+}
+
+body.theme-dark .dropdown-item:hover {
+    background-color: var(--surface-bg);
+    color: var(--text-strong);
+}
+
+/* ==========================================================================
+   Cards / tables — subtle rounded surface, matches list-page reference look
+   ========================================================================== */
+
+.card {
+    border: 1px solid var(--surface-border);
+    border-radius: 0.9rem;
+    box-shadow: 0 1px 2px rgba(16, 24, 40, .05);
+}
+
+/* ==========================================================================
+   Dark mode toggle button
+   ========================================================================== */
+
+.theme-toggle-btn {
+    align-items: center;
+    background: rgba(0, 0, 0, .05);
+    border-radius: 50%;
+    cursor: pointer;
+    display: inline-flex;
+    height: 38px;
+    justify-content: center;
+    margin: 0;
+    width: 38px;
+}
+
+.theme-toggle-btn:hover {
+    background: rgba(0, 0, 0, .1);
+}
+
+.theme-toggle-btn .theme-icon-moon,
+.theme-toggle-btn .theme-icon-sun {
+    font-size: 1.1rem;
+}
+
+body:not(.theme-dark) .theme-icon-sun {
+    display: none;
+}
+
+body.theme-dark .theme-icon-moon {
+    display: none;
+}
+
+body.theme-dark .theme-toggle-btn {
+    background: rgba(255, 255, 255, .08);
+}
+
+body.theme-dark .theme-toggle-btn:hover {
+    background: rgba(255, 255, 255, .15);
+}
+
+/* ==========================================================================
+   Sidebar — navy gradient + gold active state
+   ========================================================================== */
+
+.sidebar-wrapper {
+    background: linear-gradient(180deg, var(--brand-navy), var(--brand-navy-2));
+}
+
+.sidebar-wrapper .sidebar-link {
+    color: #c7cede;
+}
+
+.sidebar-wrapper .sidebar-link i {
+    color: #8b94ac;
+}
+
+.sidebar-wrapper .sidebar-item:hover > .sidebar-link {
+    background: rgba(201, 162, 39, .12);
+    color: #fff;
+}
+
+.sidebar-wrapper .menu .sidebar-item.active > .sidebar-link {
+    background: var(--brand-gold) !important;
+}
+
+.sidebar-wrapper .menu .sidebar-item.active > .sidebar-link,
+.sidebar-wrapper .menu .sidebar-item.active > .sidebar-link span {
+    color: var(--brand-navy) !important;
+    font-weight: 600;
+}
+
+.sidebar-wrapper .menu .sidebar-item.active > .sidebar-link i {
+    color: var(--brand-navy) !important;
+}
+
+.sidebar-wrapper .menu .submenu .submenu-item a {
+    color: #a9b2c7;
+}
+
+.sidebar-wrapper .menu .submenu .submenu-item.active > a {
+    color: var(--brand-gold-2) !important;
+    font-weight: 700;
+}
+
+.sidebar-wrapper .menu .submenu .submenu-item a:hover {
+    color: #fff;
+}
+
+/* ==========================================================================
+   RTL adjustments — new rules only, no counterpart exists in rtl.css yet
+   ========================================================================== */
+
+html[dir="rtl"] .theme-toggle-btn {
+    margin-inline: 0;
+}
+
+html[dir="rtl"] #notification-list {
+    text-align: right;
+}
+
+/* ==========================================================================
+   Login split-screen
+   ========================================================================== */
+
+.login-split {
+    align-items: stretch;
+    display: flex;
+    min-height: 100vh;
+}
+
+.login-split .login-form-panel {
+    align-items: center;
+    background: #fff;
+    display: flex;
+    flex: 1 1 50%;
+    justify-content: center;
+    padding: 2rem;
+}
+
+.login-split .login-form-panel .login-form-inner {
+    max-width: 380px;
+    width: 100%;
+}
+
+.login-split .login-form-panel h3 {
+    color: var(--brand-navy);
+    font-weight: 700;
+    margin-bottom: .25rem;
+}
+
+.login-split .login-form-panel .login-subtitle {
+    color: var(--text-muted);
+    margin-bottom: 1.75rem;
+}
+
+.login-split .login-form-panel .form-control {
+    background: #f6f8fb;
+    border: 1px solid var(--surface-border);
+}
+
+.btn-gold {
+    background: linear-gradient(135deg, var(--brand-gold), var(--brand-gold-2));
+    border: none;
+    color: var(--brand-navy);
+    font-weight: 700;
+}
+
+.btn-gold:hover {
+    color: var(--brand-navy);
+    filter: brightness(1.05);
+}
+
+.login-split .login-brand-panel {
+    align-items: center;
+    background: linear-gradient(160deg, var(--brand-navy), var(--brand-navy-2));
+    color: #fff;
+    display: flex;
+    flex: 1 1 50%;
+    flex-direction: column;
+    justify-content: center;
+    overflow: hidden;
+    padding: 3rem;
+    position: relative;
+}
+
+.login-split .login-brand-panel .brand-logo {
+    max-height: 60px;
+    margin-bottom: 1.5rem;
+}
+
+.login-split .login-brand-panel .brand-pill {
+    border: 1px solid var(--brand-gold);
+    border-radius: 999px;
+    color: var(--brand-gold-2);
+    font-size: .75rem;
+    letter-spacing: .12em;
+    padding: .35rem 1.1rem;
+    text-transform: uppercase;
+}
+
+.login-split .login-brand-panel .brand-tagline {
+    color: #c7cede;
+    margin-top: .75rem;
+    text-align: center;
+}
+
+.login-split .login-brand-panel .brand-bubbles {
+    display: flex;
+    gap: 1.25rem;
+    margin-top: 2.5rem;
+}
+
+.login-split .login-brand-panel .brand-bubble {
+    align-items: center;
+    background: rgba(255, 255, 255, .08);
+    border-radius: 50%;
+    display: flex;
+    font-size: 1.35rem;
+    height: 64px;
+    justify-content: center;
+    width: 64px;
+}
+
+.login-split .login-brand-panel .brand-bubble:nth-child(2) {
+    transform: translateY(-10px);
+}
+
+.login-split .login-brand-panel .brand-bubble:nth-child(3) {
+    transform: translateY(6px);
+}
+
+@media (max-width: 991px) {
+    .login-split {
+        flex-direction: column;
+    }
+
+    .login-split .login-brand-panel {
+        order: -1;
+        padding: 2rem;
+    }
+}
+
+/* ==========================================================================
+   Home page — 3D hero
+   ========================================================================== */
+
+.hero-3d {
+    perspective: 900px;
+    height: 100%;
+    min-height: 260px;
+    position: relative;
+}
+
+.hero-3d-stage {
+    height: 100%;
+    position: relative;
+    transform-style: preserve-3d;
+    transition: transform .15s ease-out;
+    width: 100%;
+}
+
+.hero-3d-tile {
+    align-items: center;
+    background: linear-gradient(135deg, var(--brand-navy), var(--brand-navy-2));
+    border-radius: 1rem;
+    box-shadow: 0 10px 30px rgba(16, 24, 40, .15);
+    color: var(--brand-gold-2);
+    display: flex;
+    font-size: 1.5rem;
+    height: 70px;
+    justify-content: center;
+    position: absolute;
+    width: 70px;
+    animation: hero-3d-float 6s ease-in-out infinite;
+}
+
+.hero-3d-tile:nth-child(1) {
+    top: 10%;
+    left: 15%;
+    transform: translateZ(40px);
+    animation-delay: 0s;
+}
+
+.hero-3d-tile:nth-child(2) {
+    top: 35%;
+    right: 12%;
+    transform: translateZ(70px);
+    animation-delay: 1.2s;
+}
+
+.hero-3d-tile:nth-child(3) {
+    bottom: 18%;
+    left: 30%;
+    transform: translateZ(20px);
+    animation-delay: 2.4s;
+}
+
+.hero-3d-tile:nth-child(4) {
+    bottom: 8%;
+    right: 28%;
+    transform: translateZ(55px);
+    animation-delay: 3.6s;
+}
+
+@keyframes hero-3d-float {
+
+    0%,
+    100% {
+        translate: 0 0;
+    }
+
+    50% {
+        translate: 0 -10px;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .hero-3d-stage {
+        transition: none;
+    }
+
+    .hero-3d-tile {
+        animation: none;
+    }
+}

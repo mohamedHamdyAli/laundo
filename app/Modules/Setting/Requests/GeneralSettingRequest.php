@@ -41,6 +41,7 @@ class GeneralSettingRequest extends FormRequest
                 'Call'              => 'nullable|string|max:20',
                 'Email'             => 'nullable|string|max:191',
                 'Tax'               => 'nullable|numeric|min:0',
+                'Country_Id'        => 'nullable|exists:countries,id',
             ];
         } elseif (Route::is('admin.generalSetting.updatePrivacyAndTerms')) {
             $rules = [

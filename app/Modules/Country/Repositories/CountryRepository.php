@@ -3,6 +3,7 @@
 namespace App\Modules\Country\Repositories;
 
 use App\Modules\Country\Models\Country;
+use App\Support\CountryTimezones;
 
 class CountryRepository
 {
@@ -23,6 +24,11 @@ class CountryRepository
     public function create(array $data)
     {
         $data['name'] = json_encode($data['name'], JSON_UNESCAPED_UNICODE);
+
+        if (empty($data['timezone'])) {
+            $data['timezone'] = CountryTimezones::resolve($data['code'] ?? null);
+        }
+
         return Country::create($data);
     }
 
@@ -30,6 +36,11 @@ class CountryRepository
     {
         $country = $this->findById($id);
         $data['name'] = json_encode($data['name'], JSON_UNESCAPED_UNICODE);
+
+        if (empty($data['timezone'])) {
+            $data['timezone'] = CountryTimezones::resolve($data['code'] ?? $country->code) ?? $country->timezone;
+        }
+
         $country->update($data);
         return $country;
     }

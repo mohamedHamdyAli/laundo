@@ -47,11 +47,12 @@ return [
     */
 
     'singles' => [
-        'dashboard' => 0,
-        'user'      => 3,
-        'category'  => 4,
-        'language'  => 5,
-        'role'      => 6,
+        'dashboard'  => 0,
+        'user'       => 3,
+        'category'   => 4,
+        'language'   => 5,
+        'role'       => 6,
+        'moderator'  => 7,
     ],
 
     /*
@@ -70,6 +71,7 @@ return [
         'language' => 'fas fa-language',
         'setting'  => 'bi bi-gear-fill',
         'role'     => 'bi bi-shield-lock',
+        'moderator' => 'bi bi-person-badge',
     ],
 
     'titles' => [
@@ -82,6 +84,7 @@ return [
         'language' => 'Languages',
         'setting'  => 'Settings',
         'role'     => 'Roles',
+        'moderator' => 'Moderators',
     ],
 
     'routes' => [
@@ -94,5 +97,6 @@ return [
         'language' => 'admin.language.index',
         'setting'  => 'admin.generalSetting.viewGeneralSetting',
         'role'     => 'admin.roles.index',
+        'moderator' => 'admin.moderator.index',
     ],
 ];

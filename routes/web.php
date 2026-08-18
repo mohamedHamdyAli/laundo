@@ -1,12 +1,14 @@
 <?php
 
 use App\Http\Controllers\Admin\LanguageController;
+use App\Http\Controllers\Admin\NotificationController;
 use App\Http\Controllers\HomeController;
 use App\Modules\Banner\Controllers\BannerController;
 use App\Modules\Category\Controllers\CategoryController;
 use App\Modules\City\Controllers\CityController;
 use App\Modules\Country\Controllers\CountryController;
 use App\Modules\Intro\Controllers\IntroController;
+use App\Modules\Moderator\Controllers\ModeratorController;
 use App\Modules\setting\Controllers\SettingController;
 use App\Modules\User\Controllers\UserController;
 use Illuminate\Support\Facades\Route;
@@ -42,6 +44,17 @@ Route::middleware(['auth', 'dashboard.only'])->prefix('/admin')->group(function 
 
     Route::post('change-password', [HomeController::class, 'changePasswordUpdate'])
         ->name('change-password.update');
+
+    /*
+    |--------------------------------------------------------------------------
+    | Notifications
+    |--------------------------------------------------------------------------
+    */
+    Route::controller(NotificationController::class)->prefix('notifications')->name('admin.notifications.')->group(function () {
+        Route::get('/unread', 'unread')->name('unread');
+        Route::post('/{id}/read', 'markAsRead')->name('read');
+        Route::post('/read-all', 'markAllAsRead')->name('read-all');
+    });
 
     /*
     |--------------------------------------------------------------------------
@@ -175,6 +188,23 @@ Route::middleware(['auth', 'dashboard.only'])->prefix('/admin')->group(function 
         Route::put('/city/update/{id}', 'update')->middleware('permission:city.update')->name('admin.city.update');
         Route::delete('/city/delete/{id}', 'destroy')->middleware('permission:city.delete')->name('admin.city.delete');
         Route::post('/city/status/{id}', 'toggleStatus')->middleware('permission:city.toggle')->name('admin.city.toggleStatus');
+    });
+
+    /*
+    |--------------------------------------------------------------------------
+    | Moderator
+    |--------------------------------------------------------------------------
+    */
+    Route::controller(ModeratorController::class)->group(function () {
+        Route::get('/moderator', 'index')->middleware('permission:moderator.view')->name('admin.moderator.index');
+        Route::get('/moderator/search', 'search')->middleware('permission:moderator.view')->name('admin.moderator.search');
+        Route::get('/moderator/create', 'create')->middleware('permission:moderator.create')->name('admin.moderator.create');
+        Route::post('/moderator/store', 'store')->middleware('permission:moderator.create')->name('admin.moderator.store');
+        Route::get('/moderator/show/{id}', 'show')->middleware('permission:moderator.view')->name('admin.moderator.show');
+        Route::get('/moderator/edit/{id}', 'edit')->middleware('permission:moderator.update')->name('admin.moderator.edit');
+        Route::put('/moderator/update/{id}', 'update')->middleware('permission:moderator.update')->name('admin.moderator.update');
+        Route::delete('/moderator/delete/{id}', 'destroy')->middleware('permission:moderator.delete')->name('admin.moderator.delete');
+        Route::post('/moderator/status/{id}', 'toggleStatus')->middleware('permission:moderator.toggle')->name('admin.moderator.toggleStatus');
     });
 
     /*

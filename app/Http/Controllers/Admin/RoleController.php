@@ -3,8 +3,10 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\RoleRequest;
 use App\Models\Role;
 use App\Models\Permission;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\Request;
 use Str;
 
@@ -37,17 +39,21 @@ class RoleController extends Controller
             ->with('success', 'Permissions updated successfully');
     }
 
-    public function store(Request $request)
+    public function store(RoleRequest $request)
     {
-        $request->validate([
-            'name' => 'required|string|max:255',
-        ]);
+        $validated = $request->validated();
 
-        Role::create([
-            'name' => $request->name,
-            'slug' => Str::slug($request->name),
-            'type' => 'dashboard',
-        ]);
+        try {
+            Role::create([
+                'name' => $validated['name'],
+                'slug' => Str::slug($validated['name']),
+                'type' => 'dashboard',
+            ]);
+        } catch (UniqueConstraintViolationException $e) {
+            return back()
+                ->withInput()
+                ->with('error', __('A role with this name already exists.'));
+        }
 
         return redirect()->route('admin.roles.index')
             ->with('success', 'Role created successfully');

@@ -12,7 +12,7 @@ class Country extends Model
     use Searchable;
     use DashboardModel;
 
-    protected $fillable = ['name', 'code', 'phone_code', 'status'];
+    protected $fillable = ['name', 'code', 'phone_code', 'timezone', 'status'];
     protected function asJson($value, $flags = 0)
     {
         return json_encode($value, JSON_UNESCAPED_UNICODE);

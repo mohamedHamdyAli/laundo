@@ -4,6 +4,9 @@
 <script type="text/javascript" src="{{ asset('assets/js/bootstrap.min.js') }}"></script>
 <script type="text/javascript" src="{{ asset('assets/js/app.js') }}"></script>
 
+{{-- Alpine.js (lightweight interactive components only; does not replace jQuery/Bootstrap) --}}
+<script type="text/javascript" src="{{ asset('assets/js/vendor/alpinejs/alpine.min.js') }}" defer></script>
+
 {{-- Firebasejs 8.10.0 --}}
 {{-- <script type="text/javascript" src="{{ asset('assets/js/firebase-app.js')}}"></script> --}}
 {{-- <script type="text/javascript" src="{{ asset('assets/js/firebase-messaging.js')}}"></script> --}}
@@ -68,6 +71,14 @@
 <script type="text/javascript" src="{{ asset('assets/js/custom/common.js') }}"></script>
 <script type="text/javascript" src="{{ asset('assets/js/custom/custom.js') }}"></script>
 <script type="text/javascript" src="{{ asset('assets/js/custom/function.js') }}"></script>
+
+{{-- Notifications --}}
+<script type="text/javascript">
+    window.csrfToken = "{{ csrf_token() }}";
+    window.notificationUnreadUrl = "{{ route('admin.notifications.unread') }}";
+    window.notificationReadUrlTemplate = "{{ route('admin.notifications.read', ['id' => '__ID__']) }}";
+</script>
+<script type="text/javascript" src="{{ asset('assets/js/custom/notifications.js') }}"></script>
 <script type="text/javascript" src="{{ asset('assets/js/custom/bootstrap-table/formatter.js') }}"></script>
 <script type="text/javascript" src="{{ asset('assets/js/custom/bootstrap-table/queryParams.js') }}"></script>
 <script type="text/javascript" src="{{ asset('assets/js/custom/bootstrap-table/actionEvents.js') }}"></script>

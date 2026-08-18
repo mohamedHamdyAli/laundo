@@ -7,6 +7,7 @@ use App\Modules\Category\Models\Category;
 use App\Modules\City\Models\City;
 use App\Modules\Country\Models\Country;
 use App\Modules\Intro\Models\intro;
+use App\Modules\Moderator\Models\Moderator;
 use App\Modules\Setting\Models\Setting;
 use App\Modules\User\Models\User;
 
@@ -21,5 +22,6 @@ return [
         intro::class,
         Setting::class,
         Role::class,
+        Moderator::class,
     ],
 ];
