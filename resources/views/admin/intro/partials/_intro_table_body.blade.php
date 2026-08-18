@@ -7,7 +7,7 @@
         <td>{{ $intro->order ?? 'None' }}</td>
         <td>
             <x-status-toggle-button :id="$intro->id" :status="$intro->status"
-                endpoint="{{ route('admin.intro.toggleStatus', $intro->id) }}" :permission="intro.toggle"/>
+                endpoint="{{ route('admin.intro.toggleStatus', $intro->id) }}" permission="intro.toggle"/>
         </td>
         <td>{{ $intro->created_at->format('Y-m-d H:i') ?? 'None' }}</td>
         <td class="text-center">

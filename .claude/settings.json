@@ -1,0 +1,20 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(grep -oE \"\\\\.fixed-table-container[^{]*\\\\{[^}]{0,120}\\\\}\" public/assets/extensions/bootstrap-table/bootstrap-table.min.css)",
+      "Bash(curl -sSL -o e:/work/laravel_templete_blade/public/assets/js/vendor/alpinejs/alpine.min.js https://cdn.jsdelivr.net/npm/alpinejs@3/dist/cdn.min.js)",
+      "Bash(echo \"exit code: $?\")",
+      "Bash(npm ls *)",
+      "Bash(curl -s -c cookies.txt -b cookies.txt http://127.0.0.1:8000/admin/moderator -o moderator_page.html -w \"GET /admin/moderator -> %{http_code}\\\\n\")",
+      "Bash(curl -s -c cookies.txt -b cookies.txt http://127.0.0.1:8000/admin/generalSetting -o settings_page.html -w \"GET /admin/generalSetting -> %{http_code}\\\\n\")",
+      "Bash(curl -s -c cookies.txt -b cookies.txt http://127.0.0.1:8000/admin/country/create -o country_create.html -w \"GET /admin/country/create -> %{http_code}\\\\n\")",
+      "Bash(curl -s -c cookies.txt -b cookies.txt http://127.0.0.1:8000/admin/roles -o roles_page.html -w \"GET /admin/roles -> %{http_code}\\\\n\")",
+      "Bash(curl -s -c cookies.txt -b cookies.txt -H \"X-Requested-With: XMLHttpRequest\" http://127.0.0.1:8000/admin/notifications/unread -w \"\\\\nGET /admin/notifications/unread -> %{http_code}\\\\n\")",
+      "Bash(git add *)",
+      "Bash(powershell -NoProfile -Command \"Get-NetTCPConnection -LocalPort 8000 -ErrorAction SilentlyContinue | Select-Object -First 1\")",
+      "PowerShell($conn = Get-NetTCPConnection -LocalPort 8123 -State Listen -ErrorAction SilentlyContinue; if \\($conn\\) { Stop-Process -Id $conn.OwningProcess -Force }; Start-Sleep -Milliseconds 500; Get-NetTCPConnection -LocalPort 8123 -State Listen -ErrorAction SilentlyContinue)",
+      "Bash(node -e ' *)",
+      "PowerShell($conn = Get-NetTCPConnection -LocalPort 8123 -State Listen -ErrorAction SilentlyContinue; if \\($conn\\) { Stop-Process -Id $conn.OwningProcess -Force }; Start-Sleep -Milliseconds 500; try { Get-NetTCPConnection -LocalPort 8123 -State Listen -ErrorAction Stop; \"STILL UP\" } catch { \"STOPPED\" })"
+    ]
+  }
+}

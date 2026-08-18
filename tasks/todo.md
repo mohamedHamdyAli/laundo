@@ -50,9 +50,16 @@ Plan reference: see conversation / `sharded-humming-sifakis.md` plan file for fu
 - [x] Home page: removed broken Featured Sections table + dead chart/map script blocks
 - [x] Home page: CSS-only 3D hero element (Alpine mousemove tilt) with reduced-motion fallback
 - [x] Functional QA: verified via real HTTP requests (curl, logged-in session) that /login, /admin/home, /admin/moderator, /admin/generalSetting, /admin/country/create, /admin/roles all return 200 and contain expected new markup; static assets (theme.css, alpine.min.js, notifications.js) all reachable
-- [ ] Visual QA (colors/layout/animation/Select2+SweetAlert2 dark-mode clash) — NOT verified, no browser automation tool available in this environment. User should check http://127.0.0.1:8000/login and /admin/home directly.
+- [x] Visual QA round 2 (2026-08-12): fixed sidebar icon/text CSS specificity bug (invisible on navy bg), redesigned scattered hero-3d tiles into a contained grid, rounded table containers to match card corners.
+- [x] Visual QA round 3 (2026-08-12, user reported table still square + topbar icons invisible): root cause was that Country/City/Banner/Intro/Category/Language render `<table>` directly in `.card-body` with no `.table-responsive` wrapper, so round 2's table fix never reached them — added a matching `.card-body > table.table` rule. Also fixed the topbar dark-mode toggle + notification bell icons, which weren't wrapped in `.nav-link` so never got a real color.
+- [x] Visual QA round 4 (2026-08-12, user reported bell icon sitting lower than its neighbors + dark-mode icon still not standing out): bell had no sized circle backdrop (`.avatar` alone doesn't set height/width/flex-centering), so it sat at its natural inline baseline instead of centered like the dark-mode toggle. Gave it the same 38px circle treatment, and switched both icons to a bolder navy/gold instead of muted gray.
+- [x] Visual QA round 5 (2026-08-12, user zoomed in and showed the glyph itself off-center inside the circle even after round 4): root cause is bootstrap-icons' vendor `vertical-align: -0.125em` on every glyph, meant for inline text, fighting the flex `align-items: center`. Zeroed it out for just the dark-mode/bell icons. Select2+SweetAlert2 dark-mode clash still NOT verified, no browser automation tool available in this environment — user should double check that specific combination visually.
+
+## Workstream F — Status-toggle Blade bug (found during 2026-08-12 QA, DONE)
+- [x] Found `:permission="x.toggle"` (missing quotes, leading `:` makes Blade eval it as PHP) in Category/City/Banner/Country/Intro table-body partials — crashes list page with 500 once a row exists. Fixed to `permission="x.toggle"` matching the working User/Moderator pattern.
+- [x] Verified via live HTTP round trip (login as seeded admin, create → list → edit → toggle → delete) against Category module.
 
 ## Final steps (all workstreams)
 - [ ] Code review pass
 - [ ] Security review pass
-- [ ] Update `Changelog.md`
+- [x] Update `Changelog.md`

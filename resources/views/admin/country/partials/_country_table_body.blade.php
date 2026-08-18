@@ -6,7 +6,7 @@
         <td>{{ $country->phone_code ?? 'None' }}</td>
         <td>
             <x-status-toggle-button :id="$country->id" :status="$country->status"
-                endpoint="{{ route('admin.country.toggleStatus', $country->id) }}" :permission="country.toggle" />
+                endpoint="{{ route('admin.country.toggleStatus', $country->id) }}" permission="country.toggle" />
         </td>
         <td>{{ $country->created_at->format('Y-m-d H:i') ?? 'None' }}</td>
         <td class="text-center">

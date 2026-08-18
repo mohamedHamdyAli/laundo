@@ -16,7 +16,7 @@
         </td>
         <td>
             <x-status-toggle-button :id="$category->id" :status="$category->status"
-                endpoint="{{ route('admin.category.toggleStatus', $category->id) }}" :permission="category.toggle" />
+                endpoint="{{ route('admin.category.toggleStatus', $category->id) }}" permission="category.toggle" />
         </td>
         <td>
             {{ $category->created_at ? \Carbon\Carbon::parse($category->created_at)->translatedFormat('j M Y - g:ia') : 'None' }}
