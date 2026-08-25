@@ -28,3 +28,9 @@
 - Fixed the topbar dark-mode toggle and notification bell icons rendering nearly invisible: that markup isn't wrapped in Bootstrap's `.nav-link`, so it never received `--bs-navbar-color` and fell back to a very light inherited color. Gave both explicit, theme-aware colors (muted by default, full contrast on hover) consistent with the sidebar icon fix above.
 - Fixed the notification bell sitting lower than the other topbar icons and looking washed out even after the previous pass: unlike the dark-mode toggle, the bell's markup (`.avatar`) never got a sized circle backdrop, so it stayed at its natural inline baseline instead of being vertically centered like its siblings. Gave it the same 38px flex-centered circle as the dark-mode toggle, and switched both icons from a muted gray to a bold navy (gold on hover/dark mode) so they read as clearly "on" rather than faded.
 - Fixed the dark-mode/bell glyphs still not sitting dead-center inside their circles after the flex-centering fix above: bootstrap-icons' vendor CSS puts `vertical-align: -0.125em` on every glyph (a nudge meant for inline text flow), which offsets it from true center inside a flex-centered circle. Zeroed that out specifically for these two icons so `align-items: center` centers the glyph itself instead of its text-baseline position.
+
+## 2026-08-25
+
+### Improvement
+
+- Unlinked the local repository from GitHub (Infrastructure): removed the `origin` remote, which still pointed at the upstream template repo `https://github.com/mohamedHamdyAli/laravel_templete_blade.git`. `main` no longer tracks a remote branch, so `git push`/`git pull` require an explicit remote until a new one is added.
