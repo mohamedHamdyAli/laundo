@@ -75,8 +75,8 @@
 {{-- Notifications --}}
 <script type="text/javascript">
     window.csrfToken = "{{ csrf_token() }}";
-    window.notificationUnreadUrl = "{{ route('admin.notifications.unread') }}";
-    window.notificationReadUrlTemplate = "{{ route('admin.notifications.read', ['id' => '__ID__']) }}";
+    window.notificationUnreadUrl = "{{ route('admin.myNotifications.unread') }}";
+    window.notificationReadUrlTemplate = "{{ route('admin.myNotifications.read', ['id' => '__ID__']) }}";
 </script>
 <script type="text/javascript" src="{{ asset('assets/js/custom/notifications.js') }}"></script>
 <script type="text/javascript" src="{{ asset('assets/js/custom/bootstrap-table/formatter.js') }}"></script>
@@ -242,11 +242,15 @@
         const paginationWrapper = $(config.paginationWrapperSelector);
 
         function fetchData(query = '', page = 1) {
-            console.log("Fetching:", query, page); // Debug
             $.ajax({
                 url: config.url,
                 type: 'GET',
                 data: {
+                    // `query` is the established parameter name — every search()
+                    // action reads it with $request->get('query'). Note it must be
+                    // read that way and never as $request->query: Symfony's
+                    // Request has a public $query property holding a ParameterBag,
+                    // so the property access returns that object, not the term.
                     query: query,
                     page: page
                 },

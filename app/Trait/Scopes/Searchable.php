@@ -18,5 +18,4 @@ trait Searchable
 
         return $query;
     }
-
 }

@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\DB;
 class userCrudService
 {
     protected $userRepository;
+
     protected $responseService;
 
     public function __construct(UserRepository $userRepository, ResponseService $responseService)
@@ -35,18 +36,21 @@ class userCrudService
     public function addUser(array $data)
     {
         $data['image_profile'] = uploadOrUpdateImage($data['image_profile'] ?? null, 'images/users/image');
+
         return DB::transaction(fn () => $this->userRepository->create($data));
     }
 
     public function updateUser(array $data)
     {
-        $filteredData = array_filter($data, fn ($v) => !is_null($v));
+        $filteredData = array_filter($data, fn ($v) => ! is_null($v));
+
         return DB::transaction(function () use ($filteredData) {
             if (isset($filteredData['image_profile'])) {
                 $existingUser = $this->userRepository->find($filteredData['id']);
                 $existingPath = $existingUser->image_profile;
                 $filteredData['image_profile'] = uploadOrUpdateImage($filteredData['image_profile'], 'images/users/image', $existingPath);
             }
+
             return $this->userRepository->update($filteredData['id'], $filteredData);
         });
     }
@@ -59,6 +63,7 @@ class userCrudService
     public function toggleStatus($id, $status)
     {
         $user = $this->userRepository->find($id);
+
         return $this->responseService->toggleStatus($user, $status);
     }
 }

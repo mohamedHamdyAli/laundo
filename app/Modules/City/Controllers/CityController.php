@@ -9,9 +9,7 @@ use Illuminate\Http\Request;
 
 class CityController extends Controller
 {
-    public function __construct(private readonly cityCrudService $cityCrudService)
-    {
-    }
+    public function __construct(private readonly cityCrudService $cityCrudService) {}
 
     public function index(Request $request)
     {
@@ -38,36 +36,42 @@ class CityController extends Controller
     public function create()
     {
         $data = $this->cityCrudService->shredData();
+
         return view('admin.city.create', $data);
     }
 
     public function store(CityRequest $request)
     {
         $this->cityCrudService->addNew($request->validated());
+
         return redirect()->route('admin.city.index')->with('success', __('Added Successfully'));
     }
 
     public function show($id)
     {
         $data = $this->cityCrudService->shredData($id);
+
         return view('admin.city.show', $data);
     }
 
     public function edit(string $id)
     {
         $data = $this->cityCrudService->shredData($id);
+
         return view('admin.city.edit', $data);
     }
 
     public function update(CityRequest $request, $id)
     {
         $this->cityCrudService->updateRecord($request->validated() + ['id' => $id]);
+
         return redirect()->route('admin.city.index')->with('success', __('Updated Successfully'));
     }
 
     public function destroy($id)
     {
         $this->cityCrudService->deleteRecord($id);
+
         return redirect()->route('admin.city.index')->with('success', __('Deleted Successfully'));
     }
 

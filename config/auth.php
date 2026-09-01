@@ -1,5 +1,7 @@
 <?php
 
+use App\Modules\User\Models\User;
+
 return [
 
     /*
@@ -40,6 +42,14 @@ return [
             'driver' => 'session',
             'provider' => 'users',
         ],
+
+        // Stateless guard for the mobile apps (customer + driver).
+        // Also what userAuth() / isAdmin() / isEmployee() in app/Helpers/Helpers.php
+        // resolve against — those helpers threw before this guard existed.
+        'api' => [
+            'driver' => 'sanctum',
+            'provider' => 'users',
+        ],
     ],
 
     /*
@@ -62,7 +72,7 @@ return [
     'providers' => [
         'users' => [
             'driver' => 'eloquent',
-            'model' => env('AUTH_MODEL', App\Modules\User\Models\User::class),
+            'model' => env('AUTH_MODEL', User::class),
         ],
 
         // 'users' => [

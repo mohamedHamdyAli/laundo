@@ -2,6 +2,7 @@
 
 namespace App\Modules\Moderator\Requests;
 
+use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -18,7 +19,7 @@ class ModeratorRequest extends FormRequest
     /**
      * Get the validation rules that apply to the request.
      *
-     * @return array<string, \Illuminate\Contracts\Validation\ValidationRule|array<mixed>|string>
+     * @return array<string, ValidationRule|array<mixed>|string>
      */
     public function rules(): array
     {
@@ -26,29 +27,29 @@ class ModeratorRequest extends FormRequest
         $isUpdate = $this->isMethod('PUT') || $this->isMethod('PATCH');
 
         return [
-            'name'          => $isUpdate ? 'nullable|string|max:191' : 'required|string|max:191',
-            'email'         => [
+            'name' => $isUpdate ? 'nullable|string|max:191' : 'required|string|max:191',
+            'email' => [
                 $isUpdate ? 'nullable' : 'required',
                 'email',
                 'max:191',
                 Rule::unique('users', 'email')->ignore($moderatorId),
             ],
-            'phone'         => [
+            'phone' => [
                 $isUpdate ? 'nullable' : 'required',
                 'string',
                 'max:191',
-                'regex:/^(\+?965)?[569]\d{7}$/',
+                'regex:'.phoneRegex(),
                 Rule::unique('users', 'phone')->ignore($moderatorId),
             ],
-            'role_id'       => [
+            'role_id' => [
                 'required',
                 Rule::exists('roles', 'id')->where(function ($query) {
                     $query->where('type', 'dashboard')->where('slug', '!=', 'super_admin');
                 }),
             ],
-            'image_profile' => ($isUpdate ? 'nullable' : 'required') . '|image|mimes:jpg,png,jpeg,gif,svg|max:2048',
-            'password'      => ($isUpdate ? 'nullable' : 'required') . '|string|min:8|confirmed',
-            'status'        => 'required|in:active,inactive',
+            'image_profile' => ($isUpdate ? 'nullable' : 'required').'|image|mimes:jpg,png,jpeg,gif,svg|max:2048',
+            'password' => ($isUpdate ? 'nullable' : 'required').'|string|min:8|confirmed',
+            'status' => 'required|in:active,inactive',
         ];
     }
 
@@ -58,7 +59,7 @@ class ModeratorRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'phone.regex'   => __('Please enter a valid Kuwaiti phone number.'),
+            'phone.regex' => __('Please enter a valid Egyptian phone number.'),
             'role_id.exists' => __('Please select a valid moderator role.'),
         ];
     }

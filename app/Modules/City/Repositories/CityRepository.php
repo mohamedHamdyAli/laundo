@@ -30,12 +30,14 @@ class CityRepository
     {
         $city = City::findOrFail($id);
         $city->update($data);
+
         return $city;
     }
 
     public function delete($id)
     {
         $city = City::findOrFail($id);
+
         return $city->delete();
     }
 }

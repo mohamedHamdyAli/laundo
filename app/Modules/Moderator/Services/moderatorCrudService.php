@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\DB;
 class moderatorCrudService
 {
     protected $moderatorRepository;
+
     protected $responseService;
 
     public function __construct(ModeratorRepository $moderatorRepository, ResponseService $responseService)
@@ -37,7 +38,7 @@ class moderatorCrudService
 
     public function updateRecord(array $data)
     {
-        $filteredData = array_filter($data, fn ($value) => !is_null($value));
+        $filteredData = array_filter($data, fn ($value) => ! is_null($value));
 
         return DB::transaction(function () use ($filteredData) {
             if (isset($filteredData['image_profile'])) {
@@ -74,6 +75,7 @@ class moderatorCrudService
     public function toggleStatus($id, $status)
     {
         $moderator = $this->moderatorRepository->findById($id);
+
         return $this->responseService->toggleStatus($moderator, $status);
     }
 }

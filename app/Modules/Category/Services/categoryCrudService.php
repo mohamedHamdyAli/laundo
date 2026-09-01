@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\DB;
 class categoryCrudService
 {
     protected $categoryRepository;
+
     protected $responseService;
 
     public function __construct(CategoryRepository $categoryRepository, ResponseService $responseService)
@@ -22,6 +23,7 @@ class categoryCrudService
         return DB::transaction(function () use ($request) {
             $request['image'] = uploadOrUpdateImage($request['image'] ?? null, 'images/categories/image');
             $request['name'] = json_encode($request['name'], JSON_UNESCAPED_UNICODE);
+
             return $this->categoryRepository->create($request);
         });
     }
@@ -37,6 +39,7 @@ class categoryCrudService
             }
 
             $request['name'] = json_encode($request['name'], JSON_UNESCAPED_UNICODE);
+
             return $this->categoryRepository->update($request['id'], $request);
         });
     }
@@ -47,6 +50,7 @@ class categoryCrudService
             $category = $this->categoryRepository->findById($id);
             $category->children()->update(['parent_id' => null]);
             DeleteImage($category->image);
+
             return $this->categoryRepository->delete($id);
         });
     }
@@ -56,6 +60,16 @@ class categoryCrudService
         return $this->categoryRepository->getSubCategories($id, $perPage);
     }
 
+    /**
+     * The repository has had a search() all along, but the controller called
+     * shredData() instead, so typing in the search box re-rendered the full list
+     * unchanged.
+     */
+    public function search($query, $perPage = 10)
+    {
+        return $this->categoryRepository->search($query, $perPage);
+    }
+
     public function shredData($id = null)
     {
         $data = [];
@@ -63,12 +77,14 @@ class categoryCrudService
             $data['row'] = $this->categoryRepository->findById($id);
         }
         $data['categories'] = $this->categoryRepository->getAllWithChildren();
+
         return $data;
     }
 
     public function toggleStatus($id, $status)
     {
         $category = $this->categoryRepository->findById($id);
+
         return $this->responseService->toggleStatus($category, $status);
     }
 }

@@ -1,0 +1,214 @@
+<?php
+
+namespace Tests\Feature\Api;
+
+use App\Modules\User\Models\User;
+use App\Services\Auth\OtpService;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Hash;
+use Tests\TestCase;
+
+/**
+ * P4 — registration, verification and sign-in.
+ */
+class CustomerAuthTest extends TestCase
+{
+    use RefreshDatabase;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->seedCore();
+        $this->seedGeo();
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private function registrationPayload(array $overrides = []): array
+    {
+        return array_merge([
+            'name' => 'New Customer',
+            'phone' => '01011223344',
+            'password' => 'secret123',
+            'password_confirmation' => 'secret123',
+            'accepted_terms' => '1',
+        ], $overrides);
+    }
+
+    public function test_registration_without_an_email_succeeds(): void
+    {
+        // This was a 500 until users.email was made nullable: the design marks
+        // email optional but the column was NOT NULL.
+        $this->withHeaders($this->apiHeaders())
+            ->postJson('/api/v1/auth/register', $this->registrationPayload())
+            ->assertStatus(201)
+            ->assertJsonPath('key', 'success');
+
+        $this->assertDatabaseHas('users', ['phone' => '01011223344', 'email' => null]);
+    }
+
+    public function test_registration_leaves_the_account_unverified(): void
+    {
+        $this->withHeaders($this->apiHeaders())
+            ->postJson('/api/v1/auth/register', $this->registrationPayload());
+
+        $this->assertNull(User::where('phone', '01011223344')->first()->phone_verified_at);
+    }
+
+    public function test_registration_never_returns_the_code(): void
+    {
+        $response = $this->withHeaders($this->apiHeaders())
+            ->postJson('/api/v1/auth/register', $this->registrationPayload());
+
+        $body = $response->getContent();
+
+        $this->assertStringNotContainsString('otp', strtolower($body));
+        $this->assertArrayNotHasKey('code', $response->json('data'));
+    }
+
+    public function test_a_taken_phone_is_refused(): void
+    {
+        $this->customer('01011223344');
+
+        $this->withHeaders($this->apiHeaders())
+            ->postJson('/api/v1/auth/register', $this->registrationPayload())
+            ->assertStatus(422)
+            ->assertJsonPath('key', 'validation_error')
+            ->assertJsonStructure(['errors' => ['phone']]);
+    }
+
+    public function test_terms_must_be_accepted(): void
+    {
+        $this->withHeaders($this->apiHeaders())
+            ->postJson('/api/v1/auth/register', $this->registrationPayload(['accepted_terms' => '0']))
+            ->assertStatus(422)
+            ->assertJsonStructure(['errors' => ['accepted_terms']]);
+    }
+
+    public function test_a_non_egyptian_phone_is_refused(): void
+    {
+        $this->withHeaders($this->apiHeaders())
+            ->postJson('/api/v1/auth/register', $this->registrationPayload(['phone' => '+96555512345']))
+            ->assertStatus(422)
+            ->assertJsonStructure(['errors' => ['phone']]);
+    }
+
+    public function test_login_is_refused_before_verification(): void
+    {
+        $user = $this->customer('01011223344', verified: false);
+        $user->forceFill(['password' => Hash::make('secret123')])->save();
+
+        $this->withHeaders($this->apiHeaders())
+            ->postJson('/api/v1/auth/login', ['phone' => '01011223344', 'password' => 'secret123'])
+            ->assertStatus(403)
+            ->assertJsonPath('key', 'forbidden');
+    }
+
+    public function test_login_is_refused_for_an_inactive_account(): void
+    {
+        $user = $this->customer('01011223344');
+        $user->forceFill(['password' => Hash::make('secret123'), 'status' => 'inactive'])->save();
+
+        $this->withHeaders($this->apiHeaders())
+            ->postJson('/api/v1/auth/login', ['phone' => '01011223344', 'password' => 'secret123'])
+            ->assertStatus(403);
+    }
+
+    public function test_wrong_password_and_unknown_number_answer_identically(): void
+    {
+        // Otherwise the endpoint tells an attacker which numbers are registered.
+        $user = $this->customer('01011223344');
+        $user->forceFill(['password' => Hash::make('secret123')])->save();
+
+        $wrongPassword = $this->withHeaders($this->apiHeaders())
+            ->postJson('/api/v1/auth/login', ['phone' => '01011223344', 'password' => 'wrong-one']);
+
+        $unknownNumber = $this->withHeaders($this->apiHeaders())
+            ->postJson('/api/v1/auth/login', ['phone' => '01055554444', 'password' => 'secret123']);
+
+        $this->assertSame($wrongPassword->status(), $unknownNumber->status());
+        $this->assertSame($wrongPassword->json('msg'), $unknownNumber->json('msg'));
+    }
+
+    public function test_verify_then_login_issues_a_working_token(): void
+    {
+        $this->withHeaders($this->apiHeaders())
+            ->postJson('/api/v1/auth/register', $this->registrationPayload());
+
+        $user = User::where('phone', '01011223344')->first();
+        $code = app(OtpService::class)->issue($user);
+
+        $verify = $this->withHeaders($this->apiHeaders())
+            ->postJson('/api/v1/auth/verify-otp', ['phone' => '01011223344', 'code' => $code]);
+
+        $verify->assertOk()->assertJsonPath('data.user.phone_verified', true);
+
+        $token = $verify->json('data.token');
+        $this->assertNotEmpty($token);
+
+        $this->withHeaders($this->apiHeaders() + ['Authorization' => "Bearer {$token}"])
+            ->getJson('/api/v1/profile')
+            ->assertOk()
+            ->assertJsonPath('data.phone', '01011223344');
+    }
+
+    public function test_logout_revokes_only_the_calling_token(): void
+    {
+        $user = $this->customer('01011223344');
+
+        $first = $user->createToken('device-one')->plainTextToken;
+        $second = $user->createToken('device-two')->plainTextToken;
+
+        $this->withHeaders($this->apiHeaders() + ['Authorization' => "Bearer {$first}"])
+            ->postJson('/api/v1/auth/logout')
+            ->assertOk();
+
+        // The guard caches the resolved user for the lifetime of the container,
+        // which in tests spans every request in the method. Production gets a
+        // fresh container per request; here it has to be asked for explicitly, or
+        // the next call would pass on the cached user and prove nothing.
+        $this->app['auth']->forgetGuards();
+
+        $this->withHeaders($this->apiHeaders() + ['Authorization' => "Bearer {$first}"])
+            ->getJson('/api/v1/profile')->assertStatus(401);
+
+        $this->app['auth']->forgetGuards();
+
+        // Signing out on one phone must not sign the customer out on their tablet.
+        $this->withHeaders($this->apiHeaders() + ['Authorization' => "Bearer {$second}"])
+            ->getJson('/api/v1/profile')->assertOk();
+    }
+
+    public function test_resend_answers_the_same_for_unknown_numbers(): void
+    {
+        $known = $this->withHeaders($this->apiHeaders())
+            ->postJson('/api/v1/auth/resend-otp', ['phone' => $this->customer('01011223344')->phone]);
+
+        $unknown = $this->withHeaders($this->apiHeaders())
+            ->postJson('/api/v1/auth/resend-otp', ['phone' => '01099990000']);
+
+        $this->assertSame($known->status(), $unknown->status());
+        $this->assertSame($known->json('msg'), $unknown->json('msg'));
+    }
+
+    public function test_password_reset_revokes_every_token(): void
+    {
+        $user = $this->customer('01011223344');
+        $user->createToken('a');
+        $user->createToken('b');
+        $this->assertSame(2, $user->tokens()->count());
+
+        $code = app(OtpService::class)->issue($user);
+
+        $this->withHeaders($this->apiHeaders())->postJson('/api/v1/auth/reset-password', [
+            'phone' => '01011223344',
+            'code' => $code,
+            'password' => 'brandnew123',
+            'password_confirmation' => 'brandnew123',
+        ])->assertOk();
+
+        $this->assertSame(0, $user->fresh()->tokens()->count());
+        $this->assertTrue(Hash::check('brandnew123', $user->fresh()->password));
+    }
+}

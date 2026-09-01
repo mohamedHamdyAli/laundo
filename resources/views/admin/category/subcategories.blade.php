@@ -53,7 +53,7 @@
                                                     <x-status-toggle-button :id="$subcategory->id" :status="$subcategory->status"
                                                         endpoint="{{ route('admin.category.toggleStatus', $subcategory->id) }}" />
                                                 </td>
-                                                <td>{{ optional($subcategory->created_at)->format('Y-m-d H:i') ?? 'None' }}
+                                                <td>{{ humanDate($subcategory->created_at, 'Y-m-d H:i') }}
                                                 </td>
                                                 <td class="text-center">
                                                     @include('admin.category.shared.controlBut', [

@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\DB;
 class cityCrudService
 {
     protected $cityRepository;
+
     protected $responseService;
 
     public function __construct(CityRepository $cityRepository, ResponseService $responseService)
@@ -17,6 +18,7 @@ class cityCrudService
         $this->cityRepository = $cityRepository;
         $this->responseService = $responseService;
     }
+
     public function getAllPaginated($perPage)
     {
         return $this->cityRepository->getAllPaginated($perPage);
@@ -31,6 +33,7 @@ class cityCrudService
     {
         return DB::transaction(function () use ($request) {
             $request['name'] = json_encode($request['name'], JSON_UNESCAPED_UNICODE);
+
             return $this->cityRepository->create($request);
         });
     }
@@ -39,6 +42,7 @@ class cityCrudService
     {
         return DB::transaction(function () use ($request) {
             $request['name'] = json_encode($request['name'], JSON_UNESCAPED_UNICODE);
+
             return $this->cityRepository->update($request['id'], $request);
         });
     }
@@ -55,12 +59,14 @@ class cityCrudService
             $data['row'] = $this->cityRepository->findById($id);
         }
         $data['countries'] = Country::all();
+
         return $data;
     }
 
     public function toggleStatus($id, $status)
     {
         $city = $this->cityRepository->findById($id);
+
         return $this->responseService->toggleStatus($city, $status);
     }
 }

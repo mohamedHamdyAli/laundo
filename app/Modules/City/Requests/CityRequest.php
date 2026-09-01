@@ -2,6 +2,7 @@
 
 namespace App\Modules\City\Requests;
 
+use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 
 class CityRequest extends FormRequest
@@ -17,23 +18,23 @@ class CityRequest extends FormRequest
     /**
      * Get the validation rules that apply to the request.
      *
-     * @return array<string, \Illuminate\Contracts\Validation\ValidationRule|array<mixed>|string>
+     * @return array<string, ValidationRule|array<mixed>|string>
      */
     public function rules(): array
     {
         if ($this->getMethod() === 'PUT') {
             return [
-                'name'          => 'nullable|array',
-                'name.*'        => 'nullable|string|max:191',
-                'country_id'    => 'nullable|exists:countries,id',
-                'status'        => 'nullable|in:active,inactive',
+                'name' => 'nullable|array',
+                'name.*' => 'nullable|string|max:191',
+                'country_id' => 'nullable|exists:countries,id',
+                'status' => 'nullable|in:active,inactive',
             ];
         } else {
             return [
-                'name'          => 'required|array',
-                'name.*'        => 'required|string|max:191',
-                'country_id'    => 'required|exists:countries,id',
-                'status'        => 'required|in:active,inactive',
+                'name' => 'required|array',
+                'name.*' => 'required|string|max:191',
+                'country_id' => 'required|exists:countries,id',
+                'status' => 'required|in:active,inactive',
             ];
         }
     }

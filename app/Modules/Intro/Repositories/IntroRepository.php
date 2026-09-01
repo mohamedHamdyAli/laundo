@@ -30,6 +30,7 @@ class IntroRepository
     {
         $intro = $this->find($id);
         $intro->update($data);
+
         return $intro;
     }
 
@@ -38,14 +39,17 @@ class IntroRepository
         $intro = $this->find($id);
         DeleteImage($intro->image);
         $intro->delete();
+
         return true;
     }
+
     public function shredData($id = null)
     {
         $data = [];
         if ($id != null) {
             $data['row'] = intro::findOrFail($id);
         }
+
         return $data;
     }
 }

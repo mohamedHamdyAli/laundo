@@ -30,5 +30,24 @@ class LanguageSeeder extends Seeder
         );
         LanguageHelper::generateJsonLanguageFiles('en');
 
+        // Arabic is the language the apps are designed in, and getLocalizedValue()
+        // already falls back to ->ar, so the row has to exist for that fallback to
+        // resolve. Left as non-default on purpose: flipping the default language
+        // changes what the whole dashboard renders in, which is a business call.
+        Language::updateOrCreate(
+            ['code' => 'ar'],
+            [
+                'name' => 'العربية',
+                'name_en' => 'Arabic',
+                'country_code' => 'EG',
+                'default' => 'false',
+                'is_rtl' => 'true',
+                'app_scope' => 'user',
+                'app_file' => 'app_ar.json',
+                'panel_file' => 'panel_ar.json',
+                'web_file' => 'web_ar.json',
+            ]
+        );
+        LanguageHelper::generateJsonLanguageFiles('ar');
     }
 }

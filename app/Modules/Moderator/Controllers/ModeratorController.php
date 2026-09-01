@@ -12,9 +12,7 @@ use Illuminate\Support\Facades\Notification;
 
 class ModeratorController extends Controller
 {
-    public function __construct(private readonly moderatorCrudService $moderatorCrudService)
-    {
-    }
+    public function __construct(private readonly moderatorCrudService $moderatorCrudService) {}
 
     public function index(Request $request)
     {
@@ -41,6 +39,7 @@ class ModeratorController extends Controller
     public function create()
     {
         $data = $this->moderatorCrudService->shredData();
+
         return view('admin.moderator.create', $data);
     }
 
@@ -67,12 +66,14 @@ class ModeratorController extends Controller
     public function show($id)
     {
         $data = $this->moderatorCrudService->shredData($id);
+
         return view('admin.moderator.show', $data);
     }
 
     public function edit($id)
     {
         $data = $this->moderatorCrudService->shredData($id);
+
         return view('admin.moderator.edit', $data);
     }
 

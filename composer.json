@@ -11,6 +11,7 @@
     "require": {
         "php": "^8.3",
         "laravel/framework": "^13.0",
+        "laravel/sanctum": "^4.0",
         "laravel/tinker": "^3.0",
         "laravel/ui": "^4.6"
     },
@@ -71,6 +72,11 @@
         "test": [
             "@php artisan config:clear --ansi",
             "@php artisan test"
+        ],
+        "test:browser": "npx playwright test",
+        "test:all": [
+            "@composer test",
+            "@composer test:browser"
         ]
     },
     "extra": {

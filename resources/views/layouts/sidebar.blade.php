@@ -4,9 +4,15 @@
             <div class="d-block">
                 <div class="logo text-center">
                     <a href="{{ url('admin/home') }}">
-                        @if (getSettingValue('App_Logo'))
-                            <img src="{{ asset('storage/' . getSettingValue('App_Logo')) }}" alt="Logo" width="150">
-                        @endif
+                        {{--
+                            The LIGHT variant: this panel is navy, and the brand
+                            mark is navy too — 1.08:1, invisible. brandLogo()
+                            falls back to the bundled asset, so there is no @if
+                            here; an empty setting used to leave a blank box with
+                            nothing to say why.
+                        --}}
+                        <img src="{{ brandLogo('light') }}" alt="{{ getSettingValue('App_Name') ?: config('app.name') }}"
+                            style="max-width: 150px; height: auto;">
                     </a>
                 </div>
             </div>

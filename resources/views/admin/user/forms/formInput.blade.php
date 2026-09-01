@@ -30,6 +30,19 @@
             </div>
         </div>
     </div>
+    @if (Route::is('*.show') && isset($row) && $row->customer_reference)
+        <div class="col-md-4">
+            <div class="form-group">
+                <label class="form-label">{{ __('Customer reference') }}</label>
+                <div class="controls">
+                    {{-- Read-only everywhere. It is printed on bags that are
+                         already in circulation, so it is not an editable field. --}}
+                    <input type="text" class="form-control" value="{{ $row->customer_reference }}" readonly>
+                </div>
+                <small class="text-muted">{{ __('Printed on this customer's bags') }}</small>
+            </div>
+        </div>
+    @endif
     <div class="col-lg-4">
         <div class="mb-3">
             <label class="form-label">{{ __('Image Profile') }}<span class="text-danger">*</span></label>

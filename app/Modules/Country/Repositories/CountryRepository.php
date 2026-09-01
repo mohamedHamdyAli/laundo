@@ -11,6 +11,7 @@ class CountryRepository
     {
         return Country::paginate($perPage);
     }
+
     public function search($query, $perPage = 10)
     {
         return Country::search($query, ['name'])->paginate($perPage);
@@ -42,6 +43,7 @@ class CountryRepository
         }
 
         $country->update($data);
+
         return $country;
     }
 
@@ -49,6 +51,7 @@ class CountryRepository
     {
         $country = $this->findById($id);
         $country->delete();
+
         return true;
     }
 }

@@ -3,9 +3,10 @@
     $loginCover = getSettingValue('Login_Cover')
         ? asset('storage/' . getSettingValue('Login_Cover'))
         : null;
-    $appLogo = getSettingValue('App_Logo')
-        ? asset('storage/' . getSettingValue('App_Logo'))
-        : asset('assets/images/logo/Header Logo.svg');
+    // Two panels, two backgrounds, two variants. brandLogo() decides; a template
+    // choosing for itself is how one of them ends up navy on navy.
+    $appLogoDark = brandLogo('dark');
+    $appLogoLight = brandLogo('light');
 @endphp
 <!DOCTYPE html>
 <html lang="{{ $currentLangCode }}" dir="{{ $currentLangCode === 'ar' ? 'rtl' : 'ltr' }}">
@@ -32,7 +33,8 @@
         <div class="login-form-panel">
             <div class="login-form-inner">
                 <div class="mb-4">
-                    <img src="{{ $appLogo }}" alt="{{ config('app.name') }}" style="max-height:48px;">
+                    {{-- White panel, so the navy mark. --}}
+                    <img src="{{ $appLogoDark }}" alt="{{ config('app.name') }}" style="max-height:48px;">
                 </div>
 
                 <h3>{{ __('Welcome back') }}</h3>
@@ -71,7 +73,8 @@
         </div>
 
         <div class="login-brand-panel">
-            <img src="{{ $appLogo }}" alt="{{ config('app.name') }}" class="brand-logo">
+            {{-- Navy panel, so the white mark. --}}
+            <img src="{{ $appLogoLight }}" alt="{{ config('app.name') }}" class="brand-logo">
             <span class="brand-pill">{{ config('app.name') }}</span>
             <p class="brand-tagline">{{ __('Admin Control Panel') }}<br>{{ __('Manage your platform with ease') }}</p>
             <div class="brand-bubbles">

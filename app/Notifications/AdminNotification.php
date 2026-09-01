@@ -11,8 +11,7 @@ class AdminNotification extends Notification
         protected string $message,
         protected ?string $url = null,
         protected array $meta = [],
-    ) {
-    }
+    ) {}
 
     /**
      * Get the notification's delivery channels.

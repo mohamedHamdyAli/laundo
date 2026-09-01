@@ -17,7 +17,6 @@ class SettingsSeeder extends Seeder
         $loreamDe = 'Es handelt sich dabei um lateinische Wörter, die Drucker verwenden, um Lücken im Layout vorübergehend zu füllen, bis der endgültige Text vorliegt,
  damit der Kunde eine Vorstellung davon bekommt, wie die fertige Seite aussehen wird!';
 
-
         $this->create_new_config('App_Name', 'BaseCode');
         $this->create_new_config('About', json_encode(['en' => $loreamEn, 'ar' => $loreamDe], JSON_UNESCAPED_UNICODE));
         $this->create_new_config('App_Logo', 'logo1.png');
@@ -40,6 +39,7 @@ class SettingsSeeder extends Seeder
         $this->create_new_config('Call', null);
         $this->create_new_config('Email', 'nahrPhpTeam@nahrPhpTeam.com');
     }
+
     public function create_new_config($key, $value)
     {
         Setting::updateOrCreate(

@@ -2,6 +2,7 @@
 
 namespace App\Modules\Country\Requests;
 
+use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -18,7 +19,7 @@ class CountryRequest extends FormRequest
     /**
      * Get the validation rules that apply to the request.
      *
-     * @return array<string, \Illuminate\Contracts\Validation\ValidationRule|array<mixed>|string>
+     * @return array<string, ValidationRule|array<mixed>|string>
      */
     public function rules(): array
     {
@@ -26,27 +27,27 @@ class CountryRequest extends FormRequest
 
         if ($this->isMethod('PUT') || $this->isMethod('PATCH')) {
             return [
-                'name'          => 'nullable|array|min:1',
-                'name.*'        => 'nullable|string|max:191',
-                'code'          => [
+                'name' => 'nullable|array|min:1',
+                'name.*' => 'nullable|string|max:191',
+                'code' => [
                     'nullable',
                     'string',
                     'max:5',
-                    Rule::unique('countries', 'code')->ignore($countryId)
+                    Rule::unique('countries', 'code')->ignore($countryId),
                 ],
-                'phone_code'    => 'nullable|string|max:10',
-                'timezone'      => 'nullable|string|max:64',
-                'status'        => 'nullable|in:active,inactive',
+                'phone_code' => 'nullable|string|max:10',
+                'timezone' => 'nullable|string|max:64',
+                'status' => 'nullable|in:active,inactive',
             ];
         }
 
         return [
-            'name'          => 'required|array|min:1',
-            'name.*'        => 'required|string|max:191',
-            'code'          => 'required|string|max:5|unique:countries,code',
-            'phone_code'    => 'nullable|string|max:10',
-            'timezone'      => 'nullable|string|max:64',
-            'status'        => 'nullable|in:active,inactive',
+            'name' => 'required|array|min:1',
+            'name.*' => 'required|string|max:191',
+            'code' => 'required|string|max:5|unique:countries,code',
+            'phone_code' => 'nullable|string|max:10',
+            'timezone' => 'nullable|string|max:64',
+            'status' => 'nullable|in:active,inactive',
         ];
     }
 }

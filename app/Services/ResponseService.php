@@ -15,48 +15,52 @@ class ResponseService
         self::errorResponse($message, $data, config('constants.RESPONSE_CODE.VALIDATION_ERROR'));
     }
 
-    public static function errorResponse(string $message = 'Error Occurred', $data = null, string|int $code = null, $e = null): never
+    public static function errorResponse(string $message = 'Error Occurred', $data = null, string|int|null $code = null, $e = null): never
     {
         response()->json([
             'error' => true,
             'message' => trans($message),
             'data' => $data,
             'code' => $code ?? config('constants.RESPONSE_CODE.EXCEPTION_ERROR'),
-            'details' => (!empty($e) && is_object($e)) ? $e->getMessage() . ' --> ' . $e->getFile() . ' At Line : ' . $e->getLine() : ''
+            'details' => (! empty($e) && is_object($e)) ? $e->getMessage().' --> '.$e->getFile().' At Line : '.$e->getLine() : '',
         ])->send();
         exit();
     }
 
-    public static function successResponse(string|null $message = "Success", $data = null, array $customData = [], $code = null): void
+    public static function successResponse(?string $message = 'Success', $data = null, array $customData = [], $code = null): void
     {
         response()->json(array_merge([
             'error' => false,
             'message' => trans($message),
             'data' => $data,
-            'code' => $code ?? config('constants.RESPONSE_CODE.SUCCESS')
+            'code' => $code ?? config('constants.RESPONSE_CODE.SUCCESS'),
         ], $customData))->send();
         exit();
     }
+
     public static function logErrorResponse(Throwable|Exception $e, string $logMessage = ' ', string $responseMessage = 'Error Occurred', bool $jsonResponse = true)
     {
         $userToken = request()->bearerToken() ?? '';
-        Log::error($logMessage . ' ' . $e->getMessage() . '---> ' . $e->getFile() . ' At Line : ' . $e->getLine() . "\n\n" . request()->method() . " : " . request()->fullUrl() . "\nUser Token : " . $userToken . "\nParams : ", request()->all());
+        Log::error($logMessage.' '.$e->getMessage().'---> '.$e->getFile().' At Line : '.$e->getLine()."\n\n".request()->method().' : '.request()->fullUrl()."\nUser Token : ".$userToken."\nParams : ", request()->all());
         if ($jsonResponse && config('app.debug')) {
             self::errorResponse($responseMessage, null, null, $e);
         }
     }
 
     /**
-     * @param Model&object{status: string|int} $model
+     * Flip a model's `status` column.
+     *
+     * The previous `Model&object{status: ...}` intersection hint made the property
+     * read-only to static analysis; Eloquent sets attributes through __set, so a
+     * plain Model is both accurate and assignable.
      */
     public function toggleStatus(Model $model, string|int $status): Model
     {
-        $model->status = $status;
+        $model->setAttribute('status', $status);
         $model->save();
 
         return $model;
     }
-
 
     public static function noPermissionThenSendJson($permission)
     {
@@ -65,11 +69,13 @@ class ResponseService
             return true;
         }
 
-        if (!Auth::user()->can($permission)) {
+        if (! Auth::user()->can($permission)) {
             self::errorResponse("You Don't have enough permissions");
         }
+
         return true;
     }
+
     public static function noPermissionThenRedirect($permission)
     {
         if (Auth::check() && Auth::user()->role->slug === 'super_admin') {
@@ -77,9 +83,9 @@ class ResponseService
             return true;
         }
 
-        if (!Auth::user()->can($permission)) {
+        if (! Auth::user()->can($permission)) {
             return redirect(route('home'))->withErrors([
-                'message' => trans("You Don't have enough permissions")
+                'message' => trans("You Don't have enough permissions"),
             ]);
         }
 

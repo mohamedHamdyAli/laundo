@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\DB;
 class introCrudService
 {
     protected $introRepository;
+
     protected $responseService;
 
     public function __construct(IntroRepository $introRepository, ResponseService $responseService)
@@ -26,6 +27,7 @@ class introCrudService
     {
         return $this->introRepository->search($query, $perPage);
     }
+
     public function addIntro(array $data)
     {
         $data['image'] = uploadOrUpdateImage($data['image'] ?? null, 'images/intros/image');
@@ -37,7 +39,7 @@ class introCrudService
 
     public function updateIntro(array $data)
     {
-        $filteredData = array_filter($data, fn ($v) => !is_null($v));
+        $filteredData = array_filter($data, fn ($v) => ! is_null($v));
 
         return DB::transaction(function () use ($filteredData) {
             $existingIntro = $this->introRepository->find($filteredData['id']);
@@ -62,14 +64,17 @@ class introCrudService
     public function toggleStatus($id, $status)
     {
         $intro = $this->introRepository->find($id);
+
         return $this->responseService->toggleStatus($intro, $status);
     }
+
     public function shredData($id = null)
     {
         $data = [];
         if ($id) {
             $data['row'] = $this->introRepository->find($id);
         }
+
         return $data;
     }
 }

@@ -9,7 +9,7 @@
             <x-status-toggle-button :id="$moderator->id" :status="$moderator->status"
                 endpoint="{{ route('admin.moderator.toggleStatus', $moderator->id) }}" permission="moderator.toggle" />
         </td>
-        <td>{{ $moderator->created_at->format('Y-m-d H:i') ?? 'None' }}</td>
+        <td>{{ humanDate($moderator->created_at, 'Y-m-d H:i') }}</td>
         <td class="text-center">
             @include('admin.moderator.shared.controlBut', [
                 'row' => $moderator,

@@ -4,7 +4,8 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-return new class () extends Migration {
+return new class extends Migration
+{
     /**
      * Run the migrations.
      */
@@ -19,7 +20,7 @@ return new class () extends Migration {
             $table->enum('default', ['true', 'false'])->default('false');
             $table->enum('is_rtl', ['true', 'false'])->default('false');
             $table->string('icon')->nullable();
-            $table->enum('app_scope', ['user','vendor']);
+            $table->enum('app_scope', ['user', 'vendor']);
             $table->string('app_file')->nullable();
             $table->string('panel_file')->nullable();
             $table->string('web_file')->nullable();

@@ -6,7 +6,7 @@
         <td>{{ $language->name_en }}</td>
         <td>{{ $language->code ?? 'None' }}</td>
         <td>{{ $language->country_code ?? 'None' }}</td>
-        <td>{{ optional($language->created_at)->format('Y-m-d H:i') ?? 'None' }}</td>
+        <td>{{ humanDate($language->created_at, 'Y-m-d H:i') }}</td>
         <td class="text-center">
             @include('admin.language.shared.controlBut', [
                 'row' => $language,

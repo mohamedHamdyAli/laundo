@@ -72,6 +72,19 @@
                         <ul class="dropdown-menu dropdown-menu-end" id="notification-list"
                             style="min-width:320px;max-height:400px;overflow-y:auto;" aria-labelledby="notificationDropdownToggle">
                             <li class="dropdown-item-text text-muted small" id="notification-empty">{{ __('No notifications') }}</li>
+                            {{--
+                                A way out of the dropdown. It holds ten items, and
+                                an operations alert that scrolled past the tenth
+                                used to be unreachable — there was no page listing
+                                them.
+                            --}}
+                            <li><hr class="dropdown-divider"></li>
+                            <li>
+                                <a class="dropdown-item text-center small"
+                                    href="{{ route('admin.myNotifications.index') }}">
+                                    {{ __('See all notifications') }}
+                                </a>
+                            </li>
                         </ul>
                     </div>
                     &nbsp;&nbsp;

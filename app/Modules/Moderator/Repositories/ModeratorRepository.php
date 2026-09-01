@@ -30,6 +30,7 @@ class ModeratorRepository
     {
         $moderator = $this->findById($id);
         $moderator->update($data);
+
         return $moderator;
     }
 
@@ -37,6 +38,7 @@ class ModeratorRepository
     {
         $moderator = $this->findById($id);
         $moderator->delete();
+
         return true;
     }
 }

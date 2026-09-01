@@ -9,7 +9,7 @@
             <x-status-toggle-button :id="$intro->id" :status="$intro->status"
                 endpoint="{{ route('admin.intro.toggleStatus', $intro->id) }}" permission="intro.toggle"/>
         </td>
-        <td>{{ $intro->created_at->format('Y-m-d H:i') ?? 'None' }}</td>
+        <td>{{ humanDate($intro->created_at, 'Y-m-d H:i') }}</td>
         <td class="text-center">
             @include('admin.intro.shared.controlBut', [
                 'row' => $intro,

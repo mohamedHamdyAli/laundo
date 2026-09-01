@@ -10,12 +10,12 @@ class CheckPermission
     public function handle($request, Closure $next, string $permission)
     {
 
-        if (!$permission) {
+        if (! $permission) {
             return $next($request);
         }
         $user = Auth::user();
 
-        if (!$user || !$user->role) {
+        if (! $user || ! $user->role) {
             return abort(403, 'Unauthorized');
         }
 
@@ -24,7 +24,7 @@ class CheckPermission
             return $next($request);
         }
 
-        if (!$user->role->permissions->contains('slug', $permission)) {
+        if (! $user->role->permissions->contains('slug', $permission)) {
             return abort(403, 'Unauthorized');
         }
 

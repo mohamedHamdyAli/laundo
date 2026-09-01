@@ -2,6 +2,7 @@
 
 namespace App\Modules\Category\Requests;
 
+use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 
 class CategoryRequest extends FormRequest
@@ -17,27 +18,27 @@ class CategoryRequest extends FormRequest
     /**
      * Get the validation rules that apply to the request.
      *
-     * @return array<string, \Illuminate\Contracts\Validation\ValidationRule|array<mixed>|string>
+     * @return array<string, ValidationRule|array<mixed>|string>
      */
     public function rules(): array
     {
         if ($this->getMethod() === 'PUT') {
             return [
-                'image'         => 'nullable|image|mimes:jpg,png,jpeg,gif,svg|max:2048',
-                'name'          => 'nullable|array',
-                'name.*'        => 'nullable|max:191',
-                'parent_id'     => 'nullable|exists:categories,id',
+                'image' => 'nullable|image|mimes:jpg,png,jpeg,gif,svg|max:2048',
+                'name' => 'nullable|array',
+                'name.*' => 'nullable|max:191',
+                'parent_id' => 'nullable|exists:categories,id',
                 // 'default_price' => 'nullable|required_with:parent_id|numeric|min:0',
-                'status'        => 'nullable|in:active,inactive',
+                'status' => 'nullable|in:active,inactive',
             ];
         } else {
             return [
-                'image'         => 'nullable|image|mimes:jpg,png,jpeg,gif,svg|max:2048',
-                'name'          => 'required|array',
-                'name.*'        => 'required|max:191',
-                'parent_id'     => 'nullable|exists:categories,id',
+                'image' => 'nullable|image|mimes:jpg,png,jpeg,gif,svg|max:2048',
+                'name' => 'required|array',
+                'name.*' => 'required|max:191',
+                'parent_id' => 'nullable|exists:categories,id',
                 // 'default_price' => 'nullable|required_with:parent_id|numeric|min:0',
-                'status'        => 'required|in:active,inactive',
+                'status' => 'required|in:active,inactive',
             ];
         }
     }

@@ -1,2 +1,10 @@
+# The language files were ignored wholesale because LanguageHelper generates
+# them. That was true when each held ten template keys; it stopped being true the
+# moment the panel's own 734 translations went into ar.json.
+#
+# They are the product's copy — the words a customer and an operator actually
+# read — and copy belongs in version control. An ignored ar.json is a translation
+# that survives on one developer's machine and nowhere else.
 *
 !.gitignore
+!*.json

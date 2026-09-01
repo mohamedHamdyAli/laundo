@@ -30,18 +30,22 @@ class CategoryRepository
     {
         $city = Category::findOrFail($id);
         $city->update($data);
+
         return $city;
     }
 
     public function delete($id)
     {
         $city = Category::findOrFail($id);
+
         return $city->delete();
     }
+
     public function getSubCategories($id, $perPage = 10)
     {
         $parentCategory = Category::with('children')->findOrFail($id);
         $subcategories = $parentCategory->children()->paginate($perPage);
+
         return compact('parentCategory', 'subcategories');
     }
 

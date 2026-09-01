@@ -7,7 +7,7 @@
             <x-status-toggle-button :id="$city->id" :status="$city->status"
                 endpoint="{{ route('admin.city.toggleStatus', $city->id) }}" permission="city.toggle" />
         </td>
-        <td>{{ $city->created_at->format('Y-m-d H:i') ?? 'None' }}</td>
+        <td>{{ humanDate($city->created_at, 'Y-m-d H:i') }}</td>
         <td class="text-center">
             @include('admin.city.shared.controlBut', [
                 'row' => $city,

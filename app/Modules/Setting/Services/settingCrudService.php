@@ -6,9 +6,7 @@ use App\Modules\Setting\Repositories\SettingRepository;
 
 class settingCrudService
 {
-    public function __construct(private readonly SettingRepository $repository)
-    {
-    }
+    public function __construct(private readonly SettingRepository $repository) {}
 
     public function updateSettings(array $data)
     {
@@ -17,7 +15,7 @@ class settingCrudService
                 $value = json_encode($value, JSON_UNESCAPED_UNICODE);
             }
 
-            if ($key === 'App_Logo' || $key === 'Login_Cover') {
+            if (in_array($key, ['App_Logo', 'App_Logo_Light', 'Login_Cover'], true)) {
                 $existingPath = $this->repository->getByKey($key)?->value;
                 $value = uploadOrUpdateImage($value, 'images/setting', $existingPath);
             }

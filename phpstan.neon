@@ -1,5 +1,7 @@
 includes:
-    - ./vendor/nunomaduro/larastan/extension.neon
+    # larastan moved from nunomaduro/ to larastan/ at v3; the old path made
+    # `composer stan` fail before it analysed anything.
+    - ./vendor/larastan/larastan/extension.neon
 
 parameters:
     level: 5

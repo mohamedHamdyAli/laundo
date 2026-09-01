@@ -45,6 +45,63 @@
             </div>
         </div>
     </div>
+    {{--
+        Where «عرض التفاصيل» goes.
+
+        The design has always had that button. Until now the table had nowhere to
+        point it, so a published banner was decoration. The kind is a closed set
+        rather than a free URL, so the app can route in-app and so it stays
+        possible to ask whether a banner ever produced an order.
+    --}}
+    <div class="col-md-4">
+        <div class="form-group">
+            <label for="banner-target-type" class="form-label">{{ __('When tapped') }}</label>
+            <div class="controls">
+                <select name="target_type" id="banner-target-type" class="form-control"
+                    {{ Route::is('*.show') ? 'disabled' : '' }}>
+                    @foreach ($targetTypes as $case)
+                        <option value="{{ $case->value }}"
+                            @selected(isset($row) && $row->target_type === $case->value)>
+                            {{ __($case->label()) }}
+                        </option>
+                    @endforeach
+                </select>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-8">
+        <div class="form-group" id="banner-target-service-wrap">
+            <label for="banner-target-service" class="form-label">{{ __('Service to open') }}</label>
+            <div class="controls">
+                <select name="target_value" id="banner-target-service" class="form-control"
+                    {{ Route::is('*.show') ? 'disabled' : '' }}>
+                    @foreach ($services as $service)
+                        <option value="{{ $service->id }}"
+                            @selected(isset($row) && $row->target_type === 'service' && (string) $row->target_value === (string) $service->id)>
+                            {{ getLocalizedValueDashboard($service, 'name') }}
+                        </option>
+                    @endforeach
+                </select>
+            </div>
+        </div>
+
+        <div class="form-group" id="banner-target-coupon-wrap">
+            <label for="banner-target-coupon" class="form-label">{{ __('Discount code to apply') }}</label>
+            <div class="controls">
+                <select name="target_value" id="banner-target-coupon" class="form-control"
+                    {{ Route::is('*.show') ? 'disabled' : '' }}>
+                    @foreach ($coupons as $coupon)
+                        <option value="{{ $coupon->code }}"
+                            @selected(isset($row) && $row->target_type === 'coupon' && $row->target_value === $coupon->code)>
+                            {{ $coupon->code }}
+                        </option>
+                    @endforeach
+                </select>
+            </div>
+        </div>
+    </div>
+
     <div class="col-lg-12">
         <div class="mb-3">
             <label class="form-label">{{ __('Image') }}<span class="text-danger">*</span></label>
@@ -98,3 +155,42 @@
         </div>
     @endforeach
 </div>
+
+@push('scripts')
+    <script>
+        // Two selects share the name `target_value`, so the one that is not in use
+        // has to be DISABLED, not just hidden: a hidden-but-enabled select still
+        // posts, and the later one would overwrite the chosen value.
+        (function () {
+            const type = document.getElementById('banner-target-type');
+            if (!type) return;
+
+            const panes = {
+                service: document.getElementById('banner-target-service-wrap'),
+                coupon: document.getElementById('banner-target-coupon-wrap'),
+            };
+
+            // On the show page every control is already disabled by Blade. Only
+            // visibility is managed there, or this would re-enable the field and
+            // make a read-only page editable.
+            const readOnly = type.disabled;
+
+            function sync() {
+                Object.entries(panes).forEach(([kind, wrap]) => {
+                    if (!wrap) return;
+                    const on = type.value === kind;
+                    wrap.hidden = !on;
+
+                    if (readOnly) return;
+
+                    wrap.querySelectorAll('select').forEach((el) => {
+                        el.disabled = !on;
+                    });
+                });
+            }
+
+            type.addEventListener('change', sync);
+            sync();
+        })();
+    </script>
+@endpush

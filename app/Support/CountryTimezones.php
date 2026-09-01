@@ -58,7 +58,7 @@ class CountryTimezones
 
     public static function resolve(?string $countryCode): ?string
     {
-        if (!$countryCode) {
+        if (! $countryCode) {
             return null;
         }
 

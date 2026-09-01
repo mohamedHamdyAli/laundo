@@ -4,11 +4,11 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\RoleRequest;
-use App\Models\Role;
 use App\Models\Permission;
+use App\Models\Role;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\Request;
-use Str;
+use Illuminate\Support\Str;
 
 class RoleController extends Controller
 {
@@ -23,7 +23,6 @@ class RoleController extends Controller
 
         return view('admin.roles.index', compact('roles', 'permissions'));
     }
-
 
     public function updatePermissions(Request $request, Role $role)
     {

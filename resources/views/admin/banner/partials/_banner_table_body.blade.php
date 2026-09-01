@@ -8,7 +8,7 @@
             <x-status-toggle-button :id="$banner->id" :status="$banner->status"
                 endpoint="{{ route('admin.banner.toggleStatus', $banner->id) }}" permission="banner.toggle" />
         </td>
-        <td>{{ $banner->created_at->format('Y-m-d H:i') ?? 'None' }}</td>
+        <td>{{ humanDate($banner->created_at, 'Y-m-d H:i') }}</td>
         <td class="text-center">
             @include('admin.banner.shared.controlBut', [
                 'row' => $banner,

@@ -9,9 +9,7 @@ use Illuminate\Http\Request;
 
 class CountryController extends Controller
 {
-    public function __construct(private readonly countryCrudService $countryCrudService)
-    {
-    }
+    public function __construct(private readonly countryCrudService $countryCrudService) {}
 
     public function index(Request $request)
     {
@@ -39,36 +37,42 @@ class CountryController extends Controller
     public function create()
     {
         $data = $this->countryCrudService->shredData();
+
         return view('admin.country.create', $data);
     }
 
     public function store(CountryRequest $request)
     {
         $this->countryCrudService->addNew($request->validated());
+
         return redirect()->route('admin.country.index')->with('success', __('Added Successfully'));
     }
 
     public function show($id)
     {
         $data = $this->countryCrudService->shredData($id);
+
         return view('admin.country.show', $data);
     }
 
     public function edit($id)
     {
         $data = $this->countryCrudService->shredData($id);
+
         return view('admin.country.edit', $data);
     }
 
     public function update(CountryRequest $request, $id)
     {
         $this->countryCrudService->updateRecord($request->validated() + ['id' => $id]);
+
         return redirect()->route('admin.country.index')->with('success', __('Updated Successfully'));
     }
 
     public function destroy($id)
     {
         $this->countryCrudService->deleteRecord($id);
+
         return redirect()->route('admin.country.index')->with('success', __('Deleted Successfully'));
     }
 

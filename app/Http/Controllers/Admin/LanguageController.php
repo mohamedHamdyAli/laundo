@@ -2,30 +2,32 @@
 
 namespace App\Http\Controllers\Admin;
 
-use App\Models\Language;
-use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\LanguageRequest;
+use App\Models\Language;
 use App\Services\languages\LanguageService;
-use Illuminate\Support\Facades\Session;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Session;
 
 class LanguageController extends Controller
 {
-    public function __construct(private readonly LanguageService $languageService)
-    {
-    }
+    public function __construct(private readonly LanguageService $languageService) {}
+
     public function index()
     {
         $languages = Language::paginate(10);
+
         return view('admin.language.index', compact('languages'));
     }
+
     public function search(Request $request)
     {
         if ($request->ajax()) {
             $searchQuery = $request->get('query');
             $language = Language::search($searchQuery, ['name', 'name_en', 'code'])->paginate(10);
             $table = view('admin.language.partials._language_table_body', ['languages' => $language])->render();
+
             return response()->json([
                 'table' => $table,
                 'pagination' => $language->withQueryString()->links()->toHtml(),
@@ -36,35 +38,42 @@ class LanguageController extends Controller
     public function create()
     {
         $data = $this->languageService->shredData();
+
         return view('admin.language.create', $data);
     }
 
     public function store(LanguageRequest $request)
     {
         $this->languageService->createLanguage($request->validated());
+
         return redirect()->route('admin.language.index')->with('success', __('added_successfully'));
     }
 
     public function show($id)
     {
         $data = $this->languageService->shredData($id);
+
         return view('admin.language.show', $data);
     }
+
     public function edit($id)
     {
         $data = $this->languageService->shredData($id);
+
         return view('admin.language.edit', $data);
     }
 
     public function update(LanguageRequest $request, $id)
     {
         $this->languageService->updateRecord($request->validated() + ['id' => $id]);
+
         return redirect()->route('admin.language.index')->with('success', __('updated_successfully'));
     }
 
     public function destroy($id)
     {
         $this->languageService->deleteRecord($id);
+
         return redirect()->route('admin.language.index')->with('success', __('deleted_successfully'));
     }
 
@@ -75,19 +84,22 @@ class LanguageController extends Controller
             Session::put('language', $language);
             app()->setLocale($language->code);
         }
+
         return redirect()->back();
     }
+
     public function showPanel($id)
     {
         $language = Language::findOrFail($id);
         $filePath = lang_path("{$language->code}.json");
 
-        if (!File::exists($filePath)) {
+        if (! File::exists($filePath)) {
             $translations = [];
         } else {
             $jsonContent = File::get($filePath);
             $translations = json_decode($jsonContent, true);
         }
+
         return view('admin.language.panel', compact('language', 'translations'));
     }
 
@@ -108,14 +120,14 @@ class LanguageController extends Controller
             $newKey = $newKeys[$index] ?? $oldKey;
             $value = $translations[$oldKey] ?? null;
 
-            if (!empty($newKey) && $value !== null) {
+            if (! empty($newKey) && $value !== null) {
                 $finalTranslations[trim((string) $newKey)] = trim($value);
             }
         }
 
-        if (!empty($newKeysAdded)) {
+        if (! empty($newKeysAdded)) {
             foreach ($newKeysAdded as $index => $key) {
-                if (!empty($key) && isset($newValuesAdded[$index])) {
+                if (! empty($key) && isset($newValuesAdded[$index])) {
                     $finalTranslations[trim((string) $key)] = trim($newValuesAdded[$index]);
                 }
             }
@@ -128,14 +140,13 @@ class LanguageController extends Controller
         return redirect()->back()->with('success', 'Updated Successfully');
     }
 
-
     public function showMobile($id)
     {
         $language = Language::findOrFail($id);
 
         $filePath = lang_path("{$language->code}_mobile.json");
 
-        if (!File::exists($filePath)) {
+        if (! File::exists($filePath)) {
             $translations = [];
         } else {
             $jsonContent = File::get($filePath);
@@ -155,9 +166,9 @@ class LanguageController extends Controller
         $newKeys = $request->input('new_key', []);
         $newValues = $request->input('new_value', []);
 
-        if (!empty($newKeys)) {
+        if (! empty($newKeys)) {
             foreach ($newKeys as $index => $key) {
-                if (!empty($key) && isset($newValues[$index])) {
+                if (! empty($key) && isset($newValues[$index])) {
                     $translations[trim((string) $key)] = trim($newValues[$index]);
                 }
             }
@@ -171,13 +182,14 @@ class LanguageController extends Controller
 
         return redirect()->back()->with('success', 'Mobile Language File Updated Successfully!');
     }
+
     public function showWeb($id)
     {
         $language = Language::findOrFail($id);
 
         $filePath = lang_path("{$language->code}_web.json");
 
-        if (!File::exists($filePath)) {
+        if (! File::exists($filePath)) {
             $translations = [];
         } else {
             $jsonContent = File::get($filePath);
@@ -197,9 +209,9 @@ class LanguageController extends Controller
         $newKeys = $request->input('new_key', []);
         $newValues = $request->input('new_value', []);
 
-        if (!empty($newKeys)) {
+        if (! empty($newKeys)) {
             foreach ($newKeys as $index => $key) {
-                if (!empty($key) && isset($newValues[$index])) {
+                if (! empty($key) && isset($newValues[$index])) {
                     $translations[trim((string) $key)] = trim($newValues[$index]);
                 }
             }
@@ -213,9 +225,10 @@ class LanguageController extends Controller
 
         return redirect()->back()->with('success', 'web Language File Updated Successfully!');
     }
+
     public function downloadJson($type, $code)
     {
-        $langPath = resource_path("lang");
+        $langPath = resource_path('lang');
 
         switch ($type) {
             case 'main':
@@ -232,10 +245,10 @@ class LanguageController extends Controller
                 break;
 
             default:
-                abort(404, "Invalid language type");
+                abort(404, 'Invalid language type');
         }
 
-        if (!file_exists($filePath)) {
+        if (! file_exists($filePath)) {
             abort(404, "Language file not found: {$filePath}");
         }
 

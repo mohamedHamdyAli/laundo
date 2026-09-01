@@ -9,14 +9,13 @@ use Illuminate\Http\Request;
 
 class BannerController extends Controller
 {
-    public function __construct(private readonly bannerCrudService $bannerService)
-    {
-    }
+    public function __construct(private readonly bannerCrudService $bannerService) {}
 
     public function index(Request $request)
     {
         $banners = $this->bannerService->getAllBanners();
         $view = view('admin.banner.index', compact('banners'));
+
         return $request->ajax() ? response($view) : $view;
     }
 
@@ -25,6 +24,7 @@ class BannerController extends Controller
         if ($request->ajax()) {
             $banners = $this->bannerService->searchBanners($request->get('query'));
             $table = view('admin.banner.partials._banner_table_body', compact('banners'))->render();
+
             return response()->json([
                 'table' => $table,
                 'pagination' => (string) $banners->withQueryString()->links(),
@@ -34,42 +34,50 @@ class BannerController extends Controller
 
     public function create()
     {
-        return view('admin.banner.create');
+        // shredData, not a bare view: the form now needs the target choices, and
+        // without them the create page dies on an undefined $targetTypes.
+        return view('admin.banner.create', $this->bannerService->shredData());
     }
 
     public function store(BannerRequest $request)
     {
         $this->bannerService->addBanner($request->validated());
+
         return redirect()->route('admin.banner.index')->with('success', __('Added Successfully'));
     }
 
     public function show($id)
     {
         $data = $this->bannerService->shredData($id);
+
         return view('admin.banner.show', $data);
     }
 
     public function edit(string $id)
     {
         $data = $this->bannerService->shredData($id);
+
         return view('admin.banner.edit', $data);
     }
 
     public function update(BannerRequest $request, $id)
     {
         $this->bannerService->updateBanner($request->validated() + ['id' => $id]);
+
         return redirect()->route('admin.banner.index')->with('success', __('Updated Successfully'));
     }
 
     public function destroy($id)
     {
         $this->bannerService->deleteBanner($id);
+
         return redirect()->route('admin.banner.index')->with('success', __('Deleted Successfully'));
     }
 
     public function toggleStatus(Request $request, $id)
     {
         $banner = $this->bannerService->toggleStatus($id, $request->status);
+
         return response()->json([
             'success' => true,
             'status' => $banner->status,

@@ -21,15 +21,42 @@
             <div class="controls">
                 <input type="file" name="App_Logo" class="form-control"
                     {{ Route::is('*.create') ? 'required' : '' }}>
-                @if (getSettingValue('App_Logo'))
-                    <a href='{{ getImageassetUrl(getSettingValue('App_Logo')) }}'>
-                        <img class="rounded" style="height: 80px; width:80px;"
-                            src="{{ getImageassetUrl(getSettingValue('App_Logo')) }}" alt="flag Image">
-                    </a>
-                @endif
+                {{--
+                    brandLogo(), not the raw setting: it shows what is actually
+                    being used. This install carried App_Logo = 'logo1.png' from
+                    the template with no such file, so the preview here was a
+                    broken image while every screen fell back to the default.
+                --}}
+                <a href='{{ brandLogo('dark') }}'>
+                    <img class="rounded mt-2" style="height: 80px; width: 80px; object-fit: contain;"
+                        src="{{ brandLogo('dark') }}" alt="{{ __('App Logo') }}">
+                </a>
             </div>
         </div>
     </div>
+    {{--
+        The light logo.
+
+        Two files rather than one, because the brand mark is navy: on the navy
+        sidebar it measures 1.08:1, which is not "hard to read", it is gone. This
+        is the same artwork in white. Optional — a bundled default covers it —
+        but a replaced App_Logo needs its pair replaced too, or the sidebar goes
+        blank again and nothing says why.
+    --}}
+    <div class="col-md-4">
+        <div class="form-group">
+            <label class="form-label">{{ __('App Logo (light, for dark backgrounds)') }}</label>
+            <div class="controls">
+                <input type="file" name="App_Logo_Light" class="form-control">
+                <a href='{{ brandLogo('light') }}'>
+                    {{-- On a dark tile: a white logo previewed on white is a white square. --}}
+                    <img class="rounded mt-2" style="height: 80px; width: 80px; background: #0f2d52; object-fit: contain; padding: 6px;"
+                        src="{{ brandLogo('light') }}" alt="{{ __('App Logo (light, for dark backgrounds)') }}">
+                </a>
+            </div>
+        </div>
+    </div>
+
     <div class="col-md-4">
         <div class="form-group">
             <label class="form-label">{{ __('Image Login Background') }}</label>

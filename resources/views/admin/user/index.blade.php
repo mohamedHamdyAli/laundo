@@ -29,6 +29,7 @@
                                         <th>{{ __('User Image') }}</th>
                                         <th>{{ __('ID') }}</th>
                                         <th>{{ __('Name') }}</th>
+                                        <th>{{ __('Customer reference') }}</th>
                                         <th>{{ __('Phone') }}</th>
                                         <th>{{ __('Status') }}</th>
                                         <th>{{ __('Created At') }}</th>

@@ -13,7 +13,7 @@ class PermissionGenerator
     {
         foreach (config('dashboard.models', []) as $key => $model) {
 
-            if (!in_array(DashboardModel::class, class_uses($model))) {
+            if (! in_array(DashboardModel::class, class_uses($model))) {
                 continue;
             }
 
@@ -23,8 +23,8 @@ class PermissionGenerator
                 Permission::firstOrCreate(
                     ['slug' => "{$modelName}.{$action}"],
                     [
-                        'name'   => ucfirst($modelName) . ' ' . ucfirst($action),
-                        'model'  => $modelName,
+                        'name' => ucfirst($modelName).' '.ucfirst($action),
+                        'model' => $modelName,
                         'action' => $action,
                     ]
                 );

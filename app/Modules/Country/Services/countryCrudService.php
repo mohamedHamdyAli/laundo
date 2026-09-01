@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\DB;
 class countryCrudService
 {
     protected $countryRepository;
+
     protected $responseService;
 
     public function __construct(CountryRepository $countryRepository, ResponseService $responseService)
@@ -16,6 +17,7 @@ class countryCrudService
         $this->countryRepository = $countryRepository;
         $this->responseService = $responseService;
     }
+
     public function getAllPaginated($perPage)
     {
         return $this->countryRepository->getAll($perPage);
@@ -25,6 +27,7 @@ class countryCrudService
     {
         return $this->countryRepository->search($query, $perPage);
     }
+
     public function addNew(array $data)
     {
         return DB::transaction(fn () => $this->countryRepository->create($data));
@@ -48,6 +51,7 @@ class countryCrudService
     public function toggleStatus($id, $status)
     {
         $country = $this->countryRepository->findById($id);
+
         return $this->responseService->toggleStatus($country, $status);
     }
 }

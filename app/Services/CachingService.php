@@ -9,9 +9,8 @@ use Illuminate\Support\Facades\Cache;
 class CachingService
 {
     /**
-     * @param $key
-     * @param callable $callback - Callback function must return a value
-     * @param int $time = 3600
+     * @param  callable  $callback  - Callback function must return a value
+     * @param  int  $time  = 3600
      * @return mixed
      */
     public static function cacheRemember($key, callable $callback, int $time = 3600)
@@ -25,7 +24,6 @@ class CachingService
     }
 
     /**
-     * @param array|string $key
      * @return mixed|string
      */
     public static function getSystemSettings(array|string $key = '*')
@@ -34,7 +32,6 @@ class CachingService
             config('constants.CACHE.SETTINGS'),
             static fn () => Setting::pluck('value', 'name')
         );
-
 
         if (($key != '*')) {
             /* There is a minor possibility of getting a specific key from the $systemSettings
@@ -50,6 +47,7 @@ class CachingService
                         $specificSettings[$row] = $settings[$row] ?? '';
                     }
                 }
+
                 return $specificSettings;
             }
 
@@ -58,8 +56,9 @@ class CachingService
                 return $settings[$key] ?? '';
             }
 
-            return "";
+            return '';
         }
+
         return $settings;
     }
 

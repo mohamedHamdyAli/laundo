@@ -4,9 +4,13 @@
     "type": "module",
     "scripts": {
         "build": "vite build",
-        "dev": "vite"
+        "dev": "vite",
+        "test:browser": "playwright test",
+        "test:browser:headed": "playwright test --headed",
+        "test:browser:report": "playwright show-report storage/playwright-report"
     },
     "devDependencies": {
+        "@playwright/test": "^1.62.1",
         "@popperjs/core": "^2.11.6",
         "@tailwindcss/vite": "^4.0.0",
         "axios": "^1.8.2",

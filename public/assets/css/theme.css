@@ -4,16 +4,30 @@
    so it can safely override without touching the vendored stylesheets.
    ========================================================================== */
 
+/* Brand tokens, taken from the Figma app design (file c2tJojUvabWkjrBmcZTZZO,
+   pages `ui` and `delivery`) so the dashboard and the two mobile apps share one
+   identity. Sampled by tallying every solid fill, text fill and stroke across
+   ten frames on those two pages.
+
+   Note the file also holds a `drft` page on an unrelated Material 3 teal ramp
+   (#00696F / #BA1A1A). `ui` and `delivery` were chosen as authoritative; if that
+   ever flips, this block is the only place that needs to change.
+
+   `--brand-primary` works in both directions — white on it is 5.17:1 and it on
+   white is 5.17:1 — which is why it replaces a gold that could only ever be a
+   background. `--brand-primary-soft` exists solely for light-on-dark use: the
+   submenu's active item, the login brand pill, the home hero tiles. */
 :root {
-    --brand-navy: #101828;
-    --brand-navy-2: #1c2b4a;
-    --brand-gold: #c9a227;
-    --brand-gold-2: #e4c25a;
-    --surface-bg: #f2f7ff;
+    --brand-navy: #0f2d52;
+    --brand-navy-2: #001d36;
+    --brand-primary: #2563eb;
+    --brand-primary-dark: #1d4ed8;
+    --brand-primary-soft: #dbe1ff;
+    --surface-bg: #f7fafc;
     --surface-card: #ffffff;
-    --surface-border: #e5e9f0;
-    --text-strong: #101828;
-    --text-muted: #607080;
+    --surface-border: #e0e3e5;
+    --text-strong: #1f1f1f;
+    --text-muted: #424655;
 }
 
 body.theme-dark {
@@ -147,12 +161,12 @@ body.theme-dark .dropdown-item:hover {
 
 .theme-toggle-btn:hover .theme-icon-moon,
 .theme-toggle-btn:hover .theme-icon-sun {
-    color: var(--brand-gold);
+    color: var(--brand-primary);
 }
 
 body.theme-dark .theme-toggle-btn .theme-icon-moon,
 body.theme-dark .theme-toggle-btn .theme-icon-sun {
-    color: var(--brand-gold-2);
+    color: var(--brand-primary-soft);
 }
 
 /* bootstrap-icons ships with vertical-align: -0.125em on every glyph (meant
@@ -198,11 +212,11 @@ body.theme-dark #notificationDropdownToggle:hover .avatar {
 }
 
 #notificationDropdownToggle:hover .bi-bell {
-    color: var(--brand-gold);
+    color: var(--brand-primary);
 }
 
 body.theme-dark #notificationDropdownToggle .bi-bell {
-    color: var(--brand-gold-2);
+    color: var(--brand-primary-soft);
 }
 
 #notificationDropdownToggle .bi-bell:before {
@@ -247,7 +261,7 @@ body.theme-dark .theme-toggle-btn:hover {
 }
 
 .sidebar-wrapper .menu .sidebar-item:hover > .sidebar-link {
-    background: rgba(201, 162, 39, .12);
+    background: rgba(37, 99, 235, .16);
     color: #fff;
 }
 
@@ -257,17 +271,19 @@ body.theme-dark .theme-toggle-btn:hover {
 }
 
 .sidebar-wrapper .menu .sidebar-item.active > .sidebar-link {
-    background: var(--brand-gold) !important;
+    background: var(--brand-primary) !important;
 }
 
+/* White, not navy. The pill used to be gold, which needed dark text; the brand
+   blue needs light text — navy on #2563eb is 2.68:1, white on it is 5.17:1. */
 .sidebar-wrapper .menu .sidebar-item.active > .sidebar-link,
 .sidebar-wrapper .menu .sidebar-item.active > .sidebar-link span {
-    color: var(--brand-navy) !important;
+    color: #fff !important;
     font-weight: 600;
 }
 
 .sidebar-wrapper .menu .sidebar-item.active > .sidebar-link i {
-    color: var(--brand-navy) !important;
+    color: #fff !important;
 }
 
 .sidebar-wrapper .menu .submenu .submenu-item a {
@@ -275,7 +291,7 @@ body.theme-dark .theme-toggle-btn:hover {
 }
 
 .sidebar-wrapper .menu .submenu .submenu-item.active > a {
-    color: var(--brand-gold-2) !important;
+    color: var(--brand-primary-soft) !important;
     font-weight: 700;
 }
 
@@ -335,16 +351,21 @@ html[dir="rtl"] #notification-list {
     border: 1px solid var(--surface-border);
 }
 
+/* Class name kept: it is referenced from auth/login.blade.php, and renaming a
+   class to match a colour is how the next rebrand gets the same problem.
+   The gradient now runs primary -> primary-dark rather than primary -> soft:
+   white text clears 5.17:1 at one end and 6.70:1 at the other, where the light
+   accent would have swallowed it. */
 .btn-gold {
-    background: linear-gradient(135deg, var(--brand-gold), var(--brand-gold-2));
+    background: linear-gradient(135deg, var(--brand-primary), var(--brand-primary-dark));
     border: none;
-    color: var(--brand-navy);
+    color: #fff;
     font-weight: 700;
 }
 
 .btn-gold:hover {
-    color: var(--brand-navy);
-    filter: brightness(1.05);
+    color: #fff;
+    filter: brightness(1.08);
 }
 
 .login-split .login-brand-panel {
@@ -366,9 +387,9 @@ html[dir="rtl"] #notification-list {
 }
 
 .login-split .login-brand-panel .brand-pill {
-    border: 1px solid var(--brand-gold);
+    border: 1px solid var(--brand-primary);
     border-radius: 999px;
-    color: var(--brand-gold-2);
+    color: var(--brand-primary-soft);
     font-size: .75rem;
     letter-spacing: .12em;
     padding: .35rem 1.1rem;
@@ -451,7 +472,7 @@ html[dir="rtl"] #notification-list {
     background: linear-gradient(135deg, var(--brand-navy), var(--brand-navy-2));
     border-radius: 1rem;
     box-shadow: 0 10px 30px rgba(16, 24, 40, .15);
-    color: var(--brand-gold-2);
+    color: var(--brand-primary-soft);
     display: flex;
     font-size: 1.5rem;
     justify-content: center;
@@ -499,4 +520,291 @@ html[dir="rtl"] #notification-list {
     .hero-3d-tile {
         animation: none;
     }
+}
+
+/* ==========================================================================
+   Badge contrast
+
+   The vendored template repurposed a Bootstrap token at :root, in both
+   main/app.css and main/rtl.css:
+
+       --bs-dark-rgb    is 242, 247, 255   (#f2f7ff)
+       --bs-body-bg-rgb is 242, 247, 255   (the same value)
+
+   Its author uses --bs-dark to mean "page background". But .text-dark reads
+   the same token, so every "badge bg-light text-dark" rendered near-white on
+   near-white at 1.02:1, and every "bg-warning text-dark" near-white on amber
+   at 1.52:1. It is not scoped to a dark theme; that is the global definition.
+
+   Fixed here rather than by correcting --bs-dark-rgb, because that token also
+   feeds .bg-dark and .border-dark, which vendored components genuinely use to
+   mean the page background.
+
+   The colour is deliberately a constant, not var(--text-strong): bg-light and
+   bg-warning stay light in dark mode, since theme.css does not restyle them,
+   so a theme-following value would go pale again and vanish a second time.
+   .text-dark means "dark text for a light background", and that background
+   does not change with the theme.
+   ========================================================================== */
+
+.text-dark,
+body.theme-dark .text-dark {
+    color: #101828 !important;
+}
+
+/* A light-backgrounded badge decides its own text colour.
+
+   Fixing .text-dark alone leaves `badge bg-info` broken: it carries no
+   text-dark in the markup and paints white on #0dcaf0 at 1.96:1, which is how
+   every order-status badge in the dashboard was rendering. Relying on each
+   author to remember `text-dark` is what produced that, so the colour is
+   derived from the background here instead — the same thing Bootstrap 5.3 does
+   with .text-bg-*.
+
+   Measured against white text, which is the vendored default:
+
+       bg-info    #0dcaf0   1.96:1 white   ->   9.06:1 dark
+       bg-warning #ffc107   1.63:1 white   ->  10.89:1 dark
+       bg-light   #eef1f6   1.13:1 white   ->  15.67:1 dark
+
+   The rest are left alone: bg-primary 5.86:1, bg-secondary 4.69:1,
+   bg-success 4.53:1 and bg-danger 4.53:1 all clear 4.5:1 on white already. */
+.badge.bg-info,
+.badge.bg-warning,
+.badge.bg-light,
+body.theme-dark .badge.bg-info,
+body.theme-dark .badge.bg-warning,
+body.theme-dark .badge.bg-light {
+    color: #101828 !important;
+}
+
+/* A near-white badge on a white card reads as loose text rather than a badge.
+   Give the neutral one an edge so it keeps its shape in both themes. */
+.badge.bg-light,
+body.theme-dark .badge.bg-light {
+    background-color: #eef1f6 !important;
+    border: 1px solid #dfe4ec;
+}
+
+/* ==========================================================================
+   Remaining contrast fixes, found by sweeping eleven screens and measuring the
+   colours the browser actually computed. Ratios are against the surface each
+   one is really painted on.
+   ========================================================================== */
+
+/* An amber that survives as text.
+
+   `.text-warning` is #ffc107 — fine as a badge *background*, 1.63:1 as text, and
+   the obvious class to reach for when something needs attention. It was reached
+   for on nine views. Chasing each one is the wrong fix, because the class only
+   ever styles text: correcting the class itself covers every present and future
+   use, including the conditional ones a rendered-page audit can never see
+   (a `$count > 0 ? 'text-warning' : ''` with a zero count renders nothing to
+   measure, which is exactly how four of them passed the sweep).
+
+   Two values, because the amber sits on white in one theme and on #172033 in the
+   other, and no single amber clears 4.5:1 on both:
+
+       light  #b45309  5.02:1 on white,   4.79:1 on the page ground
+       dark   #fbbf24  9.75:1 on a card, 10.93:1 on the page ground
+
+   `.text-attention` is the same thing under a name that says what it means, for
+   new code. `.text-receivable` is kept because the revenue report names it in a
+   comment. */
+.text-warning,
+.text-attention,
+.text-receivable {
+    color: #b45309 !important;
+}
+
+body.theme-dark .text-warning,
+body.theme-dark .text-attention,
+body.theme-dark .text-receivable {
+    color: #fbbf24 !important;
+}
+
+/* Footer: #919bae on white is 2.80:1. Small print is still print. */
+.foot_text,
+.foot_text * {
+    color: #6b7687;
+}
+
+/* The roles screen painted white on #84b5ec — 2.14:1 on the buttons, the
+   permission panel heading and the header gradient. Now the brand blue, which
+   carries white at 5.17:1. All three live in custom.css, which loads first. */
+.btn-role,
+.btn-role:hover,
+.btn-role:focus {
+    background: var(--brand-primary);
+    border-color: var(--brand-primary);
+}
+
+.permission-header {
+    background: var(--brand-primary);
+}
+
+.role-header {
+    background: linear-gradient(135deg, var(--brand-primary), var(--brand-primary-dark));
+}
+
+/* ==========================================================================
+   Bootstrap's own primary, aligned to the brand.
+
+   The vendored template left two different primaries in place:
+
+       --bs-primary     is #2070b0
+       --bs-primary-rgb is 67, 94, 190   (#435ebe)
+
+   `.btn-primary` reads the first and `.bg-primary` the second, so a button and a
+   badge labelled the same colour were never the same colour. `--bs-primary-rgba`,
+   which feeds the focus ring, was a third value again (a cyan).
+
+   Setting all three to the brand blue fixes that inconsistency and makes the
+   dashboard's default accent the app's accent. White on #2563eb is 5.17:1.
+   ========================================================================== */
+:root {
+    --bs-primary: #2563eb;
+    --bs-primary-rgb: 37, 99, 235;
+    --bs-primary-rgba: 37, 99, 235, 0.15;
+    --bs-link-color: #2563eb;
+    --bs-link-hover-color: #1d4ed8;
+}
+
+/* ==========================================================================
+   The flagged-row tint.
+
+   `.table-danger` is #f1aeb5, a strong pink. It is used to mark a row that needs
+   attention — an unreconciled wallet, an unhappy customer — and the marking works,
+   but it drops the text on top of it: the brand-blue order link falls to 2.82:1
+   and the amber star row to 2.74:1, both from comfortable figures on white.
+
+   #fef2f2 still reads unmistakably as a flagged row while keeping the link at
+   4.72:1 and the stars at 4.59:1. The border carries the emphasis the colour used
+   to, so the row does not become quieter than it should be.
+   ========================================================================== */
+tr.table-danger,
+tr.table-danger > td,
+tr.table-danger > th {
+    --bs-table-bg: #fef2f2;
+    --bs-table-accent-bg: #fef2f2;
+    background-color: #fef2f2 !important;
+    box-shadow: none;
+}
+
+tr.table-danger > td:first-child,
+tr.table-danger > th:first-child {
+    box-shadow: inset 3px 0 0 0 #dc3545;
+}
+
+body.theme-dark tr.table-danger,
+body.theme-dark tr.table-danger > td,
+body.theme-dark tr.table-danger > th {
+    --bs-table-bg: #2a1a1f;
+    --bs-table-accent-bg: #2a1a1f;
+    background-color: #2a1a1f !important;
+}
+
+/* ==========================================================================
+   The dashboard home page.
+
+   It replaced a wall of catalogue counts, and the layout carries the same rule
+   the figures do: the queue of things waiting for a person comes first and is
+   the loudest thing on the page, because that is the reason somebody opened it.
+
+   Styles live here rather than in the Blade file so both themes are covered by
+   the same tokens as every other screen.
+   ========================================================================== */
+
+/* One waiting item. The number leads, because that is what is scanned. */
+.home-queue-row {
+    align-items: center;
+    border-inline-start: 3px solid var(--surface-border);
+    display: flex;
+    gap: 1rem;
+    padding: .7rem .9rem;
+}
+
+.home-queue-row + .home-queue-row {
+    border-top: 1px solid var(--surface-border);
+}
+
+.home-queue-count {
+    font-size: 1.6rem;
+    font-weight: 700;
+    line-height: 1;
+    min-width: 2.2rem;
+    text-align: center;
+    font-variant-numeric: tabular-nums;
+}
+
+.home-queue-text {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+/* Severity is a stripe and a colour on the figure, never colour alone — the
+   stripe still reads for somebody who cannot separate the hues. */
+.home-sev-critical { border-inline-start-color: #b3261e; }
+.home-sev-critical .home-queue-count { color: #b3261e; }
+
+.home-sev-warning { border-inline-start-color: #b45309; }
+.home-sev-warning .home-queue-count { color: #b45309; }
+
+.home-sev-info { border-inline-start-color: var(--brand-primary); }
+.home-sev-info .home-queue-count { color: var(--brand-primary); }
+
+body.theme-dark .home-sev-critical { border-inline-start-color: #ffb4aa; }
+body.theme-dark .home-sev-critical .home-queue-count { color: #ffb4aa; }
+body.theme-dark .home-sev-warning { border-inline-start-color: #fbbf24; }
+body.theme-dark .home-sev-warning .home-queue-count { color: #fbbf24; }
+
+/* «Right now» — where each live order physically is. */
+.home-flight {
+    align-items: center;
+    background: var(--surface-bg);
+    border: 1px solid var(--surface-border);
+    border-radius: .5rem;
+    display: flex;
+    flex-direction: column;
+    gap: .15rem;
+    padding: .85rem .5rem;
+    text-align: center;
+}
+
+.home-flight i {
+    color: var(--brand-primary);
+    font-size: 1.1rem;
+}
+
+.home-flight-num {
+    font-size: 1.5rem;
+    font-weight: 700;
+    line-height: 1.1;
+    font-variant-numeric: tabular-nums;
+}
+
+.home-flight-label {
+    color: var(--text-muted);
+    font-size: .78rem;
+    line-height: 1.25;
+}
+
+/* A single figure with its label underneath. */
+.home-stat {
+    display: flex;
+    flex-direction: column;
+    gap: .1rem;
+}
+
+.home-stat-num {
+    font-size: 1.45rem;
+    font-weight: 700;
+    line-height: 1.15;
+    font-variant-numeric: tabular-nums;
+}
+
+.home-stat-label {
+    color: var(--text-muted);
+    font-size: .8rem;
+    line-height: 1.3;
 }

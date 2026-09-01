@@ -2,8 +2,8 @@
 
 namespace App\Services\languages;
 
-use App\Models\Language;
 use App\Helpers\LanguageHelper;
+use App\Models\Language;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 
@@ -24,7 +24,6 @@ class LanguageService
         clearLanguageCache($data['code']);
         rebuildLanguageCache();
 
-
         return $language;
     }
 
@@ -36,7 +35,7 @@ class LanguageService
 
     public function updateRecord($request)
     {
-        $filteredRequest = array_filter($request, fn ($value) => !is_null($value));
+        $filteredRequest = array_filter($request, fn ($value) => ! is_null($value));
 
         $language = DB::transaction(function () use ($filteredRequest) {
             $existingLanguage = Language::findOrFail($filteredRequest['id']);
@@ -58,6 +57,7 @@ class LanguageService
             }
 
             $existingLanguage->update($filteredRequest);
+
             return $existingLanguage;
         });
 
@@ -73,6 +73,7 @@ class LanguageService
         if ($id != null) {
             $data['row'] = Language::findOrFail($id);
         }
+
         return $data;
     }
 
@@ -111,7 +112,7 @@ class LanguageService
                     $jsonFile = base_path("resources/lang/{$fileName}");
 
                     // ensure file exists - if not, copy default
-                    if (!File::exists($jsonFile)) {
+                    if (! File::exists($jsonFile)) {
                         $defaultContent = (File::exists($defaultFile)) ? File::get($defaultFile) : json_encode([]);
                         File::put($jsonFile, $defaultContent);
 
@@ -140,7 +141,7 @@ class LanguageService
 
                     // merge missing keys from default EN content
                     foreach ($enContent as $key => $value) {
-                        if (!array_key_exists($key, $targetContent)) {
+                        if (! array_key_exists($key, $targetContent)) {
                             $targetContent[$key] = $value;
                         }
                     }
@@ -157,6 +158,7 @@ class LanguageService
                     $data['type'] = $type;
                 }
             }
+
             return $data;
         });
     }
@@ -167,18 +169,18 @@ class LanguageService
             $language = Language::findOrFail($id);
 
             $jsonFile = match ($type) {
-                'panel' => base_path("resources/lang/" . basename((string) $language->panel_file)),
-                'app' => base_path("resources/lang/" . basename((string) $language->app_file)),
-                'web' => base_path("resources/lang/" . basename($language->web_file ?? '')),
-                default => base_path('resources/lang/' . ($language->code . '.json')),
+                'panel' => base_path('resources/lang/'.basename((string) $language->panel_file)),
+                'app' => base_path('resources/lang/'.basename((string) $language->app_file)),
+                'web' => base_path('resources/lang/'.basename($language->web_file ?? '')),
+                default => base_path('resources/lang/'.($language->code.'.json')),
             };
 
             $directory = dirname($jsonFile);
-            if (!File::exists($directory)) {
+            if (! File::exists($directory)) {
                 File::makeDirectory($directory, 0755, true);
             }
 
-            if (!File::exists($jsonFile)) {
+            if (! File::exists($jsonFile)) {
                 File::put($jsonFile, json_encode([], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
             }
 
@@ -210,7 +212,7 @@ class LanguageService
             $language = Language::findOrFail($id);
 
             if ($language->default === 'true') {
-                throw new \Exception("Cannot delete the default language.");
+                throw new \Exception('Cannot delete the default language.');
             }
 
             $languageCode = $language->code;

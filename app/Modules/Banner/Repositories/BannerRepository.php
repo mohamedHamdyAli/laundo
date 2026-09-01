@@ -30,6 +30,7 @@ class BannerRepository
     {
         $banner = $this->find($id);
         $banner->update($data);
+
         return $banner;
     }
 
@@ -38,14 +39,17 @@ class BannerRepository
         $banner = $this->find($id);
         DeleteImage($banner->image);
         $banner->delete();
+
         return true;
     }
+
     public function shredData($id = null)
     {
         $data = [];
         if ($id != null) {
             $data['row'] = banner::findOrFail($id);
         }
+
         return $data;
     }
 }

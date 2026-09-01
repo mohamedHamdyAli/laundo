@@ -9,13 +9,12 @@ use App\Services\ResponseService;
 
 class SettingController extends Controller
 {
-    public function __construct(private readonly settingCrudService $settingService)
-    {
-    }
+    public function __construct(private readonly settingCrudService $settingService) {}
 
     public function viewGeneralSetting()
     {
         ResponseService::noPermissionThenSendJson('setting.list');
+
         return view('admin.setting.generalSetting.index');
     }
 
@@ -23,6 +22,7 @@ class SettingController extends Controller
     {
         ResponseService::noPermissionThenRedirect('setting.update');
         $this->settingService->updateSettings($request->validated());
+
         return redirect()->route('admin.generalSetting.viewGeneralSetting')
             ->with('success', __('Added Successfully'));
     }
@@ -30,6 +30,7 @@ class SettingController extends Controller
     public function viewPrivacyAndTerms()
     {
         ResponseService::noPermissionThenSendJson('setting.list');
+
         return view('admin.setting.PrivacyAndTerms.index');
     }
 
@@ -37,6 +38,7 @@ class SettingController extends Controller
     {
         ResponseService::noPermissionThenRedirect('setting.update');
         $this->settingService->updateSettings($request->validated());
+
         return redirect()->route('admin.generalSetting.viewPrivacyAndTerms')
             ->with('success', __('Added Successfully'));
     }

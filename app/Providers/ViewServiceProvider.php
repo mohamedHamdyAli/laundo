@@ -3,9 +3,9 @@
 namespace App\Providers;
 
 use App\Services\CachingService;
-use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Facades\Session;
 use Illuminate\Support\Facades\View;
+use Illuminate\Support\ServiceProvider;
 
 class ViewServiceProvider extends ServiceProvider
 {
@@ -22,7 +22,7 @@ class ViewServiceProvider extends ServiceProvider
             $currentLanguage = Session::get('language', $defaultLanguage);
             $view->with([
                 'languages' => $languages,
-                'currentLanguage' => $currentLanguage
+                'currentLanguage' => $currentLanguage,
             ]);
             // $view->with('languages', CachingService::getLanguages() );
         });

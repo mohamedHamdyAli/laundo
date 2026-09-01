@@ -6,9 +6,9 @@ use Rector\Set\ValueObject\LevelSetList;
 return static function (RectorConfig $config): void {
 
     $config->paths([
-        __DIR__ . '/app',
-        __DIR__ . '/routes',
-        __DIR__ . '/database',
+        __DIR__.'/app',
+        __DIR__.'/routes',
+        __DIR__.'/database',
     ]);
 
     // PHP version target
