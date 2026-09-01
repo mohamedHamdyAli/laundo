@@ -52,6 +52,10 @@ class GeneralSettingRequest extends FormRequest
                 // «قد يتم تطبيق رسوم إضافية» is permissive, so the default is
                 // none and this is what turns it on.
                 'Cash_Surcharge' => 'nullable|numeric|min:0|max:1000',
+                // «ادعُ أصدقاءك». Off until somebody sets a value — the size of
+                // a discount is a business decision and not a default.
+                'Referral_Reward_Type' => 'nullable|in:percentage,fixed',
+                'Referral_Reward_Value' => 'nullable|numeric|min:0|max:1000',
                 'Country_Id' => 'nullable|exists:countries,id',
             ];
         } elseif (Route::is('admin.generalSetting.updatePrivacyAndTerms')) {

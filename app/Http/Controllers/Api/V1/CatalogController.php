@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Modules\Pricing\Services\pricingService;
 use App\Modules\Service\Repositories\ServiceRepository;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 
 /**
  * The catalogue the apps read before any account exists.
@@ -39,11 +40,25 @@ class CatalogController extends Controller
     }
 
     /**
-     * The full price list behind the app's "الاسعار" screen:
+     * The price list behind the app's «الاسعار» screen:
      * service -> category -> item -> price.
+     *
+     * Unfiltered it is the whole grid, which is what that screen wants — the
+     * customer is comparing services and a call per service would be a call per
+     * tap. `service_id` and `category_id` narrow it for the order wizard, which
+     * already knows the service and needs one column of the grid rather than all
+     * of it.
      */
-    public function catalog(): JsonResponse
+    public function catalog(Request $request): JsonResponse
     {
-        return successReturnData($this->pricingService->publicCatalog());
+        $data = $request->validate([
+            'service_id' => ['nullable', 'integer', 'exists:services,id'],
+            'category_id' => ['nullable', 'integer', 'exists:item_categories,id'],
+        ]);
+
+        return successReturnData($this->pricingService->publicCatalog(
+            isset($data['service_id']) ? (int) $data['service_id'] : null,
+            isset($data['category_id']) ? (int) $data['category_id'] : null,
+        ));
     }
 }

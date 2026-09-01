@@ -8,6 +8,7 @@ use App\Modules\Order\Enums\TaskType;
 use App\Modules\Order\Models\Order;
 use App\Modules\Order\Models\OrderTask;
 use App\Modules\TimeSlot\Models\TimeSlot;
+use App\Modules\TimeSlot\Services\SlotCapacity;
 use App\Modules\User\Models\User;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -34,7 +35,10 @@ use RuntimeException;
  */
 class RescheduleService
 {
-    public function __construct(private readonly DriverDispatcher $dispatcher) {}
+    public function __construct(
+        private readonly DriverDispatcher $dispatcher,
+        private readonly SlotCapacity $slots,
+    ) {}
 
     /**
      * Whether this order is waiting for the customer to pick a new time.
@@ -102,6 +106,10 @@ class RescheduleService
         }
 
         return DB::transaction(function () use ($order, $task, $slot, $date, $collection) {
+            // The same cap as the wizard. Without it a full window is reachable
+            // through the back door — postpone, then rebook into it.
+            $this->slots->claim($slot->id, $date);
+
             // Writing the wrong end would leave the postponed half unscheduled
             // while looking fixed.
             $order->forceFill($collection

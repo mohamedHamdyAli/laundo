@@ -42,6 +42,14 @@ class CouponService
             throw new RuntimeException('coupon_inactive');
         }
 
+        // A coupon issued to one person — a referral reward, or goodwill after a
+        // complaint. Reported as "not found" rather than "not yours", because
+        // telling a stranger the code is real and belongs to somebody else is an
+        // invitation to keep guessing.
+        if ($coupon->user_id !== null && (int) $coupon->user_id !== (int) $customer->id) {
+            throw new RuntimeException('coupon_not_found');
+        }
+
         if (! $coupon->hasStarted()) {
             throw new RuntimeException('coupon_not_started');
         }

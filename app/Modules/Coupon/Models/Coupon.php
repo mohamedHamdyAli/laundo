@@ -14,6 +14,7 @@ use Illuminate\Support\Carbon;
  *
  * @property int $id
  * @property string $code
+ * @property int|null $user_id
  * @property string $type
  * @property string $value
  * @property string|null $max_discount
@@ -39,7 +40,10 @@ class Coupon extends Model
     public const PERCENTAGE = 'percentage';
 
     protected $fillable = [
-        'code', 'name', 'type', 'value', 'max_discount', 'min_order_total',
+        // `user_id` is a coupon issued to one named person — a referral reward,
+        // or goodwill after a complaint. Null is the ordinary case: a public
+        // code anybody may use, limited by `max_redemptions`.
+        'code', 'user_id', 'name', 'type', 'value', 'max_discount', 'min_order_total',
         'applies_to_delivery', 'max_redemptions', 'max_per_user',
         'starts_at', 'ends_at', 'status',
     ];

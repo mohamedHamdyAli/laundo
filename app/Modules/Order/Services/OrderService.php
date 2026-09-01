@@ -11,6 +11,7 @@ use App\Modules\Order\Enums\OrderStatus;
 use App\Modules\Order\Models\Order;
 use App\Modules\Order\Models\OrderItem;
 use App\Modules\Service\Models\Service;
+use App\Modules\TimeSlot\Services\SlotCapacity;
 use App\Modules\User\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -35,6 +36,7 @@ class OrderService
         private readonly OrderStateMachine $machine,
         private readonly TaskGenerator $tasks,
         private readonly CouponService $coupons,
+        private readonly SlotCapacity $slots,
     ) {}
 
     /**
@@ -89,7 +91,7 @@ class OrderService
      *
      * @param  array<string, mixed>  $data
      */
-    public function place(User $customer, array $data): Order
+    public function place(User $customer, array $data, bool $enforceSlotCapacity = true): Order
     {
         [$service, $pickup, $delivery] = $this->resolveContext($customer, $data);
 
@@ -127,7 +129,14 @@ class OrderService
             throw new RuntimeException('empty_basket');
         }
 
-        return DB::transaction(function () use ($customer, $service, $pickup, $delivery, $laundry, $quote, $data, $coupon) {
+        return DB::transaction(function () use ($customer, $service, $pickup, $delivery, $laundry, $quote, $data, $coupon, $enforceSlotCapacity) {
+            // Inside the transaction and before the insert: a window checked
+            // before the write is a window two customers can both pass.
+            if ($enforceSlotCapacity) {
+                $this->slots->claim($data['pickup_slot_id'] ?? null, $data['pickup_date'] ?? null);
+                $this->slots->claim($data['delivery_slot_id'] ?? null, $data['delivery_date'] ?? null);
+            }
+
             $order = Order::create([
                 'code' => Order::generateCode(),
                 'user_id' => $customer->id,

@@ -112,6 +112,15 @@ class AppServiceProvider extends ServiceProvider
 
         // Sign-in attempts. Keyed on the phone and the IP separately, so neither
         // hammering one account nor spraying many from one address gets through.
+        /*
+         * Location reports. The app sends one every thirty seconds — two a
+         * minute — so this is fifteen times the expected rate: it exists to stop
+         * a looping build from flooding the table, not to police a driver, and a
+         * refused report is a driver who vanishes from the customer's map.
+         */
+        RateLimiter::for('location', fn (Request $request) => Limit::perMinute(30)
+            ->by($request->user()?->id ?: $request->ip()));
+
         RateLimiter::for('login', function (Request $request) {
             return [
                 Limit::perMinute(5)->by($request->input('phone') ?: $request->ip()),

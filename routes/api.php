@@ -19,6 +19,7 @@ use App\Http\Controllers\Api\V1\OrderReviewController;
 use App\Http\Controllers\Api\V1\PaymentController;
 use App\Http\Controllers\Api\V1\ProfileController;
 use App\Http\Controllers\Api\V1\RecurrenceController;
+use App\Http\Controllers\Api\V1\ReferralController;
 use App\Http\Controllers\Api\V1\RefundController;
 use App\Http\Controllers\Api\V1\WalletController;
 use Illuminate\Support\Facades\Route;
@@ -92,6 +93,10 @@ Route::get('/app-settings', [AppSettingController::class, 'index'])->name('api.v
 // ?audience=customer|driver narrows it; without it the caller gets everything,
 // because guessing from an absent token would serve one app the other's answers.
 Route::get('/faqs', [ContentController::class, 'faqs'])->name('api.v1.faqs');
+// «ادعُ أصدقاءك» — what a code is worth, read by the register screen before
+// anybody has an account. An app that hardcodes the figure lies the day it moves.
+Route::get('/referral-terms', [ReferralController::class, 'terms'])->name('api.v1.referral-terms');
+
 Route::get('/complaint-categories', [ComplaintController::class, 'categories'])
     ->name('api.v1.complaint-categories');
 
@@ -344,11 +349,24 @@ Route::middleware('auth:sanctum')->group(function () {
     | Vehicle details, documents and zones are absent by design: they are
     | verified records and territory assignments, set in the dashboard.
     */
+    // «ادعُ أصدقاءك» — the code, who used it, and what it has earned.
+    Route::get('/referrals', [ReferralController::class, 'index'])->name('api.v1.referrals');
+
     Route::prefix('driver')->name('api.v1.driver.')->group(function () {
         Route::post('/logout', [DriverController::class, 'logout'])->name('logout');
         Route::get('/profile', [DriverController::class, 'profile'])->name('profile');
         Route::post('/profile', [DriverController::class, 'updateProfile'])->name('profile.update');
         Route::put('/availability', [DriverController::class, 'setAvailability'])->name('availability');
+
+        /*
+        | «تتبع المندوب مباشرة» — the phone reporting its position.
+        |
+        | Throttled well above the app's own thirty-second cadence: the limiter is
+        | there to stop a looping build, not to police a working driver, and a
+        | driver whose reports are refused disappears from the customer's map.
+        */
+        Route::post('/location', [DriverController::class, 'reportLocation'])
+            ->middleware('throttle:location')->name('location');
         Route::put('/password', [DriverController::class, 'changePassword'])->name('password');
 
         /*

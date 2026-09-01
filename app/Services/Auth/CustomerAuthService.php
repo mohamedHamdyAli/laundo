@@ -3,6 +3,7 @@
 namespace App\Services\Auth;
 
 use App\Models\Role;
+use App\Modules\Coupon\Services\ReferralService;
 use App\Modules\User\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -46,6 +47,11 @@ class CustomerAuthService
                 // Explicitly unverified: the OTP step sets this.
                 'phone_verified_at' => null,
             ]);
+
+            // Recorded now, paid later — the reward waits for their first paid
+            // order, which is what stops the programme being farmed with a
+            // handful of phone numbers.
+            app(ReferralService::class)->link($user, $data['referral_code'] ?? null);
 
             return ['user' => $user, 'code' => $this->otp->issue($user)];
         });

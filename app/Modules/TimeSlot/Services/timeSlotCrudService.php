@@ -2,6 +2,7 @@
 
 namespace App\Modules\TimeSlot\Services;
 
+use App\Modules\TimeSlot\Models\TimeSlot;
 use App\Modules\TimeSlot\Repositories\TimeSlotRepository;
 use App\Services\ResponseService;
 use Illuminate\Support\Facades\DB;
@@ -12,8 +13,11 @@ class timeSlotCrudService
 
     protected $responseService;
 
-    public function __construct(TimeSlotRepository $timeSlotRepository, ResponseService $responseService)
-    {
+    public function __construct(
+        TimeSlotRepository $timeSlotRepository,
+        ResponseService $responseService,
+        private readonly SlotCapacity $capacity,
+    ) {
         $this->timeSlotRepository = $timeSlotRepository;
         $this->responseService = $responseService;
     }
@@ -35,13 +39,42 @@ class timeSlotCrudService
 
     public function shredData($id = null)
     {
-        $data = ['timeSlots' => $this->timeSlotRepository->getAllPaginated()];
+        $slots = $this->timeSlotRepository->getAllPaginated();
+
+        $data = [
+            'timeSlots' => $slots,
+            // A capacity nobody can watch being used is a number somebody sets
+            // once and never revisits. Today and tomorrow are the two days that
+            // can still be acted on: today is what is happening, tomorrow is what
+            // can still be re-staffed.
+            'usage' => $this->usage($slots),
+        ];
 
         if ($id) {
             $data['row'] = $this->timeSlotRepository->findById($id);
         }
 
         return $data;
+    }
+
+    /**
+     * Bookings against each window for today and tomorrow.
+     *
+     * @param  iterable<int, TimeSlot>  $slots
+     * @return array<int, array{today: int, tomorrow: int}>
+     */
+    private function usage(iterable $slots): array
+    {
+        $out = [];
+
+        foreach ($slots as $slot) {
+            $out[$slot->id] = [
+                'today' => $this->capacity->booked($slot, now()),
+                'tomorrow' => $this->capacity->booked($slot, now()->addDay()),
+            ];
+        }
+
+        return $out;
     }
 
     public function toggleStatus($id, $status)

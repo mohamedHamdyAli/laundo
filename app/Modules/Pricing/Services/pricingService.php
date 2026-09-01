@@ -111,12 +111,23 @@ class pricingService
      * The price list the customer app's "الاسعار" screen renders:
      * service -> category -> item -> price.
      *
+     * Unfiltered it is the whole grid, which is what the «الاسعار» tab wants: the
+     * customer is comparing services against each other and a call per service
+     * would be a call per tap. The filters exist for the other caller — the order
+     * wizard, which has already been told the service and needs one column of it.
+     *
+     * A filter that matches nothing returns an empty array rather than everything.
+     * Silently widening a filter is how an app ends up showing a dry-cleaning
+     * price on a wash-and-iron screen.
+     *
      * @return array<int, array<string, mixed>>
      */
-    public function publicCatalog(): array
+    public function publicCatalog(?int $serviceId = null, ?int $categoryId = null): array
     {
-        $services = $this->serviceRepository->allActive();
-        $categories = $this->itemCategoryRepository->activeWithItems();
+        $services = $this->serviceRepository->allActive()
+            ->when($serviceId !== null, fn ($c) => $c->where('id', $serviceId));
+        $categories = $this->itemCategoryRepository->activeWithItems()
+            ->when($categoryId !== null, fn ($c) => $c->where('id', $categoryId));
 
         $prices = [];
         foreach (ItemPrice::all() as $price) {

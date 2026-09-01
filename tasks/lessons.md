@@ -508,6 +508,50 @@ against memory of what was built.
 
 ---
 
+## Inserting a method above another one steals its docblock
+
+I added `booted()` immediately above `Order::tasks()`. The insert landed between
+`tasks()`'s docblock and `tasks()` itself, so `@return HasMany<OrderTask, $this>`
+now described the hook, the relation degraded to `Model`, and the error surfaced
+**two files away** in `RescheduleService`. The same mistake was already sitting in
+`Driver`, where `profile()`'s docblock had been orphaned onto `tasks()` — so this
+is the second time in this codebase.
+
+**Rule:** when inserting a method, anchor on the **blank line after the previous
+method's closing brace**, never on `public function nextThing`. After any
+scripted insertion into a model, read the twenty lines around it before running
+anything.
+
+---
+
+## A setting nobody enforces is worse than no setting
+
+`time_slots.capacity` was editable in the dashboard, validated, stored, returned
+by the API — and read by nothing. It survived five phases because every layer
+looked correct on its own. The person who set it to 20 believed twenty was the
+limit.
+
+The tell is a column that only ever appears in a form, a migration and a
+serialiser. Nothing reads it to *decide* anything.
+
+**Rule:** when adding a configurable number, write the line that refuses before
+writing the form that sets it. And when you find one that is never read, either
+enforce it or delete it — leaving it is a promise the system does not keep.
+
+---
+
+## Enforcing a limit is half the feature; showing it is the other half
+
+Capacity without `remaining` on the read endpoint means the customer fills in the
+whole wizard and is refused at submit. Capacity without a usage column on the
+dashboard means operations sets a number and never sees it move.
+
+**Rule:** a limit needs three things, not one — the refusal, the forecast the
+client can act on before it submits, and the view the person who set the number
+can watch.
+
+---
+
 ## Project-specific traps that have already bitten
 
 - `:permission="category.toggle"` in a status-toggle button makes Blade evaluate
@@ -541,4 +585,9 @@ against memory of what was built.
 - Anything asserting "this month" or "this week" must `travelTo()` a fixed point.
   A month-boundary assumption passes 28 days out of 30 and fails on the day
   somebody would doubt the screen.
+- Inserting before `public function x()` puts your code between x's docblock and
+  x. Anchor after the previous method's `}` instead.
+- Controllers in this project pass **the whole of `shredData()`** to the view.
+  `TimeSlotController@index` picked one key out of it, so a second key added to
+  the service arrived in the view as undefined.
 

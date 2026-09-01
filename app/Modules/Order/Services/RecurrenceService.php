@@ -168,7 +168,13 @@ class RecurrenceService
                 // this a recurring order would reach the laundry with no record
                 // that anyone agreed to being re-priced.
                 'accepts_review_terms' => true,
-            ]);
+            ],
+                // Exempt from the window cap, deliberately. The customer was
+                // asked «محتاج تغسل النهاردة؟» and said yes, and this screen has
+                // no slot picker to send them back to — refusing here turns away
+                // the most loyal customer there is over a number they never saw.
+                // The overbook is the platform's problem to absorb.
+                enforceSlotCapacity: false);
 
             $prompt->update([
                 'answer' => 'confirmed',

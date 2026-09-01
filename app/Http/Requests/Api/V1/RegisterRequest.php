@@ -30,6 +30,11 @@ class RegisterRequest extends FormRequest
             'zone_id' => ['nullable', 'exists:zones,id'],
             'password' => ['required', 'string', 'min:8', 'confirmed'],
             'accepted_terms' => ['accepted'],
+            // «شارك رمز الدعوة الخاص بك». Not validated against the users table:
+            // a wrong code must not stop somebody registering, and telling a
+            // stranger whether a code exists is a way to enumerate them. An
+            // unknown code is simply ignored.
+            'referral_code' => ['nullable', 'string', 'max:24'],
         ];
     }
 

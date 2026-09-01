@@ -1142,5 +1142,17 @@
     "Attachments": "المرفقات",
     "Driving licence": "رخصة القيادة",
     "National ID": "الرقم القومي",
-    "Vehicle registration": "رخصة المركبة"
+    "Vehicle registration": "رخصة المركبة",
+    "Both of you get the discount after your friend pays for their first order.": "الخصم يوصلكم أنتم الاتنين بعد ما صديقك يدفع أول طلب له.",
+    "Both the inviter and the friend get this discount, once the friend has paid for their first order. Leave the value empty to run no referral programme.": "الخصم ده بياخده الداعي وصديقه، بعد ما الصديق يدفع أول طلب له. سيب القيمة فاضية لو مش عايز برنامج دعوات.",
+    "Referrals": "الدعوات",
+    "Reward type": "نوع المكافأة",
+    "Reward value": "قيمة المكافأة",
+    "Use my code :code on Laundo and we both get a discount.": "استخدم كودي :code في لاندو ونحصل الاتنين على خصم.",
+    "You have no journey in progress.": "مفيش رحلة شغالة دلوقتي.",
+    "This window is fully booked. Please choose another one.": "النافذة دي محجوزة بالكامل. اختار واحدة تانية من فضلك.",
+    "A pickup and a delivery in the same window are two separate journeys, so both count against it.": "الاستلام والتسليم في نفس النافذة رحلتين منفصلتين، فالاتنين بيتحسبوا عليها.",
+    "Booked today": "محجوز النهاردة",
+    "Booked tomorrow": "محجوز بكرة",
+    "Full": "ممتلئة"
 }

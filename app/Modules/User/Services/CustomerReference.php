@@ -3,6 +3,7 @@
 namespace App\Modules\User\Services;
 
 use App\Models\Role;
+use App\Modules\Coupon\Services\ReferralService;
 use App\Modules\User\Models\User;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\DB;
@@ -26,7 +27,21 @@ class CustomerReference
 
     public static function assign(User $user): void
     {
-        if (! self::isCustomer($user) || filled($user->customer_reference)) {
+        if (! self::isCustomer($user)) {
+            return;
+        }
+
+        // «رمز الدعوة» rides along with the same hook for the same reason: four
+        // paths make a customer, and a customer with no code opens «ادعُ
+        // أصدقاءك» on a blank screen.
+        if (blank($user->referral_code)) {
+            $code = ReferralService::mintCode();
+            DB::table('users')->where('id', $user->getKey())->update(['referral_code' => $code]);
+            $user->setAttribute('referral_code', $code);
+            $user->syncOriginalAttribute('referral_code');
+        }
+
+        if (filled($user->customer_reference)) {
             return;
         }
 

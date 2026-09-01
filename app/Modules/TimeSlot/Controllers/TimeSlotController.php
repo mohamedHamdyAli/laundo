@@ -13,8 +13,10 @@ class TimeSlotController extends Controller
 
     public function index(Request $request)
     {
-        $timeSlots = $this->timeSlotCrudService->shredData()['timeSlots'];
-        $view = view('admin.time_slot.index', compact('timeSlots'));
+        // The whole of shredData(), not one key out of it — that is the module
+        // convention, and picking keys by hand is why `usage` reached the view
+        // as an undefined variable the first time it was added.
+        $view = view('admin.time_slot.index', $this->timeSlotCrudService->shredData());
 
         return $request->ajax() ? response($view) : $view;
     }

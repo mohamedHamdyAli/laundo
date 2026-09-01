@@ -558,7 +558,7 @@
                             }
                         ],
                         "url": {
-                            "raw": "{{base_url}}/api/v1/catalog",
+                            "raw": "{{base_url}}/api/v1/catalog?service_id=1&category_id=1",
                             "host": [
                                 "{{base_url}}"
                             ],
@@ -566,9 +566,23 @@
                                 "api",
                                 "v1",
                                 "catalog"
+                            ],
+                            "query": [
+                                {
+                                    "key": "service_id",
+                                    "value": "1",
+                                    "description": "One service only. 422 if it does not exist.",
+                                    "disabled": true
+                                },
+                                {
+                                    "key": "category_id",
+                                    "value": "1",
+                                    "description": "One category only, across whichever services come back.",
+                                    "disabled": true
+                                }
                             ]
                         },
-                        "description": "The whole price list behind the app's «الأسعار» screen, nested service → category → item → price.",
+                        "description": "The whole price list behind the app's «الأسعار» screen, nested service → category → item → price.\n\n**Filters** (both optional, and they combine):\n\n| Parameter | Notes |\n|---|---|\n| `service_id` | One service only - for the order wizard, which already knows it. |\n| `category_id` | One category only. |\n\nUnfiltered is the whole grid, which is what the «الاسعار» screen wants: the customer is comparing services and a call per service would be a call per tap.\n\nAn id that does not exist is a **422**, never a silent fall back to everything - widening a filter is how a dry-cleaning price ends up on a wash-and-iron screen. A quote-priced service narrows to itself with an empty `categories` list.",
                         "auth": {
                             "type": "noauth"
                         }
@@ -612,7 +626,7 @@
                             }
                         ],
                         "url": {
-                            "raw": "{{base_url}}/api/v1/cities",
+                            "raw": "{{base_url}}/api/v1/cities?city_id=1",
                             "host": [
                                 "{{base_url}}"
                             ],
@@ -620,9 +634,17 @@
                                 "api",
                                 "v1",
                                 "cities"
+                            ],
+                            "query": [
+                                {
+                                    "key": "city_id",
+                                    "value": "1",
+                                    "description": "One city with its zones. 422 if it does not exist.",
+                                    "disabled": true
+                                }
                             ]
                         },
-                        "description": "Active cities, each with its active zones — the two dropdowns on the address form (المدينة / المنطقة).",
+                        "description": "Active cities, each with its active zones — the two dropdowns on the address form (المدينة / المنطقة).\n\n`city_id` narrows it to one city. Unfiltered fills both of the address form's dropdowns in one call - they are filled together, and a round trip between picking a city and seeing its zones is a spinner in the middle of a form.\n\nA city that exists but is inactive comes back as an empty list, so `city_id` cannot reach an area we have stopped serving.",
                         "auth": {
                             "type": "noauth"
                         }
@@ -660,7 +682,7 @@
                             }
                         ],
                         "url": {
-                            "raw": "{{base_url}}/api/v1/time-slots",
+                            "raw": "{{base_url}}/api/v1/time-slots?type=pickup&date=2026-09-05",
                             "host": [
                                 "{{base_url}}"
                             ],
@@ -673,12 +695,18 @@
                                 {
                                     "key": "type",
                                     "value": "pickup",
-                                    "description": "pickup | delivery. Omit for every active slot.",
+                                    "description": "pickup | delivery. Optional.",
+                                    "disabled": true
+                                },
+                                {
+                                    "key": "date",
+                                    "value": "2026-09-05",
+                                    "description": "Adds `remaining` and `is_full` for that day.",
                                     "disabled": true
                                 }
                             ]
                         },
-                        "description": "The pickup / delivery windows.\n\n`capacity` is returned as configured; there is deliberately no *remaining* figure, because that needs a count of orders already booked into the window.",
+                        "description": "The windows a customer may choose to be visited in.\n\n**These are the platform's visiting windows, not a laundry's opening hours.** A laundry has no opening hours anywhere in this system. A slot is the three-hour window in which a *driver* comes to the customer, and the customer is the one who picks it - «02:00 مساءً – 05:00 مساءً» in the design.\n\nWindows rather than exact times, because a driver on a route cannot promise 16:07. Five cover the day: 09-12, 12-15, 15-18, 18-21, 21-24.\n\n| Parameter | In | Notes |\n|---|---|---|\n| `type` | query | `pickup` or `delivery`. Returns slots marked for that end plus every `both` slot. |\n\nEach slot carries `applies_to` (`pickup` / `delivery` / `both`), and the order request enforces it - a delivery-only window cannot be sent as a pickup.\n\nWhat a chosen slot actually does: it tells the customer when to expect somebody, and it sets `due_at` on that leg, which is the only thing «متأخرة» in the driver app means.\n\n**Capacity is enforced.** Pass `date` and each slot comes back with `remaining` and `is_full`, so the wizard can grey out a full window instead of finding out at submit.\n\n- A pickup and a delivery in the same window are two journeys to two doors, so both count.\n- A cancelled order gives its place back.\n- `remaining: null` means uncapped; `0` means choose another window. The app must draw those differently.\n- Placing an order into a full window is a **422** on `pickup_slot_id`. Rescheduling into one is refused too. A confirmed repeat-schedule prompt is the one exemption — that screen has no slot picker to send the customer back to.",
                         "auth": {
                             "type": "noauth"
                         }
@@ -737,10 +765,10 @@
                                 "register"
                             ]
                         },
-                        "description": "Creates the account and sends the first code. The account cannot sign in until the code is confirmed.\n\nThrottle: `otp`. A phone already registered is refused, verified or not. Phone must match the Egyptian format `01[0125]XXXXXXXX` (a leading `+20` is accepted).",
+                        "description": "Creates the account and sends the first code. The account cannot sign in until the code is confirmed.\n\nThrottle: `otp`. A phone already registered is refused, verified or not. Phone must match the Egyptian format `01[0125]XXXXXXXX` (a leading `+20` is accepted).\n\n`referral_code` is optional and **never validated against the users table**: a mistyped code must not stop somebody registering, and confirming whether a code exists is a way to enumerate them. An unknown code is silently ignored. A valid one records the link - the coupons are issued later, when this customer pays for their first order.",
                         "body": {
                             "mode": "raw",
-                            "raw": "{\n    \"name\": \"Test Customer\",\n    \"phone\": \"{{phone}}\",\n    \"email\": \"customer@example.com\",\n    \"zone_id\": 1,\n    \"password\": \"{{password}}\",\n    \"password_confirmation\": \"{{password}}\",\n    \"accepted_terms\": true\n}",
+                            "raw": "{\n    \"name\": \"Test Customer\",\n    \"phone\": \"{{phone}}\",\n    \"email\": \"customer@example.com\",\n    \"zone_id\": 1,\n    \"password\": \"{{password}}\",\n    \"password_confirmation\": \"{{password}}\",\n    \"accepted_terms\": true,\n    \"referral_code\": null\n}",
                             "options": {
                                 "raw": {
                                     "language": "json"
@@ -1783,7 +1811,7 @@
                                 "quote"
                             ]
                         },
-                        "description": "The summary step's price preview, before anything is saved. Runs the same pricing pass as **Place order**, so the two cannot disagree.\n\nOnly what pricing actually depends on is required — scheduling and notes have no effect on the total.\n\nA refused coupon is never fatal: `coupon_error` explains it and the quote still returns. `delivery_fee_reason` is non-null when the fee could not be worked out, so the app shows «يتم تحديدها لاحقاً» rather than a misleading 0.00.\n\n`payment_method` belongs here because the cash surcharge depends on it and «شاشة اختيار الدفع» re-quotes as the customer picks.",
+                        "description": "The summary step's price preview, before anything is saved. Runs the same pricing pass as **Place order**, so the two cannot disagree.\n\nOnly what pricing actually depends on is required — scheduling and notes have no effect on the total.\n\nA refused coupon is never fatal: `coupon_error` explains it and the quote still returns. `delivery_fee_reason` is non-null when the fee could not be worked out, so the app shows «يتم تحديدها لاحقاً» rather than a misleading 0.00.\n\n`payment_method` belongs here because the cash surcharge depends on it and «شاشة اختيار الدفع» re-quotes as the customer picks.\n\n`payment_method` accepts **`cash` | `card` | `wallet` | `instapay`**. It is read by pricing, not merely stored: choosing `cash` adds the configured `Cash_Surcharge` as its own line in the response (`cash_surcharge`), applied **after** any coupon - a coupon discounts the washing, not the cost of handling notes. Sending nothing returns a surcharge of 0, which is right for a quote taken before the customer has chosen how to pay.",
                         "body": {
                             "mode": "raw",
                             "raw": "{\n    \"service_id\": 1,\n    \"items\": [\n        {\n            \"item_id\": 1,\n            \"qty\": 3\n        },\n        {\n            \"item_id\": 2,\n            \"qty\": 1\n        }\n    ],\n    \"pickup_address_id\": \"{{address_id}}\",\n    \"delivery_address_id\": null,\n    \"coupon_code\": null,\n    \"payment_method\": \"cash\"\n}",
@@ -1848,7 +1876,7 @@
                                 "orders"
                             ]
                         },
-                        "description": "`accepts_review_terms` is **required and must be truthy** — the whole of the review flow rests on it: the customer is agreeing that the price they just saw is an estimate and the real one arrives after the pieces are counted.\n\n`items` may be an empty array for a quote-priced service costed after inspection; the service rejects an empty basket where it matters.\n\nAn absent `delivery_address_id` means «same address». `delivery_method` is `door` or `leave`.\n\nTo attach stain photos (max 5, jpg/jpeg/png/webp, 5 MB each) switch the body to **form-data** and send `photos[]`.\n\n**Saves `data.id` into `order_id`.**",
+                        "description": "`accepts_review_terms` is **required and must be truthy** — the whole of the review flow rests on it: the customer is agreeing that the price they just saw is an estimate and the real one arrives after the pieces are counted.\n\n`items` may be an empty array for a quote-priced service costed after inspection; the service rejects an empty basket where it matters.\n\nAn absent `delivery_address_id` means «same address». `delivery_method` is `door` or `leave`.\n\nTo attach stain photos (max 5, jpg/jpeg/png/webp, 5 MB each) switch the body to **form-data** and send `photos[]`.\n\n**Saves `data.id` into `order_id`.**\n\n`payment_method` accepts **`cash` | `card` | `wallet` | `instapay`**. It is read by pricing, not merely stored: choosing `cash` adds the configured `Cash_Surcharge` as its own line in the response (`cash_surcharge`), applied **after** any coupon - a coupon discounts the washing, not the cost of handling notes. Sending nothing returns a surcharge of 0, which is right for a quote taken before the customer has chosen how to pay.\n\n**Photos** - «أضف صوراً للبقع الصعبة» - are accepted here as up to 5 image files under `photos[]`. That needs a `multipart/form-data` body rather than the JSON above; duplicate the request and switch the body mode to form-data to try it.",
                         "body": {
                             "mode": "raw",
                             "raw": "{\n    \"service_id\": 1,\n    \"items\": [\n        {\n            \"item_id\": 1,\n            \"qty\": 3\n        },\n        {\n            \"item_id\": 2,\n            \"qty\": 1\n        }\n    ],\n    \"pickup_address_id\": \"{{address_id}}\",\n    \"delivery_address_id\": null,\n    \"pickup_date\": \"2026-09-05\",\n    \"delivery_date\": \"2026-09-07\",\n    \"pickup_slot_id\": 1,\n    \"delivery_slot_id\": 2,\n    \"delivery_method\": \"door\",\n    \"driver_note\": \"Call before arriving\",\n    \"special_instructions\": \"Separate the whites\",\n    \"accepts_review_terms\": true,\n    \"coupon_code\": null,\n    \"payment_method\": \"cash\"\n}",
@@ -1903,7 +1931,7 @@
                                 "{{order_id}}"
                             ]
                         },
-                        "description": "The full detail: lines, photos, addresses, slots, and the pricing block.\n\n`pricing.final_subtotal` / `final_total` stay null until the laundry has counted the pieces."
+                        "description": "The full detail: lines, photos, addresses, slots, and the pricing block.\n\n`pricing.final_subtotal` / `final_total` stay null until the laundry has counted the pieces.\n\nAlso in the response:\n\n- `qr` - the token behind «إظهار رمز الاستلام (QR)». The driver scans it to confirm they have the right parcel.\n- `pricing.cash_surcharge` - the cash-handling fee actually charged on this order, recorded when it was placed so a later change to the setting cannot alter it."
                     },
                     "response": []
                 },
@@ -1950,7 +1978,7 @@
                                 "track"
                             ]
                         },
-                        "description": "The tracking screen: the five-point timeline plus which steps have been reached and when."
+                        "description": "The tracking screen: the five-point timeline plus which steps have been reached and when.\n\n`driver` is the card the design draws - «مندوب الاستلام · أحمد · ★ 4.9»:\n\n| Field | Notes |\n|---|---|\n| `name`, `image` | Whoever holds the leg in flight; the last completed leg between journeys. |\n| `role` | Which of the four legs - the person collecting and the person returning are usually not the same. |\n| `rating` | The average of **delivery** ratings alone, never the wash. `null`, not `0`, until somebody has rated them. |\n| `location` | `{lat, lng, updated_at}` - the live dot. |\n\n`driver` is null before anybody is assigned. `driver.location` is null in three more cases, each deliberate: the leg does not end at the customer (the runs to and from the laundry are not broadcast), the driver has not reported yet, or the last reading is over two minutes old - a frozen marker reads as a driver who has stopped.\n\n**No phone number.** Handing out a driver's personal mobile is a policy decision, not a field."
                     },
                     "response": []
                 },
@@ -3345,7 +3373,7 @@
                                 "complaints"
                             ]
                         },
-                        "description": "`body` is 5–2000 characters. `order_id` is optional.\n\nThe success message carries the `CMP-` reference — that is the point of it: it is what gets quoted when somebody calls back.\n\n**Saves `data.id` into `complaint_id`.**",
+                        "description": "`body` is 5–2000 characters. `order_id` is optional.\n\nThe success message carries the `CMP-` reference — that is the point of it: it is what gets quoted when somebody calls back.\n\n**Saves `data.id` into `complaint_id`.**\n\n**Attachments** - «المرفقات (اختياري)» - up to 5 images under `photos[]`, which needs a `multipart/form-data` body instead of the JSON above. They come back on the complaint as `attachments[]` and are shown to operations. `internal_note` is never in any customer-facing response.",
                         "body": {
                             "mode": "raw",
                             "raw": "{\n    \"category\": \"damaged_item\",\n    \"body\": \"One of the shirts came back with a torn collar.\",\n    \"order_id\": \"{{order_id}}\"\n}",
@@ -4547,7 +4575,7 @@
                                 "profile"
                             ]
                         },
-                        "description": "Includes the vehicle, licence, shift label and assigned zones — read-only here.",
+                        "description": "Includes the vehicle, licence, shift label and assigned zones — read-only here.\n\n`documents[]` is «مستندات المركبة» - the driving licence, the vehicle registration and the national ID, each with a `url` (null when nothing is on file) and an `expiry`. Read-only, like the vehicle and licence fields: they are verified records, and a driver who can edit their own licence expiry makes recording it pointless.",
                         "auth": {
                             "type": "bearer",
                             "bearer": [
@@ -5480,6 +5508,174 @@
                                 }
                             ]
                         }
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Report location",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('Responds with the API envelope', function () {",
+                                    "    const body = pm.response.json();",
+                                    "    pm.expect(body).to.have.property('key');",
+                                    "    pm.expect(body).to.have.property('code', pm.response.code);",
+                                    "});"
+                                ]
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "lang",
+                                "value": "{{lang}}",
+                                "description": "ar | en - read by the ApiLocale middleware. Optional; falls back to the default language."
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/api/v1/driver/location",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "driver",
+                                "location"
+                            ]
+                        },
+                        "description": "«تتبع المندوب مباشرة» - the phone reporting where it is.\n\nSend every **30 seconds while a journey is in progress**, and stop otherwise. Three rules decide what happens:\n\n- **No live task -> nothing is stored.** The reply is `200` with `data.tracking: false`; that is the signal to stop sending. A driver between jobs is not tracked.\n- **The last point only.** No trail is kept, so there is no history endpoint to read it back.\n- The customer sees the dot only on the two legs that end at their door, and only while the reading is under two minutes old.\n\n| Field | Type | Required | Notes |\n|---|---|---|---|\n| `lat` | number | yes | -90 to 90 |\n| `lng` | number | yes | -180 to 180 |\n\nThrottle: `location` - 30 a minute, fifteen times the app's own rate.",
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"lat\": 30.0444,\n    \"lng\": 31.2357\n}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        },
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{driver_token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        }
+                    },
+                    "response": []
+                }
+            ]
+        },
+        {
+            "name": "20 · Referrals",
+            "description": "«ادعُ أصدقاءك» - the invite code, and what it has earned.\n\nBoth sides get a coupon **after the invited friend pays for their first order**, not at sign-up. The reward's size is a dashboard setting and the programme is off until it is filled in.\n\nThe code itself is sent on **Register** as `referral_code`.",
+            "item": [
+                {
+                    "name": "Referral terms (public)",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('Responds with the API envelope', function () {",
+                                    "    const body = pm.response.json();",
+                                    "    pm.expect(body).to.have.property('key');",
+                                    "    pm.expect(body).to.have.property('code', pm.response.code);",
+                                    "});"
+                                ]
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "lang",
+                                "value": "{{lang}}",
+                                "description": "ar | en - read by the ApiLocale middleware. Optional; falls back to the default language."
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/api/v1/referral-terms",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "referral-terms"
+                            ]
+                        },
+                        "description": "What a code is worth, readable before anybody has an account - the register screen shows it beside the code field.\n\n`active` is false when no reward is configured; the app should then hide the field rather than promise a discount that will not arrive. `type` is `percentage` or `fixed`.\n\nNo parameters. No authentication.",
+                        "auth": {
+                            "type": "noauth"
+                        }
+                    },
+                    "response": []
+                },
+                {
+                    "name": "My referrals",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('Responds with the API envelope', function () {",
+                                    "    const body = pm.response.json();",
+                                    "    pm.expect(body).to.have.property('key');",
+                                    "    pm.expect(body).to.have.property('code', pm.response.code);",
+                                    "});"
+                                ]
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "lang",
+                                "value": "{{lang}}",
+                                "description": "ar | en - read by the ApiLocale middleware. Optional; falls back to the default language."
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/api/v1/referrals",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "referrals"
+                            ]
+                        },
+                        "description": "The account screen's referral panel. No parameters.\n\n| Field | Meaning |\n|---|---|\n| `code` | This customer's own invite code. |\n| `share_text` | Prewritten message, already containing the code. |\n| `invited` | People who registered with the code. |\n| `ordered` | Of those, the ones who have paid for a first order - the half that earns. |\n| `rewards[]` | Coupons issued to this customer, with `used` and `expires_at`. |\n\n`invited` and `ordered` differ on purpose: a friend who signed up and has not ordered yet is counted but not yet earned, and hiding that makes a customer think the sign-up was lost."
                     },
                     "response": []
                 }

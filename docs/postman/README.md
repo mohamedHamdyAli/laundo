@@ -2,8 +2,9 @@
 
 | File | What it is |
 |---|---|
-| `Laundo API v1.postman_collection.json` | All 95 endpoints under `/api/v1`, in 20 folders |
+| `Laundo API v1.postman_collection.json` | All 98 endpoints under `/api/v1`, in 21 folders |
 | `Laundo Local.postman_environment.json` | `base_url`, `lang`, and the dev fixture credentials |
+| `generate-reference.py` | Rebuilds `docs/api-reference.html` — run it from the repo root |
 
 Import both (Postman → Import → drag the two files in), pick the **Laundo — Local**
 environment, and run **04 · Auth — customer → Login**.
@@ -68,3 +69,17 @@ Postman rewrites the whole file on export, which makes the diff unreadable. For 
 change — a new field in a body, a corrected description — edit the JSON directly and
 re-import. Export over the top of these files only when the change is large enough that
 a churned diff is worth it.
+
+## Keeping it honest
+
+Two checks, both cheap, both worth running after adding a route:
+
+```bash
+php artisan route:list --path=api --json     # what exists
+python docs/postman/generate-reference.py    # rebuilds the reference page
+```
+
+The reference page's parameter tables are written against the validation rules in
+`app/Http/Requests/Api/V1` and the controllers' own `validate()` calls. When a rule
+changes, the page is where it has to be changed too — there is no generator clever
+enough to read the *reason* a field exists, which is most of what the page is for.

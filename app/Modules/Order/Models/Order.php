@@ -3,6 +3,7 @@
 namespace App\Modules\Order\Models;
 
 use App\Modules\Address\Models\Address;
+use App\Modules\Coupon\Services\ReferralService;
 use App\Modules\Laundry\Models\Laundry;
 use App\Modules\Order\Enums\OrderStatus;
 use App\Modules\Payment\Models\Payment;
@@ -263,6 +264,23 @@ class Order extends Model
     public function payments(): HasMany
     {
         return $this->hasMany(Payment::class, 'order_id')->latest('id');
+    }
+
+    /**
+     * «ادعُ أصدقاءك» is paid here rather than at the two places that settle
+     * payment.
+     *
+     * Cash on the doorstep and a captured card both mark an order paid, and a
+     * third way will arrive. Hanging the reward off the transition itself means
+     * the new one cannot be the one that forgets.
+     */
+    protected static function booted(): void
+    {
+        static::updated(function (Order $order): void {
+            if ($order->wasChanged('paid_at') && $order->paid_at !== null) {
+                app(ReferralService::class)->rewardFor($order);
+            }
+        });
     }
 
     /**

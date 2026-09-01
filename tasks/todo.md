@@ -2160,15 +2160,80 @@ top-up and withdraw · reorder · rating aspects · coupons · recurrence ·
 notification preferences. «نقاط الولاء» exists only in the `drft` page and was
 dropped from the final `ui` — not counted as missing.
 
-## Waiting on the owner
+## Answered and built
 
-- [ ] **«تتبع المندوب مباشرة» — live driver location.** Two screens depend on it
-      (`538:4654` and `416:6140`) and nothing exists on either side: no
-      coordinates on the driver, no endpoint to push them, none to read them.
-      Needs a decision on how often a phone reports and whether the trail is kept.
-- [ ] **«الاشتراك الشهري»** — monthly packages on the final home screen. Not the
-      same thing as `recurrences`, which is free scheduling.
-- [ ] **«ادعُ أصدقاءك / رمز الدعوة»** — a referral code on the final account
-      screen, with «خصومات حصرية لك ولهم».
+- [x] **«تتبع المندوب مباشرة»** — last point only, every 30s, during a journey
+      only. Three columns rather than a points table; no dot between jobs, none
+      on the two legs that do not end at the customer, and none older than two
+      minutes. Not fillable, and throttled at fifteen times the app's own rate.
+      11 tests.
+- [x] **«ادعُ أصدقاءك»** — both sides, after the friend's first paid order. Paid
+      from the order's own paid transition so a third settlement path cannot be
+      the one that forgets; `coupons.user_id` makes a reward personal; the amount
+      is a setting and the programme is off until somebody sets it. 19 tests.
+
+## Still open
+
+- [ ] **«الاشتراك الشهري»** — see below. It is a promo card, not a feature.
 - [ ] **«إضافة بطاقة جديدة»** — still blocked on the payment provider.
+
+## «الاشتراك الشهري» — what the sweep actually found
+
+Searched all 168 frames. The phrase appears in exactly one place: **Offer Card 2
+inside «Section - Offers Carousel»** on the home screen, repeated across six
+copies of that screen, next to «باقة غسيل البطاطين — خصم 20%» which is the same
+component. The card has **no prototype interaction**, and there is **no
+subscription screen anywhere in the file** — no package list, no prices, no
+checkout, no management. The only other mention is «استكشف الباقات الجديدة» in a
+draft's «Secondary Banner (Peek)».
+
+So it is a **promotional banner**, and the offers carousel is already served end
+to end by the banner module built in the gap audit — `GET /api/v1/banners`, with
+`target_type` pointing at a service or a coupon. The «باقة غسيل البطاطين» card is
+exactly that shape today.
+
+Nothing is missing unless the owner wants the card to lead somewhere real, which
+would be a product to design first rather than an endpoint to add.
+
+---
+
+# Laundo — 2026-09-01: أسئلة على الـAPI
+
+Four points raised while reading the reference. Two were change requests, two were
+questions — and one of the questions turned up a real gap.
+
+- [x] **`GET /catalog?service_id=&category_id=`** — filters for the wizard, which
+      already knows the service. Unfiltered is still the whole grid for «الاسعار».
+- [x] **`GET /cities?city_id=`** — one city with its zones. Default still fills
+      both dropdowns in one call.
+- [x] Both refuse an unknown id with a 422 instead of falling back to everything.
+- [x] **Slot capacity is enforced**, which is what the time-slots question turned
+      up: the column was set in the dashboard and read by nobody.
+      - a booking is a **visit**, so a pickup and a delivery in one window are two
+      - a cancelled order gives its place back
+      - `remaining` / `is_full` on `GET /time-slots?date=` so the app greys out a
+        full window instead of being refused at submit
+      - claimed under `lockForUpdate` inside the order transaction
+      - rescheduling checks it too; a confirmed repeat prompt is exempt
+- [x] The reference page is now **in Arabic, RTL**.
+
+## Answered, not built
+
+- **`/time-slots` are not the laundry's hours.** A laundry has no working hours
+  anywhere in this system. A slot is the window in which a *driver* visits, and
+  the customer picks it. Windows rather than exact times because a driver on a
+  route cannot promise 16:07.
+- **`/orders/quote` vs `/orders`**: the first prices and saves nothing, the second
+  creates the order, the four journeys, the coupon redemption and the
+  notifications. Both run the same pricing pass so they cannot disagree. Two calls
+  because the wizard totals the basket as it is built, and one call per tap would
+  be one order per tap.
+
+- [x] The slot list shows **booked today** and **booked tomorrow** per window,
+      with a full one marked — the other half of enforcing a number.
+
+## Still open
+
+- [ ] Capacity is **per window per day across the platform** — the column carries
+      no city and no laundry. Per-city or per-laundry is a schema change.
 

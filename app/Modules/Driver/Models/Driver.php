@@ -49,9 +49,6 @@ class Driver extends User
     }
 
     /**
-     * @return HasOne<DriverProfile, $this>
-     */
-    /**
      * The legs this driver is carrying.
      *
      * The isolation boundary for the driver API: every task lookup starts here,
@@ -64,6 +61,9 @@ class Driver extends User
         return $this->hasMany(OrderTask::class, 'driver_id');
     }
 
+    /**
+     * @return HasOne<DriverProfile, $this>
+     */
     public function profile(): HasOne
     {
         return $this->hasOne(DriverProfile::class, 'user_id');

@@ -16,6 +16,9 @@ use Illuminate\Support\Carbon;
  * @property string|null $license_number
  * @property Carbon|null $license_expiry
  * @property Carbon|null $vehicle_registration_expiry
+ * @property float|null $last_lat
+ * @property float|null $last_lng
+ * @property Carbon|null $located_at
  * @property string|null $shift_start
  * @property string|null $shift_end
  * @property bool $is_available
@@ -38,6 +41,9 @@ class DriverProfile extends Model
         'max_concurrent_orders',
         'city_id',
         'notes',
+        // Deliberately not fillable from any request payload: DriverController
+        // writes them with forceFill after checking there is a live task, and a
+        // profile update must not be able to move the driver on the map.
     ];
 
     protected function casts(): array
@@ -46,6 +52,9 @@ class DriverProfile extends Model
             'license_expiry' => 'date',
             'vehicle_registration_expiry' => 'date',
             'is_available' => 'boolean',
+            'last_lat' => 'float',
+            'last_lng' => 'float',
+            'located_at' => 'datetime',
         ];
     }
 

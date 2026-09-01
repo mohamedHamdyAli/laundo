@@ -231,6 +231,38 @@
     </div>
 </div>
 
+{{-- «ادعُ أصدقاءك» --}}
+<div class="row g-1 border rounded p-3 mb-3">
+    <h5 class="mb-3">{{ __('Referrals') }}</h5>
+    <p class="text-muted small">
+        {{ __('Both the inviter and the friend get this discount, once the friend has paid for their first order. Leave the value empty to run no referral programme.') }}
+    </p>
+    <div class="col-md-6">
+        <div class="form-group">
+            <label class="form-label">{{ __('Reward type') }}</label>
+            <div class="controls">
+                <select name="Referral_Reward_Type" class="form-control">
+                    <option value="percentage" {{ getSettingValue('Referral_Reward_Type') !== 'fixed' ? 'selected' : '' }}>
+                        {{ __('Percentage') }}
+                    </option>
+                    <option value="fixed" {{ getSettingValue('Referral_Reward_Type') === 'fixed' ? 'selected' : '' }}>
+                        {{ __('Fixed amount') }}
+                    </option>
+                </select>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="form-group">
+            <label class="form-label">{{ __('Reward value') }}</label>
+            <div class="controls">
+                <input type="number" step="0.01" min="0" name="Referral_Reward_Value" class="form-control"
+                    placeholder="0" value="{{ getSettingValue('Referral_Reward_Value') }}">
+            </div>
+        </div>
+    </div>
+</div>
+
 {{-- Region / Timezone --}}
 <div class="row g-1 border rounded p-3 mb-3">
     <h5 class="mb-3">{{ __('Region') }}</h5>

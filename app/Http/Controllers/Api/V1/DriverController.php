@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\V1;
 use App\Http\Controllers\Controller;
 use App\Models\Role;
 use App\Modules\Driver\Models\Driver;
+use App\Modules\Order\Enums\TaskStatus;
 use App\Services\Auth\OtpService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -94,6 +95,63 @@ class DriverController extends Controller
         $driver->update($data);
 
         return successReturnData($this->payload($driver->fresh(['profile', 'zones'])), __('Profile updated.'));
+    }
+
+    /**
+     * «تتبع المندوب مباشرة» — the driver's phone reporting where it is.
+     *
+     * Three rules, and each is a decision rather than a detail:
+     *
+     * **Only while they are carrying something.** A driver between jobs, or on
+     * their own time with the app open, is not tracked — the write is refused and
+     * the response says `tracking: false` so the app stops asking. Following
+     * somebody who is not working is not a feature of a laundry.
+     *
+     * **The last point only.** No trail. The design draws one moving dot, and a
+     * points table would be the largest in the system inside a month.
+     *
+     * **Never fillable.** Written with forceFill after the check above, so no
+     * profile update can move a driver on the map.
+     */
+    public function reportLocation(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'lat' => ['required', 'numeric', 'between:-90,90'],
+            'lng' => ['required', 'numeric', 'between:-180,180'],
+        ]);
+
+        $driver = $this->driver($request);
+
+        if (! $this->hasLiveTask($driver)) {
+            return successReturnData(
+                ['tracking' => false],
+                __('You have no journey in progress.')
+            );
+        }
+
+        $profile = $driver->profile;
+
+        if (! $profile) {
+            return successReturnData(['tracking' => false]);
+        }
+
+        $profile->forceFill([
+            'last_lat' => $data['lat'],
+            'last_lng' => $data['lng'],
+            'located_at' => now(),
+        ])->save();
+
+        return successReturnData(['tracking' => true]);
+    }
+
+    /**
+     * A leg somebody has been given and has not finished.
+     */
+    private function hasLiveTask(Driver $driver): bool
+    {
+        return $driver->tasks()
+            ->whereIn('status', [TaskStatus::Assigned->value, TaskStatus::Started->value])
+            ->exists();
     }
 
     /**

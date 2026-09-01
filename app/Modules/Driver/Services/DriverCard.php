@@ -3,6 +3,7 @@
 namespace App\Modules\Driver\Services;
 
 use App\Modules\Order\Enums\TaskStatus;
+use App\Modules\Order\Enums\TaskType;
 use App\Modules\Order\Models\Order;
 use App\Modules\Order\Models\OrderRating;
 use App\Modules\Order\Models\OrderTask;
@@ -43,6 +44,54 @@ class DriverCard
             // returning their clothes are usually not the same.
             'role' => __($task->type->label()),
             'rating' => $this->rating((int) $driver->id),
+            'location' => $this->location($task),
+        ];
+    }
+
+    /**
+     * How long a reading stays worth drawing.
+     *
+     * The app reports every thirty seconds, so four missed reports is a phone
+     * that has lost signal, been closed, or run out of battery. Past that the
+     * dot is removed rather than left where it was: a stationary marker reads as
+     * «السائق واقف» and sends the customer to the phone.
+     */
+    private const FRESH_FOR_SECONDS = 120;
+
+    /**
+     * Where the driver is — but only while they are coming to this customer.
+     *
+     * Legs two and three run between the laundry and back, and the customer is
+     * not waiting at either end of them. Showing a driver's live position for a
+     * journey nobody is waiting on is surveillance with no purpose, so the map
+     * is limited to the two legs that end at the customer's door.
+     *
+     * @return array<string, mixed>|null
+     */
+    private function location(OrderTask $task): ?array
+    {
+        if (! in_array($task->type, [TaskType::PickupFromCustomer, TaskType::DeliverToCustomer], true)) {
+            return null;
+        }
+
+        if (! in_array($task->status, [TaskStatus::Assigned, TaskStatus::Started], true)) {
+            return null;
+        }
+
+        $profile = $task->driver?->profile;
+
+        if (! $profile?->located_at || $profile->last_lat === null || $profile->last_lng === null) {
+            return null;
+        }
+
+        if ($profile->located_at->lt(now()->subSeconds(self::FRESH_FOR_SECONDS))) {
+            return null;
+        }
+
+        return [
+            'lat' => (float) $profile->last_lat,
+            'lng' => (float) $profile->last_lng,
+            'updated_at' => $profile->located_at->toIso8601String(),
         ];
     }
 
@@ -78,7 +127,7 @@ class DriverCard
      */
     private function liveTask(Order $order): ?OrderTask
     {
-        $tasks = $order->tasks()->with('driver:id,name,image_profile')->orderBy('sequence')->get();
+        $tasks = $order->tasks()->with(['driver:id,name,image_profile', 'driver.profile'])->orderBy('sequence')->get();
 
         return $tasks->first(fn (OrderTask $t) => in_array(
             $t->status,

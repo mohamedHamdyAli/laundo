@@ -248,6 +248,12 @@ class OrderController extends Controller
             'not_cancellable' => failReturnMsg(
                 __('This order can no longer be cancelled.')
             ),
+            // Named against the field so the wizard can mark the window red
+            // rather than showing a banner over the whole form.
+            'slot_full' => failReturnValidation(
+                ['pickup_slot_id' => [__('This window is fully booked. Please choose another one.')]],
+                __('This window is fully booked. Please choose another one.')
+            ),
             default => failReturnMsg(__('We could not complete your order.')),
         };
     }
@@ -406,6 +412,7 @@ class OrderController extends Controller
             return match ($e->getMessage()) {
                 'nothing_to_reschedule' => failReturnMsg(__('This order is not waiting for a new time.')),
                 'slot_not_available' => failReturnMsg(__('That time is not available.')),
+                'slot_full' => failReturnMsg(__('This window is fully booked. Please choose another one.')),
                 'date_in_the_past' => failReturnMsg(__('Choose a date from today onwards.')),
                 'not_your_order' => failReturnNotFound(__('Order not found.')),
                 default => failReturnMsg(__('Could not set a new time.')),
