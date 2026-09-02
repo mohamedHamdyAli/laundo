@@ -757,3 +757,42 @@ Two language cache keys were cleared and the flag still rendered stale, because
 last switched language. Data fixes to a row that also lives in the session need
 a fresh session to show up.
 
+## Fix the cause you measured, not the cause you guessed
+
+A select was 36px against a 37.85px input. The computed styles differed in
+exactly one place — `line-height: 1.35` vs `1.5` — and the arithmetic matched
+the 1.89px gap perfectly, so I changed it. The line-height did change (17.01 →
+18.9, confirmed) and the box stayed 36px: `custom.css` had
+`height: 36px !important` all along, and the padding-plus-line-height
+arithmetic was a coincidence that fit.
+
+**Rule:** before editing, enumerate every rule matching the element for the
+property you are changing — `height` included, not just the ones you suspect. A
+plausible arithmetic explanation is not evidence.
+
+## A fixed px height in a project override outlives the value it matched
+
+`height: 36px !important` was correct when the panel's inputs were 36px. Nobody
+changed it when they became 37.85px, and nothing could have caught it because
+both numbers were literals in different files. Express one in terms of the
+other — here, `height: auto` plus shared padding tokens — so they cannot drift.
+
+## «Required in every language» is the wrong rule for translatable content
+
+It blocks entering content that exists in one language, which is the normal
+case while a product is being built. The right rule is «at least one», and it
+matches what the read path does: a fallback chain that walks preferred →
+default → any. Requiring the *default* language looks like the safe middle
+ground and is not — it just moves which language does the blocking, and on this
+install the default was the one with no copy.
+
+Client and server have to agree: a plain `required` attribute cannot say «at
+least one of these», so it has to come off and the server-side message has to
+carry it.
+
+## Check the table has rows before reporting a feature as working
+
+The intro module was complete end to end — schema, API, dashboard CRUD, sidebar
+entry — and served an empty array, because nobody had entered the content. The
+design existed, the plumbing existed, and the screen did not.
+

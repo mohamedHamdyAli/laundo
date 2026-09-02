@@ -175,8 +175,18 @@ span.mySpanClass {
     width: 100% !important;
 }
 
+/* Was `height: 36px !important` — a fixed pixel height from when the panel's
+   text inputs were 36px too. They are 37.85px now, so every select in every
+   form sat 2px short of the field beside it, and being px it also stayed 36px
+   at every --ui-zoom level while its neighbours scaled.
+
+   `auto` lets the padding and line-height define the height, which theme.css
+   sets to the same values as `.form-control` — so the two match by
+   construction rather than by two numbers being kept in sync by hand. The
+   `!important` stays only to beat `select2.min.css`'s own `height: 28px` on
+   this same selector. */
 .select2-container .select2-selection--single {
-    height: 36px !important;
+    height: auto !important;
 }
 
 .select2-container--default .select2-selection--single .select2-selection__rendered {

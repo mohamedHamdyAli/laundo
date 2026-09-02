@@ -2626,7 +2626,11 @@ textarea.form-control {
 
 .select2-container--bootstrap-5 .select2-selection--single .select2-selection__rendered {
     color: var(--text-strong);
-    line-height: 1.35;
+    /* 1.5, matching `.form-control`, because this line box *is* the control's
+       height: the padding and border are identical on both, so a 1.35 here made
+       every select in the panel 36px against the 38px of the text input beside
+       it — 1.89px of line-height, and a row that never quite lined up. */
+    line-height: 1.5;
     padding: 0;
     padding-inline-end: 1.2rem;
 }

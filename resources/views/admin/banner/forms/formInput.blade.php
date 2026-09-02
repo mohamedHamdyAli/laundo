@@ -24,11 +24,16 @@
         <div class="form-group">
             <label for="banner-description" class="form-label">{{ __('Description') }}</label>
             <div class="controls">
-                <input type="description" name="description[{{ getDefaultLanguage('code') }}]" class="form-control"
+                {{-- Was `<input type="description">` — not an input type at
+                     all, so the browser fell back to a single-line text box for
+                     what the design lays out as a two-line paragraph. The
+                     default language also got that while the languages below it
+                     got `type="text"`: one field, two different controls.
+                     `service` and `faq` already use a textarea here. --}}
+                <textarea name="description[{{ getDefaultLanguage('code') }}]" class="form-control" rows="3"
                     {{ Route::is('*.show') ? 'disabled' : '' }} id="banner-description"
                     placeholder="{{ __('Enter Description') }}"
-                    value="{{ $descriptionTranslations[getDefaultLanguage('code')] ?? '' }}"
-                    {{ Route::is('*.create') ? 'required' : '' }}>
+                    {{ Route::is('*.create') ? 'required' : '' }}>{{ $descriptionTranslations[getDefaultLanguage('code')] ?? '' }}</textarea>
             </div>
         </div>
     </div>
@@ -143,14 +148,16 @@
 
         <div class="col-lg-6">
             <div class="mb-3">
+                {{-- The label and placeholder were bare strings while the
+                     default language's were wrapped in `__()`, so switching the
+                     panel to Arabic translated half of one form. --}}
                 <label for="banner-description-{{ $language->code }}" class="form-label">
-                    Description ({{ $language->name }})
+                    {{ __('Description') }} ({{ $language->name }})
                 </label>
-                <input type="text" name="description[{{ $language->code }}]" class="form-control"
+                <textarea name="description[{{ $language->code }}]" class="form-control" rows="3"
                     id="banner-description-{{ $language->code }}"
-                    placeholder="Enter Banner Description in {{ $language->name }}"
-                    value="{{ $descriptionTranslations[$language->code] ?? '' }}"
-                    {{ Route::is('*.show') ? 'disabled' : '' }}>
+                    placeholder="{{ __('Enter Description') }} ({{ $language->name }})"
+                    {{ Route::is('*.show') ? 'disabled' : '' }}>{{ $descriptionTranslations[$language->code] ?? '' }}</textarea>
             </div>
         </div>
     @endforeach
