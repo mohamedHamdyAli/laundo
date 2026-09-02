@@ -2,6 +2,20 @@
 
 ## 2026-09-02
 
+### Refactor
+
+- **The password reset is two calls now, because its middle screen was verifying nothing.** `POST /auth/reset-password` took `phone` + `code` + `password` together, so the app's «تحقق» screen could only hold the six digits and carry them to the password screen to be sent again — a wrong code was not discovered until after the password had been typed, and the code travelled twice. Split into:
+  - `POST /auth/verify-reset-code` { phone, code } → `{ reset_token, expires_in }` — **new**. Spends the code, so a wrong one is answered on the screen that asked for it and cannot be replayed on the step that follows.
+  - `POST /auth/reset-password` { reset_token, password, password_confirmation } — **changed**. No phone and no code: the ticket carries the identity, and asking for both only creates a way for them to disagree.
+
+  The ticket is 32 random bytes hex-encoded, stored as a SHA-256 digest so the password step can find the account in one indexed lookup — safe for a 64-character token in a way it would not be for the six-digit code beside it, which keeps its bcrypt hash. It is single-use, expires on its own 10-minute clock (`PASSWORD_RESET_TOKEN_TTL_SECONDS`, deliberately longer than the OTP's two minutes: the code is read off an SMS against a visible countdown, the ticket only has to survive choosing a password), and is **not** a Sanctum token — it opens nothing, and a test asserts it is rejected as a bearer credential. The old contract is broken rather than kept alongside, since no SMS provider is wired and no code has ever reached a real phone (Migration / Service / Controller / Request / Route).
+- Six new tests on the split: the flow end to end, the code refused as a ticket, a ticket refused twice, a code refused twice, an expired ticket answered identically to an unknown one, and the ticket rejected as an access token. Full API suite: **432 passing** (Tests).
+- The Postman collection and the Arabic API reference were both updated — the collection gains a «Verify reset code» request that captures `reset_token` into a collection variable for the request after it (Docs).
+
+### Fix
+
+- `reset-password` answered a malformed token and an unknown one with different `msg` values: a request-validation failure passes through `failedValidation()`, which promotes the first error into `msg`, while the controller's own refusal left the generic «Invalid data send» there. Both now carry the same sentence in the field an app is most likely to show (Controller).
+
 ### Fix
 
 - **Every `<select>` in the panel sat 2px shorter than the text input beside it.** `custom.css` pinned `.select2-selection--single` to `height: 36px !important` — a fixed pixel height from when the panel's inputs were 36px too; they are 37.85px now, and being px it also stayed 36px at every `--ui-zoom` level while its neighbours scaled. The height follows the padding and line-height instead, which theme.css sets to the same values as `.form-control`, so the two match by construction rather than by two hand-kept numbers. The line-height on the rendered value was also 1.35 against the control's 1.5. Verified equal at 37.85px on five screens, text still centred (CSS).

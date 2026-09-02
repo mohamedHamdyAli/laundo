@@ -796,3 +796,38 @@ The intro module was complete end to end — schema, API, dashboard CRUD, sideba
 entry — and served an empty array, because nobody had entered the content. The
 design existed, the plumbing existed, and the screen did not.
 
+## A verify step that does not consume anything is not a verify step
+
+The password reset took phone + code + password in one call. The design had a
+dedicated OTP screen with a «تحقق» button, so the app had to hold the six digits
+in memory, show a button that checked nothing, and send them again with the
+password. Two consequences: a wrong code was only discovered after the person
+had chosen a password, and the code crossed the wire twice.
+
+**Rule:** when a design has a discrete verify screen, the API needs a discrete
+verify call that spends the credential and returns a ticket for the next step.
+Read the screen order as a contract, not as decoration.
+
+## Match the hash to what is being hashed
+
+The OTP is bcrypt-hashed because six digits is a million possibilities and a
+salt-free digest of one is worth precomputing. The reset ticket is SHA-256
+because it is 32 random bytes — unguessable, so an unsalted digest gives nothing
+away, and unlike bcrypt it can be found in one indexed lookup, which the
+password step needs since it arrives with the token and no phone number. Same
+codebase, two credentials, two correct answers.
+
+## Check whether generated docs are actually generated
+
+`generate-reference.py` looked like it derived the reference from the Postman
+collection. It does not — the endpoint list is hand-written Python inside the
+script. Updating the collection changed nothing in the HTML until the script's
+own table was edited too.
+
+## The seeded fixture's password is not the payload's password
+
+Two new tests failed on `Hash::check('secret123', …)` because `customer()` in
+TestCase seeds `'password'` while the registration payload uses `secret123`.
+Read the factory or helper rather than assuming a value that appears elsewhere
+in the same file.
+

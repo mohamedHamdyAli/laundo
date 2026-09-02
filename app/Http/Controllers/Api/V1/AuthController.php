@@ -7,6 +7,7 @@ use App\Http\Requests\Api\V1\LoginRequest;
 use App\Http\Requests\Api\V1\RegisterRequest;
 use App\Http\Requests\Api\V1\ResetPasswordRequest;
 use App\Http\Requests\Api\V1\VerifyOtpRequest;
+use App\Http\Requests\Api\V1\VerifyResetCodeRequest;
 use App\Modules\User\Models\User;
 use App\Services\Auth\CustomerAuthService;
 use App\Services\Auth\OtpService;
@@ -118,25 +119,68 @@ class AuthController extends Controller
         return returnSuccessMsg('If the number is registered, a code has been sent.');
     }
 
-    public function resetPassword(ResetPasswordRequest $request): JsonResponse
+    /**
+     * The middle step: check the code and hand back a ticket for the password
+     * step.
+     *
+     * Split out of `resetPassword`, which used to take the phone, the code and
+     * the new password in one call — so the app's «verify» screen verified
+     * nothing and had to carry the six digits forward to be sent again. A wrong
+     * code is now answered on the screen that asked for it.
+     *
+     * The ticket is not an access token. It authorises exactly one thing, once.
+     */
+    public function verifyResetCode(VerifyResetCodeRequest $request): JsonResponse
     {
         $user = User::where('phone', $request->input('phone'))->first();
 
         if (! $user || ! $this->auth->isCustomer($user)) {
-            return failReturnNotFound('No account found for this phone number.');
+            return failReturnNotFound(__('No account found for this phone number.'));
         }
 
-        $result = $this->auth->completePasswordReset(
-            $user,
-            $request->input('code'),
-            $request->input('password')
-        );
+        $result = $this->auth->verifyResetCode($user, $request->input('code'));
 
         if (! $result['ok']) {
             return $this->otpFailure($result['reason'] ?? 'invalid');
         }
 
-        return returnSuccessMsg('Password updated. Please sign in again.');
+        return successReturnData([
+            'reset_token' => $result['token'],
+            // Seconds, so the app can show its own countdown on the password
+            // screen rather than discovering the ticket died on submit.
+            'expires_in' => $result['expires_in'],
+        ], __('Code confirmed.'));
+    }
+
+    /**
+     * The last step: spend the ticket and set the password.
+     *
+     * No phone and no code — the ticket carries the identity, and the code was
+     * consumed by `verifyResetCode`, which is what stops it being replayed here.
+     */
+    public function resetPassword(ResetPasswordRequest $request): JsonResponse
+    {
+        $result = $this->auth->completePasswordReset(
+            $request->input('reset_token'),
+            $request->input('password')
+        );
+
+        if (! $result['ok']) {
+            // One answer whether the ticket never existed, belongs to a staff
+            // account or has expired: none of that is the caller's business,
+            // and the way forward is the same in all three cases.
+            // The message is passed as the envelope's `msg` as well as into
+            // `errors`, so this reads the same as a request-validation failure
+            // on the same endpoint — those come through `failedValidation()`,
+            // which promotes the first error into `msg`, and leaving this one
+            // generic meant a bad token and a malformed one answered
+            // differently in the field the app is most likely to show.
+            $message = __('This password reset is no longer valid. Please request a new code.');
+
+            return failReturnValidation(['reset_token' => [$message]], $message);
+        }
+
+        return returnSuccessMsg(__('Password updated. Please sign in again.'));
     }
 
     /**

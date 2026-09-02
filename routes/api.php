@@ -135,6 +135,13 @@ Route::prefix('auth')->name('api.v1.auth.')->group(function () {
     Route::post('/forgot-password', [AuthController::class, 'forgotPassword'])
         ->middleware('throttle:otp')->name('forgot-password');
 
+    // The code step keeps the `otp-verify` limiter: it is the one that takes
+    // guesses at a six-digit code.
+    Route::post('/verify-reset-code', [AuthController::class, 'verifyResetCode'])
+        ->middleware('throttle:otp-verify')->name('verify-reset-code');
+
+    // The password step takes a 64-character ticket, which is not guessable, so
+    // this limiter is only there to stop a client hammering it.
     Route::post('/reset-password', [AuthController::class, 'resetPassword'])
         ->middleware('throttle:otp-verify')->name('reset-password');
 });

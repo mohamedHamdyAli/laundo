@@ -192,6 +192,10 @@ class CustomerAuthTest extends TestCase
         $this->assertSame($known->json('msg'), $unknown->json('msg'));
     }
 
+    /**
+     * The two-step reset, end to end. The code is spent on `verify-reset-code`
+     * and the password step presents only the ticket that step returned.
+     */
     public function test_password_reset_revokes_every_token(): void
     {
         $user = $this->customer('01011223344');
@@ -201,14 +205,138 @@ class CustomerAuthTest extends TestCase
 
         $code = app(OtpService::class)->issue($user);
 
+        $token = $this->withHeaders($this->apiHeaders())
+            ->postJson('/api/v1/auth/verify-reset-code', [
+                'phone' => '01011223344',
+                'code' => $code,
+            ])
+            ->assertOk()
+            ->json('data.reset_token');
+
+        $this->assertIsString($token);
+
         $this->withHeaders($this->apiHeaders())->postJson('/api/v1/auth/reset-password', [
-            'phone' => '01011223344',
-            'code' => $code,
+            'reset_token' => $token,
             'password' => 'brandnew123',
             'password_confirmation' => 'brandnew123',
         ])->assertOk();
 
         $this->assertSame(0, $user->fresh()->tokens()->count());
         $this->assertTrue(Hash::check('brandnew123', $user->fresh()->password));
+    }
+
+    /**
+     * The ticket is never the code. Sending the six digits to the password step
+     * is what the old single-call shape allowed, and it must not work.
+     */
+    public function test_the_password_step_will_not_accept_the_code(): void
+    {
+        $user = $this->customer('01011223344');
+        $code = app(OtpService::class)->issue($user);
+
+        $this->withHeaders($this->apiHeaders())->postJson('/api/v1/auth/reset-password', [
+            'reset_token' => $code,
+            'password' => 'brandnew123',
+            'password_confirmation' => 'brandnew123',
+        ])->assertStatus(422);
+
+        $this->assertTrue(Hash::check('password', $user->fresh()->password));
+    }
+
+    /**
+     * Single use. A ticket that has already bought a password change cannot buy
+     * a second one — which is what makes a captured ticket worth nothing after
+     * the person who earned it has finished.
+     */
+    public function test_a_reset_ticket_cannot_be_spent_twice(): void
+    {
+        $user = $this->customer('01011223344');
+        $code = app(OtpService::class)->issue($user);
+
+        $token = $this->withHeaders($this->apiHeaders())
+            ->postJson('/api/v1/auth/verify-reset-code', ['phone' => '01011223344', 'code' => $code])
+            ->assertOk()->json('data.reset_token');
+
+        $this->withHeaders($this->apiHeaders())->postJson('/api/v1/auth/reset-password', [
+            'reset_token' => $token,
+            'password' => 'brandnew123',
+            'password_confirmation' => 'brandnew123',
+        ])->assertOk();
+
+        $this->withHeaders($this->apiHeaders())->postJson('/api/v1/auth/reset-password', [
+            'reset_token' => $token,
+            'password' => 'thirdpassword123',
+            'password_confirmation' => 'thirdpassword123',
+        ])->assertStatus(422);
+
+        // Still the password the first, legitimate call set.
+        $this->assertTrue(Hash::check('brandnew123', $user->fresh()->password));
+    }
+
+    /**
+     * The code is consumed by the verify step, so it cannot be verified again
+     * to mint a second ticket.
+     */
+    public function test_a_reset_code_is_consumed_by_the_verify_step(): void
+    {
+        $user = $this->customer('01011223344');
+        $code = app(OtpService::class)->issue($user);
+
+        $this->withHeaders($this->apiHeaders())
+            ->postJson('/api/v1/auth/verify-reset-code', ['phone' => '01011223344', 'code' => $code])
+            ->assertOk();
+
+        $this->withHeaders($this->apiHeaders())
+            ->postJson('/api/v1/auth/verify-reset-code', ['phone' => '01011223344', 'code' => $code])
+            ->assertStatus(422);
+    }
+
+    /**
+     * An expired ticket is refused, and refused the same way as one that never
+     * existed.
+     */
+    public function test_an_expired_reset_ticket_is_refused(): void
+    {
+        $user = $this->customer('01011223344');
+        $code = app(OtpService::class)->issue($user);
+
+        $token = $this->withHeaders($this->apiHeaders())
+            ->postJson('/api/v1/auth/verify-reset-code', ['phone' => '01011223344', 'code' => $code])
+            ->assertOk()->json('data.reset_token');
+
+        $this->travel((int) config('sms.password_reset_token.ttl_seconds', 600) + 5)->seconds();
+
+        $expired = $this->withHeaders($this->apiHeaders())->postJson('/api/v1/auth/reset-password', [
+            'reset_token' => $token,
+            'password' => 'brandnew123',
+            'password_confirmation' => 'brandnew123',
+        ])->assertStatus(422);
+
+        $unknown = $this->withHeaders($this->apiHeaders())->postJson('/api/v1/auth/reset-password', [
+            'reset_token' => str_repeat('a', 64),
+            'password' => 'brandnew123',
+            'password_confirmation' => 'brandnew123',
+        ])->assertStatus(422);
+
+        $this->assertSame($unknown->json('msg'), $expired->json('msg'));
+        $this->assertTrue(Hash::check('password', $user->fresh()->password));
+    }
+
+    /**
+     * The ticket is not an access token. Presenting it as a bearer credential
+     * must not reach anything.
+     */
+    public function test_a_reset_ticket_is_not_an_access_token(): void
+    {
+        $user = $this->customer('01011223344');
+        $code = app(OtpService::class)->issue($user);
+
+        $token = $this->withHeaders($this->apiHeaders())
+            ->postJson('/api/v1/auth/verify-reset-code', ['phone' => '01011223344', 'code' => $code])
+            ->assertOk()->json('data.reset_token');
+
+        $this->withHeaders($this->apiHeaders() + ['Authorization' => 'Bearer '.$token])
+            ->getJson('/api/v1/me')
+            ->assertUnauthorized();
     }
 }

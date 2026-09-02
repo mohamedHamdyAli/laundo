@@ -51,4 +51,15 @@ return [
         'ttl_seconds' => (int) env('OTP_TTL_SECONDS', 120),
         'max_attempts' => (int) env('OTP_MAX_ATTEMPTS', 5),
     ],
+
+    /*
+     * The ticket handed out when a reset code checks out, and spent by the
+     * password step. Its own lifetime, deliberately longer than the OTP's two
+     * minutes: the code has to be read off an SMS and typed against a visible
+     * countdown, while this one only has to survive somebody choosing and
+     * confirming a password on the next screen.
+     */
+    'password_reset_token' => [
+        'ttl_seconds' => (int) env('PASSWORD_RESET_TOKEN_TTL_SECONDS', 600),
+    ],
 ];

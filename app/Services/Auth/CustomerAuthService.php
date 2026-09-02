@@ -126,12 +126,20 @@ class CustomerAuthService
     }
 
     /**
-     * Finish a password reset. Every existing token is revoked, because a
-     * password change is exactly when a compromised session must be cut off.
+     * Spend a reset code and hand back the ticket the password step presents.
      *
-     * @return array{ok: bool, reason?: string}
+     * This used to be one call with the new password, which meant the OTP
+     * screen verified nothing: it held the six digits until the password screen
+     * submitted code and password together. The code is consumed here, so a
+     * wrong one is answered while the person is still looking at the keypad,
+     * and it cannot be replayed on the step that follows.
+     *
+     * The ticket is not a Sanctum token and grants no access to anything — it
+     * can only be spent on `completePasswordReset`, once, within its own TTL.
+     *
+     * @return array{ok: bool, reason?: string, token?: string, expires_in?: int}
      */
-    public function completePasswordReset(User $user, string $code, string $password): array
+    public function verifyResetCode(User $user, string $code): array
     {
         $result = $this->otp->verify($user, $code);
 
@@ -139,15 +147,68 @@ class CustomerAuthService
             return $result;
         }
 
+        $ttl = (int) config('sms.password_reset_token.ttl_seconds', 600);
+        $token = bin2hex(random_bytes(32));
+
+        $user->forceFill([
+            // SHA-256, not bcrypt: the password step arrives with the token and
+            // no phone number, so this column has to be searchable. Safe for 32
+            // random bytes in a way it would not be for a six-digit code.
+            'password_reset_token' => hash('sha256', $token),
+            'password_reset_token_expires_at' => now()->addSeconds($ttl),
+            // Answering the code is what proves possession of the number, so
+            // the verification is recorded at this step rather than waiting for
+            // a password that may never be set.
+            'phone_verified_at' => $user->phone_verified_at ?? now(),
+        ])->save();
+
+        return ['ok' => true, 'token' => $token, 'expires_in' => $ttl];
+    }
+
+    /**
+     * Finish a password reset against a ticket from `verifyResetCode`.
+     *
+     * Every existing access token is revoked, because a password change is
+     * exactly when a session somebody else is holding must be cut off.
+     *
+     * @return array{ok: bool, reason?: string}
+     */
+    public function completePasswordReset(string $token, string $password): array
+    {
+        $user = User::where('password_reset_token', hash('sha256', $token))->first();
+
+        // One answer for «no such ticket», «not a customer's» and «expired», so
+        // the endpoint says nothing about tokens that exist.
+        if (! $user || ! $this->isCustomer($user)) {
+            return ['ok' => false, 'reason' => 'invalid_token'];
+        }
+
+        if (! $user->password_reset_token_expires_at || now()->greaterThan($user->password_reset_token_expires_at)) {
+            $this->burnResetToken($user);
+
+            return ['ok' => false, 'reason' => 'invalid_token'];
+        }
+
         $user->forceFill([
             'password' => Hash::make($password),
-            // A reset also proves possession of the number.
-            'phone_verified_at' => $user->phone_verified_at ?? now(),
+            'password_reset_token' => null,
+            'password_reset_token_expires_at' => null,
         ])->save();
 
         $user->tokens()->delete();
 
-        return ['ok' => true];
+        return ['ok' => true, 'user' => $user];
+    }
+
+    /**
+     * Discard whatever reset ticket is on the account.
+     */
+    public function burnResetToken(User $user): void
+    {
+        $user->forceFill([
+            'password_reset_token' => null,
+            'password_reset_token_expires_at' => null,
+        ])->save();
     }
 
     /**
