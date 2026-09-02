@@ -1,50 +1,62 @@
 @forelse ($refunds as $refund)
-    <tr>
-        <td>
-            @if ($refund->order)
-                <a href="{{ route('admin.order.show', $refund->order->id) }}">#{{ $refund->order->code }}</a>
-            @else
-                —
-            @endif
-        </td>
-        <td>
-            {{ $refund->customer?->name ?? '—' }}
-            <small class="text-muted d-block">{{ $refund->customer?->phone }}</small>
-        </td>
-        <td><strong>{{ moneyFormat($refund->amount) }}</strong></td>
-        <td>
-            {{ $refund->reason }}
-            @if ($refund->note)
-                <small class="text-muted d-block">{{ $refund->note }}</small>
-            @endif
-        </td>
-        <td>
-            <span class="badge
-                @if ($refund->status === \App\Modules\Payment\Models\Refund::SETTLED) bg-success
-                @elseif ($refund->status === \App\Modules\Payment\Models\Refund::REJECTED) bg-secondary
-                @elseif ($refund->isAwaitingSettlement()) bg-warning text-dark
-                @else bg-info @endif">
-                {{ __($refund->statusLabel()) }}
+    @php
+        // Approved but never paid out is the case that quietly disappears, so it
+        // takes the stripe alongside an outright rejection.
+        $needsAction = $refund->isAwaitingSettlement();
+        $rejected = $refund->status === \App\Modules\Payment\Models\Refund::REJECTED;
+    @endphp
+    <div class="stack-row {{ $needsAction || $rejected ? 'tone-bad' : '' }}">
+        <div>
+            <span class="row-lead">
+                @if ($refund->order)
+                    <a href="{{ route('admin.order.show', $refund->order->id) }}">#{{ $refund->order->code }}</a>
+                @else
+                    —
+                @endif
             </span>
-            @if ($refund->isAwaitingSettlement())
-                {{-- Approved but never paid out. Without this it disappears. --}}
-                <small class="d-block text-danger">{{ __('Payout pending') }}</small>
+            <span class="row-sub">{{ humanDate($refund->created_at) }}</span>
+        </div>
+        <div>
+            <span class="row-main">{{ $refund->customer?->name ?? '—' }}</span>
+            <span class="row-sub">{{ $refund->customer?->phone }}</span>
+        </div>
+        <div>
+            <span class="row-main">{{ $refund->reason }}</span>
+            <span class="row-sub">{{ $refund->note ?: '—' }}</span>
+        </div>
+        <div>
+            @if ($refund->status === \App\Modules\Payment\Models\Refund::SETTLED)
+                <span class="status-pill tone-ok">{{ __($refund->statusLabel()) }}</span>
+            @elseif ($rejected)
+                <span class="status-pill tone-bad">{{ __($refund->statusLabel()) }}</span>
+            @elseif ($needsAction)
+                <span class="status-pill tone-warn">{{ __($refund->statusLabel()) }}</span>
+            @else
+                <span class="status-pill tone-live">{{ __($refund->statusLabel()) }}</span>
             @endif
-            @if ($refund->reviewer)
-                <small class="text-muted d-block">{{ $refund->reviewer->name }}</small>
-            @endif
-        </td>
-        <td>{{ humanDate($refund->created_at) }}</td>
-        <td class="text-center">
+            <span class="row-sub">
+                @if ($needsAction)
+                    {{ __('Payout pending') }}
+                @elseif ($refund->reviewer)
+                    {{ $refund->reviewer->name }}
+                @else
+                    —
+                @endif
+            </span>
+        </div>
+        <div class="row-amount">
+            {{ moneyFormat($refund->amount) }}
+        </div>
+        <div class="stack-actions">
             @if (canDo('refund.update') && $refund->isPending())
-                <button class="btn btn-sm btn-outline-success" data-bs-toggle="modal"
+                <button class="btn btn-sm act-text" data-bs-toggle="modal"
                     data-bs-target="#approve-{{ $refund->id }}">
                     {{ __('Approve') }}
                 </button>
 
                 <form method="POST" action="{{ route('admin.refund.reject', $refund->id) }}" class="d-inline">
                     @csrf
-                    <button type="submit" class="btn btn-sm btn-outline-danger">{{ __('Reject') }}</button>
+                    <button type="submit" class="btn btn-sm act-text act-text-danger">{{ __('Reject') }}</button>
                 </form>
 
                 <div class="modal fade" id="approve-{{ $refund->id }}" tabindex="-1">
@@ -81,18 +93,16 @@
                         </form>
                     </div>
                 </div>
-            @elseif (canDo('refund.update') && $refund->isAwaitingSettlement())
+            @elseif (canDo('refund.update') && $needsAction)
                 <form method="POST" action="{{ route('admin.refund.settle', $refund->id) }}">
                     @csrf
-                    <button type="submit" class="btn btn-sm btn-warning">{{ __('Retry payout') }}</button>
+                    <button type="submit" class="btn btn-sm act-text">{{ __('Retry payout') }}</button>
                 </form>
             @else
-                <span class="text-muted">—</span>
+                <span class="row-sub">—</span>
             @endif
-        </td>
-    </tr>
+        </div>
+    </div>
 @empty
-    <tr>
-        <td colspan="7" class="text-center">{{ __('No data found') }}</td>
-    </tr>
+    <div class="stack-empty">{{ __('No data found') }}</div>
 @endforelse

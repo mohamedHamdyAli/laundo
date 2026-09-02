@@ -161,8 +161,8 @@
         </div>
     @endif
 
-    <div class="col-12">
-        {{ __('Translation') }}
+    <div class="col-12 form-divider">
+        <div class="form-section-legend">{{ __('Translation') }}</div>
     </div>
 
     @foreach (getAllLanguageWithoutDefault() as $language)

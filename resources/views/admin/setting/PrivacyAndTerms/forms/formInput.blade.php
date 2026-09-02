@@ -6,7 +6,7 @@
     $TermsPolicyJson = getSettingValue('Terms');
     $TermsTranslations = !empty($TermsPolicyJson) ? json_decode($TermsPolicyJson, true) : [];
 @endphp
-<div class="row g-1">
+<div class="row g-3">
     <div class="col-md-6">
         <div class="form-group">
             <div class="mb-4">

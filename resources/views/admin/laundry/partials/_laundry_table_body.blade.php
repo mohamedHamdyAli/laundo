@@ -1,21 +1,34 @@
 @forelse ($laundries as $laundry)
-    <tr>
-        <td>{!! getImageDashboardUrl($laundry->logo) !!}</td>
-        <td>{{ $laundry->id ?? 'None' }}</td>
-        <td>{{ getLocalizedValueDashboard($laundry, 'name') }}</td>
-        <td>{{ $laundry->phone ?? 'None' }}</td>
-        <td>{{ $laundry->city ? getLocalizedValueDashboard($laundry->city, 'name') : 'None' }}</td>
-        <td>
+    <div class="stack-row {{ $laundry->status === 'active' ? '' : 'tone-bad' }}">
+        <div>
+            <span class="row-thumb">{!! getImageDashboardUrl($laundry->logo) !!}</span>
+        </div>
+        <div>
+            <span class="row-lead">
+                @if (canDo('laundry.view'))
+                    <a href="{{ route('admin.laundry.show', $laundry->id) }}">{{ getLocalizedValueDashboard($laundry, 'name') }}</a>
+                @else
+                    {{ getLocalizedValueDashboard($laundry, 'name') }}
+                @endif
+            </span>
+            <span class="row-sub">#{{ $laundry->id }}</span>
+        </div>
+        <div>
+            <span class="row-main">{{ $laundry->phone ?? '-' }}</span>
+        </div>
+        <div>
+            {{-- Which city a laundry sits in decides which orders can reach it,
+                 so it belongs beside the name rather than three columns away. --}}
+            <span class="row-main">{{ $laundry->city ? getLocalizedValueDashboard($laundry->city, 'name') : '-' }}</span>
+        </div>
+        <div>
             <x-status-toggle-button :id="$laundry->id" :status="$laundry->status"
                 endpoint="{{ route('admin.laundry.toggleStatus', $laundry->id) }}" permission="laundry.toggle" />
-        </td>
-        <td>{{ humanDate($laundry->created_at, 'Y-m-d H:i') }}</td>
-        <td class="text-center">
+        </div>
+        <div class="stack-actions">
             @include('admin.laundry.shared.controlBut', ['row' => $laundry])
-        </td>
-    </tr>
+        </div>
+    </div>
 @empty
-    <tr>
-        <td colspan="8" class="text-center">{{ __('No data found') }}</td>
-    </tr>
+    <div class="stack-empty">{{ __('No data found') }}</div>
 @endforelse

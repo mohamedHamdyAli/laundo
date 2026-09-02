@@ -1,48 +1,54 @@
 @forelse ($wallets as $wallet)
-    <tr class="{{ $wallet->isReconciled() ? '' : 'table-danger' }}">
-        <td>
-            {{ $wallet->owner?->name ?? '—' }}
-            <small class="text-muted d-block">
-                {{ $wallet->owner?->phone ?? $wallet->owner?->email }}
-            </small>
-        </td>
-        <td><strong>{{ moneyFormat($wallet->balance) }}</strong></td>
-        <td>
-            @if ((float) $wallet->pending_balance > 0)
-                {{ moneyFormat($wallet->pending_balance) }}
-                <small class="text-muted d-block">{{ __('Not yet withdrawable') }}</small>
-            @else
-                <span class="text-muted">—</span>
-            @endif
-        </td>
-        <td>
+    {{-- A wallet whose balance disagrees with its own ledger is the one row on
+         this screen somebody has to act on, so it takes the stripe. --}}
+    <div class="stack-row {{ $wallet->isReconciled() ? '' : 'tone-bad' }}">
+        <div>
+            <span class="row-lead">
+                @if (canDo('wallet.view'))
+                    <a href="{{ route('admin.wallet.show', $wallet->id) }}">{{ $wallet->owner?->name ?? '—' }}</a>
+                @else
+                    {{ $wallet->owner?->name ?? '—' }}
+                @endif
+            </span>
+            <span class="row-sub">{{ $wallet->owner?->phone ?? $wallet->owner?->email }}</span>
+        </div>
+        <div>
             @if ($wallet->isReconciled())
-                <span class="badge bg-success">{{ __('Balanced') }}</span>
+                <span class="status-pill tone-ok">{{ __('Balanced') }}</span>
             @else
                 {{-- Surfaced rather than left to be discovered in a dispute. --}}
-                <span class="badge bg-danger">{{ __('Does not match the ledger') }}</span>
-                <small class="d-block text-danger">
-                    {{ __('Ledger') }}: {{ moneyFormat($wallet->ledgerBalance()) }}
-                </small>
+                <span class="status-pill tone-bad">{{ __('Does not match the ledger') }}</span>
+                <span class="row-sub">{{ __('Ledger') }}: {{ moneyFormat($wallet->ledgerBalance()) }}</span>
             @endif
-        </td>
-        <td>
+        </div>
+        <div>
             @if ($wallet->is_frozen)
-                <span class="badge bg-warning text-dark">{{ __('On hold') }}</span>
+                <span class="status-pill tone-warn">{{ __('On hold') }}</span>
             @else
-                <span class="badge bg-light text-dark">{{ __('Active') }}</span>
+                <span class="status-pill tone-ok">{{ __('Active') }}</span>
             @endif
-        </td>
-        <td class="text-center">
+        </div>
+        <div>
+            @if ((float) $wallet->pending_balance > 0)
+                <span class="row-main">{{ moneyFormat($wallet->pending_balance) }}</span>
+                <span class="row-sub">{{ __('Not yet withdrawable') }}</span>
+            @else
+                <span class="row-sub">—</span>
+            @endif
+        </div>
+        <div class="row-amount">
+            {{ moneyFormat($wallet->balance) }}
+            <span class="row-sub">{{ __('Balance') }}</span>
+        </div>
+        <div class="stack-actions">
             @if (canDo('wallet.view'))
-                <a href="{{ route('admin.wallet.show', $wallet->id) }}" class="btn btn-sm btn-outline-primary">
+                <a href="{{ route('admin.wallet.show', $wallet->id) }}" class="btn btn-sm action-btn action-view"
+                    title="{{ __('View') }}" aria-label="{{ __('View') }}">
                     <i class="fa fa-eye"></i>
                 </a>
             @endif
-        </td>
-    </tr>
+        </div>
+    </div>
 @empty
-    <tr>
-        <td colspan="6" class="text-center">{{ __('No data found') }}</td>
-    </tr>
+    <div class="stack-empty">{{ __('No data found') }}</div>
 @endforelse

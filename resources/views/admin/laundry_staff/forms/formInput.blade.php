@@ -6,7 +6,7 @@
     $canChooseLaundry = !LaundryContext::isTenant();
 @endphp
 
-<div class="row g-1">
+<div class="row g-3">
     <div class="col-md-4">
         <div class="form-group">
             <label class="form-label">{{ __('Name') }} <span class="text-danger">*</span></label>
@@ -46,7 +46,7 @@
             <div class="form-group">
                 <label class="form-label">{{ __('Laundry') }} <span class="text-danger">*</span></label>
                 <div class="controls">
-                    <select name="laundry_id" class="form-control" {{ Route::is('*.create') ? 'required' : '' }}
+                    <select name="laundry_id" class="form-select" {{ Route::is('*.create') ? 'required' : '' }}
                         {{ Route::is('*.show') ? 'disabled' : '' }}>
                         <option value="">{{ __('Select Laundry') }}</option>
                         @foreach ($laundries ?? [] as $laundry)
@@ -65,7 +65,7 @@
         <div class="form-group">
             <label class="form-label">{{ __('Role') }} <span class="text-danger">*</span></label>
             <div class="controls">
-                <select name="role_id" class="form-control" {{ Route::is('*.create') ? 'required' : '' }}
+                <select name="role_id" class="form-select" {{ Route::is('*.create') ? 'required' : '' }}
                     {{ Route::is('*.show') ? 'disabled' : '' }}>
                     <option value="">{{ __('Select Role') }}</option>
                     @foreach ($roles ?? [] as $role)
@@ -83,7 +83,7 @@
         <div class="form-group">
             <label class="form-label">{{ __('Status') }}</label>
             <div class="controls">
-                <select name="status" class="form-control" {{ Route::is('*.show') ? 'disabled' : '' }}>
+                <select name="status" class="form-select" {{ Route::is('*.show') ? 'disabled' : '' }}>
                     <option value="active" {{ isset($row) && $row->status == 'active' ? 'selected' : '' }}>
                         {{ __('Active') }}</option>
                     <option value="inactive" {{ isset($row) && $row->status == 'inactive' ? 'selected' : '' }}>

@@ -43,7 +43,7 @@
                 {{-- Both apps list «الأسئلة الشائعة» and the answers are not the
                      same: a driver asking when they get paid and a customer asking
                      when they get their clothes should not read each other's list. --}}
-                <select name="audience" id="faq-audience" class="form-control" {{ $readOnly ? 'disabled' : '' }}>
+                <select name="audience" id="faq-audience" class="form-select" {{ $readOnly ? 'disabled' : '' }}>
                     <option value="both" @selected(($row->audience ?? 'both') === 'both')>{{ __('Both apps') }}</option>
                     <option value="customer" @selected(($row->audience ?? '') === 'customer')>{{ __('Customers') }}</option>
                     <option value="driver" @selected(($row->audience ?? '') === 'driver')>{{ __('Drivers') }}</option>
@@ -67,7 +67,7 @@
         <div class="form-group">
             <label class="form-label">{{ __('Status') }}</label>
             <div class="controls">
-                <select name="status" class="form-control" {{ $readOnly ? 'disabled' : '' }}>
+                <select name="status" class="form-select" {{ $readOnly ? 'disabled' : '' }}>
                     <option value="active" @selected(($row->status ?? 'active') === 'active')>{{ __('active') }}</option>
                     <option value="inactive" @selected(($row->status ?? '') === 'inactive')>{{ __('inactive') }}</option>
                 </select>

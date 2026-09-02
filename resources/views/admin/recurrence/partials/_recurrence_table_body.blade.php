@@ -1,91 +1,87 @@
 @forelse ($recurrences as $row)
-    <tr>
-        <td>
-            {{ $row->customer?->name ?? '—' }}
-            <small class="text-muted d-block">{{ $row->customer?->phone }}</small>
-        </td>
-        <td>
-            {{ $row->service ? getLocalizedValueDashboard($row->service, 'name') : '—' }}
-        </td>
-        <td>
-            {{ __(ucfirst($row->frequency)) }}
-            @if (! is_null($row->day_of_week))
-                <small class="text-muted d-block">
+    <div class="stack-row {{ $row->status === 'cancelled' ? 'tone-bad' : '' }}">
+        <div>
+            <span class="row-lead">{{ $row->customer?->name ?? '—' }}</span>
+            <span class="row-sub">{{ $row->customer?->phone }}</span>
+        </div>
+        <div>
+            <span class="row-main">
+                {{ $row->service ? getLocalizedValueDashboard($row->service, 'name') : '—' }}
+            </span>
+            <span class="row-sub">
+                {{ __(ucfirst($row->frequency)) }}@if (! is_null($row->day_of_week)) ·
                     {{ \Illuminate\Support\Carbon::now()->startOfWeek()->addDays((int) $row->day_of_week)->translatedFormat('l') }}
-                </small>
-            @endif
-        </td>
-        <td>
-            @if ($row->status === 'active' && $row->next_prompt_on)
-                {{ $row->next_prompt_on->translatedFormat('d M Y') }}
-            @else
-                {{-- Paused and cancelled schedules carry no next date, and showing
-                     a stale one would suggest a prompt is still coming. --}}
-                <span class="text-muted">—</span>
-            @endif
-        </td>
-        <td>
+                @endif
+            </span>
+        </div>
+        <div>
             @if ($row->prompts_count === 0)
-                <span class="text-muted">{{ __('Not asked yet') }}</span>
+                <span class="row-sub">{{ __('Not asked yet') }}</span>
             @else
-                <strong>{{ $row->answered_prompts_count }}</strong>/{{ $row->prompts_count }}
-                <small class="text-muted d-block">
-                    {{ $row->confirmed_prompts_count }} {{ __('became orders') }}
-                </small>
+                <span class="row-main">{{ $row->answered_prompts_count }}/{{ $row->prompts_count }}</span>
+                <span class="row-sub">{{ $row->confirmed_prompts_count }} {{ __('became orders') }}</span>
             @endif
-        </td>
-        <td>
+        </div>
+        <div>
             @if ($row->status === 'active')
-                <span class="badge bg-success">{{ __('Active') }}</span>
+                <span class="status-pill tone-ok">{{ __('Active') }}</span>
             @elseif ($row->status === 'paused')
-                <span class="badge bg-warning">{{ __('Paused') }}</span>
+                <span class="status-pill tone-warn">{{ __('Paused') }}</span>
             @else
-                <span class="badge bg-secondary">{{ __('Cancelled') }}</span>
+                <span class="status-pill tone-bad">{{ __('Cancelled') }}</span>
             @endif
-        </td>
-        <td class="text-center">
-            <div class="d-inline-flex gap-1">
-                @if (canDo('order_recurrence.view'))
-                    <a href="{{ route('admin.recurrence.show', $row->id) }}"
-                        class="btn btn-sm btn-outline-primary" title="{{ __('View') }}">
-                        <i class="fa fa-eye"></i>
-                    </a>
+            {{-- Paused and cancelled schedules carry no next date, and showing a
+                 stale one would suggest a prompt is still coming. --}}
+            <span class="row-sub">
+                @if ($row->status === 'active' && $row->next_prompt_on)
+                    {{ __('Next') }} {{ $row->next_prompt_on->translatedFormat('d M Y') }}
+                @else
+                    —
                 @endif
+            </span>
+        </div>
+        <div class="stack-actions">
+            @if (canDo('order_recurrence.view'))
+                <a href="{{ route('admin.recurrence.show', $row->id) }}" class="btn btn-sm action-btn action-view"
+                    title="{{ __('View') }}" aria-label="{{ __('View') }}">
+                    <i class="fa fa-eye"></i>
+                </a>
+            @endif
 
-                @if (canDo('order_recurrence.update') && $row->status === 'active')
-                    <form method="POST" action="{{ route('admin.recurrence.pause', $row->id) }}" class="d-inline">
-                        @csrf
-                        <button type="submit" class="btn btn-sm btn-outline-warning" title="{{ __('Pause') }}">
-                            <i class="fa fa-pause"></i>
-                        </button>
-                    </form>
-                @endif
+            @if (canDo('order_recurrence.update') && $row->status === 'active')
+                <form method="POST" action="{{ route('admin.recurrence.pause', $row->id) }}" class="d-inline">
+                    @csrf
+                    <button type="submit" class="btn btn-sm action-btn action-edit"
+                        title="{{ __('Pause') }}" aria-label="{{ __('Pause') }}">
+                        <i class="fa fa-pause"></i>
+                    </button>
+                </form>
+            @endif
 
-                @if (canDo('order_recurrence.update') && $row->status === 'paused')
-                    <form method="POST" action="{{ route('admin.recurrence.resume', $row->id) }}" class="d-inline">
-                        @csrf
-                        <button type="submit" class="btn btn-sm btn-outline-success" title="{{ __('Resume') }}">
-                            <i class="fa fa-play"></i>
-                        </button>
-                    </form>
-                @endif
+            @if (canDo('order_recurrence.update') && $row->status === 'paused')
+                <form method="POST" action="{{ route('admin.recurrence.resume', $row->id) }}" class="d-inline">
+                    @csrf
+                    <button type="submit" class="btn btn-sm action-btn action-view"
+                        title="{{ __('Resume') }}" aria-label="{{ __('Resume') }}">
+                        <i class="fa fa-play"></i>
+                    </button>
+                </form>
+            @endif
 
-                @if (canDo('order_recurrence.delete') && $row->status !== 'cancelled')
-                    {{-- Cancelling is final: the customer has to create the
-                         schedule again, so it asks first. --}}
-                    <form method="POST" action="{{ route('admin.recurrence.cancel', $row->id) }}" class="d-inline"
-                        onsubmit="return confirm(@js(__('Cancel this schedule for good? The customer would have to set it up again.')));">
-                        @csrf
-                        <button type="submit" class="btn btn-sm btn-outline-danger" title="{{ __('Cancel') }}">
-                            <i class="fa fa-times"></i>
-                        </button>
-                    </form>
-                @endif
-            </div>
-        </td>
-    </tr>
+            @if (canDo('order_recurrence.delete') && $row->status !== 'cancelled')
+                {{-- Cancelling is final: the customer has to create the schedule
+                     again, so it asks first. --}}
+                <form method="POST" action="{{ route('admin.recurrence.cancel', $row->id) }}" class="d-inline"
+                    onsubmit="return confirm(@js(__('Cancel this schedule for good? The customer would have to set it up again.')));">
+                    @csrf
+                    <button type="submit" class="btn btn-sm action-btn action-delete"
+                        title="{{ __('Cancel') }}" aria-label="{{ __('Cancel') }}">
+                        <i class="fa fa-times"></i>
+                    </button>
+                </form>
+            @endif
+        </div>
+    </div>
 @empty
-    <tr>
-        <td colspan="7" class="text-center">{{ __('No data found') }}</td>
-    </tr>
+    <div class="stack-empty">{{ __('No data found') }}</div>
 @endforelse

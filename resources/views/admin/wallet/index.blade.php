@@ -53,21 +53,25 @@
                         </div>
 
                         <div class="table-responsive">
-                            <table class="table table-borderless table-striped" id="table_list">
-                                <thead class="table-light">
-                                    <tr>
-                                        <th>{{ __('Owner') }}</th>
-                                        <th>{{ __('Balance') }}</th>
-                                        <th>{{ __('Pending') }}</th>
-                                        <th>{{ __('Ledger') }}</th>
-                                        <th>{{ __('State') }}</th>
-                                        <th class="text-center">{{ __('Action') }}</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="wallet-table-body">
-                                    @include('admin.wallet.partials._wallet_table_body', ['wallets' => $wallets])
-                                </tbody>
-                            </table>
+                        @php
+                            // Shared by the label strip and every row, so the labels
+                            // sit exactly over the fields they name.
+                            $stackCols = 'minmax(8rem,1.1fr) minmax(9rem,1.2fr) minmax(6rem,auto) minmax(7rem,.9fr) minmax(7rem,auto) minmax(3rem,auto)';
+                        @endphp
+
+                        <div class="stack-head" style="--stack-cols: {{ $stackCols }}">
+                            <span>{{ __('Owner') }}</span>
+                            <span>{{ __('Reconciliation') }}</span>
+                            <span>{{ __('Hold') }}</span>
+                            <span>{{ __('Pending') }}</span>
+                            <span class="text-end">{{ __('Balance') }}</span>
+                            <span class="text-end">{{ __('Action') }}</span>
+                        </div>
+
+                        <div class="data-stack" id="wallet-table-body" style="--stack-cols: {{ $stackCols }}">
+                            @include('admin.wallet.partials._wallet_table_body', ['wallets' => $wallets])
+                        </div>
+
                         </div>
 
                         <div id="pagination-wrapper">
@@ -88,7 +92,10 @@
                 tableBodySelector: '#wallet-table-body',
                 paginationWrapperSelector: '#pagination-wrapper',
                 url: "{{ route('admin.wallet.search') }}",
-                colspan: 6
+                // Card rows, not a table: the helper's default
+                // <tr><td colspan> failure message would be stray
+                // markup here.
+                errorHtml: '<div class="stack-empty text-danger">Error during search</div>'
             });
         });
     </script>

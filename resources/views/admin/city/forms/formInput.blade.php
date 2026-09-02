@@ -2,7 +2,7 @@
     $nameTranslations = isset($row) ? (is_string($row->name) ? json_decode($row->name, true) : (array) $row->name) : [];
 @endphp
 
-<div class="row g-1">
+<div class="row g-3">
     {{-- Name --}}
     <div class="col-md-4">
         <div class="form-group">
@@ -20,7 +20,7 @@
         <div class="form-group">
             <label class="form-label">{{ __('Country') }}</label>
             <div class="controls">
-                <select name="country_id" class="form-control" {{ Route::is('*.show') ? 'disabled' : '' }}>
+                <select name="country_id" class="form-select" {{ Route::is('*.show') ? 'disabled' : '' }}>
                     <option value="">{{ __('Select Country') }}</option>
                     @foreach ($countries as $country)
                         @php
@@ -53,10 +53,10 @@
 </div>
 
 {{-- Translation Optional --}}
-<div class="col-12">
-    {{ __('Translation') }}
+<div class="col-12 form-divider">
+    <div class="form-section-legend">{{ __('Translation') }}</div>
 </div>
-<div class="row g-1">
+<div class="row g-3">
     @foreach (getAllLanguageWithoutDefault() as $language)
         <div class="col-md-6">
             <div class="form-group">

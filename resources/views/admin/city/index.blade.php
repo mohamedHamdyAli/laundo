@@ -5,7 +5,7 @@
     <div class="card-header d-flex justify-content-between align-items-center">
         <h5 class="card-title mb-0">{{ __('City') }}</h5>
         @if (canDo('city.create'))
-        <a href="{{ route('admin.city.create') }}" class="badge alert-info primary-background-color">
+        <a href="{{ route('admin.city.create') }}" class="btn-add">
             <i class="fa fa-plus"></i>{{ __('Add City') }}
         </a>
         @endif
@@ -24,23 +24,23 @@
                         </div>
                         <div id="search-info" class="mb-3 small text-muted text-end" style="display: none;"></div>
 
-                        <table class="table table-borderless table-striped" id="table_list">
-                            <thead class="table-light">
-                                <tr>
-                                    <th>{{ __('ID') }}</th>
-                                    <th>{{ __('Name') }}</th>
-                                    <th>{{ __('Country Name') }}</th>
-                                    <th>{{ __('Status') }}</th>
-                                    <th>{{ __('Created At') }}</th>
-                                    <th class="text-center">{{ __('Action') }}</th>
-                                </tr>
-                            </thead>
-                            <tbody id="city-table-body">
-                                @include('admin.city.partials._city_table_body', [
-                                    'cities' => $cities,
-                                ])
-                            </tbody>
-                        </table>
+                        @php
+                            // Shared by the label strip and every row, so the labels
+                            // sit exactly over the fields they name.
+                            $stackCols = 'minmax(9rem,1.4fr) minmax(8rem,1fr) minmax(7rem,auto) minmax(8rem,1fr) minmax(6rem,auto)';
+                        @endphp
+
+                        <div class="stack-head" style="--stack-cols: {{ $stackCols }}">
+                            <span>{{ __('Name') }}</span>
+                            <span>{{ __('Country Name') }}</span>
+                            <span>{{ __('Status') }}</span>
+                            <span>{{ __('Created At') }}</span>
+                            <span class="text-end">{{ __('Action') }}</span>
+                        </div>
+
+                        <div class="data-stack" id="city-table-body" style="--stack-cols: {{ $stackCols }}">
+                            @include('admin.city.partials._city_table_body', [ 'cities' => $cities, ])
+                        </div>
 
                         <div id="pagination-wrapper">
                             {{ $cities->links() }}
@@ -60,7 +60,10 @@
                 tableBodySelector: '#city-table-body',
                 paginationWrapperSelector: '#pagination-wrapper',
                 url: "{{ route('admin.city.search') }}",
-                colspan: 8
+                // Card rows, not a table: the helper's default
+                // <tr><td colspan> failure message would be stray
+                // markup here.
+                errorHtml: '<div class="stack-empty text-danger">Error during search</div>'
             });
         });
     </script>

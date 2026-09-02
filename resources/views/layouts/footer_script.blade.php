@@ -70,6 +70,58 @@
 {{-- Custom JS --}}
 <script type="text/javascript" src="{{ asset('assets/js/custom/common.js') }}"></script>
 <script type="text/javascript" src="{{ asset('assets/js/custom/custom.js') }}"></script>
+
+{{--
+    The panel's own dropdowns.
+
+    A native <select>'s open list is drawn by the operating system and takes no
+    CSS, which is why it never matched anything around it. select2 is already
+    bundled and already loaded — it was initialised only on a `.select2` class
+    that none of the 55 selects in the admin forms carried, so the library
+    shipped unused while every dropdown stayed a system menu.
+
+    Deliberately narrow: `.form-select` only, skipping anything already turned
+    into a select2 by custom.js or function.js, and skipping multiple selects,
+    which are a different control.
+--}}
+<script>
+    $(function () {
+        if (typeof $.fn.select2 !== 'function') {
+            return;
+        }
+
+        $('select.form-select').each(function () {
+            const $el = $(this);
+
+            if ($el.data('select2') || $el.prop('multiple') || $el.hasClass('select2')) {
+                return;
+            }
+
+            $el.select2({
+                theme: 'bootstrap-5',
+                width: '100%',
+                // A search box earns its place on a list of cities, not on
+                // Active/Inactive. Below ten options it is only in the way.
+                minimumResultsForSearch: 10,
+                // Inside a modal the dropdown has to be parented to the modal
+                // or it is clipped by the overlay and rendered behind it.
+                dropdownParent: $el.closest('.modal').length
+                    ? $el.closest('.modal')
+                    : $(document.body),
+                placeholder: $el.find('option[value=""]').first().text() || null,
+                // The empty first option of these forms is the placeholder, so
+                // the field must be clearable back to it.
+                allowClear: $el.prop('required') !== true && $el.find('option[value=""]').length > 0,
+            });
+        });
+
+        // A locked field is read-only on the detail screens; select2 has to be
+        // told separately or it stays interactive over a disabled input.
+        $('select.form-select:disabled').each(function () {
+            $(this).prop('disabled', true).trigger('change.select2');
+        });
+    });
+</script>
 <script type="text/javascript" src="{{ asset('assets/js/custom/function.js') }}"></script>
 
 {{-- Notifications --}}
@@ -164,11 +216,16 @@
             .then(data => {
                 if (data.success) {
                     button.dataset.status = data.status;
-                    button.classList.toggle('btn-success');
-                    button.classList.toggle('btn-danger');
-                    button.innerHTML = data.status === 'active' ?
-                        '<i class="fa fa-check-circle me-1"></i> Active' :
-                        '<i class="fa fa-times-circle me-1"></i> Inactive';
+                    const on = data.status === 'active';
+                    // Tone classes, and the label from the button's own data —
+                    // this used to write hard-coded English into the cell, so a
+                    // toggle on the Arabic panel switched that one cell to
+                    // English until the next page load.
+                    button.classList.toggle('tone-ok', on);
+                    button.classList.toggle('tone-bad', !on);
+                    button.textContent = on
+                        ? button.dataset.labelActive
+                        : button.dataset.labelInactive;
                 }
             })
             .catch(error => {
@@ -260,7 +317,12 @@
                 },
                 error: function(xhr) {
                     console.error('Error:', xhr.responseText);
+                    // Every list but one is a table, so the table row stays the
+                    // default. A list that is not a table — the orders stack —
+                    // passes its own markup, because a bare <tr> injected into a
+                    // div is dropped by the parser and the failure goes silent.
                     tableBody.html(
+                        config.errorHtml ??
                         `<tr><td colspan="${config.colspan}" class="text-center text-danger">Error during search</td></tr>`
                     );
                 }

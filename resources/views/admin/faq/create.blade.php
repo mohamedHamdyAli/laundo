@@ -1,24 +1,21 @@
 @extends('layouts.main')
 @section('content')
     <div class="card-header align-items-center d-flex">
-        <h4 class="card-title mb-0 flex-grow-1">{{ __('Add Question') }}</h4>
+        <h5 class="card-title mb-0 flex-grow-1">{{ __('Add Question') }}</h5>
     </div>
     <div class="row">
         <div class="col-lg-12">
             <div class="card">
                 <div class="card-body">
-                    <div class="live-preview">
-                        <form class="row g-3 needs-validation store" action="{{ route('admin.faq.store') }}" method="POST">
-                            @csrf
-                            
-                            @include('layouts.validateMessage.errorMessage')
-                            @include('admin.faq.forms.formInput')
-                            <div class="col-12">
-                                <button class="btn btn-primary mt-3 mb-2" style="display:block;width:10%;"
-                                    type="submit">{{ __('Add') }}</button>
-                            </div>
-                        </form>
-                    </div>
+                    <form class="row g-3 needs-validation store" action="{{ route('admin.faq.store') }}" method="POST">
+                        @csrf
+                        
+                        @include('layouts.validateMessage.errorMessage')
+                        @include('admin.faq.forms.formInput')
+                        <div class="form-actions">
+                            <button class="btn btn-primary" type="submit">{{ __('Add') }}</button>
+                        </div>
+                    </form>
                 </div>
             </div>
         </div>

@@ -32,7 +32,11 @@
                     <h3 class="mb-0 {{ $summary['cancellation_rate'] > 10 ? 'text-danger' : '' }}">
                         {{ $summary['cancellation_rate'] }}%
                     </h3>
-                    <small class="text-muted">{{ $summary['cancelled'] }} {{ __('orders') }}</small>
+                    {{-- «1 orders» is what a bare noun gives you at n=1. Both of these
+                         sub-lines drop the noun — the heading above already names it —
+                         so the phrase is grammatical at any count, in either language,
+                         without a pluralisation table for two labels. --}}
+                    <small class="text-muted">{{ $summary['cancelled'] }} {{ __('cancelled') }}</small>
                 </div></div>
             </div>
             <div class="col-md-3">
@@ -71,7 +75,7 @@
                         <div class="col-md-3">
                             <h6 class="text-muted mb-1">{{ __('Price went up') }}</h6>
                             <h4>{{ $priceMovement['increase_rate'] }}%</h4>
-                            <small class="text-muted">{{ $priceMovement['increased'] }} {{ __('orders') }}</small>
+                            <small class="text-muted">{{ $priceMovement['increased'] }} {{ __('of them') }}</small>
                         </div>
                         <div class="col-md-3">
                             <h6 class="text-muted mb-1">{{ __('Average change') }}</h6>

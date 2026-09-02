@@ -8,7 +8,7 @@
                 <span class="badge bg-warning text-dark ms-2">{{ __('On hold') }}</span>
             @endif
         </h5>
-        <a href="{{ route('admin.wallet.index') }}" class="badge alert-secondary">
+        <a href="{{ route('admin.wallet.index') }}" class="btn-quiet">
             <i class="fa fa-arrow-left"></i> {{ __('Back') }}
         </a>
     </div>

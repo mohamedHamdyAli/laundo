@@ -7,7 +7,7 @@
         : [];
 @endphp
 {{-- Title / description / Order --}}
-<div class="row g-1">
+<div class="row g-3">
     <div class="col-md-4">
         <div class="form-group">
             <label for="banner-name" class="form-label">{{ __('Name') }}</label>
@@ -36,7 +36,7 @@
         <div class="form-group">
             <label class="form-label">{{ __('Status') }}</label>
             <div class="controls">
-                <select name="status" class="form-control" {{ Route::is('*.show') ? 'disabled' : '' }}>
+                <select name="status" class="form-select" {{ Route::is('*.show') ? 'disabled' : '' }}>
                     <option value="active" {{ isset($row) && $row->status == 'active' ? 'selected' : '' }}>
                         {{ __('active') }}</option>
                     <option value="inactive" {{ isset($row) && $row->status == 'inactive' ? 'selected' : '' }}>
@@ -57,7 +57,7 @@
         <div class="form-group">
             <label for="banner-target-type" class="form-label">{{ __('When tapped') }}</label>
             <div class="controls">
-                <select name="target_type" id="banner-target-type" class="form-control"
+                <select name="target_type" id="banner-target-type" class="form-select"
                     {{ Route::is('*.show') ? 'disabled' : '' }}>
                     @foreach ($targetTypes as $case)
                         <option value="{{ $case->value }}"
@@ -74,7 +74,7 @@
         <div class="form-group" id="banner-target-service-wrap">
             <label for="banner-target-service" class="form-label">{{ __('Service to open') }}</label>
             <div class="controls">
-                <select name="target_value" id="banner-target-service" class="form-control"
+                <select name="target_value" id="banner-target-service" class="form-select"
                     {{ Route::is('*.show') ? 'disabled' : '' }}>
                     @foreach ($services as $service)
                         <option value="{{ $service->id }}"
@@ -89,7 +89,7 @@
         <div class="form-group" id="banner-target-coupon-wrap">
             <label for="banner-target-coupon" class="form-label">{{ __('Discount code to apply') }}</label>
             <div class="controls">
-                <select name="target_value" id="banner-target-coupon" class="form-control"
+                <select name="target_value" id="banner-target-coupon" class="form-select"
                     {{ Route::is('*.show') ? 'disabled' : '' }}>
                     @foreach ($coupons as $coupon)
                         <option value="{{ $coupon->code }}"
@@ -127,7 +127,7 @@
 
 {{-- userRole / status --}}
 
-<div class="row g-1">
+<div class="row g-3">
     @foreach (getAllLanguageWithoutDefault() as $language)
         <div class="col-lg-6">
             <div class="mb-3">

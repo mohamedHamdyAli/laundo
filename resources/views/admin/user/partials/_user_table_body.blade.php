@@ -1,33 +1,40 @@
 @forelse ($users as $user)
-    <tr>
-        <td>{!! getImageDashboardUrl($user->image_profile) !!}</td>
-        <td>{{ $user->id ?? 'None' }}</td>
-        <td>{{ $user->name ?? 'None' }}</td>
-        {{-- «مرجع العميل» — the number printed on this customer's bags. It is how
-             the laundry matches a parcel whose label is torn, so it is worth more
-             on this screen than the raw row id beside it. --}}
-        <td>
-            @if ($user->customer_reference)
-                <span class="badge bg-light text-dark">{{ $user->customer_reference }}</span>
-            @else
-                <span class="text-muted">—</span>
-            @endif
-        </td>
-
-        <td>{{ $user->phone ?? 'None' }}</td>
-        <td>
+    {{-- An inactive record gets the stripe; an active one is the normal case
+         and does not need flagging. --}}
+    <div class="stack-row {{ $user->status === 'active' ? '' : 'tone-bad' }}">
+        <div>
+            <span class="row-thumb">{!! getImageDashboardUrl($user->image_profile) !!}</span>
+        </div>
+        <div>
+            <span class="row-lead">
+                @if (canDo('user.view'))
+                    <a href="{{ route('admin.user.show', $user->id) }}">{{ $user->name ?? '-' }}</a>
+                @else
+                    {{ $user->name ?? '-' }}
+                @endif
+            </span>
+            <span class="row-sub">#{{ $user->id }}</span>
+        </div>
+        <div>
+            <span class="row-main">{{ $user->phone ?? '-' }}</span>
+            {{-- «مرجع العميل» — the number printed on this customer's bags. It is
+                 how the laundry matches a parcel whose label is torn, so it is
+                 worth more on this screen than the raw row id. --}}
+            <span class="row-sub">
+                {{ $user->customer_reference ? __('Ref') . ' ' . $user->customer_reference : __('No reference') }}
+            </span>
+        </div>
+        <div>
             <x-status-toggle-button :id="$user->id" :status="$user->status"
                 endpoint="{{ route('admin.user.toggleStatus', $user->id) }}" permission="user.toggle" />
-        </td>
-        <td>{{ humanDate($user->created_at, 'Y-m-d H:i') }}</td>
-        <td class="text-center">
-            @include('admin.user.shared.controlBut', [
-                'row' => $user,
-            ])
-        </td>
-    </tr>
+        </div>
+        <div>
+            <span class="row-sub">{{ humanDate($user->created_at, 'Y-m-d H:i') }}</span>
+        </div>
+        <div class="stack-actions">
+            @include('admin.user.shared.controlBut', ['row' => $user])
+        </div>
+    </div>
 @empty
-    <tr>
-        <td colspan="8" class="text-center">{{ __('No data found') }}</td>
-    </tr>
+    <div class="stack-empty">{{ __('No data found') }}</div>
 @endforelse

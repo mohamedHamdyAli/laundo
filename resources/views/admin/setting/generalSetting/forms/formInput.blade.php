@@ -4,7 +4,7 @@
 @endphp
 
 {{-- General Setting --}}
-<div class="row g-1 border rounded p-3 mb-3">
+<div class="row g-3 border rounded p-3 mb-3">
     <h5 class="mb-3">{{ __('General Setting') }}</h5>
     <div class="col-md-4">
         <div class="form-group">
@@ -72,8 +72,10 @@
             </div>
         </div>
     </div>
-    <div class="col-12 mt-3">
-        <strong>{{ __('Translation') }}</strong>
+    {{-- The same legend the CRUD forms use, so «Translation» reads as a section
+         heading here too rather than a bold line floating between fields. --}}
+    <div class="col-12 form-divider">
+        <div class="form-section-legend">{{ __('Translation') }}</div>
     </div>
     <div class="row">
         <div class="col-md-6">
@@ -103,7 +105,7 @@
 </div>
 
 {{-- Social Setting --}}
-<div class="row g-1 border rounded p-3 mb-3">
+<div class="row g-3 border rounded p-3 mb-3">
     <h5 class="mb-3">{{ __('Social Setting') }}</h5>
     <div class="col-md-3">
         <div class="form-group">
@@ -186,7 +188,7 @@
 </div>
 
 {{-- Contact US --}}
-<div class="row g-1 border rounded p-3 mb-3">
+<div class="row g-3 border rounded p-3 mb-3">
     <h5 class="mb-3">{{ __('Contact Us') }}</h5>
     <div class="col-md-4">
         <div class="form-group">
@@ -218,7 +220,7 @@
 </div>
 
 {{-- App Tax --}}
-<div class="row g-1 border rounded p-3 mb-3">
+<div class="row g-3 border rounded p-3 mb-3">
     <h5 class="mb-3">{{ __('App Tax') }}</h5>
     <div class="col-md-6">
         <div class="form-group">
@@ -232,7 +234,7 @@
 </div>
 
 {{-- «ادعُ أصدقاءك» --}}
-<div class="row g-1 border rounded p-3 mb-3">
+<div class="row g-3 border rounded p-3 mb-3">
     <h5 class="mb-3">{{ __('Referrals') }}</h5>
     <p class="text-muted small">
         {{ __('Both the inviter and the friend get this discount, once the friend has paid for their first order. Leave the value empty to run no referral programme.') }}
@@ -241,7 +243,7 @@
         <div class="form-group">
             <label class="form-label">{{ __('Reward type') }}</label>
             <div class="controls">
-                <select name="Referral_Reward_Type" class="form-control">
+                <select name="Referral_Reward_Type" class="form-select">
                     <option value="percentage" {{ getSettingValue('Referral_Reward_Type') !== 'fixed' ? 'selected' : '' }}>
                         {{ __('Percentage') }}
                     </option>
@@ -264,13 +266,13 @@
 </div>
 
 {{-- Region / Timezone --}}
-<div class="row g-1 border rounded p-3 mb-3">
+<div class="row g-3 border rounded p-3 mb-3">
     <h5 class="mb-3">{{ __('Region') }}</h5>
     <div class="col-md-6">
         <div class="form-group">
             <label class="form-label">{{ __('Country') }}</label>
             <div class="controls">
-                <select name="Country_Id" class="form-control">
+                <select name="Country_Id" class="form-select">
                     <option value="">{{ __('Select Country') }}</option>
                     @foreach (\App\Modules\Country\Models\Country::where('status', 'active')->get() as $country)
                         <option value="{{ $country->id }}"

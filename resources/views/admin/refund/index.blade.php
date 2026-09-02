@@ -11,7 +11,11 @@
                 <div class="card">
                     <div class="card-body">
                         <h6 class="text-muted mb-1">{{ __('Under review') }}</h6>
-                        <h3 class="mb-0 {{ $counts['pending'] > 0 ? 'text-info' : '' }}">
+                        {{-- `text-attention`, not `text-info`: the sibling money screens
+                             (payments, driver earnings) already use it for «a nonzero count
+                             that needs looking at», and Bootstrap's info cyan measures
+                             1.96:1 on white — unreadable for the one number on the card. --}}
+                        <h3 class="mb-0 {{ $counts['pending'] > 0 ? 'text-attention' : '' }}">
                             {{ $counts['pending'] }}
                         </h3>
                         <small class="text-muted">{{ __('Waiting for a decision') }}</small>
@@ -51,22 +55,25 @@
                         </div>
 
                         <div class="table-responsive">
-                            <table class="table table-borderless table-striped" id="table_list">
-                                <thead class="table-light">
-                                    <tr>
-                                        <th>{{ __('Order') }}</th>
-                                        <th>{{ __('Customer') }}</th>
-                                        <th>{{ __('Amount') }}</th>
-                                        <th>{{ __('Reason') }}</th>
-                                        <th>{{ __('Status') }}</th>
-                                        <th>{{ __('Requested') }}</th>
-                                        <th class="text-center">{{ __('Action') }}</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="refund-table-body">
-                                    @include('admin.refund.partials._refund_table_body', ['refunds' => $refunds])
-                                </tbody>
-                            </table>
+                        @php
+                            // Shared by the label strip and every row, so the labels
+                            // sit exactly over the fields they name.
+                            $stackCols = 'minmax(7rem,.9fr) minmax(8rem,1fr) minmax(9rem,1.2fr) minmax(7rem,auto) minmax(6rem,auto) minmax(9rem,auto)';
+                        @endphp
+
+                        <div class="stack-head" style="--stack-cols: {{ $stackCols }}">
+                            <span>{{ __('Order') }}</span>
+                            <span>{{ __('Customer') }}</span>
+                            <span>{{ __('Reason') }}</span>
+                            <span>{{ __('Status') }}</span>
+                            <span class="text-end">{{ __('Amount') }}</span>
+                            <span class="text-end">{{ __('Action') }}</span>
+                        </div>
+
+                        <div class="data-stack" id="refund-table-body" style="--stack-cols: {{ $stackCols }}">
+                            @include('admin.refund.partials._refund_table_body', ['refunds' => $refunds])
+                        </div>
+
                         </div>
 
                         <div id="pagination-wrapper">
@@ -87,7 +94,10 @@
                 tableBodySelector: '#refund-table-body',
                 paginationWrapperSelector: '#pagination-wrapper',
                 url: "{{ route('admin.refund.search') }}",
-                colspan: 7
+                // Card rows, not a table: the helper's default
+                // <tr><td colspan> failure message would be stray
+                // markup here.
+                errorHtml: '<div class="stack-empty text-danger">Error during search</div>'
             });
 
             // A filter change reloads rather than repainting: the approve modals

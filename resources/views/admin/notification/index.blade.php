@@ -69,21 +69,23 @@
                         </div>
 
                         <div class="table-responsive">
-                            <table class="table table-borderless table-striped" id="table_list">
-                                <thead class="table-light">
-                                    <tr>
-                                        <th>{{ __('Recipient') }}</th>
-                                        <th>{{ __('Event') }}</th>
-                                        <th>{{ __('Channel') }}</th>
-                                        <th>{{ __('Message') }}</th>
-                                        <th>{{ __('Status') }}</th>
-                                        <th>{{ __('When') }}</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="notification-table-body">
-                                    @include('admin.notification.partials._notification_table_body', ['logs' => $logs])
-                                </tbody>
-                            </table>
+                        @php
+                            // Shared by the label strip and every row, so the labels
+                            // sit exactly over the fields they name.
+                            $stackCols = 'minmax(8rem,1.1fr) minmax(9rem,1.1fr) minmax(12rem,1.8fr) minmax(8rem,auto)';
+                        @endphp
+
+                        <div class="stack-head" style="--stack-cols: {{ $stackCols }}">
+                            <span>{{ __('Recipient') }}</span>
+                            <span>{{ __('Event') }}</span>
+                            <span>{{ __('Message') }}</span>
+                            <span>{{ __('Status') }}</span>
+                        </div>
+
+                        <div class="data-stack" id="notification-table-body" style="--stack-cols: {{ $stackCols }}">
+                            @include('admin.notification.partials._notification_table_body', ['logs' => $logs])
+                        </div>
+
                         </div>
 
                         <div id="pagination-wrapper">
@@ -104,7 +106,10 @@
                 tableBodySelector: '#notification-table-body',
                 paginationWrapperSelector: '#pagination-wrapper',
                 url: "{{ route('admin.notification.search') }}",
-                colspan: 6
+                // Card rows, not a table: the helper's default
+                // <tr><td colspan> failure message would be stray
+                // markup here.
+                errorHtml: '<div class="stack-empty text-danger">Error during search</div>'
             });
 
             // Both filters hit the same endpoint and compose with the term, so a

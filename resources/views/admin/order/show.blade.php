@@ -4,17 +4,19 @@
     <div class="card-header d-flex justify-content-between align-items-center">
         <h5 class="card-title mb-0">
             {{ __('Order') }} #{{ $row->code }}
-            <span class="badge {{ $row->status->isTerminal() ? 'bg-secondary' : 'bg-info' }} ms-2">
+            <span class="status-pill tone-{{ $row->status->tone() }} ms-2">
                 {{ __($row->status->label()) }}
             </span>
         </h5>
         <div class="d-flex gap-2">
-            <a href="{{ route('admin.order.invoice', $row->id) }}" target="_blank"
-                class="badge alert-info">
-                <i class="fa fa-file-invoice"></i> {{ __('Invoice') }}
+            {{-- Both were badges wearing button classes: a badge is sized for a
+                 count, which is why two of the page's controls were the smallest
+                 things on it. --}}
+            <a href="{{ route('admin.order.invoice', $row->id) }}" target="_blank" class="btn-quiet">
+                <i class="fa fa-file-invoice"></i>{{ __('Invoice') }}
             </a>
-            <a href="{{ route('admin.order.index') }}" class="badge alert-secondary">
-                <i class="fa fa-arrow-left"></i> {{ __('Back') }}
+            <a href="{{ route('admin.order.index') }}" class="btn-quiet">
+                <i class="fa fa-arrow-left"></i>{{ __('Back') }}
             </a>
         </div>
     </div>

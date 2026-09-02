@@ -45,16 +45,17 @@ class UserController extends Controller
 
     public function show($id)
     {
-        $user = $this->userService->getUser($id);
-
-        return view('admin.user.show', compact('user'));
+        // `row`, not `user`: every shared form partial in the panel reads the
+        // record as `$row`, and this module's own formInput does so nine times.
+        // Passing it as `user` left `$row` undefined — the show screen was a
+        // 500 and the edit screen silently rendered an empty form, which on
+        // submit would have written the blanks back over the record.
+        return view('admin.user.show', ['row' => $this->userService->getUser($id)]);
     }
 
     public function edit($id)
     {
-        $user = $this->userService->getUser($id);
-
-        return view('admin.user.edit', compact('user'));
+        return view('admin.user.edit', ['row' => $this->userService->getUser($id)]);
     }
 
     public function update(UserRequest $request, $id)

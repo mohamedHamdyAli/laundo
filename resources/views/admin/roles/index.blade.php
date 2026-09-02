@@ -1,17 +1,26 @@
 @extends('layouts.main')
 @section('content')
-    <div class="container-fluid">
+    {{-- The page header follows the rest of the panel now: a plain title on the
+         page ground, with the primary action beside it. It used to be a
+         full-width saturated blue banner with white type — the only screen in
+         the dashboard that announced itself that way.
 
-        {{-- Header --}}
-        <div class="d-flex justify-content-between align-items-center mb-4 p-3 role-header">
-            <h4 class="text-white mb-0">{{ __('Permission') }}</h4>
+         The title also said «Permission» while the page lists roles, which is
+         what the sidebar calls it and what the reader came looking for. --}}
+    <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <h5 class="card-title mb-0">{{ __('Roles') }}</h5>
 
-            @if (canDo('role.create'))
-                <button class="btn btn-role" data-bs-toggle="modal" data-bs-target="#createRoleModal">
-                    + {{ __('Create Role') }}
-                </button>
-            @endif
-        </div>
+        @if (canDo('role.create'))
+            {{-- Same job on the page as every other list's «Add …», so the same
+                 treatment. The bare «+ » was a plus sign typed into the label
+                 rather than an icon. --}}
+            <button type="button" class="btn-add" data-bs-toggle="modal" data-bs-target="#createRoleModal">
+                <i class="fa fa-plus"></i>{{ __('Create Role') }}
+            </button>
+        @endif
+    </div>
+
+    <section class="section">
 
         @foreach ($roles as $role)
             <div class="card mb-3 shadow-sm">
@@ -20,7 +29,9 @@
                 <div class="card-body d-flex justify-content-between align-items-center">
                     <strong>{{ $role->name }}</strong>
 
-                    <button type="button" class="btn btn-role toggle-permissions" data-role="{{ $role->id }}">
+                    {{-- Opening the permission grid is a secondary action; as a
+                         solid fill it was as loud as the page's primary. --}}
+                    <button type="button" class="btn-quiet toggle-permissions" data-role="{{ $role->id }}">
                         {{ __('Permission') }}
                     </button>
                 </div>
@@ -85,7 +96,7 @@
                     </div>
 
                     <div class="modal-footer">
-                        <button type="submit" class="btn btn-role">
+                        <button type="submit" class="btn btn-primary">
                             {{ __('Save Role') }}
                         </button>
                     </div>
@@ -93,7 +104,7 @@
 
             </div>
         </div>
-    </div>
+    </section>
 @endsection
 
 <script>

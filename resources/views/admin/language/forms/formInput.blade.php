@@ -1,5 +1,5 @@
 {{-- username / email / code --}}
-<div class="row g-1">
+<div class="row g-3">
     <div class="col-md-4">
         <div class="form-group">
             <label class="form-label">{{ __('Name') }}</label>
@@ -34,12 +34,12 @@
 
 {{-- userRole / is_rtl --}}
 
-<div class="row g-1">
+<div class="row g-3">
     <div class="col-md-4">
         <div class="form-group">
             <label class="form-label">{{ __('Status') }}</label>
             <div class="controls">
-                <select name="status" class="form-control" {{ Route::is('*.show') ? 'disabled' : '' }}>
+                <select name="status" class="form-select" {{ Route::is('*.show') ? 'disabled' : '' }}>
                     <option value="active" {{ isset($row) && $row->status == 'active' ? 'selected' : '' }}>
                         {{ __('active') }}</option>
                     <option value="inactive" {{ isset($row) && $row->status == 'inactive' ? 'selected' : '' }}>
@@ -52,7 +52,7 @@
         <div class="form-group">
             <label class="form-label">{{ __('Is Rtl') }}</label>
             <div class="controls">
-                <select name="is_rtl" class="form-control">
+                <select name="is_rtl" class="form-select">
                     <option value="true" {{ isset($row) && $row->is_rtl == 'true' ? 'selected' : '' }}>
                         {{ __('True') }}</option>
                     <option value="false" {{ isset($row) && $row->is_rtl == 'false' ? 'selected' : '' }}>
@@ -65,7 +65,7 @@
         <div class="form-group">
             <label class="form-label">{{ __('default') }}</label>
             <div class="controls">
-                <select name="default" class="form-control">
+                <select name="default" class="form-select">
                     <option value="false" {{ isset($row) && $row->default == 'false' ? 'selected' : '' }}>
                         {{ __('False') }}</option>
                     <option value="true" {{ isset($row) && $row->default == 'true' ? 'selected' : '' }}>
@@ -104,7 +104,7 @@
         </div>
     </div>
     {{-- app_file / panel_file / web_file --}}
-    <div class="row g-1 mt-2">
+    <div class="row g-3 mt-2">
         @foreach (['app_file' => 'App File', 'panel_file' => 'Panel File', 'web_file' => 'Web File'] as $field => $label)
             <div class="col-md-4">
                 <div class="mb-6">

@@ -15,7 +15,16 @@
     <meta charset="UTF-8">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="shortcut icon" href="{{ $favicon ?? url('assets/images/logo/favicon.png') }}" type="image/x-icon">
+    {{-- The bundled favicon was the vendor template's own logo — a cyan
+         magnifying glass, another product's brand mark, sitting in the tab of
+         every page. `laundo-mark.png` is the leading letterform of the Laundo
+         wordmark, cropped square and padded so it still reads at 16px, where
+         the wide wordmark is only a smear.
+
+         `type="image/png"`, not `image/x-icon`: the file was always a PNG, and
+         some browsers ignore a link whose declared type does not match and fall
+         back to /favicon.ico — which ships empty here, hence the blank tab. --}}
+    <link rel="icon" type="image/png" href="{{ asset('assets/images/brand/laundo-mark.png') }}">
     <title>{{ __('Login') }}</title>
     <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@300;400;600;700;800&display=swap" rel="stylesheet">
     @if ($currentLangCode === 'ar')
@@ -34,7 +43,8 @@
             <div class="login-form-inner">
                 <div class="mb-4">
                     {{-- White panel, so the navy mark. --}}
-                    <img src="{{ $appLogoDark }}" alt="{{ config('app.name') }}" style="max-height:48px;">
+                    <img src="{{ $appLogoDark }}" class="login-form-logo"
+                        alt="{{ getSettingValue('App_Name') ?: config('app.name') }}">
                 </div>
 
                 <h3>{{ __('Welcome back') }}</h3>
@@ -67,22 +77,29 @@
                         @enderror
                     </div>
 
-                    <button class="btn btn-gold w-100" type="submit">{{ __('Sign In') }}</button>
+                    {{-- `btn-gold` was the name of a brand colour this panel no
+                         longer uses; theme.css had been repainting it blue under
+                         a gold name ever since. --}}
+                    <button class="btn btn-primary w-100" type="submit">{{ __('Sign In') }}</button>
                 </form>
             </div>
         </div>
 
         <div class="login-brand-panel">
-            {{-- Navy panel, so the white mark. --}}
-            <img src="{{ $appLogoLight }}" alt="{{ config('app.name') }}" class="brand-logo">
-            <span class="brand-pill">{{ config('app.name') }}</span>
+            {{-- Navy panel, so the white mark.
+
+                 The pill under the logo repeated the app's name, which the
+                 wordmark beside it already says — and the four icon bubbles
+                 below (people, list, image, globe) were decoration with no
+                 labels and no relation to anything on the screen. Both gone:
+                 what is left is the mark and what this panel is for.
+
+                 `getSettingValue('App_Name')` rather than `config('app.name')`
+                 for the alt text, matching the sidebar — the config value is
+                 still the framework default in this install. --}}
+            <img src="{{ $appLogoLight }}" class="brand-logo"
+                alt="{{ getSettingValue('App_Name') ?: config('app.name') }}">
             <p class="brand-tagline">{{ __('Admin Control Panel') }}<br>{{ __('Manage your platform with ease') }}</p>
-            <div class="brand-bubbles">
-                <span class="brand-bubble"><i class="bi bi-people"></i></span>
-                <span class="brand-bubble"><i class="bi bi-list-task"></i></span>
-                <span class="brand-bubble"><i class="bi bi-image"></i></span>
-                <span class="brand-bubble"><i class="bi bi-globe2"></i></span>
-            </div>
         </div>
     </div>
 

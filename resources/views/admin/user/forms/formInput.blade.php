@@ -1,5 +1,5 @@
 {{-- username / email / phone --}}
-<div class="row g-1">
+<div class="row g-3">
     <div class="col-md-4">
         <div class="form-group">
             <label class="form-label">{{ __('Name') }}</label>
@@ -39,7 +39,11 @@
                          already in circulation, so it is not an editable field. --}}
                     <input type="text" class="form-control" value="{{ $row->customer_reference }}" readonly>
                 </div>
-                <small class="text-muted">{{ __('Printed on this customer's bags') }}</small>
+                {{-- Double quotes: the apostrophe in «customer's» closed the single-quoted
+                     PHP string and made the whole template a parse error. It only stayed
+                     hidden because the compiled view predated the line — the next edit to
+                     this file, or a `view:clear` on deploy, would have taken the page down. --}}
+                <small class="text-muted">{{ __("Printed on this customer's bags") }}</small>
             </div>
         </div>
     @endif
@@ -66,7 +70,7 @@
         <div class="form-group">
             <label class="form-label">{{ __('Status') }}</label>
             <div class="controls">
-                <select name="status" class="form-control">
+                <select name="status" class="form-select">
                     <option value="active" {{ isset($row) && $row->status == 'active' ? 'selected' : '' }}>
                         {{ __('Active') }}</option>
                     <option value="inactive" {{ isset($row) && $row->status == 'inactive' ? 'selected' : '' }}>

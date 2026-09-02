@@ -23,11 +23,39 @@
     --brand-primary: #2563eb;
     --brand-primary-dark: #1d4ed8;
     --brand-primary-soft: #dbe1ff;
+
+    /* `--brand-primary` is a *fill*: it was picked to carry white text and it
+       does that in both themes. As a text colour on a surface it only works on
+       the light one — on the dark card it measures about 1.3:1. `--brand-text`
+       is the same intent resolved per theme, and it is what every link and
+       accented glyph on a surface should use. */
+    --brand-text: #2563eb;
     --surface-bg: #f7fafc;
     --surface-card: #ffffff;
     --surface-border: #e0e3e5;
     --text-strong: #1f1f1f;
     --text-muted: #424655;
+
+    /* The width of the stripe on a row-card's leading edge. A token because
+       the label strip has to offset by exactly the same amount to stay over
+       its columns — two places that must never disagree. */
+    --row-stripe: 3px;
+
+    /* Status tones. One token set drives the pill and the stripe on the row's
+       leading edge, both fed by `OrderStatus::tone()`. */
+    --tone-live: #1d4ed8;
+    --tone-live-bg: #e7edfd;
+    --tone-ok: #0f7b3f;
+    --tone-ok-bg: #e6f4ec;
+    --tone-warn: #b45309;
+    --tone-warn-bg: #fdf1e3;
+    --tone-bad: #b3261e;
+    --tone-bad-bg: #fdeceb;
+
+    /* The round controls in the top bar — the theme toggle and the bell — are
+       siblings and must never drift apart in size. They were 38px and 2.4rem,
+       which read as sloppy at a glance. */
+    --topbar-control: 2.4rem;
 }
 
 body.theme-dark {
@@ -36,6 +64,23 @@ body.theme-dark {
     --surface-border: #2a3550;
     --text-strong: #eef1f6;
     --text-muted: #9aa5b8;
+
+    --brand-text: #8fb2fb;
+
+    --tone-live: #8fb2fb;
+    --tone-live-bg: rgba(143, 178, 251, .14);
+    --tone-ok: #5bd08a;
+    --tone-ok-bg: rgba(91, 208, 138, .14);
+    --tone-warn: #fbbf24;
+    --tone-warn-bg: rgba(251, 191, 36, .14);
+    --tone-bad: #ff9b92;
+    --tone-bad-bg: rgba(255, 155, 146, .14);
+
+    /* The same 4% / 7% mix, resolved against the dark card. */
+    --field-bg: #202837;
+    --field-bg-hover: #262f41;
+    --field-bg-focus: #2b354a;
+    --field-ring: rgba(91, 139, 245, .28);
 
     /* Remap the Bootstrap tokens most vendored components already consume via var() */
     --bs-body-bg: var(--surface-bg);
@@ -57,10 +102,15 @@ body.theme-dark .table {
     border-color: var(--surface-border);
 }
 
+/* `.table-light` hard-codes a near-white fill and black text on the header
+   row; both have to be taken back in dark mode. The colour is deliberately
+   `--text-muted` and not `--text-strong`: the column header is a label for the
+   data, and the data should be the loudest thing in the table — see the data
+   table block further down, which sets the same tone in light mode. */
 body.theme-dark .table thead.table-light th,
 body.theme-dark .table th {
     background-color: var(--surface-card);
-    color: var(--text-strong);
+    color: var(--text-muted);
     border-color: var(--surface-border);
 }
 
@@ -105,6 +155,26 @@ body.theme-dark .dropdown-item:hover {
     overflow-y: hidden;
 }
 
+/* A frame belongs to a data table, not to every table.
+
+   The discriminator is `thead`, not `.table-borderless` — the list pages'
+   data tables are themselves `table-borderless table-striped` (they separate
+   rows with stripes rather than rules), so keying off that class would have
+   stripped the frame from the very tables it is for. A table with no header
+   row is not a grid of records: it is a two-line stat list — the driver counts
+   and the «Every order is moving» empty state on the dashboard, the totals on
+   the reports — and a rounded box around two lines of text reads as a stray
+   frame. Checked against every table in the app: header row present on all the
+   data tables, absent on all the lists.
+
+   Written as an additive override rather than folded into the rule above as a
+   `:not(...)`, so a browser without `:has()` keeps today's behaviour instead of
+   losing the frame everywhere. */
+.table-responsive:not(:has(thead)) {
+    border: 0;
+    border-radius: 0;
+}
+
 .table-responsive .table {
     margin-bottom: 0;
 }
@@ -120,7 +190,9 @@ body.theme-dark .dropdown-item:hover {
 /* Several list pages render <table> directly inside .card-body with no
    .table-responsive wrapper — round/clip the table itself in that case.
    border-collapse must be "separate" for border-radius + overflow to clip
-   the thead background consistently across browsers. */
+   the thead background consistently across browsers.
+
+   Exempted below by the same `thead` test as the wrapped case. */
 .card-body > table.table {
     border: 1px solid var(--surface-border);
     border-collapse: separate;
@@ -133,6 +205,11 @@ body.theme-dark .dropdown-item:hover {
     border-bottom-width: 0;
 }
 
+.card-body > table.table:not(:has(thead)) {
+    border: 0;
+    border-radius: 0;
+}
+
 /* ==========================================================================
    Dark mode toggle button
    ========================================================================== */
@@ -143,10 +220,10 @@ body.theme-dark .dropdown-item:hover {
     border-radius: 50%;
     cursor: pointer;
     display: inline-flex;
-    height: 38px;
+    height: var(--topbar-control);
     justify-content: center;
     margin: 0;
-    width: 38px;
+    width: var(--topbar-control);
 }
 
 .theme-toggle-btn:hover {
@@ -161,7 +238,7 @@ body.theme-dark .dropdown-item:hover {
 
 .theme-toggle-btn:hover .theme-icon-moon,
 .theme-toggle-btn:hover .theme-icon-sun {
-    color: var(--brand-primary);
+    color: var(--brand-text);
 }
 
 body.theme-dark .theme-toggle-btn .theme-icon-moon,
@@ -212,7 +289,7 @@ body.theme-dark #notificationDropdownToggle:hover .avatar {
 }
 
 #notificationDropdownToggle:hover .bi-bell {
-    color: var(--brand-primary);
+    color: var(--brand-text);
 }
 
 body.theme-dark #notificationDropdownToggle .bi-bell {
@@ -386,15 +463,6 @@ html[dir="rtl"] #notification-list {
     margin-bottom: 1.5rem;
 }
 
-.login-split .login-brand-panel .brand-pill {
-    border: 1px solid var(--brand-primary);
-    border-radius: 999px;
-    color: var(--brand-primary-soft);
-    font-size: .75rem;
-    letter-spacing: .12em;
-    padding: .35rem 1.1rem;
-    text-transform: uppercase;
-}
 
 .login-split .login-brand-panel .brand-tagline {
     color: #c7cede;
@@ -402,30 +470,6 @@ html[dir="rtl"] #notification-list {
     text-align: center;
 }
 
-.login-split .login-brand-panel .brand-bubbles {
-    display: flex;
-    gap: 1.25rem;
-    margin-top: 2.5rem;
-}
-
-.login-split .login-brand-panel .brand-bubble {
-    align-items: center;
-    background: rgba(255, 255, 255, .08);
-    border-radius: 50%;
-    display: flex;
-    font-size: 1.35rem;
-    height: 64px;
-    justify-content: center;
-    width: 64px;
-}
-
-.login-split .login-brand-panel .brand-bubble:nth-child(2) {
-    transform: translateY(-10px);
-}
-
-.login-split .login-brand-panel .brand-bubble:nth-child(3) {
-    transform: translateY(6px);
-}
 
 @media (max-width: 991px) {
     .login-split {
@@ -750,8 +794,8 @@ body.theme-dark tr.table-danger > th {
 .home-sev-warning { border-inline-start-color: #b45309; }
 .home-sev-warning .home-queue-count { color: #b45309; }
 
-.home-sev-info { border-inline-start-color: var(--brand-primary); }
-.home-sev-info .home-queue-count { color: var(--brand-primary); }
+.home-sev-info { border-inline-start-color: var(--brand-text); }
+.home-sev-info .home-queue-count { color: var(--brand-text); }
 
 body.theme-dark .home-sev-critical { border-inline-start-color: #ffb4aa; }
 body.theme-dark .home-sev-critical .home-queue-count { color: #ffb4aa; }
@@ -759,34 +803,69 @@ body.theme-dark .home-sev-warning { border-inline-start-color: #fbbf24; }
 body.theme-dark .home-sev-warning .home-queue-count { color: #fbbf24; }
 
 /* «Right now» — where each live order physically is. */
+/* Icon and figure on one line, label beneath — so the tile reads as a single
+   phrase, «this many, here», instead of three stacked things. Everything is
+   start-aligned rather than centred: five centred tiles in a row give the eye
+   no common edge to run down, and `start` flips to the right in RTL on its
+   own. */
 .home-flight {
-    align-items: center;
+    align-items: flex-start;
     background: var(--surface-bg);
     border: 1px solid var(--surface-border);
     border-radius: .5rem;
     display: flex;
     flex-direction: column;
-    gap: .15rem;
-    padding: .85rem .5rem;
-    text-align: center;
+    gap: .45rem;
+    padding: 1rem 1.1rem;
+    text-align: start;
+}
+
+/* Icon hard left, figure hard right — the two ends of the tile, so the eye
+   runs down a column of icons on one edge and a column of numbers on the
+   other instead of hunting for each pair.
+
+   Aligned on the baseline, not the box centre. `center` lines up the two
+   elements' boxes, and the boxes are not the ink: the icon glyph fills its em
+   box top to bottom while a digit only reaches its cap height, so centring the
+   boxes left the icon sitting low. On a shared baseline both sets of ink end
+   on the same line, which is what «same line» actually means. */
+.home-flight-head {
+    align-items: baseline;
+    display: flex;
+    gap: .55rem;
+    justify-content: space-between;
+    width: 100%;
 }
 
 .home-flight i {
-    color: var(--brand-primary);
-    font-size: 1.1rem;
+    color: var(--brand-text);
+    font-size: 1.35rem;
+    line-height: 1;
+}
+
+/* app.css:20470 sets `vertical-align: sub` on every bootstrap icon — a nudge
+   for glyphs sitting inside running text, which here dropped the icon a
+   measured 2.95px below the figure beside it. The rule that has to be beaten
+   is `body .bi:before`, so the override has to sit on the pseudo-element too;
+   putting it on the `<i>` does nothing. */
+.home-flight i::before {
+    vertical-align: baseline;
 }
 
 .home-flight-num {
-    font-size: 1.5rem;
+    font-size: 1.7rem;
     font-weight: 700;
-    line-height: 1.1;
+    line-height: 1;
     font-variant-numeric: tabular-nums;
 }
 
+/* The label carries the whole meaning of the number, so it is a step up from
+   the .78rem floor the other secondary text sits at. */
 .home-flight-label {
     color: var(--text-muted);
-    font-size: .78rem;
-    line-height: 1.25;
+    font-size: .85rem;
+    font-weight: 500;
+    line-height: 1.3;
 }
 
 /* A single figure with its label underneath. */
@@ -807,4 +886,1582 @@ body.theme-dark .home-sev-warning .home-queue-count { color: #fbbf24; }
     color: var(--text-muted);
     font-size: .8rem;
     line-height: 1.3;
+}
+
+/* ==========================================================================
+   Density — the global zoom-out.
+
+   The vendored template sizes almost everything in rem (1156 rem values in
+   app.css against 386 px ones, and only three px font-sizes in custom.css), so
+   one root font-size does the work of a browser zoom-out: type, padding, gaps,
+   icons, radii and borders all shrink together and stay in proportion. Retune
+   the whole panel by changing --ui-zoom alone; nothing else here is a number
+   you have to keep in sync.
+
+   The two layout dimensions the template hard-codes in px — the sidebar width
+   and the #main offset that mirrors it — are restated in rem so they follow
+   --ui-zoom instead of staying at their 300px original while everything inside
+   them shrinks. They use logical properties on purpose: app.css writes them as
+   left/margin-left and rtl.css as right/margin-right, and inset-inline-start /
+   margin-inline-start resolves to whichever one is live, so a single rule
+   covers both stylesheets.
+   ========================================================================== */
+
+:root {
+    /* 87.5% of the browser default → a 14px root instead of 16px. */
+    --ui-zoom: 87.5%;
+    /* 18.75rem is the old 300px measured at the old 16px root. */
+    --sidebar-width: 18.75rem;
+}
+
+html {
+    font-size: var(--ui-zoom);
+}
+
+.sidebar-wrapper {
+    width: var(--sidebar-width);
+}
+
+#sidebar:not(.active) .sidebar-wrapper {
+    inset-inline-start: calc(-1 * var(--sidebar-width));
+}
+
+#main {
+    margin-inline-start: var(--sidebar-width);
+}
+
+@media screen and (max-width: 1199px) {
+    .sidebar-wrapper {
+        inset-inline-start: calc(-1 * var(--sidebar-width));
+    }
+
+    #main {
+        margin-inline-start: 0;
+    }
+}
+
+/* Below ~.8rem the scale starts costing legibility rather than buying room, so
+   the few tokens that were already at the floor keep their absolute size. */
+.badge,
+.home-flight-label,
+.home-stat-label,
+.form-text,
+small,
+.small {
+    font-size: max(.78rem, 11px);
+}
+
+/* ==========================================================================
+   Page chrome — the page title and the footer.
+
+   Two vendored decisions that every screen inherits and no screen wanted.
+   ========================================================================== */
+
+/* A page title is not a card header.
+
+   Every screen opens with `<div class="card-header">` used as the page title,
+   sitting directly in #main-content with no card around it. It therefore
+   picked up the card's 30px inline padding and its bottom rule — so the title
+   sat 30px further in than the cards beneath it, under a grey line belonging
+   to a card edge that does not exist. The child combinator is the whole
+   safety net: a real card header is nested inside `.card`, so it can never
+   match this rule. */
+#main-content > .card-header {
+    background: transparent;
+    /* `!important` is not a preference here. otherpages.css:1894 sets
+       `border-bottom: 1px solid #ccc !important; padding: 15px 30px !important`
+       on every `.card-header` in the panel, so a normal declaration — at any
+       specificity — cannot reach it. The shorthand is used rather than logical
+       longhands because it is symmetric, so it needs no RTL counterpart. */
+    border-bottom: 0 !important;
+    /* The rhythm the empty `.page-heading` used to supply by accident, now
+       stated deliberately. The title needs real air under the topbar rule —
+       25px read as the heading hanging off the line above it. */
+    padding: 1.75rem 0 1.25rem !important;
+}
+
+/* The footer is a line of copyright, not a toolbar.
+
+   `otherpages.css` pins it `position: fixed; left: 0; right: 0` with an opaque
+   background and a shadow — a full-width bar held over every screen above 767px,
+   permanently spending 61px of vertical space and covering whatever the page
+   ends with. It is an ordinary block at the end of the content column now.
+   `.footer` is specific enough to win on load order alone; the properties are
+   restated rather than reset so nothing depends on the vendored values. */
+.footer {
+    background-color: transparent;
+    box-shadow: none;
+    color: var(--text-muted);
+    overflow: visible;
+    padding: 1.25rem 2rem 1rem;
+    position: static;
+    z-index: auto;
+}
+
+/* Unpinned, the footer follows the content — which on a short screen (an empty
+   list, a four-field form) left it stranded halfway up with blank page beneath
+   it. A column that is at least as tall as the viewport, with the content
+   growing to fill it, puts the footer on the bottom edge when the page is short
+   and after the last card when it is long. */
+#main {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+}
+
+#main > #main-content {
+    flex: 1 0 auto;
+}
+
+/* ==========================================================================
+   Dark mode, second pass — component variables belong on the component.
+
+   `body.theme-dark` at the top of this file remaps `--bs-card-cap-bg` and its
+   siblings, but Bootstrap declares those same variables on `.card` itself, and
+   a custom property resolves from the nearest ancestor that sets it. `.card`
+   is nearer to a `.card-header` than `body` is, so every card header went on
+   reading `#fff` and painted a white bar across the top of a dark card — on
+   every screen with a card, which is nearly all of them. Declaring them on
+   `.card` puts the override where the lookup actually lands.
+   ========================================================================== */
+
+body.theme-dark .card {
+    --bs-card-bg: var(--surface-card);
+    --bs-card-color: var(--text-strong);
+    --bs-card-cap-bg: var(--surface-card);
+    --bs-card-cap-color: var(--text-strong);
+    --bs-card-border-color: var(--surface-border);
+}
+
+/* The variables alone are not enough here: otherpages.css:1894 hard-codes
+   `border-bottom: 1px solid #ccc !important` on every card header, which reads
+   as a glaring light rule the moment the card behind it goes dark. */
+body.theme-dark .card > .card-header {
+    background-color: var(--surface-card);
+    border-bottom-color: var(--surface-border) !important;
+    color: var(--text-strong);
+}
+
+/* `.text-muted` is `#4D5454 !important` in app.css. Against the dark card that
+   is roughly 1.5:1 — the secondary line under a heading, the hint under a
+   queue row and the whole «Every order is moving» empty state were not dim,
+   they were invisible. `--text-muted` is ~7:1 on the same surface. */
+body.theme-dark .text-muted {
+    color: var(--text-muted) !important;
+}
+
+/* app.css:478 paints every heading `#4D5454` — a mid-grey chosen against white.
+   On the dark card it lands at about 1.5:1, which made every card title dimmer
+   than the body text underneath it and left the page reading as a list of
+   unlabelled boxes. Headings are the one thing on a card that must not recede. */
+body.theme-dark h1,
+body.theme-dark h2,
+body.theme-dark h3,
+body.theme-dark h4,
+body.theme-dark h5,
+body.theme-dark h6,
+body.theme-dark .h1,
+body.theme-dark .h2,
+body.theme-dark .h3,
+body.theme-dark .h4,
+body.theme-dark .h5,
+body.theme-dark .h6 {
+    color: var(--text-strong);
+}
+
+/* ==========================================================================
+   Card spacing — one inset for the header and the body.
+
+   The two halves of every card were padded by different hands. `.card-body` is
+   `1.5rem` (app.css:20872), but otherpages.css:1894 forces
+   `padding: 15px 30px !important` on `.card-header` — so a card title started
+   31px from the card edge while the content beneath it started 22px, a 9px
+   step visible on every card on every screen. Worse, the header's padding is
+   hard-coded in px: it is the one part of the panel that does not answer to
+   `--ui-zoom`, so the mismatch widens every time the panel is scaled down.
+
+   One variable now sets the inset for both, in rem.
+
+   `.card > .card-header` is deliberately narrower than the page-title rule
+   above it, which targets `#main-content > .card-header` — a header with a
+   card and a header without one are different objects and want opposite
+   treatment.
+   ========================================================================== */
+
+:root {
+    --card-inset: 1.5rem;
+}
+
+.card > .card-header {
+    padding: 1.15rem var(--card-inset) !important;
+}
+
+/* app.css:20860 zeroes the body's top padding whenever a header precedes it,
+   which leaves the first row of content sitting on the divider. A card that is
+   only a header and a list — the queue, the driver counts — reads as one
+   crushed block because of it. */
+.card > .card-body,
+.card > .card-header ~ .card-body {
+    padding: 1.25rem var(--card-inset) var(--card-inset);
+}
+
+/* ==========================================================================
+   List toolbar — the search-and-filter bar every list page opens with.
+
+   Defined once here rather than per page: 26 list screens carry the same bar,
+   and the orders one was doing it with `justify-content-end` plus inline
+   `max-width` in px. That pushed both controls to the far end of a full-width
+   card, leaving 274px of empty card beside them, and the px widths were another
+   thing that did not answer to `--ui-zoom`.
+
+   The search grows into the space it is given up to a readable cap; the filter
+   holds a fixed share. Both wrap onto their own line when the card is narrow
+   rather than being crushed.
+   ========================================================================== */
+
+.list-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .75rem;
+    margin-bottom: 1rem;
+}
+
+.list-toolbar-search {
+    flex: 1 1 18rem;
+    max-width: 26rem;
+}
+
+.list-toolbar-filter {
+    flex: 0 1 14rem;
+}
+
+/* A card told to fill its column must not also push against the bottom of it.
+
+   app.css:20810 gives every `.card` a 2.2rem bottom margin. On a card with
+   `h-100` that margin is added to the column's content height, the column
+   stretches to fit, and `height: 100%` then resolves against the taller
+   column — so the card inflates by its own margin and the extra shows up as
+   dead space under the content. It was 73px on the orders summary cards and
+   ~52px under each of the dashboard's paired cards. The gap between rows is
+   the row's own `mb-*`, which is where it belongs. */
+.card.h-100 {
+    margin-bottom: 0;
+}
+
+/* ==========================================================================
+   Data tables — the data is the loudest thing on the row.
+
+   Replaces the vendored zebra treatment. Three reasons it had to go rather
+   than be tuned:
+
+   1. It was broken in dark mode and not subtly. app.css:2398 hard-codes
+      `--bs-table-striped-color: #607080`, a grey picked against white; every
+      odd row therefore rendered at a measured 3.2:1 on the dark card while its
+      neighbours sat at 14.4:1. Half the rows of every list were unreadable.
+   2. The stripe itself is `rgba(0, 0, 0, .05)` — black at 5%, which is invisible
+      once the surface behind it is already dark. So it cost the contrast without
+      buying the banding.
+   3. On a nine-column row carrying badges and two-line cells, zebra is noise.
+
+   Hairline dividers and a hover band do the same job — telling one row from the
+   next — and both are expressed in theme tokens, so they are correct in either
+   theme by construction rather than by a second set of overrides.
+
+   Everything is set through Bootstrap's own custom properties where possible;
+   that is the seam the framework offers and it avoids an `!important` war with
+   the vendored sheets.
+   ========================================================================== */
+
+:root {
+    --table-row-hover: rgba(37, 99, 235, .05);
+}
+
+body.theme-dark {
+    --table-row-hover: rgba(255, 255, 255, .04);
+}
+
+.card-body .table {
+    --bs-table-bg: transparent;
+    --bs-table-color: var(--text-strong);
+    --bs-table-border-color: var(--surface-border);
+    /* Kills the stripe without touching the `table-striped` class that sits in
+       26 list templates. */
+    --bs-table-striped-bg: transparent;
+    --bs-table-striped-color: var(--text-strong);
+}
+
+/* app.css:2416 pads every cell 0.5rem — 7px at this root size, which crowds a
+   badge against the cell above it. */
+.card-body .table > :not(caption) > * > * {
+    padding: .8rem .9rem;
+}
+
+/* A column header is a label for the data, not a band across the page. Small,
+   spaced and quiet, so the eye lands on the rows. */
+.card-body .table > thead > tr > th {
+    background-color: transparent;
+    border-bottom: 1px solid var(--surface-border);
+    color: var(--text-muted);
+    font-size: .72rem;
+    font-weight: 700;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+    vertical-align: middle;
+    white-space: nowrap;
+}
+
+.card-body .table > tbody > tr > td {
+    border-bottom: 1px solid var(--surface-border);
+    vertical-align: middle;
+}
+
+.card-body .table > tbody > tr:last-child > td {
+    border-bottom: 0;
+}
+
+/* Set on the row so the cells inherit it — a cell paints
+   `background-color: var(--bs-table-bg)` over anything put on the `tr`. */
+.card-body .table > tbody > tr:hover {
+    --bs-table-bg: var(--table-row-hover);
+}
+
+
+/* ==========================================================================
+   Row actions — present, not shouting.
+
+   custom.css:19 painted all three as filled 30px blocks: a saturated blue, an
+   orange and a red on every single row. On a full page that is a column of
+   colour louder than any of the data beside it, and the loudest thing on the
+   screen ends up being the button pressed least often. They read as outlines
+   now and take their colour on hover, where the intent is.
+
+   Sized in rem, so unlike the vendored 30px they follow `--ui-zoom`; coloured
+   from theme tokens, so unlike the vendored hexes they follow the theme.
+   ========================================================================== */
+
+.action-btn {
+    align-items: center;
+    background-color: transparent;
+    border: 1px solid var(--surface-border);
+    border-radius: .5rem;
+    color: var(--text-muted);
+    display: inline-flex;
+    height: 2rem;
+    justify-content: center;
+    line-height: 1;
+    padding: 0;
+    transition: background-color .15s ease, border-color .15s ease, color .15s ease;
+    width: 2rem;
+}
+
+.action-btn > i {
+    font-size: .85rem;
+}
+
+.action-view:hover,
+.action-view:focus-visible {
+    background-color: var(--brand-primary);
+    border-color: var(--brand-primary);
+    color: #fff;
+}
+
+.action-edit:hover,
+.action-edit:focus-visible {
+    background-color: #b45309;
+    border-color: #b45309;
+    color: #fff;
+}
+
+.action-delete:hover,
+.action-delete:focus-visible {
+    background-color: #b3261e;
+    border-color: #b3261e;
+    color: #fff;
+}
+
+/* ==========================================================================
+   Summary cards — the counts a list page opens with.
+   ========================================================================== */
+
+.stat-card .card-body {
+    padding: 1rem 1.25rem;
+}
+
+.stat-card h6 {
+    font-size: .78rem;
+    letter-spacing: .01em;
+}
+
+.stat-card h3 {
+    font-size: 1.6rem;
+}
+
+/* ==========================================================================
+   The «Stack» list — the shared layout for every list screen.
+
+   Not a table. Each record is its own row-card separated by space instead of
+   rules, with a stripe down the leading edge carrying its state, and a label
+   strip above the stack naming the columns.
+
+   Grid rather than flex, and the label strip shares the row's own template, so
+   the labels sit exactly over the fields they name and the fields line up down
+   the whole list. Column alignment is the thing a stack normally gives up
+   against a table; a shared template buys it back.
+
+   Each list owns its own column widths and sets them once on the container:
+
+       <div class="data-stack" style="--stack-cols: minmax(8rem,1.2fr) ... auto">
+
+   `--stack-cols` rather than a class per module: 26 lists have 26 different
+   column sets, and the widths are a fact about that screen's content, not a
+   reusable style. `auto` as the last track holds the actions hard against the
+   trailing edge.
+
+   Two row shapes, and the difference is the number of actions:
+
+   * one action — the row is an `<a>` and the whole card is the link. Used on
+     orders, where `index` and `show` sit behind the same permission so anybody
+     reading the list can open any row, and there is nothing for an action
+     column to hold.
+   * several — the row is a `<div>`, its identity cell carries the link, and the
+     buttons sit in `.stack-actions`. A link cannot contain buttons.
+   ========================================================================== */
+
+.data-stack {
+    display: flex;
+    flex-direction: column;
+    gap: .6rem;
+}
+
+/* The column labels. Quiet and small — they name the data, they are not the
+   data, and unlike a table header they carry no fill or rule of their own. */
+.stack-head {
+    color: var(--text-muted);
+    display: grid;
+    font-size: .7rem;
+    font-weight: 700;
+    gap: .5rem 1.15rem;
+    grid-template-columns: var(--stack-cols);
+    letter-spacing: .05em;
+    /* Aligns the labels with the row text below: the row's 1rem of padding plus
+       the stripe its leading edge carries. */
+    padding: 0 1rem .1rem calc(1rem + var(--row-stripe));
+    text-transform: uppercase;
+}
+
+html[dir="rtl"] .stack-head {
+    padding-inline: calc(1rem + var(--row-stripe)) 1rem;
+}
+
+.stack-row {
+    align-items: center;
+    background: var(--surface-card);
+    border: 1px solid var(--surface-border);
+    /* The stripe. `inset-inline-start` so it moves to the right in Arabic. */
+    border-inline-start: var(--row-stripe) solid var(--row-tone, var(--surface-border));
+    border-radius: .65rem;
+    color: inherit;
+    display: grid;
+    gap: .5rem 1.15rem;
+    grid-template-columns: var(--stack-cols);
+    padding: .8rem 1rem;
+    text-decoration: none;
+    transition: border-color .15s ease, box-shadow .15s ease;
+}
+
+/* A row that is itself the link needs the focus ring a control would get. */
+a.stack-row:hover,
+a.stack-row:focus-visible,
+.stack-row:hover {
+    border-color: var(--brand-primary);
+    box-shadow: 0 2px 10px rgba(15, 45, 82, .08);
+    color: inherit;
+    text-decoration: none;
+}
+
+a.stack-row:focus-visible {
+    outline: 2px solid var(--brand-primary);
+    outline-offset: 2px;
+}
+
+.stack-row .row-lead {
+    font-weight: 800;
+    letter-spacing: -.01em;
+    font-variant-numeric: tabular-nums;
+}
+
+/* The identity link inside a multi-action row. */
+.stack-row a.row-lead,
+.stack-row .row-lead a {
+    color: var(--brand-text);
+    text-decoration: none;
+}
+
+.stack-row a.row-lead:hover,
+.stack-row .row-lead a:hover {
+    text-decoration: underline;
+}
+
+.stack-row .row-main {
+    font-weight: 600;
+}
+
+/* The qualifier under a value: which laundry holds it, the pickup date, the
+   phone. Always its own line, always a step down, so the value stays primary. */
+.stack-row .row-sub {
+    color: var(--text-muted);
+    display: block;
+    font-size: .78rem;
+    line-height: 1.35;
+    font-variant-numeric: tabular-nums;
+}
+
+.stack-row .row-amount {
+    font-size: 1.05rem;
+    font-weight: 800;
+    text-align: end;
+    font-variant-numeric: tabular-nums;
+}
+
+/* The trailing slot. `justify-content: end` keeps the buttons against the
+   card's trailing edge whatever the column ends up measuring. */
+.stack-actions {
+    display: flex;
+    gap: .35rem;
+    justify-content: flex-end;
+}
+
+/* The row-card is small enough that a 2rem control crowds it. */
+.stack-actions .action-btn {
+    height: 1.85rem;
+    width: 1.85rem;
+}
+
+/* Thumbnails in a row-card — banners, intros, item images.
+
+   `getImageDashboardUrl()` returns its own markup with `height:80px;width:80px`
+   written inline, which is both twice the height of a row-card and the one part
+   of the image that never answered to `--ui-zoom`. Inline styles outrank any
+   selector, so `!important` is the only thing that reaches them. */
+.stack-row .row-thumb {
+    display: inline-block;
+    line-height: 0;
+}
+
+.stack-row .row-thumb img {
+    border: 1px solid var(--surface-border);
+    border-radius: .4rem !important;
+    height: 2.6rem !important;
+    object-fit: cover;
+    width: 3.4rem !important;
+}
+
+/* Below the point where the full template stops fitting, fold to two columns
+   and let the fields stack rather than crushing every one to nothing. The
+   label strip cannot survive that fold — labels over two columns would name
+   the wrong fields — so it is dropped and each value keeps its own qualifier. */
+@media (max-width: 991px) {
+    .stack-head {
+        display: none;
+    }
+
+    .stack-row {
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .stack-row .row-amount,
+    .stack-actions {
+        justify-content: flex-start;
+        text-align: start;
+    }
+}
+
+/* An empty list is an answer, not a blank strip. */
+.stack-empty {
+    color: var(--text-muted);
+    padding: 2.5rem 1rem;
+    text-align: center;
+}
+
+/* ==========================================================================
+   Status pill — tinted ground, coloured text.
+
+   Replaces Bootstrap's `badge bg-*` for order status. The solid badge puts
+   white on a saturated fill, which in a column of twelve rows reads louder
+   than any of the data beside it; the tint carries the same tone at a fraction
+   of the weight. Fed by `OrderStatus::tone()`.
+   ========================================================================== */
+
+.status-pill {
+    border-radius: 999px;
+    display: inline-block;
+    font-size: .76rem;
+    font-weight: 700;
+    letter-spacing: .01em;
+    padding: .18rem .6rem;
+    white-space: nowrap;
+}
+
+/* Bound to `.status-pill`, not to the tone class alone: the same tone token
+   is also set on the row, and a bare `.tone-live { background }` would tint
+   the whole card instead of the pill inside it. */
+.status-pill.tone-live { background: var(--tone-live-bg); color: var(--tone-live); }
+.status-pill.tone-ok   { background: var(--tone-ok-bg);   color: var(--tone-ok); }
+.status-pill.tone-warn { background: var(--tone-warn-bg); color: var(--tone-warn); }
+.status-pill.tone-bad  { background: var(--tone-bad-bg);  color: var(--tone-bad); }
+
+/* The row takes the same token as a stripe colour and nothing else. */
+.order-row.tone-live { --row-tone: var(--tone-live); }
+.order-row.tone-ok   { --row-tone: var(--tone-ok); }
+.order-row.tone-warn { --row-tone: var(--tone-warn); }
+.order-row.tone-bad  { --row-tone: var(--tone-bad); }
+
+/* The status pill when it is also the control that flips the status. */
+.status-toggle {
+    border: 0;
+    cursor: pointer;
+    font-family: inherit;
+    transition: filter .15s ease;
+}
+
+.status-toggle:hover { filter: brightness(.94); }
+
+body.theme-dark .status-toggle:hover { filter: brightness(1.25); }
+
+.status-toggle:focus-visible {
+    outline: 2px solid var(--brand-primary);
+    outline-offset: 2px;
+}
+
+.status-toggle.is-locked {
+    cursor: not-allowed;
+    filter: none;
+    opacity: .65;
+}
+
+/* A labelled row action, for the few rows whose action cannot be reduced to an
+   icon — «Approve», «Reject», «Retry payout» on the refunds list. Same shape
+   and hover behaviour as `.action-btn`, sized to hold a word. */
+.act-text {
+    align-items: center;
+    background: none;
+    border: 1px solid var(--surface-border);
+    border-radius: .5rem;
+    color: var(--text-muted);
+    display: inline-flex;
+    font-size: .78rem;
+    font-weight: 700;
+    height: 1.85rem;
+    padding: 0 .6rem;
+    transition: background-color .15s ease, border-color .15s ease, color .15s ease;
+    white-space: nowrap;
+}
+
+.act-text:hover,
+.act-text:focus-visible {
+    background-color: var(--brand-primary);
+    border-color: var(--brand-primary);
+    color: #fff;
+}
+
+.act-text-danger:hover,
+.act-text-danger:focus-visible {
+    background-color: var(--tone-bad);
+    border-color: var(--tone-bad);
+    color: #fff;
+}
+
+/* Rows whose actions are words rather than icons need the slot to wrap instead
+   of pushing the grid wider than the card. */
+.stack-actions {
+    flex-wrap: wrap;
+}
+
+/* The star row on the ratings list. Amber rather than the accent, because it is
+   a score and not a link, and letter-spaced so five glyphs read as five. */
+.rating-stars {
+    color: var(--tone-warn);
+    letter-spacing: .08em;
+}
+
+/* ==========================================================================
+   Forms — sections, and an actions footer.
+
+   The create and edit screens were one undivided run of fields with the word
+   «Translation» dropped in the middle as bare text: no heading, no rule, no
+   indication that what followed was a different kind of input. A form that
+   asks for a thing and then the same thing in three more languages needs to
+   say where one ends and the other starts.
+   ========================================================================== */
+
+.form-section-legend {
+    color: var(--text-muted);
+    font-size: .72rem;
+    font-weight: 700;
+    letter-spacing: .05em;
+    margin-bottom: .75rem;
+    text-transform: uppercase;
+}
+
+/* A rule between sections rather than around each one: the sections are one
+   form, not a stack of separate cards. */
+.form-section + .form-section {
+    border-top: 1px solid var(--surface-border);
+    margin-top: 1.75rem;
+    padding-top: 1.5rem;
+}
+
+/* The submit sits below a rule, hard against the leading edge, and is sized by
+   its label. It used to be `width: 10%` written inline — a sliver on a wide
+   screen, and one more length that ignored `--ui-zoom`. */
+/* The rule on both of these is drawn as an inset pseudo-element rather than a
+   `border-top`.
+
+   Bootstrap gives every direct child of a `.row` `width: 100%` plus half a
+   gutter of inline padding, so a border on the box edge lands 7px wider than
+   the fields on each side — and `margin-inline` cannot pull it in, because a
+   fixed `width: 100%` just shifts the box instead of shrinking it. Insetting
+   the line by that same half gutter puts it exactly on the field edges. */
+.form-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .6rem;
+    margin-top: 1.75rem;
+    padding-top: 1.25rem;
+    position: relative;
+}
+
+.form-actions .btn {
+    min-width: 8rem;
+}
+
+/* Labels sit tight to their control and read as labels, not as body text. */
+.form-label {
+    color: var(--text-strong);
+    font-size: .82rem;
+    font-weight: 600;
+    margin-bottom: .35rem;
+}
+
+/* `.form-group` and `.mb-3` were used interchangeably for the same job, so
+   fields in the same row could sit at different heights. One rhythm. */
+.form-section .form-group {
+    margin-bottom: 0;
+}
+
+/* The rule and legend that open a form's translation block.
+
+   It used to be the bare string «Translation» in a `col-12`, with no heading
+   treatment and nothing separating it from the fields above — so a form that
+   asks for a name and then the same name in Arabic read as one flat run of
+   inputs. A full-width divider inside the grid is used rather than
+   `.form-section`, because the block's end varies by module and a rule at the
+   start is what actually does the separating. */
+.form-divider {
+    margin-top: .75rem;
+    padding-top: 1.25rem;
+    position: relative;
+}
+
+.form-divider::before,
+.form-actions::before {
+    background: var(--surface-border);
+    content: "";
+    height: 1px;
+    inset-inline: calc(var(--bs-gutter-x) * .5);
+    position: absolute;
+    top: 0;
+}
+
+/* ==========================================================================
+   The detail screens — a read-only sheet, not a greyed-out form.
+
+   All 17 simple `show` pages render the module's own `formInput` with every
+   control `disabled`, which is what keeps them cheap: the field list lives in
+   one place and the detail view never drifts from the form. But a disabled
+   input is styled to say «you cannot type here», not «this is the value» — the
+   browser dims the text and fills the box, so the page read as a form somebody
+   had locked rather than as a record.
+
+   Stripping the chrome turns the same markup into a label-and-value sheet. The
+   `:disabled` in the selector is deliberate: it only fires on a locked control,
+   so nothing here can leak onto a create or edit screen.
+   ========================================================================== */
+
+.show-page .form-control:disabled,
+.show-page .form-select:disabled,
+.show-page .form-control[readonly] {
+    background-color: transparent;
+    border-color: transparent;
+    color: var(--text-strong);
+    font-weight: 600;
+    /* Browsers dim a disabled control; the value is not dimmed information. */
+    opacity: 1;
+    padding-inline: 0;
+}
+
+/* The chevron promises a menu that a locked select does not have. */
+.show-page .form-select:disabled {
+    background-image: none;
+    padding-inline-end: 0;
+}
+
+/* A file picker on a detail page is a control for something that has already
+   happened. The image itself is shown by the module's own markup. */
+.show-page input[type="file"] {
+    display: none;
+}
+
+/* The secondary action — Back on a detail screen, «Invoice» in the order
+   header. One definition rather than one per label: they are the same object
+   doing the same job next to a louder primary.
+
+   Back used to be `btn-warning` at `width: 100%`, a full-bleed yellow slab on
+   a screen whose job is to be read; Invoice and Back in the order header were
+   `badge alert-info` and `badge alert-secondary` — badges wearing button
+   classes, the same confusion as the old «Add …» control. */
+.btn-quiet {
+    align-items: center;
+    background: none;
+    border: 1px solid var(--surface-border);
+    border-radius: .6rem;
+    color: var(--text-muted);
+    display: inline-flex;
+    font-size: .85rem;
+    font-weight: 600;
+    gap: .4rem;
+    line-height: 1;
+    padding: .55rem 1rem;
+    text-decoration: none;
+    transition: background-color .15s ease, border-color .15s ease, color .15s ease;
+    white-space: nowrap;
+}
+
+.btn-quiet:hover,
+.btn-quiet:focus-visible {
+    background: var(--surface-bg);
+    border-color: var(--brand-primary);
+    color: var(--brand-text);
+    text-decoration: none;
+}
+
+.btn-quiet:focus-visible {
+    outline: 2px solid var(--brand-primary);
+    outline-offset: 2px;
+}
+
+/* ==========================================================================
+   Report bar chart.
+
+   The bars are absolutely positioned inside a track that takes its height from
+   `flex: 1` in a fixed-height column. That is the whole point of the structure:
+   a percentage height only resolves against a parent with a definite height,
+   and the previous markup put the bar inside a content-sized wrapper — so every
+   bar on all five report screens collapsed to its 4px minimum and the chart
+   drew a row of dashes instead of a distribution.
+   ========================================================================== */
+
+.chart-bars {
+    display: flex;
+    gap: .15rem;
+    /* Definite, so the tracks inside can resolve one. */
+    height: 12rem;
+    overflow-x: auto;
+    padding-top: .25rem;
+}
+
+.chart-col {
+    display: flex;
+    flex: 1 1 0;
+    flex-direction: column;
+    min-width: 1.7rem;
+}
+
+.chart-track {
+    flex: 1 1 auto;
+    position: relative;
+}
+
+.chart-bar {
+    background: var(--brand-primary);
+    border-radius: .2rem .2rem 0 0;
+    bottom: 0;
+    inset-inline: 20%;
+    position: absolute;
+}
+
+.chart-col:hover .chart-bar {
+    background: var(--brand-primary-dark);
+}
+
+body.theme-dark .chart-col:hover .chart-bar {
+    background: var(--brand-primary-soft);
+}
+
+/* The day labels were `font-size: 9px` inline — below the size at which a digit
+   is reliably readable, and one more length that ignored `--ui-zoom`. `.72rem`
+   is the largest that still fits 30 `dd/mm` labels across the card without
+   colliding, measured rather than guessed. */
+.chart-label {
+    color: var(--text-muted);
+    font-size: .72rem;
+    line-height: 1.6;
+    text-align: center;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+
+/* ==========================================================================
+   Top bar.
+
+   The old markup split the bar into a `col-6` / `col-6` grid where the left
+   half held one burger button and 555px of nothing, and spaced the controls
+   with `&nbsp;&nbsp;`. A flex row with a gap does the same job in a way that
+   answers to `--ui-zoom` and flips in RTL on its own.
+   ========================================================================== */
+
+.topbar {
+    /* The colour was `style="background-color: white"` inline, which meant the
+       dark theme had to fight it with `!important`. */
+    background-color: var(--surface-card);
+}
+
+.topbar-inner {
+    align-items: center;
+    display: flex;
+    gap: .75rem;
+    justify-content: space-between;
+}
+
+.topbar-actions {
+    align-items: center;
+    display: flex;
+    gap: .6rem;
+    /* Pushes the whole cluster to the trailing edge whether or not the burger
+       is showing, which is what the dead half-width column was doing before. */
+    margin-inline-start: auto;
+}
+
+/* The bell, and any icon-only control that joins it later. */
+.topbar-icon-btn {
+    align-items: center;
+    background: rgba(0, 0, 0, .05);
+    border: 0;
+    border-radius: 50%;
+    color: var(--text-strong);
+    cursor: pointer;
+    display: inline-flex;
+    height: var(--topbar-control);
+    justify-content: center;
+    position: relative;
+    transition: background-color .15s ease;
+    width: var(--topbar-control);
+}
+
+.topbar-icon-btn:hover {
+    background: rgba(0, 0, 0, .1);
+}
+
+body.theme-dark .topbar-icon-btn {
+    background: rgba(255, 255, 255, .08);
+}
+
+body.theme-dark .topbar-icon-btn:hover {
+    background: rgba(255, 255, 255, .15);
+}
+
+.topbar-icon-btn:focus-visible,
+.topbar-user:focus-visible,
+.dropdown-btn:focus-visible {
+    outline: 2px solid var(--brand-primary);
+    outline-offset: 2px;
+}
+
+/* `top`/`right` in px would not have flipped in Arabic, and would not have
+   scaled. `inset-inline-end` puts it on the trailing corner either way. */
+.topbar-badge {
+    font-size: .62rem;
+    inset-block-start: -.15rem;
+    inset-inline-end: -.15rem;
+    position: absolute;
+}
+
+.topbar-notifications {
+    max-height: 26rem;
+    min-width: 21rem;
+    overflow-y: auto;
+}
+
+.topbar-user {
+    align-items: center;
+    background: none;
+    border: 0;
+    color: var(--text-strong);
+    cursor: pointer;
+    display: inline-flex;
+    gap: .5rem;
+    padding: 0;
+}
+
+.topbar-avatar img {
+    border-radius: 50%;
+    height: var(--topbar-control);
+    object-fit: cover;
+    width: var(--topbar-control);
+}
+
+.topbar-user-name {
+    font-weight: 600;
+}
+
+/* The name is the first thing to go when the bar runs out of room — the avatar
+   still identifies who is signed in. */
+@media (max-width: 575px) {
+    .topbar-user-name {
+        display: none;
+    }
+}
+
+.flag-in-menu {
+    height: auto;
+    margin-inline-end: .4rem;
+    width: 1.4rem;
+}
+
+/* The sidebar logo was `max-width: 150px` inline — the last length in the
+   chrome that did not follow the panel's zoom. */
+.sidebar-header img {
+    height: auto;
+    max-width: 10rem;
+}
+
+/* ==========================================================================
+   Sidebar — the header stays, the menu scrolls.
+
+   With 18 items the wrapper overflows (962px of menu in 900px of viewport, at
+   this zoom), and because the logo sits inside the same scrolling box it used
+   to scroll away — taking the only link back to the dashboard with it. Pinning
+   the header keeps the brand and that link reachable from anywhere in the list.
+   ========================================================================== */
+
+.sidebar-wrapper .sidebar-header {
+    background: var(--brand-navy);
+    position: sticky;
+    top: 0;
+    z-index: 2;
+}
+
+/* The default scrollbar is a light chrome-coloured bar against a navy panel.
+   Firefox takes the two-value shorthand; the WebKit pseudo-elements cover the
+   rest. Both are additive — a browser that honours neither simply keeps its
+   own, which is what happens today. */
+.sidebar-wrapper {
+    scrollbar-color: rgba(255, 255, 255, .22) transparent;
+    scrollbar-width: thin;
+}
+
+.sidebar-wrapper::-webkit-scrollbar {
+    width: .4rem;
+}
+
+.sidebar-wrapper::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.sidebar-wrapper::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, .22);
+    border-radius: 999px;
+}
+
+.sidebar-wrapper::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, .35);
+}
+
+/* ==========================================================================
+   «Add …» — the primary action on a list screen.
+
+   It was written as `class="badge alert-info primary-background-color"` on 17
+   of the 21 list screens: a badge doing a button's job, with three classes
+   fighting over its colour and no gap between the plus icon and the label, so
+   it rendered as «+Add City». A badge is sized for a count, which is why the
+   most important control on the page was also the smallest thing on it.
+
+   Solid, because it is the primary action and a quiet one would be wrong — but
+   with real padding, a soft radius and a gentle lift on hover rather than a
+   hard saturated block.
+   ========================================================================== */
+
+.btn-add {
+    align-items: center;
+    background: var(--brand-primary);
+    border: 0;
+    border-radius: .6rem;
+    box-shadow: 0 1px 2px rgba(15, 45, 82, .12);
+    color: #fff;
+    display: inline-flex;
+    font-size: .85rem;
+    font-weight: 600;
+    gap: .45rem;
+    line-height: 1;
+    padding: .6rem 1.1rem;
+    text-decoration: none;
+    transition: background-color .15s ease, box-shadow .15s ease, transform .15s ease;
+    white-space: nowrap;
+}
+
+.btn-add:hover {
+    background: var(--brand-primary-dark);
+    box-shadow: 0 3px 8px rgba(15, 45, 82, .18);
+    color: #fff;
+    transform: translateY(-1px);
+}
+
+.btn-add:active {
+    box-shadow: 0 1px 2px rgba(15, 45, 82, .12);
+    transform: none;
+}
+
+.btn-add:focus-visible {
+    outline: 2px solid var(--brand-primary);
+    outline-offset: 2px;
+}
+
+.btn-add > i {
+    font-size: .8rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .btn-add:hover {
+        transform: none;
+    }
+}
+
+/* Bootstrap's semantic text colours are picked against white and fail on the
+   dark card. Measured there: `.text-success` and `.text-danger` both 3.59:1,
+   `.text-primary` 3.15:1 — all under the 4.5:1 needed for body text, and
+   `.text-danger` alone appears 99 times across the panel, on every warning
+   line there is. Remapped to the tone tokens, which were tuned for this
+   surface.
+
+   `.text-warning` and `.text-info` are left alone: they measure 9.75:1 and
+   8.31:1 here, so they already pass. `.text-dark` is left alone too — it is
+   used only inside badges with a light fill (`bg-warning`, `bg-light`), where
+   dark text is correct in either theme; its 1.09:1 against the card is a
+   contrast it never actually has.
+
+   `!important` because Bootstrap's own utilities carry it. `:not(.badge)` so a
+   badge that sets its own fill keeps its own text colour. */
+body.theme-dark .text-success:not(.badge) {
+    color: var(--tone-ok) !important;
+}
+
+body.theme-dark .text-danger:not(.badge) {
+    color: var(--tone-bad) !important;
+}
+
+body.theme-dark .text-primary:not(.badge) {
+    color: var(--tone-live) !important;
+}
+
+/* ==========================================================================
+   Form controls.
+
+   Measured before touching them: a 33px-tall input with a 3.5px radius and a
+   0.888px border, inside a card with a 12.6px radius, next to an «Add …»
+   button with an 8.4px one. Three different corner radii in one form, and a
+   sub-pixel border that renders at a different weight depending on where it
+   lands on the device pixel grid.
+
+   One radius between the card's and square — a control should not be as round
+   as the thing containing it — one border colour shared with every other edge
+   in the panel, and enough vertical padding that a 14px value is not pinned
+   between two 5px gaps.
+   ========================================================================== */
+
+:root {
+    --control-radius: .5rem;
+
+    /* Direction «Filled», chosen from the four built side by side.
+
+       No border at rest: a soft ground carries the field, and the border only
+       appears on focus in the brand colour. Far fewer lines on a page that
+       already has cards, dividers and row-cards, and the eye goes to the labels
+       and values rather than to eight rectangles.
+
+       The two grounds are `--text-strong` mixed into `--surface-card` at 4% and
+       7%, written as literals so there is no `color-mix()` support question. */
+    --field-bg: #f6f6f6;
+    --field-bg-hover: #efefef;
+    --field-bg-focus: #ffffff;
+    --field-ring: rgba(37, 99, 235, .16);
+}
+
+.form-control,
+.form-select {
+    background-color: var(--field-bg);
+    /* Transparent rather than absent, so focus does not change the field's
+       size and nudge everything beside it. */
+    border: 1px solid transparent;
+    border-radius: var(--control-radius);
+    color: var(--text-strong);
+    font-size: .9rem;
+    padding: .62rem .8rem;
+    transition: background-color .15s ease, border-color .15s ease, box-shadow .15s ease;
+}
+
+/* Hover is a small promise that the field is live. */
+.form-control:hover:not(:disabled):not(:focus),
+.form-select:hover:not(:disabled):not(:focus) {
+    background-color: var(--field-bg-hover);
+}
+
+.form-select {
+    padding-inline-end: 2rem;
+}
+
+/* A placeholder has to read as absent, not as a value somebody typed. */
+.form-control::placeholder {
+    color: var(--text-muted);
+    opacity: .65;
+}
+
+/* The focus ring is the brand's, and it is a ring rather than Bootstrap's
+   diffuse glow — on a card the glow reads as a smudge. */
+.form-control:focus,
+.form-select:focus {
+    background-color: var(--field-bg-focus);
+    border-color: var(--brand-primary);
+    box-shadow: 0 0 0 3px var(--field-ring);
+    color: var(--text-strong);
+    outline: 0;
+}
+
+/* Bootstrap marks a rejected field with a red border; on a filled control the
+   fill is what carries it, with the border staying out of the way. */
+.form-control.is-invalid,
+.form-select.is-invalid {
+    background-color: var(--tone-bad-bg);
+    border-color: transparent;
+}
+
+.form-control.is-invalid:focus,
+.form-select.is-invalid:focus {
+    border-color: var(--tone-bad);
+    box-shadow: 0 0 0 3px var(--tone-bad-bg);
+}
+
+.form-control:disabled,
+.form-select:disabled {
+    background-color: var(--field-bg);
+    border-color: transparent;
+    color: var(--text-muted);
+    opacity: .6;
+}
+
+textarea.form-control {
+    line-height: 1.5;
+    min-height: 5rem;
+}
+
+/* app.css:3338 sets `.input-group-text { background: #e6eef5; color: #E5F2F2 }` —
+   near-white on near-white, about 1.05:1. Every addon in an input group was
+   invisible; the login page's show-password eye was rendering the whole time,
+   just unreadable. */
+/* The addon used to draw its own box beside the field, so the seam between
+   them was two 1px borders side by side. It shares the field's ground and
+   drops the border they have in common, and the pair reads as one control. */
+.input-group-text {
+    background-color: var(--field-bg);
+    border: 1px solid transparent;
+    border-inline-start: 0;
+    color: var(--text-muted);
+    padding-inline: .8rem;
+}
+
+.input-group-text:hover {
+    color: var(--brand-text);
+}
+
+/* Focus belongs to the whole group, not to the half of it that has the caret. */
+.input-group:focus-within .form-control,
+.input-group:focus-within .input-group-text {
+    background-color: var(--field-bg-focus);
+    border-color: var(--brand-primary);
+}
+
+.input-group:focus-within {
+    border-radius: var(--control-radius);
+    box-shadow: 0 0 0 3px var(--field-ring);
+}
+
+.input-group:focus-within .form-control {
+    box-shadow: none;
+}
+
+/* The form submit and the list screens' «Add …» are the same kind of object and
+   were 3.5px and 8.4px apart. */
+.btn-primary,
+.btn-secondary,
+.btn-success,
+.btn-danger,
+.btn-warning,
+.btn-outline-primary,
+.btn-outline-secondary,
+.btn-outline-success,
+.btn-outline-danger {
+    border-radius: var(--control-radius);
+}
+
+/* A submit sitting next to an input should be the same height as it; Bootstrap's
+   button padding leaves it 3px short of the control it submits. */
+.btn-primary,
+.btn-secondary,
+.btn-success,
+.btn-danger,
+.btn-outline-primary,
+.btn-outline-secondary,
+.btn-outline-success,
+.btn-outline-danger {
+    font-size: .9rem;
+    padding: .55rem 1.1rem;
+}
+
+.form-check-input:focus {
+    border-color: var(--brand-primary);
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, .15);
+}
+
+.form-check-input:checked {
+    background-color: var(--brand-primary);
+    border-color: var(--brand-primary);
+}
+
+/* The logo above the login form. Was `style="max-height:48px"` inline — the
+   last inline length on the page, and the one that did not scale with the
+   root size like everything around it. */
+.login-form-logo {
+    height: auto;
+    max-height: 3.2rem;
+    max-width: 100%;
+}
+
+/* `.brand-pill` and `.brand-bubbles` were removed from the markup: the pill
+   repeated the app name the wordmark already carries, and the bubbles were four
+   unlabelled icons unrelated to anything on the screen. Their rules go with
+   them rather than sitting here waiting for markup that no longer exists. */
+
+/* ==========================================================================
+   Dropdowns — the open list.
+
+   A native `<select>`'s menu is drawn by the operating system: it takes no CSS,
+   so it arrived in whatever the OS felt like and matched nothing around it.
+   select2 replaces it with real elements, and these rules make those elements
+   look like the field they belong to rather than like select2.
+
+   Everything here is scoped to `.select2-container`, so a native select left
+   alone anywhere keeps working exactly as before.
+   ========================================================================== */
+
+/* The closed control is the Filled field, to the pixel — same ground, same
+   radius, same padding, same hover. */
+.select2-container--bootstrap-5 .select2-selection {
+    background-color: var(--field-bg);
+    border: 1px solid transparent;
+    border-radius: var(--control-radius);
+    color: var(--text-strong);
+    font-size: .9rem;
+    min-height: 0;
+    padding: .62rem .8rem;
+    transition: background-color .15s ease, border-color .15s ease, box-shadow .15s ease;
+}
+
+.select2-container--bootstrap-5 .select2-selection:hover {
+    background-color: var(--field-bg-hover);
+}
+
+.select2-container--bootstrap-5.select2-container--focus .select2-selection,
+.select2-container--bootstrap-5.select2-container--open .select2-selection {
+    background-color: var(--field-bg-focus);
+    border-color: var(--brand-primary);
+    box-shadow: 0 0 0 3px var(--field-ring);
+}
+
+.select2-container--bootstrap-5 .select2-selection--single .select2-selection__rendered {
+    color: var(--text-strong);
+    line-height: 1.35;
+    padding: 0;
+    padding-inline-end: 1.2rem;
+}
+
+.select2-container--bootstrap-5 .select2-selection__placeholder {
+    color: var(--text-muted);
+    opacity: .7;
+}
+
+/* select2 draws its own arrow; this is the same chevron the rest of the panel
+   uses. Physical `border-left`, because a downward chevron is the same glyph in
+   both directions — only its position mirrors. */
+/* The bootstrap-5 theme leaves this span `display: inline`, so `height: 100%`
+   silently does nothing and an absolutely-positioned child resolving `top: 50%`
+   against the collapsed line box lands *below* the field — which is exactly
+   where a first pass at this put a stray 2px tick under every select. Made a
+   flex box that actually has the field's height, with the chevron a static
+   child it can centre. */
+.select2-container--bootstrap-5 .select2-selection {
+    position: relative;
+}
+
+.select2-container--bootstrap-5 .select2-selection__arrow {
+    align-items: center;
+    background: none;
+    display: flex;
+    inset-block: 0;
+    inset-inline-end: .75rem;
+    justify-content: center;
+    position: absolute;
+    width: .8rem;
+}
+
+.select2-container--bootstrap-5 .select2-selection__arrow b {
+    border: 0;
+    /* Physical `border-left`: a downward chevron is the same glyph in both
+       directions, so only its position mirrors. */
+    border-bottom: 2px solid var(--text-muted);
+    border-left: 2px solid var(--text-muted);
+    height: .42rem;
+    inset: auto;
+    margin: 0;
+    position: static;
+    transform: translateY(-.1rem) rotate(-45deg);
+    width: .42rem;
+}
+
+.select2-container--bootstrap-5.select2-container--open .select2-selection__arrow b {
+    border-color: var(--brand-primary);
+    transform: translateY(.05rem) rotate(135deg);
+}
+
+/* The panel. A card, not a system menu: the card's own surface and border, a
+   radius that matches the field, and a shadow so it reads as sitting above the
+   form rather than punched into it. */
+.select2-container--bootstrap-5 .select2-dropdown {
+    background-color: var(--surface-card);
+    border: 1px solid var(--surface-border);
+    border-radius: var(--control-radius);
+    box-shadow: 0 8px 24px rgba(15, 45, 82, .14);
+    overflow: hidden;
+    padding: .25rem;
+}
+
+body.theme-dark .select2-container--bootstrap-5 .select2-dropdown {
+    box-shadow: 0 8px 24px rgba(0, 0, 0, .45);
+}
+
+/* The bootstrap-5 theme welds the panel onto the field: `--below` zeroes the top
+   border and the top two corners, `--above` the bottom ones, so the open control
+   is one tall shape with a seam across it. Restated at the same specificity —
+   theme.css now loads after the extensions, so equal weight wins — the panel is
+   a card of its own, floating clear of the field like every other dropdown in
+   the top bar. */
+.select2-container--bootstrap-5 .select2-dropdown.select2-dropdown--below,
+.select2-container--bootstrap-5 .select2-dropdown.select2-dropdown--above {
+    border: 1px solid var(--surface-border);
+    border-radius: var(--control-radius);
+}
+
+.select2-container--bootstrap-5 .select2-dropdown--below {
+    margin-block-start: .3rem;
+}
+
+.select2-container--bootstrap-5 .select2-dropdown--above {
+    margin-block-end: .3rem;
+}
+
+.select2-container--bootstrap-5 .select2-results__options {
+    max-height: 15rem;
+}
+
+/* The bootstrap-5 theme addresses an option through a five-class chain
+   (`… .select2-dropdown .select2-results__options .select2-results__option.
+   select2-results__option--highlighted`, 0-5-0), so a two-class rule loses to
+   it however late it loads — which is how the highlighted option kept its
+   hard-coded `#000` on the dark card at 1.29:1. These match that depth. */
+.select2-container--bootstrap-5 .select2-dropdown .select2-results__options .select2-results__option {
+    border-radius: calc(var(--control-radius) - .15rem);
+    color: var(--text-strong);
+    font-size: .88rem;
+    padding: .45rem .65rem;
+}
+
+/* Hover and keyboard selection are the same state to the reader, so they look
+   the same — a tint, not a saturated bar. */
+.select2-container--bootstrap-5 .select2-dropdown .select2-results__options .select2-results__option.select2-results__option--highlighted {
+    background-color: var(--tone-live-bg);
+    color: var(--tone-live);
+}
+
+/* The option already chosen, which is a different thing from the one under the
+   cursor and used to look identical to it — select2 painted both a solid blue.
+   Both the modern `--selected` class and the older `aria-selected`, since the
+   bundled build emits one and newer ones emit the other. */
+.select2-container--bootstrap-5 .select2-dropdown .select2-results__options .select2-results__option.select2-results__option--selected,
+.select2-container--bootstrap-5 .select2-dropdown .select2-results__options .select2-results__option[aria-selected="true"] {
+    background-color: transparent;
+    color: var(--brand-text);
+    font-weight: 700;
+}
+
+.select2-container--bootstrap-5 .select2-dropdown .select2-results__options .select2-results__option.select2-results__option--selected::after,
+.select2-container--bootstrap-5 .select2-dropdown .select2-results__options .select2-results__option[aria-selected="true"]::after {
+    content: "✓";
+    float: inline-end;
+    font-weight: 700;
+}
+
+/* Chosen *and* under the cursor: keep the tint, keep the accent. */
+.select2-container--bootstrap-5 .select2-dropdown .select2-results__options .select2-results__option.select2-results__option--selected.select2-results__option--highlighted,
+.select2-container--bootstrap-5 .select2-dropdown .select2-results__options .select2-results__option[aria-selected="true"].select2-results__option--highlighted {
+    background-color: var(--tone-live-bg);
+    color: var(--brand-text);
+}
+
+/* The search box, on the lists long enough to have earned one. */
+.select2-container--bootstrap-5 .select2-search--dropdown {
+    padding: .25rem .25rem .4rem;
+}
+
+.select2-container--bootstrap-5 .select2-search__field {
+    background-color: var(--field-bg);
+    border: 1px solid transparent;
+    border-radius: calc(var(--control-radius) - .1rem);
+    color: var(--text-strong);
+    font-size: .88rem;
+    padding: .45rem .6rem;
+}
+
+.select2-container--bootstrap-5 .select2-search__field:focus {
+    background-color: var(--field-bg-focus);
+    border-color: var(--brand-primary);
+    outline: 0;
+}
+
+.select2-container--bootstrap-5 .select2-results__message {
+    color: var(--text-muted);
+    font-size: .85rem;
+    padding: .6rem .65rem;
+}
+
+/* A locked select on a detail screen: same read-only sheet treatment as the
+   inputs beside it, and no pointer affordance. */
+.show-page .select2-container--bootstrap-5 .select2-selection {
+    background-color: transparent;
+    border-color: transparent;
+    box-shadow: none;
+    cursor: default;
+    font-weight: 600;
+    padding-inline: 0;
+}
+
+.show-page .select2-container--bootstrap-5 .select2-selection__arrow {
+    display: none;
 }

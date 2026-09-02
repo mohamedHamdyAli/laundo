@@ -1,6 +1,6 @@
 {{-- WHATS_App / FACEBOOK_URL / TWITTER_URL / INSTAGRAM_URL --}}
 
-<div class="row g-1">
+<div class="row g-3">
     <div class="col-md-3">
         <div class="form-group">
             <label class="form-label">{{ __('App Whats App') }}</label>
@@ -42,7 +42,7 @@
 </div>
 {{-- LINKEDIN_URL / YOUTUBE_URL / SNAPCHAT_URL / GMAIL_URL --}}
 
-<div class="row g-1">
+<div class="row g-3">
     <div class="col-md-3">
         <div class="form-group">
             <label class="form-label">{{ __('App Linkedin Url') }}</label>

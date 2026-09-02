@@ -1,6 +1,9 @@
 <div id="sidebar" class="active">
     <div class="sidebar-wrapper active">
-        <div class="sidebar-header position-relative">
+        {{-- `position-relative` was carrying a `!important` that beat the sticky
+             positioning in theme.css, and nothing inside this header is
+             absolutely positioned, so it was doing no work. --}}
+        <div class="sidebar-header">
             <div class="d-block">
                 <div class="logo text-center">
                     <a href="{{ url('admin/home') }}">
@@ -11,8 +14,7 @@
                             here; an empty setting used to leave a blank box with
                             nothing to say why.
                         --}}
-                        <img src="{{ brandLogo('light') }}" alt="{{ getSettingValue('App_Name') ?: config('app.name') }}"
-                            style="max-width: 150px; height: auto;">
+                        <img src="{{ brandLogo('light') }}" alt="{{ getSettingValue('App_Name') ?: config('app.name') }}">
                     </a>
                 </div>
             </div>

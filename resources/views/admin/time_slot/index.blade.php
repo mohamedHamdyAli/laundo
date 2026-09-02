@@ -4,7 +4,7 @@
     <div class="card-header d-flex justify-content-between align-items-center">
         <h5 class="card-title mb-0">{{ __('Time Slots') }}</h5>
         @if (canDo('time_slot.create'))
-            <a href="{{ route('admin.time_slot.create') }}" class="badge alert-info primary-background-color">
+            <a href="{{ route('admin.time_slot.create') }}" class="btn-add">
                 <i class="fa fa-plus"></i> {{ __('Add Time Slot') }}
             </a>
         @endif
@@ -20,74 +20,76 @@
                             {{ __('A pickup and a delivery in the same window are two separate journeys, so both count against it.') }}
                         </p>
 
-                        <div class="table-responsive">
-                            <table class="table table-borderless table-striped" id="table_list">
-                                <thead class="table-light">
-                                    <tr>
-                                        <th>{{ __('ID') }}</th>
-                                        <th>{{ __('Window') }}</th>
-                                        <th>{{ __('Used For') }}</th>
-                                        <th>{{ __('Capacity') }}</th>
-                                        <th>{{ __('Booked today') }}</th>
-                                        <th>{{ __('Booked tomorrow') }}</th>
-                                        <th>{{ __('Order') }}</th>
-                                        <th>{{ __('Status') }}</th>
-                                        <th class="text-center">{{ __('Action') }}</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    @forelse ($timeSlots as $slot)
-                                        <tr>
-                                            <td>{{ $slot->id }}</td>
-                                            <td>{{ $slot->label() }}</td>
-                                            <td>
-                                                @if ($slot->applies_to === 'both')
-                                                    <span class="badge bg-info">{{ __('Pickup & Delivery') }}</span>
-                                                @elseif ($slot->applies_to === 'pickup')
-                                                    <span class="badge bg-secondary">{{ __('Pickup') }}</span>
+                        @php
+                            // Shared by the label strip and every row, so the labels
+                            // sit exactly over the fields they name.
+                            $stackCols = 'minmax(8rem,1.1fr) minmax(8rem,auto) minmax(7rem,.9fr) minmax(7rem,.9fr) minmax(7rem,auto) minmax(6rem,auto)';
+                        @endphp
+
+                        <div class="stack-head" style="--stack-cols: {{ $stackCols }}">
+                            <span>{{ __('Window') }}</span>
+                            <span>{{ __('Used For') }}</span>
+                            <span>{{ __('Booked today') }}</span>
+                            <span>{{ __('Booked tomorrow') }}</span>
+                            <span>{{ __('Status') }}</span>
+                            <span class="text-end">{{ __('Action') }}</span>
+                        </div>
+
+                        <div class="data-stack" style="--stack-cols: {{ $stackCols }}">
+                            @forelse ($timeSlots as $slot)
+                                @php
+                                    // Only a capped window can be full, and only a full one is
+                                    // worth colouring — a red number on an unlimited window
+                                    // would mean nothing.
+                                    $capped = $slot->capacity !== null;
+                                    $usage_ = [
+                                        'today' => $usage[$slot->id]['today'] ?? 0,
+                                        'tomorrow' => $usage[$slot->id]['tomorrow'] ?? 0,
+                                    ];
+                                    $fullToday = $capped && $usage_['today'] >= (int) $slot->capacity;
+                                    $fullTomorrow = $capped && $usage_['tomorrow'] >= (int) $slot->capacity;
+                                @endphp
+                                <div class="stack-row {{ $fullToday || $fullTomorrow ? 'tone-bad' : '' }}">
+                                    <div>
+                                        <span class="row-lead">{{ $slot->label() }}</span>
+                                        <span class="row-sub">#{{ $slot->id }} · {{ __('Order') }} {{ $slot->sort_order }}</span>
+                                    </div>
+                                    <div>
+                                        @if ($slot->applies_to === 'both')
+                                            <span class="status-pill tone-live">{{ __('Pickup & Delivery') }}</span>
+                                        @elseif ($slot->applies_to === 'pickup')
+                                            <span class="status-pill tone-warn">{{ __('Pickup') }}</span>
+                                        @else
+                                            <span class="status-pill tone-warn">{{ __('Delivery') }}</span>
+                                        @endif
+                                    </div>
+                                    @foreach (['today' => $fullToday, 'tomorrow' => $fullTomorrow] as $day => $isFull)
+                                        <div>
+                                            @if (! $capped)
+                                                <span class="row-main">{{ $usage_[$day] }}</span>
+                                                <span class="row-sub">{{ __('Unlimited') }}</span>
+                                            @else
+                                                <span class="row-main">{{ $usage_[$day] }} / {{ $slot->capacity }}</span>
+                                                @if ($isFull)
+                                                    <span class="status-pill tone-bad">{{ __('Full') }}</span>
                                                 @else
-                                                    <span class="badge bg-secondary">{{ __('Delivery') }}</span>
+                                                    <span class="row-sub">{{ (int) $slot->capacity - $usage_[$day] }} {{ __('left') }}</span>
                                                 @endif
-                                            </td>
-                                            <td>{{ $slot->capacity ?? __('Unlimited') }}</td>
-                                            @foreach (['today', 'tomorrow'] as $day)
-                                                @php
-                                                    $booked = $usage[$slot->id][$day] ?? 0;
-                                                    // Only a capped window can be full, and only a full
-                                                    // one is worth colouring — a red number on an
-                                                    // unlimited window would mean nothing.
-                                                    $full = $slot->capacity !== null && $booked >= (int) $slot->capacity;
-                                                @endphp
-                                                <td>
-                                                    @if ($slot->capacity === null)
-                                                        <span class="text-muted">{{ $booked }}</span>
-                                                    @else
-                                                        <span class="{{ $full ? 'text-danger fw-bold' : '' }}">
-                                                            {{ $booked }} / {{ $slot->capacity }}
-                                                        </span>
-                                                        @if ($full)
-                                                            <span class="badge bg-danger">{{ __('Full') }}</span>
-                                                        @endif
-                                                    @endif
-                                                </td>
-                                            @endforeach
-                                            <td>{{ $slot->sort_order }}</td>
-                                            <td>
-                                                <x-status-toggle-button :id="$slot->id" :status="$slot->status"
-                                                    endpoint="{{ route('admin.time_slot.toggleStatus', $slot->id) }}"
-                                                    permission="time_slot.toggle" />
-                                            </td>
-                                            <td class="text-center">
-                                                @include('admin.time_slot.shared.controlBut', ['row' => $slot])
-                                            </td>
-                                        </tr>
-                                    @empty
-                                        <tr>
-                                            <td colspan="9" class="text-center">{{ __('No data found') }}</td>
-                                        </tr>
-                                    @endforelse
-                                </tbody>
-                            </table>
+                                            @endif
+                                        </div>
+                                    @endforeach
+                                    <div>
+                                        <x-status-toggle-button :id="$slot->id" :status="$slot->status"
+                                            endpoint="{{ route('admin.time_slot.toggleStatus', $slot->id) }}"
+                                            permission="time_slot.toggle" />
+                                    </div>
+                                    <div class="stack-actions">
+                                        @include('admin.time_slot.shared.controlBut', ['row' => $slot])
+                                    </div>
+                                </div>
+                            @empty
+                                <div class="stack-empty">{{ __('No data found') }}</div>
+                            @endforelse
                         </div>
 
                         <div id="pagination-wrapper">

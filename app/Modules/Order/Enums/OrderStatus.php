@@ -149,6 +149,36 @@ enum OrderStatus: string
     }
 
     /**
+     * How the dashboard colours this status.
+     *
+     * Returns a tone token — `ok`, `bad`, `warn`, `live` — rather than a CSS
+     * class, so the same answer drives the status pill and the stripe down the
+     * leading edge of the row without either having to parse the other's
+     * markup.
+     *
+     * It lives here rather than in Blade because two views drew the badge and
+     * both used the same `isTerminal() ? bg-secondary : bg-info` ternary — which
+     * gave «Completed» and «Cancelled» the identical grey. The two most opposite
+     * outcomes an order has looked the same in a column whose entire job is
+     * being scanned, and six in-progress states shared one cyan besides.
+     *
+     * The groups are the ones the state machine already draws: it ended as
+     * intended, it ended without the work being delivered, somebody is being
+     * waited on, or it is still moving.
+     */
+    public function tone(): string
+    {
+        return match ($this) {
+            self::Completed => 'ok',
+            self::Cancelled, self::Returned => 'bad',
+            // Waiting on a person: the customer agreeing a price, or a second
+            // count being made. These are the rows an operator chases.
+            self::Reviewed, self::ReviewDisputed => 'warn',
+            default => 'live',
+        };
+    }
+
+    /**
      * The points the design's tracking timeline draws.
      *
      * Six rather than the five of any single mock, because the design's three

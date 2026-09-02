@@ -2237,3 +2237,130 @@ questions — and one of the questions turned up a real gap.
 - [ ] Capacity is **per window per day across the platform** — the column carries
       no city and no laundry. Per-city or per-laundry is a schema change.
 
+
+---
+
+# Workstream — Dashboard design pass (page by page)
+
+Full inventory of every rendered admin screen, in sidebar order. 104 pages.
+Built from `route:list` (GET, minus `search`/`export`/`set-language`/`unread`,
+which are JSON or downloads and render nothing) cross-checked against every
+blade under `resources/views/admin/`. Tick a page when its design pass is done.
+
+Legend: **I** index · **C** create · **E** edit · **S** show · **X** special screen
+`ajax` = the list has a `/search` route + `_table_body` partial (the AJAX search pattern).
+
+## 0. Dashboard — 1 page
+- [x] **X** `/admin/home` — `admin/home.blade.php` — **done 2026-09-01.**
+  Four shared-layer bugs surfaced here and were fixed at the root, so they are
+  already gone on the other 103 screens (still re-check each when we reach it):
+  the never-filled `.page-heading` (42px of dead space on every page), the page
+  title rendered as a card header outside a card (30px misalignment + a stray
+  rule), the `position: fixed` footer bar, and dark mode's white card headers /
+  invisible muted text and headings. Page-local fix: the «Look at these first»
+  empty state was missing `colspan="4"`.
+
+## 1. Orders — 3 pages
+- [x] **I** `/admin/order` — `admin/order/index` `ajax` — **done 2026-09-01.**
+  Rebuilt to six compound columns. Shared-layer work done here that lands on the
+  other 25 lists: zebra striping replaced by dividers + hover (it was 3.2:1 in
+  dark mode), quiet column headers, `.action-btn` restyled and labelled,
+  `.list-toolbar`, `.stat-card`, and `.card.h-100` no longer inflating by its own
+  margin. `OrderStatus::badgeClass()` added — Completed and Cancelled were the
+  same grey.
+- [x] **S** `/admin/order/show/{id}` — `admin/order/show` (+ partials `_tasks`, `_price_queries`, `_review_form`)
+- [x] **X** `/admin/order/invoice/{id}` — `invoices/order.blade.php` (print view, outside `admin/`)
+
+## 2. Locations — 12 pages
+- [x] **I** `/admin/country` `ajax` · [x] **C** `/create` · [x] **E** `/edit/{id}` · [x] **S** `/show/{id}`
+- [x] **I** `/admin/city` `ajax` · [x] **C** `/create` · [x] **E** `/edit/{id}` · [x] **S** `/show/{id}`
+- [x] **I** `/admin/zone` `ajax` · [x] **C** `/create` · [x] **E** `/edit/{id}` · [x] **S** `/show/{id}`
+
+## 3. Content — 12 pages
+- [x] **I** `/admin/banner` `ajax` · [x] **C** `/create` · [x] **E** `/edit/{id}` · [x] **S** `/show/{id}`
+- [x] **I** `/admin/intro` `ajax` · [x] **C** `/create` · [x] **E** `/edit/{id}` · [x] **S** `/show/{id}`
+- [x] **I** `/admin/faq` `ajax` · [x] **C** `/create` · [x] **E** `/edit/{id}` · [x] **S** `/show/{id}`
+
+## 4. Catalog — 13 pages
+- [x] **I** `/admin/service` `ajax` · [x] **C** `/create` · [x] **E** `/edit/{id}` · [x] **S** `/show/{id}`
+- [x] **I** `/admin/item-category` `ajax` · [x] **C** `/create` · [x] **E** `/edit/{id}` · [x] **S** `/show/{id}`
+- [x] **I** `/admin/item` `ajax` · [x] **C** `/create` · [x] **E** `/edit/{id}` · [x] **S** `/show/{id}`
+- [x] **X** `/admin/pricing` — `admin/pricing/index` (price matrix, no CRUD pages)
+
+## 5. Money — 10 pages
+- [x] **I** `/admin/coupon` `ajax` · [x] **C** `/create` · [x] **E** `/edit/{id}` · [x] **S** `/show/{id}`
+- [x] **I** `/admin/refund` — `admin/refund/index` `ajax` (list only)
+- [x] **I** `/admin/wallet` `ajax` · [x] **S** `/admin/wallet/show/{id}`
+- [x] **I** `/admin/payment` — `admin/payment/index` `ajax` (list only)
+- [x] **I** `/admin/earning` — `admin/earning/index` `ajax` (driver earnings, list only)
+- [x] **I** `/admin/notification` — `admin/notification/index` `ajax` (notification log, list only)
+
+## 6. Reports — 10 pages
+- [x] **X** `/admin/report/orders` — `admin/report/orders`
+- [x] **X** `/admin/report/revenue` — `admin/report/revenue`
+- [x] **X** `/admin/report/drivers` — `admin/report/drivers`
+- [x] **X** `/admin/report/laundries` — `admin/report/laundries`
+- [x] **X** `/admin/report/operations` — `admin/report/operations`
+  (all five share `report/partials/_range` + `_bars`)
+- [x] **I** `/admin/recurrence` `ajax` · [x] **S** `/admin/recurrence/show/{id}`
+- [x] **I** `/admin/rating` — `admin/rating/index` `ajax` (list only)
+- [x] **I** `/admin/complaint` `ajax` · [x] **S** `/admin/complaint/show/{id}`
+
+## 7. Top-level singles — 34 pages
+- [x] **I** `/admin/user` `ajax` · [x] **C** `/create` · [x] **E** `/edit/{id}` · [x] **S** `/show/{id}`
+- [x] **I** `/admin/language` `ajax` · [x] **C** `/create` · [x] **E** `/edit/{id}` · [x] **S** `/show/{id}`
+- [x] **X** `/admin/language/panel/{id}` — panel translation strings editor
+- [x] **X** `/admin/language/mobile/{id}` — mobile translation strings editor
+- [x] **X** `/admin/language/web/{id}` — web translation strings editor
+- [x] **I** `/admin/roles` — `admin/roles/index` (permission matrix; create is a **modal inside index**)
+- [x] **I** `/admin/moderator` `ajax` · [x] **C** `/create` · [x] **E** `/edit/{id}` · [x] **S** `/show/{id}`
+- [x] **I** `/admin/laundry` `ajax` · [x] **C** `/create` · [x] **E** `/edit/{id}` · [x] **S** `/show/{id}`
+- [x] **I** `/admin/laundry-staff` `ajax` · [x] **C** `/create` · [x] **E** `/edit/{id}` · [x] **S** `/show/{id}`
+- [x] **I** `/admin/driver` `ajax` · [x] **C** `/create` · [x] **E** `/edit/{id}` · [x] **S** `/show/{id}`
+- [x] **X** `/admin/laundry-service` — `admin/laundry_service/index` (assignment screen)
+- [x] **X** `/admin/laundry-zone` — `admin/laundry_zone/index` (assignment screen)
+- [x] **I** `/admin/time-slot` · [x] **C** `/create` · [x] **E** `/edit/{id}` · [x] **S** `/show/{id}`
+  (**no** `ajax` — the index renders its table inline, no `_table_body` partial)
+
+## 8. Settings — 2 pages
+- [x] **X** `/admin/generalSetting` — `admin/setting/generalSetting/index`
+- [x] **X** `/admin/PrivacyAndTerms` — `admin/setting/PrivacyAndTerms/index`
+
+## 9. Reachable but not in the sidebar — 7 pages
+- [x] **I** `/admin/category` `ajax` · [x] **C** `/create` · [x] **E** `/edit/{id}` · [x] **S** `/show/{id}`
+- [ ] **X** `/admin/category/showSubCategories/{id}` — `admin/category/subcategories`
+  **Not verified:** the categories table is empty, so there is no id to load it with.
+  Needs a category with children before it can be looked at.
+  (Category has routes, views, permissions and entries in `menu.php`'s `icons`/`titles`/`routes`
+  maps — but **no entry in `groups` or `singles`**, so `MenuBuilder` never renders it. Five live
+  pages with no way in except typing the URL. Decide during the pass: link it or retire it.)
+- [x] **X** `/admin/change-password` — `admin/changePassword/index` (topbar avatar menu)
+- [x] **X** `/admin/my-notifications` — `admin/notification/mine` (topbar bell inbox)
+
+## Dead files found during the inventory (not pages)
+- `admin/roles/create.blade.php` — no GET route; the real create form is the
+  `#createRoleModal` inside `roles/index.blade.php`. Delete or wire up.
+- `admin/setting/socialSetting/index.blade.php` + `forms/formInput.blade.php` —
+  no route, no controller, nothing references it. Delete or build the screen.
+
+## Shared surfaces — fix once, lands on many pages
+Doing these first means most of the 104 come out right without being touched
+individually. Worth front-loading before walking the list.
+- [x] `layouts/main` + `layouts/footer` — heading slot, footer placement, sticky-footer column (done 2026-09-01)
+- [x] `layouts/topbar` — rewritten: invalid HTML, avatar bug, dead link, flex layout (done 2026-09-02)
+- [x] `layouts/sidebar` — pinned header, styled scrollbar, logo sizing (done 2026-09-02)
+- [x] `components/status-toggle-button` — pill + i18n fix (done 2026-09-02)
+- [x] `components/action-buttons` + `.action-btn` styling (done 2026-09-01; 18 modules)
+- [x] `components/status-toggle-button` — pill treatment + i18n fix (done 2026-09-02)
+- [x] `{module}/forms/formInput.blade.php` (done 2026-09-02: gutters, selects, translation legend)
+- [x] Shared table design — headers, dividers, hover, cell padding, `.cell-sub` (done 2026-09-01)
+- [x] `{module}/partials/_{module}_table_body.blade.php` — all 26 rebuilt as Stack row-cards (done 2026-09-02)
+- [x] `report/partials/_range` + `_bars` — chart rebuilt (done 2026-09-02)
+
+## Page-pass checklist (apply to each screen)
+- [ ] Renders correctly LTR **and** RTL
+- [ ] No horizontal overflow at 1440px and at 1000px
+- [ ] Consistent page heading + card structure with its neighbours
+- [ ] Empty state present and correct `colspan`
+- [ ] Buttons/badges/toggles use the shared components, not one-off markup
+- [ ] Dark mode readable

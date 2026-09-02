@@ -4,7 +4,7 @@
     <div class="card-header d-flex justify-content-between align-items-center">
         <h5 class="card-title mb-0">{{ __('Items') }}</h5>
         @if (canDo('item.create'))
-            <a href="{{ route('admin.item.create') }}" class="badge alert-info primary-background-color">
+            <a href="{{ route('admin.item.create') }}" class="btn-add">
                 <i class="fa fa-plus"></i> {{ __('Add Item') }}
             </a>
         @endif
@@ -23,22 +23,24 @@
                         </div>
 
                         <div class="table-responsive">
-                            <table class="table table-borderless table-striped" id="table_list">
-                                <thead class="table-light">
-                                    <tr>
-                                        <th>{{ __('Image') }}</th>
-                                        <th>{{ __('ID') }}</th>
-                                        <th>{{ __('Name') }}</th>
-                                        <th>{{ __('Category') }}</th>
-                                        <th>{{ __('Order') }}</th>
-                                        <th>{{ __('Status') }}</th>
-                                        <th class="text-center">{{ __('Action') }}</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="item-table-body">
-                                    @include('admin.item.partials._item_table_body', ['items' => $items])
-                                </tbody>
-                            </table>
+                        @php
+                            // Shared by the label strip and every row, so the labels
+                            // sit exactly over the fields they name.
+                            $stackCols = 'minmax(3.8rem,4rem) minmax(9rem,1.3fr) minmax(8rem,1fr) minmax(7rem,auto) minmax(6rem,auto)';
+                        @endphp
+
+                        <div class="stack-head" style="--stack-cols: {{ $stackCols }}">
+                            <span>{{ __('Image') }}</span>
+                            <span>{{ __('Name') }}</span>
+                            <span>{{ __('Category') }}</span>
+                            <span>{{ __('Status') }}</span>
+                            <span class="text-end">{{ __('Action') }}</span>
+                        </div>
+
+                        <div class="data-stack" id="item-table-body" style="--stack-cols: {{ $stackCols }}">
+                            @include('admin.item.partials._item_table_body', ['items' => $items])
+                        </div>
+
                         </div>
 
                         <div id="pagination-wrapper">
@@ -59,7 +61,10 @@
                 tableBodySelector: '#item-table-body',
                 paginationWrapperSelector: '#pagination-wrapper',
                 url: "{{ route('admin.item.search') }}",
-                colspan: 8
+                // Card rows, not a table: the helper's default
+                // <tr><td colspan> failure message would be stray
+                // markup here.
+                errorHtml: '<div class="stack-empty text-danger">Error during search</div>'
             });
         });
     </script>

@@ -95,23 +95,25 @@
                 </div>
 
                 <div class="table-responsive">
-                    <table class="table table-borderless table-striped" id="table_list">
-                        <thead class="table-light">
-                            <tr>
-                                <th>{{ __('Driver') }}</th>
-                                <th>{{ __('Order') }}</th>
-                                <th>{{ __('Journey') }}</th>
-                                <th>{{ __('Amount') }}</th>
-                                <th>{{ __('How it was worked out') }}</th>
-                                <th>{{ __('Status') }}</th>
-                                <th>{{ __('When') }}</th>
-                            </tr>
-                        </thead>
-                        <tbody id="earning-table-body">
-                            @include('admin.earning.partials._earning_table_body', ['earnings' => $earnings])
-                        </tbody>
-                    </table>
-                </div>
+                    @php
+                        // Shared by the label strip and every row, so the labels
+                        // sit exactly over the fields they name.
+                        $stackCols = 'minmax(8rem,1.1fr) minmax(7rem,.9fr) minmax(11rem,1.7fr) minmax(7rem,auto) minmax(7rem,auto)';
+                    @endphp
+
+                    <div class="stack-head" style="--stack-cols: {{ $stackCols }}">
+                        <span>{{ __('Driver') }}</span>
+                        <span>{{ __('Order') }}</span>
+                        <span>{{ __('Basis') }}</span>
+                        <span>{{ __('Status') }}</span>
+                        <span class="text-end">{{ __('Amount') }}</span>
+                    </div>
+
+                    <div class="data-stack" id="earning-table-body" style="--stack-cols: {{ $stackCols }}">
+                        @include('admin.earning.partials._earning_table_body', ['earnings' => $earnings])
+                    </div>
+
+                    </div>
 
                 <div id="pagination-wrapper">
                     {{ $earnings->withQueryString()->links() }}
@@ -129,7 +131,10 @@
                 tableBodySelector: '#earning-table-body',
                 paginationWrapperSelector: '#pagination-wrapper',
                 url: "{{ route('admin.earning.search') }}",
-                colspan: 7
+                // Card rows, not a table: the helper's default
+                // <tr><td colspan> failure message would be stray
+                // markup here.
+                errorHtml: '<div class="stack-empty text-danger">Error during search</div>'
             });
 
             $('#earningStatusFilter').on('change', function () {

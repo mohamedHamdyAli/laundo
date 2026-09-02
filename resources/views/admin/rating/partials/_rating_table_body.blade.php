@@ -1,69 +1,54 @@
 @forelse ($ratings as $row)
-    {{-- Two stars or fewer is a customer waiting for a reply, so the row says so
-         rather than leaving it to be spotted in a column of numbers. --}}
-    <tr class="{{ $row->overall <= \App\Modules\Order\Models\OrderRating::POOR_AT_OR_BELOW ? 'table-danger' : '' }}">
-        <td>
-            @if ($row->order)
-                <a href="{{ route('admin.order.show', $row->order->id) }}">{{ $row->order->code }}</a>
-            @else
-                <span class="text-muted">—</span>
-            @endif
-            @if ($row->laundry)
-                <small class="text-muted d-block">
-                    {{ getLocalizedValueDashboard($row->laundry, 'name') }}
-                </small>
-            @endif
-        </td>
-        <td>
-            {{ $row->customer?->name ?? '—' }}
-            <small class="text-muted d-block">{{ $row->customer?->phone }}</small>
-        </td>
-        <td>
-            <strong>{{ $row->overall }}</strong><span class="text-muted">/5</span>
-            <small class="d-block" style="color: #b45309; letter-spacing: 1px;">
-                {{ str_repeat('★', $row->overall) }}{{ str_repeat('☆', 5 - $row->overall) }}
-            </small>
-        </td>
-        <td>
+    @php
+        // Two stars or fewer is a customer waiting for a reply, so the row says
+        // so rather than leaving it to be spotted in a column of numbers.
+        $poor = $row->overall <= \App\Modules\Order\Models\OrderRating::POOR_AT_OR_BELOW;
+    @endphp
+    <div class="stack-row {{ $poor ? 'tone-bad' : '' }}">
+        <div>
+            <span class="row-lead">
+                @if ($row->order)
+                    <a href="{{ route('admin.order.show', $row->order->id) }}">{{ $row->order->code }}</a>
+                @else
+                    —
+                @endif
+            </span>
+            <span class="row-sub">
+                {{ $row->laundry ? getLocalizedValueDashboard($row->laundry, 'name') : '—' }}
+            </span>
+        </div>
+        <div>
+            <span class="row-main">{{ $row->customer?->name ?? '—' }}</span>
+            <span class="row-sub">{{ $row->customer?->phone }}</span>
+        </div>
+        <div>
+            <span class="row-main rating-stars">{{ str_repeat('★', $row->overall) }}{{ str_repeat('☆', 5 - $row->overall) }}</span>
+            <span class="row-sub">{{ $row->overall }}/5</span>
+        </div>
+        <div>
             @if (! $row->hasAspectDetail())
                 {{-- Skipped the detail. Not the same as scoring it low, so it must
                      not render as three dashes that look like zeroes. --}}
-                <span class="text-muted small">{{ __('Detail skipped') }}</span>
+                <span class="row-sub">{{ __('Detail skipped') }}</span>
             @else
-                <small class="d-block">
-                    {{ __('Service quality') }}:
-                    <strong>{{ $row->service_quality ?? '—' }}</strong>
-                </small>
-                <small class="d-block">
-                    {{ __('Pickup and delivery') }}:
-                    <strong>{{ $row->delivery ?? '—' }}</strong>
-                </small>
-                <small class="d-block">
-                    {{ __('Timing') }}: <strong>{{ $row->timing ?? '—' }}</strong>
-                </small>
+                <span class="row-sub">
+                    {{ __('Service quality') }} {{ $row->service_quality ?? '—' }} ·
+                    {{ __('Pickup and delivery') }} {{ $row->delivery ?? '—' }} ·
+                    {{ __('Timing') }} {{ $row->timing ?? '—' }}
+                </span>
             @endif
-        </td>
-        <td>
             @php $cases = $row->tagCases(); @endphp
-            @forelse ($cases as $tag)
-                <span class="badge bg-light mb-1">{{ __($tag->label()) }}</span>
-            @empty
-                <span class="text-muted">—</span>
-            @endforelse
-        </td>
-        <td style="max-width: 320px;">
-            @if (filled($row->comment))
-                {{ $row->comment }}
-            @else
-                <span class="text-muted">—</span>
+            @if (count($cases))
+                <span class="row-sub">{{ collect($cases)->map(fn ($t) => __($t->label()))->implode(' · ') }}</span>
             @endif
-        </td>
-        <td>
-            <small class="text-muted">{{ $row->created_at?->diffForHumans() }}</small>
-        </td>
-    </tr>
+        </div>
+        <div>
+            <span class="row-sub">{{ filled($row->comment) ? \Illuminate\Support\Str::limit($row->comment, 110) : '—' }}</span>
+        </div>
+        <div>
+            <span class="row-sub">{{ $row->created_at?->diffForHumans() }}</span>
+        </div>
+    </div>
 @empty
-    <tr>
-        <td colspan="7" class="text-center">{{ __('No data found') }}</td>
-    </tr>
+    <div class="stack-empty">{{ __('No data found') }}</div>
 @endforelse

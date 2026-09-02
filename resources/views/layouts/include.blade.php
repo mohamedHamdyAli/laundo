@@ -6,12 +6,10 @@
     <link rel="stylesheet" href="{{ asset('assets/css/main/rtl.css') }}">
     <link rel="stylesheet" href="{{ asset('assets/css/pages/otherpages_rtl.css') }}" />
     <link rel="stylesheet" href="{{ asset('assets/css/custom.css') }}" />
-    <link rel="stylesheet" href="{{ asset('assets/css/theme.css') }}" />
 @else
     <link rel="stylesheet" href="{{ asset('assets/css/main/app.css') }}">
     <link rel="stylesheet" href="{{ asset('assets/css/pages/otherpages.css') }}" />
     <link rel="stylesheet" href="{{ asset('assets/css/custom.css') }}" />
-    <link rel="stylesheet" href="{{ asset('assets/css/theme.css') }}" />
 @endif
 {{-- Bootstrap Switch --}}
 <link rel="stylesheet" href="{{ asset('assets/css/bootstrap-switch-button.min.css') }}">
@@ -60,6 +58,18 @@
 
 <link rel="stylesheet" href="{{ asset('assets/css/leaflet.css') }}">
 <link rel="stylesheet" href="{{ asset('assets/css/map.css') }}">
+
+{{--
+    The theme layer goes last, after every vendor extension.
+
+    It used to sit up in the language branch, which put it ahead of select2,
+    sweetalert2, filepond, toastify and the rest — so its own header says it is
+    "loaded after app.css/rtl.css/custom.css so it can safely override", and it
+    was, but not after the extensions. Styling the select2 dropdown was the
+    first thing to notice: identical specificity, and select2's stylesheet won
+    on load order alone.
+--}}
+<link rel="stylesheet" href="{{ asset('assets/css/theme.css') }}" />
 @yield('css')
 
 <script>

@@ -66,23 +66,25 @@
                 </div>
 
                 <div class="table-responsive">
-                    <table class="table table-borderless table-striped" id="table_list">
-                        <thead class="table-light">
-                            <tr>
-                                <th>{{ __('Order') }}</th>
-                                <th>{{ __('Customer') }}</th>
-                                <th>{{ __('Amount') }}</th>
-                                <th>{{ __('Method') }}</th>
-                                <th>{{ __('Status') }}</th>
-                                <th>{{ __('When') }}</th>
-                                <th>{{ __('Provider reference') }}</th>
-                            </tr>
-                        </thead>
-                        <tbody id="payment-table-body">
+                        @php
+                            // Shared by the label strip and every row, so the labels
+                            // sit exactly over the fields they name.
+                            $stackCols = 'minmax(8rem,1.1fr) minmax(8rem,1.1fr) minmax(8rem,1fr) minmax(9rem,1.2fr) minmax(7rem,auto)';
+                        @endphp
+
+                        <div class="stack-head" style="--stack-cols: {{ $stackCols }}">
+                            <span>{{ __('Order') }}</span>
+                            <span>{{ __('Customer') }}</span>
+                            <span>{{ __('Method') }}</span>
+                            <span>{{ __('Status') }}</span>
+                            <span class="text-end">{{ __('Amount') }}</span>
+                        </div>
+
+                        <div class="data-stack" id="payment-table-body" style="--stack-cols: {{ $stackCols }}">
                             @include('admin.payment.partials._payment_table_body', ['payments' => $payments])
-                        </tbody>
-                    </table>
-                </div>
+                        </div>
+
+                        </div>
 
                 <div id="pagination-wrapper">
                     {{ $payments->withQueryString()->links() }}
@@ -100,7 +102,10 @@
                 tableBodySelector: '#payment-table-body',
                 paginationWrapperSelector: '#pagination-wrapper',
                 url: "{{ route('admin.payment.search') }}",
-                colspan: 7
+                // Card rows, not a table: the helper's default
+                // <tr><td colspan> failure message would be stray
+                // markup here.
+                errorHtml: '<div class="stack-empty text-danger">Error during search</div>'
             });
 
             $('#paymentStatusFilter').on('change', function () {

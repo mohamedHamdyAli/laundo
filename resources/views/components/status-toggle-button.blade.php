@@ -2,23 +2,31 @@
 
 @php
     $canToggle = canDo($permission);
+    $isActive = $status === 'active';
 @endphp
 
-<button
-    class="btn btn-sm
-        {{ $status === 'active' ? 'btn-success' : 'btn-danger' }}
-        {{ !$canToggle ? 'disabled opacity-75' : 'toggle-status' }}"
+{{--
+    A pill, not a filled button. The solid green/red block it used to be
+    repeated once per row and outweighed the record it described; the tint
+    carries the same state at a fraction of the weight and matches the status
+    pill the rest of the panel now uses.
 
-    @if($canToggle)
+    The two labels ride along as data attributes because the click handler used
+    to write «Active» / «Inactive» into the button as hard-coded English — so a
+    toggle on the Arabic panel silently switched that cell to English.
+--}}
+<button type="button"
+    class="status-pill status-toggle {{ $isActive ? 'tone-ok' : 'tone-bad' }} {{ $canToggle ? 'toggle-status' : 'is-locked' }}"
+    data-label-active="{{ __('Active') }}"
+    data-label-inactive="{{ __('Inactive') }}"
+
+    @if ($canToggle)
         data-id="{{ $id }}"
         data-status="{{ $status }}"
         data-endpoint="{{ $endpoint }}"
     @else
         disabled
-    @endif
-
-    style="min-width: 100px; font-size: 13px; cursor: {{ $canToggle ? 'pointer' : 'not-allowed' }};">
-
-    <i class="fa {{ $status === 'active' ? 'fa-check-circle' : 'fa-times-circle' }} me-1"></i>
-    {{ ucfirst($status) }}
+        aria-disabled="true"
+    @endif>
+    {{ $isActive ? __('Active') : __('Inactive') }}
 </button>

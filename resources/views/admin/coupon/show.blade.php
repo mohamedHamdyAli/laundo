@@ -8,7 +8,7 @@
                 {{ __(ucfirst($row->status)) }}
             </span>
         </h5>
-        <a href="{{ route('admin.coupon.index') }}" class="badge alert-secondary">
+        <a href="{{ route('admin.coupon.index') }}" class="btn-quiet">
             <i class="fa fa-arrow-left"></i> {{ __('Back') }}
         </a>
     </div>
@@ -19,7 +19,11 @@
                 <div class="card">
                     <div class="card-header"><h6 class="mb-0">{{ __('Terms') }}</h6></div>
                     <div class="card-body">
-                        <div class="row g-3">
+                        {{-- `show-page` rides on the row itself: it is only a
+                             styling hook, and a plain div between the row and
+                             its `col-*` children would take them out of the
+                             grid and stack them full width. --}}
+                        <div class="row g-3 show-page">
                             @include('admin.coupon.forms.formInput')
                         </div>
                     </div>

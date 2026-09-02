@@ -2,7 +2,7 @@
 
 @section('content')
     <div class="card-header align-items-center d-flex">
-        <h4 class="card-title mb-0 flex-grow-1">{{ __('Show Category') }}</h4>
+        <h5 class="card-title mb-0 flex-grow-1">{{ __('Show Category') }}</h5>
         <div class="flex-shrink-0">
             <div class="form-check form-switch form-switch-right form-switch-md">
 
@@ -13,12 +13,11 @@
         <div class="col-lg-12">
             <div class="card">
                 <div class="card-body">
-                    <div class="live-preview show-page">
+                    <div class="show-page">
                         @include('admin.category.forms.formInput')
-                        <a class="btn btn-warning mt-3 mb-2 font-weight-bold d-block mx-auto" style="width: 25%;"
-                            href="{{ URL::previous() }}">
-                            Back
-                        </a>
+                        <div class="form-actions">
+                            <a class="btn-quiet" href="{{ URL::previous() }}">{{ __('Back') }}</a>
+                        </div>
                     </div>
                 </div>
             </div>

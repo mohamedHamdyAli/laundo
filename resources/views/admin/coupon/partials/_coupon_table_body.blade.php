@@ -1,57 +1,74 @@
 @forelse ($coupons as $coupon)
-    <tr>
-        <td><code class="fs-6">{{ $coupon->code }}</code></td>
-        <td>{{ getLocalizedValueDashboard($coupon, 'name') ?: '—' }}</td>
-        <td>
-            @if ($coupon->type === \App\Modules\Coupon\Models\Coupon::PERCENTAGE)
-                {{ rtrim(rtrim($coupon->value, '0'), '.') }}%
-                @if ($coupon->max_discount)
-                    <small class="text-muted d-block">
-                        {{ __('max') }} {{ moneyFormat($coupon->max_discount) }}
-                    </small>
+    @php
+        // A coupon that has expired or been fully claimed is dead weight in the
+        // list; the stripe says so without the operator reading the dates.
+        $spent = $coupon->hasExpired() || $coupon->isExhausted();
+        $rowTone = $spent || $coupon->status !== 'active' ? 'tone-bad' : '';
+        $isPercentage = $coupon->type === \App\Modules\Coupon\Models\Coupon::PERCENTAGE;
+    @endphp
+    <div class="stack-row {{ $rowTone }}">
+        <div>
+            <span class="row-lead">
+                @if (canDo('coupon.view'))
+                    <a href="{{ route('admin.coupon.show', $coupon->id) }}">{{ $coupon->code }}</a>
+                @else
+                    {{ $coupon->code }}
                 @endif
-            @else
-                {{ moneyFormat($coupon->value) }}
-            @endif
-            @if ($coupon->applies_to_delivery)
-                <span class="badge bg-light text-dark">{{ __('+ delivery') }}</span>
-            @endif
-        </td>
-        <td>
-            {{ $coupon->redemptions_count ?? $coupon->redemptions_count }}
-            @if ($coupon->max_redemptions)
-                / {{ $coupon->max_redemptions }}
-                @if ($coupon->isExhausted())
-                    <span class="badge bg-secondary d-block mt-1">{{ __('Fully claimed') }}</span>
+            </span>
+            <span class="row-sub">{{ getLocalizedValueDashboard($coupon, 'name') ?: '—' }}</span>
+        </div>
+        <div>
+            <span class="row-main">
+                @if ($isPercentage)
+                    {{ rtrim(rtrim($coupon->value, '0'), '.') }}%
+                @else
+                    {{ moneyFormat($coupon->value) }}
                 @endif
-            @endif
-            <small class="text-muted d-block">
-                {{ $coupon->max_per_user }} {{ __('per customer') }}
-            </small>
-        </td>
-        <td>
+            </span>
+            {{-- What the discount does and does not cover, in one line: a
+                 percentage with no cap and one capped at 20 are different offers. --}}
+            <span class="row-sub">
+                @if ($isPercentage && $coupon->max_discount)
+                    {{ __('max') }} {{ moneyFormat($coupon->max_discount) }}{{ $coupon->applies_to_delivery ? ' · ' . __('+ delivery') : '' }}
+                @elseif ($coupon->applies_to_delivery)
+                    {{ __('+ delivery') }}
+                @else
+                    {{ __('Order total only') }}
+                @endif
+            </span>
+        </div>
+        <div>
+            <span class="row-main">
+                {{ $coupon->redemptions_count }}{{ $coupon->max_redemptions ? ' / ' . $coupon->max_redemptions : '' }}
+            </span>
+            <span class="row-sub">{{ $coupon->max_per_user }} {{ __('per customer') }}</span>
+        </div>
+        <div>
+            {{-- «Fully claimed» used to hide under the redemption count, where a
+                 coupon that can no longer be used looked like one that can. --}}
             @if (! $coupon->hasStarted())
-                <span class="badge bg-info">{{ __('Not started') }}</span>
-                <small class="text-muted d-block">{{ humanDate($coupon->starts_at) }}</small>
+                <span class="status-pill tone-live">{{ __('Not started') }}</span>
+                <span class="row-sub">{{ humanDate($coupon->starts_at) }}</span>
             @elseif ($coupon->hasExpired())
-                <span class="badge bg-secondary">{{ __('Expired') }}</span>
-                <small class="text-muted d-block">{{ humanDate($coupon->ends_at) }}</small>
-            @elseif ($coupon->ends_at)
-                <small class="text-muted">{{ __('until') }} {{ humanDate($coupon->ends_at) }}</small>
+                <span class="status-pill tone-bad">{{ __('Expired') }}</span>
+                <span class="row-sub">{{ humanDate($coupon->ends_at) }}</span>
+            @elseif ($coupon->isExhausted())
+                <span class="status-pill tone-bad">{{ __('Fully claimed') }}</span>
             @else
-                <span class="text-muted">{{ __('No end date') }}</span>
+                <span class="status-pill tone-ok">{{ __('Running') }}</span>
+                <span class="row-sub">
+                    {{ $coupon->ends_at ? __('until') . ' ' . humanDate($coupon->ends_at) : __('No end date') }}
+                </span>
             @endif
-        </td>
-        <td>
+        </div>
+        <div>
             <x-status-toggle-button :id="$coupon->id" :status="$coupon->status"
                 endpoint="{{ route('admin.coupon.toggleStatus', $coupon->id) }}" permission="coupon.toggle" />
-        </td>
-        <td class="text-center">
+        </div>
+        <div class="stack-actions">
             @include('admin.coupon.shared.controlBut', ['row' => $coupon])
-        </td>
-    </tr>
+        </div>
+    </div>
 @empty
-    <tr>
-        <td colspan="7" class="text-center">{{ __('No data found') }}</td>
-    </tr>
+    <div class="stack-empty">{{ __('No data found') }}</div>
 @endforelse

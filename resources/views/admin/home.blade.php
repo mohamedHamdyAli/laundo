@@ -87,9 +87,15 @@
                         'delivered_unpaid' => [__('Delivered, unpaid'), 'bi-cash-coin'],
                     ] as $key => [$label, $icon])
                         <div class="col-6 col-md">
+                            {{-- Icon and figure share a line, label sits under
+                                 them: the tile is read as «this many, here»,
+                                 and a stacked icon only pushed the number down
+                                 the tile away from its own label. --}}
                             <div class="home-flight">
-                                <i class="bi {{ $icon }}"></i>
-                                <span class="home-flight-num">{{ $inFlight[$key] }}</span>
+                                <div class="home-flight-head">
+                                    <i class="bi {{ $icon }}"></i>
+                                    <span class="home-flight-num">{{ $inFlight[$key] }}</span>
+                                </div>
                                 <span class="home-flight-label">{{ $label }}</span>
                             </div>
                         </div>
@@ -145,8 +151,16 @@
             {{-- The month --}}
             <div class="col-md-6 mb-3">
                 <div class="card h-100">
-                    <div class="card-header d-flex justify-content-between align-items-center">
-                        <h6 class="mb-0">{{ __('This month so far') }}</h6>
+                    {{-- The window is spelled out for the same reason its
+                         neighbour's is, and so the two headers are the same
+                         height: a one-line header beside a two-line one put
+                         the two cards' figures 21px out of line with each
+                         other, and a row of paired cards is read across. --}}
+                    <div class="card-header d-flex justify-content-between align-items-start">
+                        <div>
+                            <h6 class="mb-0">{{ __('This month so far') }}</h6>
+                            <small class="text-muted">{{ __('From the 1st to today') }}</small>
+                        </div>
                         @if (!$isLaundry && Route::has('admin.report.revenue') && canDo('report.view'))
                             <a href="{{ route('admin.report.revenue') }}" class="small">{{ __('Reports') }}</a>
                         @endif
@@ -297,7 +311,11 @@
                                             </tr>
                                         @empty
                                             <tr>
-                                                <td class="text-center text-muted py-3">
+                                                {{-- Four columns above, so the
+                                                     empty state has to span
+                                                     four or it centres itself
+                                                     inside the first one. --}}
+                                                <td colspan="4" class="text-center text-muted py-3">
                                                     {{ __('Every order is moving.') }}
                                                 </td>
                                             </tr>

@@ -11,7 +11,7 @@
         : [];
 @endphp
 {{-- Title / description / Order --}}
-<div class="row g-1">
+<div class="row g-3">
     <div class="col-md-4">
         <div class="form-group">
             <label for="intro-title" class="form-label">{{ __('Title') }}</label>
@@ -51,7 +51,7 @@
 
 {{-- userRole / status --}}
 
-<div class="row g-1">
+<div class="row g-3">
     <div class="col-lg-6">
         <div class="mb-3">
             <label class="form-label">{{ __('Image') }}<span class="text-danger">*</span></label>
@@ -75,7 +75,7 @@
         <div class="form-group">
             <label class="form-label">{{ __('Status') }}</label>
             <div class="controls">
-                <select name="status" class="form-control" {{ Route::is('*.show') ? 'disabled' : '' }}>
+                <select name="status" class="form-select" {{ Route::is('*.show') ? 'disabled' : '' }}>
                     <option value="active" {{ isset($row) && $row->status == 'active' ? 'selected' : '' }}>
                         {{ __('active') }}</option>
                     <option value="inactive" {{ isset($row) && $row->status == 'inactive' ? 'selected' : '' }}>

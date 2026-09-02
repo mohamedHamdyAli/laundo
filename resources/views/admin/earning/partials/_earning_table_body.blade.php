@@ -1,46 +1,44 @@
 @forelse ($earnings as $row)
-    <tr>
-        <td>
-            {{ $row->payee->name }}
-            <small class="text-muted d-block">{{ $row->payee->phone }}</small>
-        </td>
-        <td>
-            @if ($row->order)
-                <a href="{{ route('admin.order.show', $row->order->id) }}">{{ $row->order->code }}</a>
-            @else
-                <span class="text-muted">—</span>
-            @endif
-        </td>
-        <td>
-            @if ($row->task)
-                <small>{{ __($row->task->type->label()) }}</small>
-            @else
-                <span class="text-muted">—</span>
-            @endif
-        </td>
-        <td><strong>{{ moneyFormat($row->amount) }}</strong></td>
-        <td>
+    @php
+        $held = $row->status === \App\Modules\Payment\Models\DriverEarning::PENDING;
+        $cancelled = $row->status === \App\Modules\Payment\Models\DriverEarning::CANCELLED;
+    @endphp
+    <div class="stack-row {{ $cancelled ? 'tone-bad' : '' }}">
+        <div>
+            <span class="row-lead">{{ $row->payee->name }}</span>
+            <span class="row-sub">{{ $row->payee->phone }}</span>
+        </div>
+        <div>
+            <span class="row-main">
+                @if ($row->order)
+                    <a href="{{ route('admin.order.show', $row->order->id) }}">{{ $row->order->code }}</a>
+                @else
+                    —
+                @endif
+            </span>
+            <span class="row-sub">{{ $row->task ? __($row->task->type->label()) : '—' }}</span>
+        </div>
+        <div>
             {{-- How the figure was reached. A driver disputing their pay needs the
                  basis and the rate, not just the result. --}}
-            <small class="text-muted">{{ $row->explain() }}</small>
-        </td>
-        <td>
-            @if ($row->status === \App\Modules\Payment\Models\DriverEarning::PENDING)
-                <span class="badge bg-warning">{{ __('Held') }}</span>
-            @elseif ($row->status === \App\Modules\Payment\Models\DriverEarning::RELEASED)
-                <span class="badge bg-success">{{ __('Released') }}</span>
+            <span class="row-sub">{{ $row->explain() }}</span>
+        </div>
+        <div>
+            @if ($held)
+                <span class="status-pill tone-warn">{{ __('Held') }}</span>
+            @elseif ($cancelled)
+                <span class="status-pill tone-bad">{{ __('Cancelled') }}</span>
             @else
-                <span class="badge bg-secondary">{{ __('Cancelled') }}</span>
+                <span class="status-pill tone-ok">{{ __('Released') }}</span>
             @endif
-        </td>
-        <td>
-            <small class="text-muted">
+            <span class="row-sub">
                 {{ $row->released_at ? humanDate($row->released_at, 'Y-m-d H:i') : humanDate($row->created_at, 'Y-m-d H:i') }}
-            </small>
-        </td>
-    </tr>
+            </span>
+        </div>
+        <div class="row-amount">
+            {{ moneyFormat($row->amount) }}
+        </div>
+    </div>
 @empty
-    <tr>
-        <td colspan="7" class="text-center">{{ __('No data found') }}</td>
-    </tr>
+    <div class="stack-empty">{{ __('No data found') }}</div>
 @endforelse

@@ -1,34 +1,40 @@
 @forelse ($categories as $category)
-    <tr>
-        <td>{{ $loop->iteration }}</td>
-        <td>{!! getImageDashboardUrl($category->image) !!}</td>
-        <td>
-            <div class="d-flex justify-content-between align-items-center">
-                <span>{{ getLocalizedValueDashboard($category, 'name') ?? '-' }}</span>
-                @if ($category->children && $category->children->count() > 0)
-                    <a href="{{ route('admin.category.showSubCategories', $category->id) }}"
-                        class="btn btn-primary rounded-circle d-inline-flex justify-content-center align-items-center ms-2"
-                        style="width: 30px; height: 30px;" title="View Subcategories">
-                        <i class="fa fa-plus text-white small"></i>
-                    </a>
+    <div class="stack-row">
+        <div>
+            <span class="row-thumb">{!! getImageDashboardUrl($category->image) !!}</span>
+        </div>
+        <div>
+            <span class="row-lead">
+                @if (canDo('category.view'))
+                    <a href="{{ route('admin.category.show', $category->id) }}">{{ getLocalizedValueDashboard($category, 'name') ?? '-' }}</a>
+                @else
+                    {{ getLocalizedValueDashboard($category, 'name') ?? '-' }}
                 @endif
-            </div>
-        </td>
-        <td>
+            </span>
+            <span class="row-sub">#{{ $category->id }}</span>
+        </div>
+        <div>
+            {{-- The link is only worth drawing when there is something behind
+                 it, so a leaf category states that instead. --}}
+            @if ($category->children && $category->children->count() > 0)
+                <a href="{{ route('admin.category.showSubCategories', $category->id) }}" class="row-main">
+                    {{ $category->children->count() }} {{ __('Subcategories') }}
+                </a>
+            @else
+                <span class="row-sub">{{ __('No subcategories') }}</span>
+            @endif
+        </div>
+        <div>
             <x-status-toggle-button :id="$category->id" :status="$category->status"
                 endpoint="{{ route('admin.category.toggleStatus', $category->id) }}" permission="category.toggle" />
-        </td>
-        <td>
-            {{ $category->created_at ? \Carbon\Carbon::parse($category->created_at)->translatedFormat('j M Y - g:ia') : 'None' }}
-        </td>
-        <td class="text-center">
-            @include('admin.category.shared.controlBut', [
-                'row' => $category,
-            ])
-        </td>
-    </tr>
+        </div>
+        <div>
+            <span class="row-sub">{{ $category->created_at ? humanDate($category->created_at, 'Y-m-d H:i') : '-' }}</span>
+        </div>
+        <div class="stack-actions">
+            @include('admin.category.shared.controlBut', ['row' => $category])
+        </div>
+    </div>
 @empty
-    <tr>
-        <td colspan="8" class="text-center">{{ __('No data found') }}</td>
-    </tr>
+    <div class="stack-empty">{{ __('No data found') }}</div>
 @endforelse

@@ -79,27 +79,26 @@
                 </div>
 
                 <div class="table-responsive">
-                    <table class="table table-borderless table-striped" id="table_list">
-                        <thead class="table-light">
-                            <tr>
-                                <th>{{ __('Reference') }}</th>
-                                <th>{{ __('From') }}</th>
-                                <th>{{ __('About') }}</th>
-                                <th>{{ __('What they said') }}</th>
-                                <th>{{ __('Laundry') }}</th>
-                                <th>{{ __('Status') }}</th>
-                                <th>{{ __('Waiting') }}</th>
-                                <th class="text-center">{{ __('Action') }}</th>
-                            </tr>
-                        </thead>
-                        <tbody id="complaint-table-body">
-                            @include('admin.complaint.partials._complaint_table_body', [
-                                'complaints' => $complaints,
-                                'statuses' => $statuses,
-                            ])
-                        </tbody>
-                    </table>
-                </div>
+                        @php
+                            // Shared by the label strip and every row, so the labels
+                            // sit exactly over the fields they name.
+                            $stackCols = 'minmax(7rem,.9fr) minmax(8rem,1.1fr) minmax(11rem,1.6fr) minmax(8rem,1fr) minmax(8rem,auto) minmax(3rem,auto)';
+                        @endphp
+
+                        <div class="stack-head" style="--stack-cols: {{ $stackCols }}">
+                            <span>{{ __('Reference') }}</span>
+                            <span>{{ __('Customer') }}</span>
+                            <span>{{ __('Complaint') }}</span>
+                            <span>{{ __('Laundry') }}</span>
+                            <span>{{ __('Status') }}</span>
+                            <span class="text-end">{{ __('Action') }}</span>
+                        </div>
+
+                        <div class="data-stack" id="complaint-table-body" style="--stack-cols: {{ $stackCols }}">
+                            @include('admin.complaint.partials._complaint_table_body', [ 'complaints' => $complaints, 'statuses' => $statuses, ])
+                        </div>
+
+                        </div>
 
                 <div id="pagination-wrapper">
                     {{ $complaints->withQueryString()->links() }}
@@ -189,7 +188,10 @@
                 tableBodySelector: '#complaint-table-body',
                 paginationWrapperSelector: '#pagination-wrapper',
                 url: "{{ route('admin.complaint.search') }}",
-                colspan: 8
+                // Card rows, not a table: the helper's default
+                // <tr><td colspan> failure message would be stray
+                // markup here.
+                errorHtml: '<div class="stack-empty text-danger">Error during search</div>'
             });
 
             $('#complaintStatusFilter').on('change', function () {

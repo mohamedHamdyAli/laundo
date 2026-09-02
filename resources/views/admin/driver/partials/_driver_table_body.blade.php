@@ -1,49 +1,64 @@
 @forelse ($drivers as $driver)
-    @php $profile = $driver->profile; @endphp
-    <tr>
-        <td>{!! getImageDashboardUrl($driver->image_profile) !!}</td>
-        <td>{{ $driver->id }}</td>
-        <td>
-            {{ $driver->name }}
-            @if ($profile && $profile->hasExpiredDocuments())
+    @php
+        $profile = $driver->profile;
+        $docsExpired = $profile && $profile->hasExpiredDocuments();
+        // An expired document is the one thing on this list somebody has to act
+        // on, so it takes the stripe ahead of a merely inactive account.
+        $rowTone = $docsExpired || $driver->status !== 'active' ? 'tone-bad' : '';
+    @endphp
+    <div class="stack-row {{ $rowTone }}">
+        <div>
+            <span class="row-thumb">{!! getImageDashboardUrl($driver->image_profile) !!}</span>
+        </div>
+        <div>
+            <span class="row-lead">
+                @if (canDo('driver.view'))
+                    <a href="{{ route('admin.driver.show', $driver->id) }}">{{ $driver->name }}</a>
+                @else
+                    {{ $driver->name }}
+                @endif
+            </span>
+            @if ($docsExpired)
                 {{-- Surfaced, not enforced: by decision an expired document does
                      not stop assignment, a person decides. --}}
-                <span class="badge bg-danger d-block mt-1" title="{{ __('One or more documents have expired') }}">
-                    <i class="fa fa-exclamation-triangle"></i> {{ __('Documents expired') }}
+                <span class="status-pill tone-bad" title="{{ __('One or more documents have expired') }}">
+                    {{ __('Documents expired') }}
+                </span>
+            @else
+                <span class="row-sub">{{ $driver->phone ?? '-' }}</span>
+            @endif
+        </div>
+        <div>
+            <span class="row-main">{{ $profile?->vehicle_type ?? '-' }}</span>
+            <span class="row-sub">{{ $profile?->plate_number ?: $profile?->shiftLabel() ?: '-' }}</span>
+        </div>
+        <div>
+            @if ($driver->zones->isEmpty())
+                <span class="row-sub">{{ __('No areas') }}</span>
+            @else
+                <span class="row-main">{{ $driver->zones->count() }} {{ __('areas') }}</span>
+                <span class="row-sub">
+                    {{ $driver->zones->take(2)->map(fn ($z) => getLocalizedValueDashboard($z, 'name'))->implode(', ') }}{{ $driver->zones->count() > 2 ? ' …' : '' }}
                 </span>
             @endif
-        </td>
-        <td>{{ $driver->phone ?? '-' }}</td>
-        <td>{{ $profile?->vehicle_type ?? '-' }}<br><small class="text-muted">{{ $profile?->plate_number }}</small></td>
-        <td>{{ $profile?->shiftLabel() ?? '-' }}</td>
-        <td>
-            @if ($driver->zones->isEmpty())
-                <span class="text-muted">{{ __('No areas') }}</span>
-            @else
-                <span class="badge bg-secondary">{{ $driver->zones->count() }}</span>
-                <small class="text-muted d-block">
-                    {{ $driver->zones->take(2)->map(fn ($z) => getLocalizedValueDashboard($z, 'name'))->implode(', ') }}
-                    {{ $driver->zones->count() > 2 ? '…' : '' }}
-                </small>
-            @endif
-        </td>
-        <td>
+        </div>
+        <div>
+            {{-- Availability is the driver's own switch; status is the platform's.
+                 They answer different questions and both belong on the row. --}}
             @if ($profile?->is_available)
-                <span class="badge bg-success">{{ __('Available') }}</span>
+                <span class="status-pill tone-ok">{{ __('Available') }}</span>
             @else
-                <span class="badge bg-secondary">{{ __('Unavailable') }}</span>
+                <span class="status-pill tone-warn">{{ __('Unavailable') }}</span>
             @endif
-        </td>
-        <td>
+        </div>
+        <div>
             <x-status-toggle-button :id="$driver->id" :status="$driver->status"
                 endpoint="{{ route('admin.driver.toggleStatus', $driver->id) }}" permission="driver.toggle" />
-        </td>
-        <td class="text-center">
+        </div>
+        <div class="stack-actions">
             @include('admin.driver.shared.controlBut', ['row' => $driver])
-        </td>
-    </tr>
+        </div>
+    </div>
 @empty
-    <tr>
-        <td colspan="10" class="text-center">{{ __('No data found') }}</td>
-    </tr>
+    <div class="stack-empty">{{ __('No data found') }}</div>
 @endforelse

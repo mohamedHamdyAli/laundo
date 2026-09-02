@@ -1,20 +1,29 @@
 @forelse ($items as $item)
-    <tr>
-        <td>{!! getImageDashboardUrl($item->image) !!}</td>
-        <td>{{ $item->id }}</td>
-        <td>{{ getLocalizedValueDashboard($item, 'name') }}</td>
-        <td>{{ $item->category ? getLocalizedValueDashboard($item->category, 'name') : '—' }}</td>
-        <td>{{ $item->sort_order }}</td>
-        <td>
+    <div class="stack-row">
+        <div>
+            <span class="row-thumb">{!! getImageDashboardUrl($item->image) !!}</span>
+        </div>
+        <div>
+            <span class="row-lead">
+                @if (canDo('item.view'))
+                    <a href="{{ route('admin.item.show', $item->id) }}">{{ getLocalizedValueDashboard($item, 'name') }}</a>
+                @else
+                    {{ getLocalizedValueDashboard($item, 'name') }}
+                @endif
+            </span>
+            <span class="row-sub">#{{ $item->id }} · {{ __('Order') }} {{ $item->sort_order }}</span>
+        </div>
+        <div>
+            <span class="row-main">{{ $item->category ? getLocalizedValueDashboard($item->category, 'name') : '—' }}</span>
+        </div>
+        <div>
             <x-status-toggle-button :id="$item->id" :status="$item->status"
                 endpoint="{{ route('admin.item.toggleStatus', $item->id) }}" permission="item.toggle" />
-        </td>
-        <td class="text-center">
+        </div>
+        <div class="stack-actions">
             @include('admin.item.shared.controlBut', ['row' => $item])
-        </td>
-    </tr>
+        </div>
+    </div>
 @empty
-    <tr>
-        <td colspan="8" class="text-center">{{ __('No data found') }}</td>
-    </tr>
+    <div class="stack-empty">{{ __('No data found') }}</div>
 @endforelse

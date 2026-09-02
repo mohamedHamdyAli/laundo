@@ -16,40 +16,11 @@
     color: #fff;
 }
 
-.action-btn {
-    width: 30px;
-    /* Set a fixed width */
-    height: 30px;
-    /* Set a fixed height */
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    color: #fff !important;
-    /* Set icon color to white */
-    border-radius: 5px;
-    /* Add rounded corners */
-    transition: opacity 0.3s ease;
-    /* Add a smooth hover effect */
-}
-
-/* Specific colors for each action button */
-.action-view {
-    background-color: #3498db;
-    /* Blue color for view */
-    border-color: #3498db;
-}
-
-.action-edit {
-    background-color: #f39c12;
-    /* Orange color for edit */
-    border-color: #f39c12;
-}
-
-.action-delete {
-    background-color: #e74c3c;
-    /* Red color for delete */
-    border-color: #e74c3c;
-}
+/* The row-action buttons are styled in theme.css now — outlined, sized in rem
+   so they follow --ui-zoom, and coloured from the theme tokens. The rules that
+   used to sit here were three saturated fills at a hard-coded 30px, and their
+   `color: #fff !important` was the only reason the replacement needed
+   `!important` of its own. Removed rather than overridden. */
 
 .setting_active_tab:hover .icon_font_size {
     color: var(--bs-primary) !important;

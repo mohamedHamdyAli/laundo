@@ -591,3 +591,63 @@ can watch.
   `TimeSlotController@index` picked one key out of it, so a second key added to
   the service arrived in the view as undefined.
 
+- **Never unwrap an HTML element with a non-greedy `.*?</div>`.** It stops at the
+  first nested close, not the matching one. A "remove the `.live-preview`
+  wrapper" pass built that way silently moved `</form>` inside a `<div>` in all
+  37 create/edit templates at once. Count tag depth instead, and after any
+  bulk structural edit assert open==close per tag per file before moving on —
+  the browser renders crossed tags without complaining.
+- A Blade template with a PHP syntax error can stay invisible for weeks: the
+  compiled view in `storage/framework/views` is only rebuilt when the source
+  mtime changes. `{{ __('...customer's...') }}` had been broken in
+  `user/forms/formInput` since it was written and only surfaced when an
+  unrelated edit forced a recompile. `php artisan view:cache` followed by
+  `php -l` over `storage/framework/views/*.php` compiles and lints all 259 of
+  them in one pass — worth doing after any bulk Blade edit, and it would have
+  caught this at authoring time.
+- Bootstrap utility classes carry `!important`, so they beat anything in
+  `theme.css` regardless of specificity. `position-relative` on the sidebar
+  header silently defeated `position: sticky`; `.mb-3` beats a card's own
+  margin. When an override does not take, check for a utility class on the
+  element before reaching for `!important` — removing the utility is usually
+  the right fix.
+- A missing Eloquent attribute reads as null rather than throwing, so
+  `Auth::user()->profile` on a table whose column is `image_profile` failed
+  silently for as long as the code existed. When a fallback always fires
+  ("everyone has the default avatar"), suspect the property name before the
+  fallback logic.
+- Bootstrap's semantic text utilities (`text-success`, `text-danger`,
+  `text-primary`) are chosen against white and fail on a dark surface —
+  measured 3.2–3.6:1 on this panel's card. `text-warning` and `text-info` pass.
+  When adding dark mode to a Bootstrap theme, probe every utility rather than
+  assuming the ones you happened to look at are representative; `text-danger`
+  alone was used 99 times here.
+- A class that is correct in one context is not a defect in another: `text-dark`
+  measures 1.09:1 against the dark card, but it is only ever used inside a badge
+  with a light fill, where dark text is right in both themes. Check where a
+  class is actually used before "fixing" its contrast.
+- When an icon or label looks "missing", measure its colour against its own
+  background before assuming the font or the markup is broken. The login page's
+  password-toggle eye was rendering correctly the whole time at 1.05:1 —
+  `.input-group-text` in the vendored CSS sets near-white text on a near-white
+  fill, so every addon in the app was invisible rather than absent.
+- Check what the shipped favicon actually is. This install carried the vendor
+  template's own logo in every browser tab, and an empty `public/favicon.ico`
+  that defeated the `<link>` fallback. Both are easy to never look at.
+- `theme.css` must be the last stylesheet in `include.blade.php`. It used to sit
+  in the language branch at the top, ahead of every vendor extension, so any
+  override of select2 / sweetalert2 / filepond / toastify lost on load order at
+  equal specificity. If an override "should" win and doesn't, check the link
+  order before adding specificity.
+- Vendored themes reach for very deep selectors. select2-bootstrap-5 addresses
+  an option through five classes; a two-class override never wins no matter how
+  late it loads. Read the vendor's actual selector and match its depth rather
+  than escalating to `!important`.
+- A brand colour picked as a *fill* is not automatically usable as *text*.
+  `--brand-primary` carries white text on both themes but measures 1.3:1 as text
+  on the dark card — which made the record link on all 26 list screens
+  unreadable in dark mode. Keep a separate per-theme token for accented text.
+- When measuring contrast, composite semi-transparent backgrounds up to the
+  first opaque ancestor. Reading only the nearest `background-color` compared a
+  tinted option's text against a 14% version of itself and reported 1:1, which
+  is neither the real value nor a safe direction to be wrong in.

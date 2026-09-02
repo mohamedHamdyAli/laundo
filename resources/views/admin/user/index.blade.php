@@ -4,7 +4,7 @@
     <div class="card-header d-flex justify-content-between align-items-center">
         <h5 class="card-title mb-0">{{ __('Users') }}</h5>
         @if (canDo('user.create'))
-        <a href="{{ route('admin.user.create') }}" class="badge alert-info primary-background-color">
+        <a href="{{ route('admin.user.create') }}" class="btn-add">
             <i class="fa fa-plus"></i> {{ __('Add User') }}
         </a>
         @endif
@@ -23,23 +23,25 @@
                         </div>
 
                         <div class="table-responsive">
-                            <table class="table table-borderless table-striped" id="table_list">
-                                <thead class="table-light">
-                                    <tr>
-                                        <th>{{ __('User Image') }}</th>
-                                        <th>{{ __('ID') }}</th>
-                                        <th>{{ __('Name') }}</th>
-                                        <th>{{ __('Customer reference') }}</th>
-                                        <th>{{ __('Phone') }}</th>
-                                        <th>{{ __('Status') }}</th>
-                                        <th>{{ __('Created At') }}</th>
-                                        <th class="text-center">{{ __('Action') }}</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="user-table-body">
-                                    @include('admin.user.partials._user_table_body', ['users' => $users])
-                                </tbody>
-                            </table>
+                        @php
+                            // Shared by the label strip and every row, so the labels
+                            // sit exactly over the fields they name.
+                            $stackCols = 'minmax(3.8rem,4rem) minmax(9rem,1.3fr) minmax(8rem,1fr) minmax(7rem,auto) minmax(8rem,1fr) minmax(6rem,auto)';
+                        @endphp
+
+                        <div class="stack-head" style="--stack-cols: {{ $stackCols }}">
+                            <span>{{ __('Image') }}</span>
+                            <span>{{ __('Name') }}</span>
+                            <span>{{ __('Phone') }}</span>
+                            <span>{{ __('Status') }}</span>
+                            <span>{{ __('Created At') }}</span>
+                            <span class="text-end">{{ __('Action') }}</span>
+                        </div>
+
+                        <div class="data-stack" id="user-table-body" style="--stack-cols: {{ $stackCols }}">
+                            @include('admin.user.partials._user_table_body', ['users' => $users])
+                        </div>
+
                         </div>
 
                         <div id="pagination-wrapper">
@@ -60,7 +62,10 @@
                 tableBodySelector: '#user-table-body',
                 paginationWrapperSelector: '#pagination-wrapper',
                 url: "{{ route('admin.user.search') }}",
-                colspan: 8
+                // Card rows, not a table: the helper's default
+                // <tr><td colspan> failure message would be stray
+                // markup here.
+                errorHtml: '<div class="stack-empty text-danger">Error during search</div>'
             });
         });
     </script>

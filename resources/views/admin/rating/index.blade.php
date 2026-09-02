@@ -102,23 +102,26 @@
                 </div>
 
                 <div class="table-responsive">
-                    <table class="table table-borderless table-striped" id="table_list">
-                        <thead class="table-light">
-                            <tr>
-                                <th>{{ __('Order') }}</th>
-                                <th>{{ __('Customer') }}</th>
-                                <th>{{ __('Overall') }}</th>
-                                <th>{{ __('By aspect') }}</th>
-                                <th>{{ __('What customers liked') }}</th>
-                                <th>{{ __('Comment') }}</th>
-                                <th>{{ __('Rated') }}</th>
-                            </tr>
-                        </thead>
-                        <tbody id="rating-table-body">
+                        @php
+                            // Shared by the label strip and every row, so the labels
+                            // sit exactly over the fields they name.
+                            $stackCols = 'minmax(7rem,.9fr) minmax(8rem,1.1fr) minmax(6rem,.7fr) minmax(11rem,1.5fr) minmax(9rem,1.2fr) minmax(6rem,auto)';
+                        @endphp
+
+                        <div class="stack-head" style="--stack-cols: {{ $stackCols }}">
+                            <span>{{ __('Order') }}</span>
+                            <span>{{ __('Customer') }}</span>
+                            <span>{{ __('Score') }}</span>
+                            <span>{{ __('Detail') }}</span>
+                            <span>{{ __('Comment') }}</span>
+                            <span>{{ __('When') }}</span>
+                        </div>
+
+                        <div class="data-stack" id="rating-table-body" style="--stack-cols: {{ $stackCols }}">
                             @include('admin.rating.partials._rating_table_body', ['ratings' => $ratings])
-                        </tbody>
-                    </table>
-                </div>
+                        </div>
+
+                        </div>
 
                 <div id="pagination-wrapper">
                     {{ $ratings->withQueryString()->links() }}
@@ -136,7 +139,10 @@
                 tableBodySelector: '#rating-table-body',
                 paginationWrapperSelector: '#pagination-wrapper',
                 url: "{{ route('admin.rating.search') }}",
-                colspan: 7
+                // Card rows, not a table: the helper's default
+                // <tr><td colspan> failure message would be stray
+                // markup here.
+                errorHtml: '<div class="stack-empty text-danger">Error during search</div>'
             });
 
             $('#ratingBandFilter').on('change', function () {
