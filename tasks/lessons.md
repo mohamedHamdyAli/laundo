@@ -712,3 +712,48 @@ Reusing it for a 2px dashed dropzone edge gave 1.19:1 against the fill — a
 dashed rule that doesn't read as dashed. Hairline tokens are calibrated to be
 nearly invisible on white; anything that has to be *seen* needs its own token
 and a measured ratio.
+
+## A broken `public/storage` hides every other image bug behind it
+
+`public/storage` existed as an empty *directory*, so `/storage/**` returned 403
+for everything and 765 uploaded files were unreachable. Fixing the link did not
+end the bug hunt — it *started* it: three more broken images (a seed filename
+never shipped, a NULL icon resolving to the bare `/storage` path, and a
+fallback placeholder that was itself missing) had been invisible because
+everything under that prefix already failed.
+
+**Rule:** after repairing a path prefix, re-sweep for 4xx responses rather than
+declaring the class of bug fixed. And when a page shows console 403/404s, chase
+them — I had seen «2 errors» on every page for most of this session and read
+past it.
+
+## `storage:link` is a no-op when the target is an existing plain directory
+
+It reports the link already exists and changes nothing. Check
+`fsutil reparsepoint query` (or `readlink`) before trusting that a
+`public/storage` entry is the link, not just a directory with the right name.
+
+## A whole-row link needs a visible affordance
+
+`cursor: pointer` is not one — it is only discoverable by hovering the thing you
+have not realised is interactive. The orders list was a link with no chevron,
+no button and no actions cell, and the user's report was literally «I need to
+see the order details here» while looking straight at eleven clickable rows.
+
+**Rule:** if a row is the link, give it a trailing chevron — and put it *inside*
+the anchor as a glyph, never as a nested button or second link.
+
+## A fallback asset has to be an asset that exists
+
+`storage/default.png` was the missing-image placeholder for the whole panel and
+nothing in the codebase ever writes it. A fallback belongs on the bundled-asset
+path, not on the user-uploads disk — the uploads disk is the thing that might be
+empty.
+
+## A cache clear does not clear the session
+
+Two language cache keys were cleared and the flag still rendered stale, because
+`Session::get('language')` holds a *serialised model* from when the operator
+last switched language. Data fixes to a row that also lives in the session need
+a fresh session to show up.
+

@@ -70,7 +70,7 @@
                              AJAX helper targets it by that name and replaces its
                              HTML wholesale. --}}
                         @php
-                            $stackCols = 'minmax(8rem,1.1fr) minmax(9rem,1.3fr) minmax(8rem,1fr) minmax(9rem,1.1fr) minmax(6rem,auto)';
+                            $stackCols = 'minmax(8rem,1.1fr) minmax(9rem,1.3fr) minmax(8rem,1fr) minmax(9rem,1.1fr) minmax(6rem,auto) 1.5rem';
                         @endphp
 
                         <div class="stack-head" style="--stack-cols: {{ $stackCols }}">
@@ -79,6 +79,11 @@
                             <span>{{ __('Service') }}</span>
                             <span>{{ __('Status') }}</span>
                             <span class="text-end">{{ __('Total') }}</span>
+                            {{-- The chevron's column. Empty and hidden from
+                                 assistive tech: it labels nothing, it only has
+                                 to hold the track open so the five real labels
+                                 stay over the fields they name. --}}
+                            <span aria-hidden="true"></span>
                         </div>
 
                         <div class="data-stack" id="order-table-body" style="--stack-cols: {{ $stackCols }}">

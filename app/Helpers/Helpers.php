@@ -62,9 +62,13 @@ if (! function_exists('getImageDashboardUrl')) {
      */
     function getImageDashboardUrl(?string $url): string
     {
+        // The fallback used to be `storage/default.png` — a path on the
+        // *uploads* disk that nothing ever writes, so the placeholder for a
+        // missing image was itself a missing image (403 on every row without
+        // one). `no_image_available.png` ships with the template.
         $imageUrl = (! empty($url) && Storage::disk('public')->exists($url))
             ? asset("storage/$url")
-            : asset('storage/default.png');
+            : asset('assets/images/no_image_available.png');
 
         return "<a href='{$imageUrl}' target='_blank'>
                     <img class='rounded-circle' style='height:80px;width:80px;border-radius:10%;' src='{$imageUrl}'>
@@ -86,7 +90,7 @@ if (! function_exists('getImageassetUrl')) {
                 return asset($url);
             }
 
-            return asset('storage/default.png');
+            return asset('assets/images/no_image_available.png');
         };
 
         return is_array($urls) ? array_map($getUrl, $urls) : $getUrl($urls);

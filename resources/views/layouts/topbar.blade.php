@@ -36,11 +36,25 @@
                 <div class="dropdown">
                     @php
                         $shownLanguage = $currentLanguage ?: $defaultLanguage;
+
+                        // `asset('storage/' . $icon)` with an empty icon
+                        // resolves to the bare `/storage` directory, and with a
+                        // seed value whose file was never shipped to a 403 — so
+                        // the flag was a broken image on every page in the
+                        // panel. Same existence check the avatar below uses.
+                        $flagUrl = function ($language) {
+                            $icon = $language->icon ?? null;
+
+                            return ($icon && Illuminate\Support\Facades\Storage::disk('public')->exists($icon))
+                                ? asset('storage/' . $icon)
+                                : null;
+                        };
                     @endphp
                     <button type="button" class="dropdown-btn dropdown-toggle" id="topbarLanguageDropdown"
                         data-bs-toggle="dropdown" aria-expanded="false" aria-label="{{ __('Change language') }}">
-                        <img src="{{ asset('storage/' . $shownLanguage->icon) }}" alt="{{ $shownLanguage->name }}"
-                            id="current-flag" class="flag">
+                        @if ($flag = $flagUrl($shownLanguage))
+                            <img src="{{ $flag }}" alt="{{ $shownLanguage->name }}" id="current-flag" class="flag">
+                        @endif
                         <span id="current-language">{{ $shownLanguage->code }}</span>
                         <span class="arrow" aria-hidden="true">&#9662;</span>
                     </button>
@@ -48,8 +62,10 @@
                         @foreach ($languages as $language)
                             <li>
                                 <a class="dropdown-item" href="{{ route('language.set-current', $language->code) }}">
-                                    <img src="{{ asset('storage/' . $language->icon) }}"
-                                        alt="{{ $language->name }}" class="flag flag-in-menu">
+                                    @if ($flag = $flagUrl($language))
+                                        <img src="{{ $flag }}" alt="{{ $language->name }}"
+                                            class="flag flag-in-menu">
+                                    @endif
                                     {{ $language->name }}
                                 </a>
                             </li>

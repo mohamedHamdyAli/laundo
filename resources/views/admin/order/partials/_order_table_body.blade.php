@@ -5,6 +5,14 @@
     sit behind `permission:order.view`, so anybody reading this list can open
     any row in it and there is no second action to reserve a column for.
 
+    It still needs to *look* openable. This was the only list of the 26 with no
+    actions cell, and «the whole row is a link» is invisible: a reader saw five
+    columns of text and nothing saying the details were one click away. The
+    chevron on the trailing edge is that affordance. It is a plain glyph inside
+    the anchor rather than a button or a second link — a control nested in a
+    control is invalid, unreachable by keyboard, and would give the row two tab
+    stops to the same page.
+
     The file keeps its `_table_body` name because OrderController@search renders
     it by that path, and the AJAX helper replaces the container's HTML wholesale
     — a div container takes card markup exactly as a tbody took rows.
@@ -57,6 +65,12 @@
             @if ($order->final_total !== null)
                 <span class="row-sub">{{ __('Final') }}</span>
             @endif
+        </div>
+
+        {{-- Mirrored in RTL from the stylesheet, so there is one icon name
+             here rather than a direction test in the markup. --}}
+        <div class="stack-open" aria-hidden="true">
+            <i class="bi bi-chevron-right"></i>
         </div>
 
     </a>

@@ -163,6 +163,41 @@ body.theme-dark .dropdown-item:hover {
    ========================================================================== */
 
 /* ==========================================================================
+   «This row opens» — the chevron on a whole-row link
+
+   Only the orders list uses it: every other list carries an actions cell,
+   which is its own signal that a row leads somewhere. Orders has no second
+   action, so the row itself is the link — and a link that looks exactly like
+   static text is not a link anybody finds.
+   ========================================================================== */
+
+.stack-open {
+    align-items: center;
+    color: var(--text-muted);
+    display: flex;
+    font-size: .8rem;
+    justify-content: center;
+    /* The colour, not the glyph, does the reacting — a chevron that moves on
+       hover pulls the eye across a list of eleven of them. */
+    transition: color .15s ease;
+}
+
+.stack-row:hover .stack-open {
+    color: var(--brand-text);
+}
+
+/* bootstrap-icons ships `vertical-align: -0.125em` on every glyph for inline
+   text flow, which drops it off the centre line of a flex-centred box. */
+.stack-open .bi::before {
+    vertical-align: 0;
+}
+
+/* One icon name in the markup; the trailing edge decides which way it points. */
+html[dir="rtl"] .stack-open .bi {
+    transform: scaleX(-1);
+}
+
+/* ==========================================================================
    Image upload field
 
    Fourteen of these across the form partials were built as

@@ -85,9 +85,9 @@ class AppSettingController extends Controller
             }
 
             if ($key === 'App_Logo') {
-                // Through brandLogo(), not the raw setting: an unset App_Logo used
-                // to resolve to storage/default.png, so the apps were being handed
-                // a placeholder image as the brand.
+                // Through brandLogo(), not the raw setting: an unset App_Logo
+                // used to resolve to the generic missing-image placeholder, so
+                // the apps were being handed that as the brand.
                 $payload['app_logo'] = brandLogo('dark');
 
                 continue;

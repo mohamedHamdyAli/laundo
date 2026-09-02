@@ -22,8 +22,8 @@ class LanguageController extends Controller
             'name' => $language->name,
             'name_en' => $language->name_en,
             'country_code' => $language->country_code,
-            // getImageassetUrl() falls back to storage/default.png, matching how
-            // the rest of the app resolves images.
+            // getImageassetUrl() falls back to the bundled missing-image
+            // placeholder, matching how the rest of the app resolves images.
             'icon' => getImageassetUrl($language->icon),
             'is_rtl' => $language->is_rtl === 'true',
             'is_default' => $language->default === 'true',
