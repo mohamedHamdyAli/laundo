@@ -23,7 +23,9 @@
     <section class="section">
 
         @foreach ($roles as $role)
-            <div class="card mb-3 shadow-sm">
+            {{-- `shadow-sm` carries Bootstrap's !important and beat the shared card
+                 shadow, so the role panels were the only flat cards in the app. --}}
+            <div class="card mb-3">
 
                 {{-- Role Row --}}
                 <div class="card-body d-flex justify-content-between align-items-center">

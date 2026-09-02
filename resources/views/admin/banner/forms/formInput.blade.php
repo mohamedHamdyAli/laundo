@@ -105,7 +105,7 @@
     <div class="col-lg-12">
         <div class="mb-3">
             <label class="form-label">{{ __('Image') }}<span class="text-danger">*</span></label>
-            <div class="card p-2 shadow-sm" style="border: 2px dashed #ddd;">
+            <div class="upload-field">
                 <div class="text-center">
                     <img id="image-preview" src="{{ isset($row) && $row->image ? getImageassetUrl($row->image) : '' }}"
                         alt="Image Preview" class="img-fluid rounded mb-2"

@@ -93,8 +93,9 @@
                     </ul>
                 </div>
 
-                {{-- The operator --}}
-                <div class="dropdown">
+                {{-- The operator. `topbar-sep` draws the hairline that splits
+                     the account control off from the three utilities. --}}
+                <div class="dropdown topbar-sep">
                     @php
                         // `profile` is not a column on this table — it is
                         // `image_profile`, so the old `Auth::user()->profile`

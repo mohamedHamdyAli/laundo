@@ -55,7 +55,20 @@
     /* The round controls in the top bar — the theme toggle and the bell — are
        siblings and must never drift apart in size. They were 38px and 2.4rem,
        which read as sloppy at a glance. */
-    --topbar-control: 2.4rem;
+    --topbar-control: 2.25rem;
+
+    /* The three tints the ambient background drifts in. Kept as tokens so the
+       dark theme restates only these and the layer itself needs no variant:
+       the same alpha over a near-black ground reads as almost nothing, which
+       is why the values below are roughly doubled there. */
+    /* The dashed edge of an upload field. --surface-border is tuned for
+       hairlines against white and lands at 1.19:1 on the field fill, which is
+       not enough for a dashed rule to read as one. */
+    --upload-edge: #aeb4bf;
+
+    --ambient-a: rgba(37, 99, 235, .10);
+    --ambient-b: rgba(13, 148, 136, .085);
+    --ambient-c: rgba(99, 102, 241, .09);
 }
 
 body.theme-dark {
@@ -88,6 +101,12 @@ body.theme-dark {
     --bs-border-color: var(--surface-border);
     --bs-card-bg: var(--surface-card);
     --bs-card-cap-bg: var(--surface-card);
+
+    --upload-edge: #4a5670;
+
+    --ambient-a: rgba(59, 130, 246, .17);
+    --ambient-b: rgba(20, 184, 166, .12);
+    --ambient-c: rgba(129, 140, 248, .15);
 }
 
 body.theme-dark {
@@ -143,10 +162,171 @@ body.theme-dark .dropdown-item:hover {
    Cards / tables — subtle rounded surface, matches list-page reference look
    ========================================================================== */
 
+/* ==========================================================================
+   Image upload field
+
+   Fourteen of these across the form partials were built as
+   `class="card p-2 shadow-sm" style="border: 2px dashed #ddd;"` — a nested
+   card inside the form's card, so it inherited the panel treatment (radius,
+   layered shadow, top highlight) meant for a page-level sheet, then drew a
+   hardcoded `#ddd` dashed rule over it that had no dark-mode value at all: a
+   pale grey dotted box floating on a near-black card.
+
+   It is a field, not a panel. Same fill, radius and hover as the text inputs
+   beside it, with the dashed edge that says «drop something here» and a
+   border that follows the theme.
+   ========================================================================== */
+
+.upload-field {
+    background: var(--field-bg);
+    /* 2px, not 1.5: under the panel's fractional zoom Chrome snaps border
+       widths to whole device pixels, and 1.5px came out identical to 1px. */
+    border: 2px dashed var(--upload-edge);
+    border-radius: var(--control-radius);
+    padding: 1rem;
+    transition: background-color .15s ease, border-color .15s ease;
+}
+
+.upload-field:hover {
+    background: var(--field-bg-hover);
+    border-color: var(--brand-text);
+}
+
+/* The preview and its file input are the only things inside, and the input is
+   a control on a filled ground already — it should not repeat the fill. */
+.upload-field .form-control {
+    background: var(--surface-card);
+}
+
+/* ==========================================================================
+   Ambient background
+
+   Something moving behind the page for as long as it is open. Two fixed
+   layers, each carrying two very soft radial tints, drifting on different
+   clocks — one layer alone reads as a single blob sliding about, two at
+   34s and 46s never repeat the same arrangement twice in a sitting.
+
+   Three rules keep it honest:
+
+     * only `transform` is animated. Transforms are composited, so the drift
+       costs no layout and no repaint per frame — the layers are handed to the
+       GPU once and moved. Animating `background-position` or the gradient
+       stops instead would repaint two full-viewport boxes 60 times a second.
+     * `z-index: -1` puts them above the page ground and below every in-flow
+       box. An element's background always paints beneath its own descendants,
+       this pseudo-element included, so the layer sits on top of the body's
+       colour while the content, the sidebar and every card stay on top of it.
+     * `pointer-events: none`, so a full-viewport overlay can never eat a
+       click.
+
+   The box is the viewport exactly, and the overhang that keeps its edges out
+   of view during the drift comes from the keyframes never scaling below 1.35
+   — at that scale a viewport-sized box hangs ~250px off each side of a 1440px
+   window, comfortably more than the 4vw translate and the 6deg rotation can
+   pull it back in. Enlarging the box with a negative `inset` instead is the
+   obvious way to do this and it is a trap: the `at 16% 10%` in each gradient
+   is a percentage *of the box*, so a box 140% of the viewport put every blob
+   centre off-screen and the ground stayed exactly its flat colour — measured,
+   not guessed. Sized to the viewport, those percentages mean what they look
+   like they mean.
+
+   The rotation is what makes the drift readable. Translation alone, slow
+   enough not to distract, moves a blob edge a pixel or two a second and reads
+   as a still page; rotating the layer a few degrees about the viewport centre
+   swings the off-centre blobs through a much longer arc for the same
+   subtlety.
+   ========================================================================== */
+
+body::before,
+body::after {
+    content: '';
+    inset: 0;
+    pointer-events: none;
+    position: fixed;
+    z-index: -1;
+}
+
+body::before {
+    animation: ambient-drift-a 26s ease-in-out infinite alternate;
+    background:
+        radial-gradient(circle 46vmax at 16% 10%, var(--ambient-a), transparent 66%),
+        radial-gradient(circle 38vmax at 84% 24%, var(--ambient-b), transparent 64%);
+}
+
+body::after {
+    animation: ambient-drift-b 34s ease-in-out infinite alternate;
+    background:
+        radial-gradient(circle 42vmax at 76% 84%, var(--ambient-c), transparent 66%),
+        radial-gradient(circle 34vmax at 24% 74%, var(--ambient-a), transparent 64%);
+}
+
+@keyframes ambient-drift-a {
+    from {
+        transform: translate3d(0, 0, 0) scale(1.35) rotate(0deg);
+    }
+
+    to {
+        transform: translate3d(4vw, 3vh, 0) scale(1.5) rotate(6deg);
+    }
+}
+
+@keyframes ambient-drift-b {
+    from {
+        transform: translate3d(0, 0, 0) scale(1.48) rotate(0deg);
+    }
+
+    to {
+        transform: translate3d(-4vw, -3vh, 0) scale(1.35) rotate(-7deg);
+    }
+}
+
+/* Motion behind text is exactly what this setting is for. The tints stay —
+   they are part of the page's colour, not the animation — the drift stops. */
+@media (prefers-reduced-motion: reduce) {
+
+    body::before,
+    body::after {
+        animation: none;
+    }
+}
+
+/* ==========================================================================
+   Cards
+   ========================================================================== */
+
+/* A flat white panel with a hairline around it and a 1px shadow reads as a
+   box drawn on the page rather than a sheet resting on it. Three changes,
+   none of them decoration for its own sake:
+
+     * the shadow is layered — a tight 1px contact shadow for the edge and a
+       wide, mostly transparent one spreading down and out for the lift. A
+       single small shadow can only ever do one of those two jobs.
+     * the border drops from the solid `--surface-border` to 6% black, so the
+       edge is defined by the shadow's gradient instead of by a grey line.
+     * an inset highlight along the top edge, and a barely-there gradient down
+       from the top, so the surface has a direction — light from above, the
+       same direction the shadow falls.
+
+   Dark mode restates all of it. Shadows are close to invisible against a
+   near-black ground, so there the border does more of the work and the
+   highlight is 4% white rather than 70%. */
 .card {
-    border: 1px solid var(--surface-border);
-    border-radius: 0.9rem;
-    box-shadow: 0 1px 2px rgba(16, 24, 40, .05);
+    background-image: linear-gradient(180deg, rgba(255, 255, 255, .5), rgba(255, 255, 255, 0) 8rem);
+    border: 1px solid rgba(16, 24, 40, .06);
+    border-radius: 1.15rem;
+    box-shadow:
+        0 1px 2px rgba(16, 24, 40, .04),
+        0 10px 28px -14px rgba(16, 24, 40, .12),
+        inset 0 1px 0 rgba(255, 255, 255, .7);
+}
+
+body.theme-dark .card {
+    background-image: linear-gradient(180deg, rgba(255, 255, 255, .022), rgba(255, 255, 255, 0) 8rem);
+    border-color: rgba(255, 255, 255, .07);
+    box-shadow:
+        0 1px 2px rgba(0, 0, 0, .28),
+        0 14px 34px -16px rgba(0, 0, 0, .55),
+        inset 0 1px 0 rgba(255, 255, 255, .04);
 }
 
 .table-responsive {
@@ -490,7 +670,8 @@ html[dir="rtl"] #notification-list {
     align-items: center;
     background: linear-gradient(135deg, var(--surface-card), var(--surface-bg));
     border: 1px solid var(--surface-border);
-    border-radius: 0.9rem;
+    /* Sits beside real cards on the dashboard, so it tracks their radius. */
+    border-radius: 1.15rem;
     display: flex;
     height: 100%;
     justify-content: center;
@@ -1824,6 +2005,44 @@ body.theme-dark .chart-col:hover .chart-bar {
     /* The colour was `style="background-color: white"` inline, which meant the
        dark theme had to fight it with `!important`. */
     background-color: var(--surface-card);
+
+    /* The bar stood 80px tall to hold a 39px row of controls: 34px of vendor
+       padding, most of it dead space. app.css:.navbar sets `height: 80px`
+       outright — a fixed pixel height, so it also ignored --ui-zoom and stayed
+       80px at every zoom level. `height: auto` hands the height back to the
+       padding below, which is in rem and does scale. */
+    height: auto;
+    min-height: 0;
+    padding-block: .8rem;
+    padding-inline: 1.5rem;
+
+    /* The vendor shadow is `0 0 10px 3px` — blurred equally in every
+       direction, so it also spilled upward over the top edge of the window and
+       sideways past the bar. A hairline with a short downward shadow separates
+       the bar from the page without the halo. */
+    border-bottom: 1px solid var(--surface-border);
+    box-shadow: 0 1px 2px rgba(16, 24, 40, .04);
+}
+
+/* The burger is the one control the vendor left as bare `fs-3` type with no
+   box, so it measured 37px against the 34px of everything else and set the
+   height of the whole row. Same footprint as its neighbours now. */
+.burger-btn {
+    align-items: center;
+    color: var(--text-strong);
+    display: inline-flex;
+    height: var(--topbar-control);
+    justify-content: center;
+    width: var(--topbar-control);
+}
+
+.burger-btn > i {
+    font-size: 1.35rem;
+    line-height: 1;
+}
+
+.burger-btn > i::before {
+    vertical-align: 0;
 }
 
 .topbar-inner {
@@ -1836,10 +2055,22 @@ body.theme-dark .chart-col:hover .chart-bar {
 .topbar-actions {
     align-items: center;
     display: flex;
-    gap: .6rem;
+    gap: .5rem;
     /* Pushes the whole cluster to the trailing edge whether or not the burger
        is showing, which is what the dead half-width column was doing before. */
     margin-inline-start: auto;
+}
+
+/* Each control is wrapped in a plain `<div class="dropdown">`, which is a
+   block box, so it generated a line box around its button and stood taller
+   than it — 37.8px around the 31.5px bell, whose `fs-4` glyph has the deepest
+   descender of the four. `align-items: center` on the row was then centring
+   those unequal wrappers, which left the buttons inside them on three
+   different centre lines. Flex wrappers have no line box, so each one is
+   exactly its control's height. */
+.topbar-actions > .dropdown {
+    align-items: center;
+    display: flex;
 }
 
 /* The bell, and any icon-only control that joins it later. */
@@ -1926,6 +2157,71 @@ body.theme-dark .topbar-icon-btn:hover {
     height: auto;
     margin-inline-end: .4rem;
     width: 1.4rem;
+}
+
+/* The language switcher was the odd control out: a white pill with a grey ring
+   sitting on a white bar, so the only part of it that read was the ring — and
+   39px tall against the 34px of the three controls beside it, which is what
+   made the row look ragged. It gets the same tint, the same height and the
+   same round shape as the bell and the theme toggle. */
+.dropdown-btn {
+    align-items: center;
+    background: rgba(0, 0, 0, .05);
+    border: 0;
+    border-radius: 999px;
+    color: var(--text-strong);
+    cursor: pointer;
+    display: inline-flex;
+    font-size: .78rem;
+    font-weight: 600;
+    gap: .35rem;
+    height: var(--topbar-control);
+    letter-spacing: .03em;
+    line-height: 1;
+    padding-block: 0;
+    padding-inline: .55rem;
+    text-transform: uppercase;
+    transition: background-color .15s ease;
+}
+
+.dropdown-btn:hover {
+    background: rgba(0, 0, 0, .1);
+}
+
+body.theme-dark .dropdown-btn {
+    background: rgba(255, 255, 255, .08);
+    color: var(--text-strong);
+}
+
+body.theme-dark .dropdown-btn:hover {
+    background: rgba(255, 255, 255, .15);
+}
+
+/* Bootstrap's .dropdown-toggle paints its own caret; the markup already ships
+   a `.arrow` span, so the class was drawing a second one. */
+.dropdown-btn.dropdown-toggle::after {
+    display: none;
+}
+
+.dropdown-btn .flag {
+    border-radius: 2px;
+    height: 1rem;
+    object-fit: cover;
+    width: 1.35rem;
+}
+
+.dropdown-btn .arrow {
+    color: var(--text-muted);
+    font-size: .65rem;
+}
+
+/* Who is signed in is a different kind of control from the three utilities
+   beside it, and the row read as four interchangeable buttons. A hairline and
+   a little more air group them. */
+.topbar-sep {
+    border-inline-start: 1px solid var(--surface-border);
+    margin-inline-start: .35rem;
+    padding-inline-start: .75rem;
 }
 
 /* The sidebar logo was `max-width: 150px` inline — the last length in the
@@ -2266,6 +2562,13 @@ textarea.form-control {
    radius, same padding, same hover. */
 .select2-container--bootstrap-5 .select2-selection {
     background-color: var(--field-bg);
+    /* The theme paints its own chevron as an SVG background-image on
+       `.select2-selection--single`, so with the `b` chevron below there were
+       two arrows stacked on every select in the panel. The image goes rather
+       than the border chevron: its colour is a grey baked into the data URI,
+       so it could never follow `--text-muted` into dark mode or turn brand
+       blue on open. */
+    background-image: none;
     border: 1px solid transparent;
     border-radius: var(--control-radius);
     color: var(--text-strong);

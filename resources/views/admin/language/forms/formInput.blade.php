@@ -77,7 +77,7 @@
     <div class="col-md-6">
         <div class="mb-6">
             <label class="form-label">{{ __('icon') }}<span class="text-danger">*</span></label>
-            <div class="card p-2 shadow-sm" style="border: 2px dashed #ddd;">
+            <div class="upload-field">
                 <div class="text-center">
                     <img id="icon-preview" src="{{ isset($row) && $row->icon ? getImageassetUrl($row->icon) : '' }}"
                         alt="icon Preview" class="img-fluid rounded mb-2"
@@ -109,7 +109,7 @@
             <div class="col-md-4">
                 <div class="mb-6">
                     <label class="form-label">{{ __($label) }}</label>
-                    <div class="card p-2 shadow-sm" style="border: 2px dashed #ddd;">
+                    <div class="upload-field">
                         <div class="text-center">
                             @if (isset($row) && $row->$field)
                                 <a href="{{ getImageassetUrl($row->$field) }}" target="_blank"

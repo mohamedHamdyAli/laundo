@@ -54,7 +54,7 @@
     <div class="col-lg-4">
         <div class="mb-3">
             <label class="form-label">{{ __('Profile Image') }}<span class="text-danger">*</span></label>
-            <div class="card p-2 shadow-sm" style="border: 2px dashed #ddd;">
+            <div class="upload-field">
                 <div class="text-center">
                     <img id="image-preview"
                         src="{{ isset($row) && $row->image_profile ? getImageassetUrl($row->image_profile) : '' }}"

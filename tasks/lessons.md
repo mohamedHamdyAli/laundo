@@ -651,3 +651,64 @@ can watch.
   first opaque ancestor. Reading only the nearest `background-color` compared a
   tinted option's text against a 14% version of itself and reported 1:1, which
   is neither the real value nor a safe direction to be wrong in.
+- Before drawing a control's own icon, check whether the vendored theme already
+  draws one. select2-bootstrap-5 paints its chevron as an SVG background-image
+  on the selection, so adding a border chevron stacked two arrows on all 55
+  selects. Grep the vendor CSS for `background-image` on the element before
+  adding a glyph to it.
+
+## Percentages in a gradient are percentages of the box, not of the viewport
+
+Sizing an ambient background layer as `position: fixed; inset: -20%` to give
+the drift some overhang silently moved every `radial-gradient(... at 16% 10%)`
+centre off-screen: the percentages resolve against the enlarged box, which was
+140% of the viewport and offset -20% on each side. The page ground measured
+**exactly** its flat colour at six of eight sample points — the layer was
+painting, just nowhere visible.
+
+**Rule:** get overhang from a `scale()` floor in the keyframes and leave the
+box at `inset: 0`, so gradient percentages mean viewport percentages. And
+verify a background effect by sampling pixels, not by reading the computed
+style — `backgroundImage` contained the gradient and the animation was running
+the whole time it was invisible.
+
+## A fixed `height` in vendor CSS beats your padding, and ignores the zoom
+
+`.navbar { height: 80px }` in `app.css` meant the top bar's height could not be
+changed from padding at all, and — being px — that it stayed 80px at every
+`--ui-zoom` level while the rest of the panel scaled. The padding applied
+correctly (11.2px, measured) and did nothing.
+
+**Rule:** when a box will not resize, read `height`/`min-height` off it before
+touching padding, and enumerate the vendor rules that match the element rather
+than assuming the last-loaded sheet wins.
+
+## Centring the wrapper is not centring the control
+
+`align-items: center` on the top bar row was centring four `<div
+class="dropdown">` wrappers of unequal height — a block box generates a line
+box around an inline-flex child, so the wrapper stood 37.8px around a 31.5px
+button, and the deepest descender (a `bi` glyph at `fs-4`) made the worst case.
+The controls were all the same height and still on three different centre
+lines.
+
+**Rule:** when equal-sized controls will not align, measure the *wrapper*, not
+the control. Making the wrapper a flex box removes the line box and the
+mismatch at once.
+
+## Chrome snaps border widths to whole device pixels
+
+Under the panel's fractional zoom, `border: 1.5px` computed to the same used
+width as `1px`. The rule had applied — colour and style were mine, only the
+width was indistinguishable.
+
+**Rule:** don't use sub-2px fractional border widths to signal emphasis; and
+when a declared value reads back wrong, check for engine snapping before
+hunting a cascade conflict that isn't there.
+
+## `--surface-border` is a hairline colour, not a border colour
+
+Reusing it for a 2px dashed dropzone edge gave 1.19:1 against the fill — a
+dashed rule that doesn't read as dashed. Hairline tokens are calibrated to be
+nearly invisible on white; anything that has to be *seen* needs its own token
+and a measured ratio.
