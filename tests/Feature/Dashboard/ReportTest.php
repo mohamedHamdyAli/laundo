@@ -55,7 +55,7 @@ class ReportTest extends TestCase
             $zone->update(['price_per_km' => 5.00, 'min_delivery_fee' => 20.00]);
         }
 
-        $this->tenant = $this->laundryWithOwner('A', '01011110001', '01011110002');
+        $this->tenant = $this->laundryWithOwner('A', '+201011110001', '+201011110002');
         $this->cover($this->tenant['laundry'], $this->geo['zones'][0]->id, $this->catalog['service']->id);
     }
 
@@ -66,8 +66,8 @@ class ReportTest extends TestCase
     {
         // Cash has no `payments` row at all — summing payments would miss it.
         $cash = $this->paidOrder('cash');
-        $card = $this->paidOrder('card', '01099887701');
-        $this->placedOrder('01099887702');   // unpaid, must not count
+        $card = $this->paidOrder('card', '+201099887701');
+        $this->placedOrder('+201099887702');   // unpaid, must not count
 
         $summary = app(RevenueReport::class)->summary(DateRange::lastDays(30));
 
@@ -226,10 +226,10 @@ class ReportTest extends TestCase
         // Reviewed upward: the customer said 2, the laundry counted 3.
         $up = $this->reviewedOrder(2, 3);
         // Reviewed downward.
-        $down = $this->reviewedOrder(3, 2, '01099887711');
+        $down = $this->reviewedOrder(3, 2, '+201099887711');
         // Never reviewed — folding this in as a zero would drag the average
         // toward «nothing changes» and hide the effect.
-        $this->placedOrder('01099887712');
+        $this->placedOrder('+201099887712');
 
         $movement = app(OrderReport::class)->priceMovement(DateRange::lastDays(30));
 
@@ -265,8 +265,8 @@ class ReportTest extends TestCase
     public function the_order_summary_reports_rates_not_just_counts(): void
     {
         $this->placedOrder();
-        $this->placedOrder('01099887721');
-        $cancelled = $this->placedOrder('01099887722');
+        $this->placedOrder('+201099887721');
+        $cancelled = $this->placedOrder('+201099887722');
 
         app(OrderService::class)->cancel($cancelled, User::findOrFail($cancelled->user_id), 'changed my mind');
 
@@ -286,10 +286,10 @@ class ReportTest extends TestCase
         $mine = $this->paidOrder('cash');
 
         // A second laundry with its own paid order.
-        $other = $this->laundryWithOwner('B', '01022220001', '01022220002');
+        $other = $this->laundryWithOwner('B', '+201022220001', '+201022220002');
         $this->cover($other['laundry'], $this->geo['zones'][1]->id, $this->catalog['service']->id);
 
-        $theirCustomer = $this->customer('01099887731');
+        $theirCustomer = $this->customer('+201099887731');
         $theirAddress = $this->addressFor($theirCustomer, $this->geo['zones'][1], 29.96, 31.26);
 
         $theirs = app(OrderService::class)->place($theirCustomer, [
@@ -344,7 +344,7 @@ class ReportTest extends TestCase
     #[Test]
     public function a_customer_cannot_reach_any_report(): void
     {
-        $customer = $this->customer('01099887741');
+        $customer = $this->customer('+201099887741');
 
         foreach (['revenue', 'orders', 'operations'] as $report) {
             $this->actingAs($customer)->get("/admin/report/{$report}")->assertForbidden();
@@ -389,7 +389,7 @@ class ReportTest extends TestCase
         $waiting->fresh()->update(['reviewed_at' => now()->subHours(30)]);
 
         // A wallet that has drifted from its ledger.
-        $customer = $this->customer('01099887751');
+        $customer = $this->customer('+201099887751');
         $wallets = app(WalletService::class);
         $wallets->credit($customer, 100, TransactionReason::TopUp);
         $wallets->forUser($customer)->forceFill(['balance' => 999])->save();
@@ -426,7 +426,7 @@ class ReportTest extends TestCase
 
     // ------------------------------------------------------------------ helpers
 
-    private function placedOrder(string $phone = '01099887766'): Order
+    private function placedOrder(string $phone = '+201099887766'): Order
     {
         $customer = $this->customer($phone);
         $address = $this->addressFor($customer, $this->geo['zones'][0]);
@@ -439,7 +439,7 @@ class ReportTest extends TestCase
         ]);
     }
 
-    private function paidOrder(string $method, string $phone = '01099887766'): Order
+    private function paidOrder(string $method, string $phone = '+201099887766'): Order
     {
         $order = $this->placedOrder($phone);
 
@@ -454,7 +454,7 @@ class ReportTest extends TestCase
     }
 
     /** Placed with one count, reviewed with another. */
-    private function reviewedOrder(int $ordered, int $counted, string $phone = '01099887766'): Order
+    private function reviewedOrder(int $ordered, int $counted, string $phone = '+201099887766'): Order
     {
         $customer = $this->customer($phone);
         $address = $this->addressFor($customer, $this->geo['zones'][0]);

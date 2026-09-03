@@ -50,8 +50,8 @@ class DecisionsTest extends TestCase
         $this->seedCore();
         $this->geo = $this->seedGeo();
         $this->catalog = $this->seedCatalog();
-        $this->tenant = $this->laundryWithOwner('A', '01011110001', '01011110002');
-        $this->customer = $this->customer('01055550001');
+        $this->tenant = $this->laundryWithOwner('A', '+201011110001', '+201011110002');
+        $this->customer = $this->customer('+201055550001');
     }
 
     private function order(?OrderStatus $status = null): Order

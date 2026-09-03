@@ -21,7 +21,7 @@
         <div class="mb-3">
             <label class="form-label">{{ __('Phone') }} <span class="text-danger">*</span></label>
             <input type="text" name="phone" class="form-control"
-                placeholder="{{ __('Egyptian number, e.g. 01XXXXXXXXX or +201XXXXXXXXX') }}"
+                placeholder="{{ __('With the country code, e.g. +201012345678') }}"
                 value="{{ old('phone', $row->phone ?? '') }}"
                 {{ Route::is('*.create') ? 'required' : '' }} {{ $readonly ? 'readonly' : '' }}>
         </div>

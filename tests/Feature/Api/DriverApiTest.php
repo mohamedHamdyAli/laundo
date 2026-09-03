@@ -38,11 +38,11 @@ class DriverApiTest extends TestCase
         $this->driverUser();
 
         $response = $this->withHeaders($this->apiHeaders())
-            ->postJson('/api/v1/driver/login', ['phone' => '01033330001', 'password' => 'password']);
+            ->postJson('/api/v1/driver/login', ['phone' => '+201033330001', 'password' => 'password']);
 
         $response->assertOk()
             ->assertJsonPath('key', 'success')
-            ->assertJsonPath('data.phone', '01033330001')
+            ->assertJsonPath('data.phone', '+201033330001')
             ->assertJsonStructure(['data' => ['token', 'is_available', 'vehicle', 'license', 'shift', 'zones']]);
     }
 
@@ -51,7 +51,7 @@ class DriverApiTest extends TestCase
         // Accounts are created in the dashboard — «تواصل مع المشرف» on the design's
         // login screen.
         $this->withHeaders($this->apiHeaders())
-            ->postJson('/api/v1/driver/register', ['phone' => '01033330001'])
+            ->postJson('/api/v1/driver/register', ['phone' => '+201033330001'])
             ->assertStatus(404);
     }
 
@@ -60,7 +60,7 @@ class DriverApiTest extends TestCase
         $this->driverUser(active: false);
 
         $this->withHeaders($this->apiHeaders())
-            ->postJson('/api/v1/driver/login', ['phone' => '01033330001', 'password' => 'password'])
+            ->postJson('/api/v1/driver/login', ['phone' => '+201033330001', 'password' => 'password'])
             ->assertStatus(403)
             ->assertJsonPath('key', 'forbidden');
     }
@@ -68,11 +68,11 @@ class DriverApiTest extends TestCase
     public function test_a_customer_cannot_sign_in_through_the_driver_endpoint(): void
     {
         // Same table, different role. The Driver model's scope is what refuses.
-        $customer = $this->customer('01044440001');
+        $customer = $this->customer('+201044440001');
         $customer->forceFill(['password' => Hash::make('password')])->save();
 
         $this->withHeaders($this->apiHeaders())
-            ->postJson('/api/v1/driver/login', ['phone' => '01044440001', 'password' => 'password'])
+            ->postJson('/api/v1/driver/login', ['phone' => '+201044440001', 'password' => 'password'])
             ->assertStatus(401);
     }
 
@@ -81,13 +81,13 @@ class DriverApiTest extends TestCase
         $this->driverUser();
 
         $this->withHeaders($this->apiHeaders())
-            ->postJson('/api/v1/auth/login', ['phone' => '01033330001', 'password' => 'password'])
+            ->postJson('/api/v1/auth/login', ['phone' => '+201033330001', 'password' => 'password'])
             ->assertStatus(401);
     }
 
     public function test_a_customer_token_is_refused_on_driver_endpoints(): void
     {
-        $token = $this->customer('01044440001')->createToken('t')->plainTextToken;
+        $token = $this->customer('+201044440001')->createToken('t')->plainTextToken;
 
         $this->withHeaders($this->tokenHeaders($token))
             ->getJson('/api/v1/driver/profile')
@@ -232,15 +232,19 @@ class DriverApiTest extends TestCase
         $this->driverUser();
 
         $known = $this->withHeaders($this->apiHeaders())
-            ->postJson('/api/v1/driver/forgot-password', ['phone' => '01033330001']);
+            ->postJson('/api/v1/driver/forgot-password', ['phone' => '+201033330001']);
 
         $unknown = $this->withHeaders($this->apiHeaders())
-            ->postJson('/api/v1/driver/forgot-password', ['phone' => '01099998888']);
+            ->postJson('/api/v1/driver/forgot-password', ['phone' => '+201099998888']);
 
         $this->assertSame($known->status(), $unknown->status());
         $this->assertSame($known->json('msg'), $unknown->json('msg'));
     }
 
+    /**
+     * The two-step reset, end to end — the same shape the customer flow uses,
+     * so the two apps have one contract to implement rather than two.
+     */
     public function test_reset_password_by_otp_revokes_every_token(): void
     {
         $driver = $this->driverUser();
@@ -249,14 +253,68 @@ class DriverApiTest extends TestCase
 
         $code = app(OtpService::class)->issue($driver);
 
+        $token = $this->withHeaders($this->apiHeaders())
+            ->postJson('/api/v1/driver/verify-reset-code', [
+                'phone' => '+201033330001',
+                'code' => $code,
+            ])
+            ->assertOk()
+            ->json('data.reset_token');
+
+        $this->assertIsString($token);
+
         $this->withHeaders($this->apiHeaders())->postJson('/api/v1/driver/reset-password', [
-            'phone' => '01033330001',
-            'code' => $code,
+            'reset_token' => $token,
             'password' => 'resetme123',
             'password_confirmation' => 'resetme123',
         ])->assertOk();
 
         $this->assertSame(0, $driver->fresh()->tokens()->count());
         $this->assertTrue(Hash::check('resetme123', $driver->fresh()->password));
+    }
+
+    /**
+     * The code cannot be presented as the ticket — which is exactly what the
+     * old single-call shape allowed.
+     */
+    public function test_the_driver_password_step_will_not_accept_the_code(): void
+    {
+        $driver = $this->driverUser();
+        $code = app(OtpService::class)->issue($driver);
+
+        $this->withHeaders($this->apiHeaders())->postJson('/api/v1/driver/reset-password', [
+            'reset_token' => $code,
+            'password' => 'resetme123',
+            'password_confirmation' => 'resetme123',
+        ])->assertStatus(422);
+
+        $this->assertTrue(Hash::check('password', $driver->fresh()->password));
+    }
+
+    /**
+     * The two endpoints share the ticket mechanics but not the audience: a
+     * customer's ticket must not open a driver's password, or a stolen customer
+     * account would be a way into the driver app.
+     */
+    public function test_a_customers_ticket_cannot_reset_a_drivers_password(): void
+    {
+        $customer = $this->customer('+201055550009');
+        $code = app(OtpService::class)->issue($customer);
+
+        $token = $this->withHeaders($this->apiHeaders())
+            ->postJson('/api/v1/auth/verify-reset-code', [
+                'phone' => '+201055550009',
+                'code' => $code,
+            ])
+            ->assertOk()
+            ->json('data.reset_token');
+
+        $this->withHeaders($this->apiHeaders())->postJson('/api/v1/driver/reset-password', [
+            'reset_token' => $token,
+            'password' => 'notyours123',
+            'password_confirmation' => 'notyours123',
+        ])->assertStatus(422);
+
+        $this->assertTrue(Hash::check('password', $customer->fresh()->password));
     }
 }

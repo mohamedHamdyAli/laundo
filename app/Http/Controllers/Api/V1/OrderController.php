@@ -40,7 +40,12 @@ class OrderController extends Controller
     {
         $tab = $request->get('tab', 'all');
 
-        $query = $request->user()->orders()->with(['service:id,name', 'laundry:id,name']);
+        // `pickupSlot` is here because `presentSummary` reads its label. Without
+        // it the summary would fire one slot query per order in the page —
+        // fifteen extra round trips to render a list.
+        $query = $request->user()->orders()->with([
+            'service:id,name', 'laundry:id,name', 'pickupSlot',
+        ]);
 
         $query = match ($tab) {
             'active' => $query->active(),
@@ -275,6 +280,16 @@ class OrderController extends Controller
             'items_count' => $order->final_items_count ?? $order->estimated_items_count,
             'total' => $order->payableTotal(),
             'pickup_date' => $order->pickup_date?->toDateString(),
+            // Both of these were detail-only, which meant the home screen's
+            // «طلبك الحالي» card — a *list* row — could not draw the pickup
+            // time or its «مسح QR» button without a second request per order.
+            // The window rather than a single time: a driver on a route cannot
+            // promise a minute, which is why slots are modelled as ranges.
+            'pickup_slot' => $order->pickupSlot?->label(),
+            // «إظهار رمز الاستلام (QR)» — the code the driver scans to confirm
+            // they are at the right parcel. It is the customer's own order, and
+            // the button appears on three screens including this card.
+            'qr' => $order->qr_token,
             'created_at' => humanDate($order->created_at),
         ];
     }
@@ -304,22 +319,21 @@ class OrderController extends Controller
         }
 
         return $this->presentSummary($order) + [
+            // Both legs. Raw `door`/`leave` — the app maps them, as it always
+            // has for this field.
+            'pickup_method' => $order->pickup_method,
             'delivery_method' => $order->delivery_method,
             'driver_note' => $order->driver_note,
             'special_instructions' => $order->special_instructions,
             'pickup_address_id' => $order->pickup_address_id,
             'delivery_address_id' => $order->delivery_address_id,
             'same_address' => $order->isRoundTrip(),
-            'pickup_slot' => $order->pickupSlot?->label(),
+            // `pickup_slot` and `qr` moved up into the summary, which this
+            // composes with `+` — repeating them here would be dead keys.
             'delivery_slot' => $order->deliverySlot?->label(),
             'delivery_date' => $order->delivery_date?->toDateString(),
             'payment_method' => $order->payment_method,
             'payment_status' => $order->payment_status,
-            // «إظهار رمز الاستلام (QR)» — the code the driver scans to confirm
-            // they are at the right parcel. It is the customer's own order, and
-            // the button exists on three screens; withholding it left them all
-            // with nothing to render.
-            'qr' => $order->qr_token,
             'pricing' => [
                 'estimated_subtotal' => (float) $order->estimated_subtotal,
                 'delivery_fee' => (float) $order->delivery_fee,

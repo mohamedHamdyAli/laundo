@@ -5,7 +5,8 @@ use App\Http\Controllers\Admin\NotificationController;
 use App\Http\Controllers\Admin\RoleController;
 use App\Http\Controllers\HomeController;
 use App\Modules\Banner\Controllers\BannerController;
-use App\Modules\Category\Controllers\CategoryController;
+use App\Modules\JourneyStep\Controllers\JourneyStepController;
+use App\Modules\Offer\Controllers\OfferController;
 use App\Modules\City\Controllers\CityController;
 use App\Modules\Complaint\Controllers\ComplaintController;
 use App\Modules\Country\Controllers\CountryController;
@@ -167,6 +168,44 @@ Route::middleware(['auth', 'dashboard.only'])->prefix('/admin')->group(function 
     | Banner
     |--------------------------------------------------------------------------
     */
+    /*
+    |--------------------------------------------------------------------------
+    | Journey step — «رحلتك معنا بسيطة» on the app's home screen
+    |--------------------------------------------------------------------------
+    */
+    Route::controller(JourneyStepController::class)->group(function () {
+        Route::get('/journey-step', 'index')->middleware('permission:journey_step.view')->name('admin.journey_step.index');
+        Route::get('/journey-step/search', 'search')->middleware('permission:journey_step.view')->name('admin.journey_step.search');
+        Route::get('/journey-step/create', 'create')->middleware('permission:journey_step.create')->name('admin.journey_step.create');
+        Route::post('/journey-step/store', 'store')->middleware('permission:journey_step.create')->name('admin.journey_step.store');
+        Route::get('/journey-step/show/{id}', 'show')->middleware('permission:journey_step.view')->name('admin.journey_step.show');
+        Route::get('/journey-step/edit/{id}', 'edit')->middleware('permission:journey_step.update')->name('admin.journey_step.edit');
+        Route::put('/journey-step/update/{id}', 'update')->middleware('permission:journey_step.update')->name('admin.journey_step.update');
+        // Named `.delete` while the method is `destroy`: `x-action-buttons`
+        // builds its link from `route("$routePrefix.delete", $id)`.
+        Route::delete('/journey-step/delete/{id}', 'destroy')->middleware('permission:journey_step.delete')->name('admin.journey_step.delete');
+        Route::post('/journey-step/status/{id}', 'toggleStatus')->middleware('permission:journey_step.toggle')->name('admin.journey_step.toggleStatus');
+    });
+
+    /*
+    |--------------------------------------------------------------------------
+    | Offer — «عروض متميزة» on the app's home screen
+    |--------------------------------------------------------------------------
+    */
+    Route::controller(OfferController::class)->group(function () {
+        Route::get('/offer', 'index')->middleware('permission:offer.view')->name('admin.offer.index');
+        Route::get('/offer/search', 'search')->middleware('permission:offer.view')->name('admin.offer.search');
+        Route::get('/offer/create', 'create')->middleware('permission:offer.create')->name('admin.offer.create');
+        Route::post('/offer/store', 'store')->middleware('permission:offer.create')->name('admin.offer.store');
+        Route::get('/offer/show/{id}', 'show')->middleware('permission:offer.view')->name('admin.offer.show');
+        Route::get('/offer/edit/{id}', 'edit')->middleware('permission:offer.update')->name('admin.offer.edit');
+        Route::put('/offer/update/{id}', 'update')->middleware('permission:offer.update')->name('admin.offer.update');
+        // Named `.delete` while the method is `destroy`: `x-action-buttons`
+        // builds its link from `route("$routePrefix.delete", $id)`.
+        Route::delete('/offer/delete/{id}', 'destroy')->middleware('permission:offer.delete')->name('admin.offer.delete');
+        Route::post('/offer/status/{id}', 'toggleStatus')->middleware('permission:offer.toggle')->name('admin.offer.toggleStatus');
+    });
+
     Route::controller(BannerController::class)->group(function () {
         Route::get('/banner', 'index')->middleware('permission:banner.view')->name('admin.banner.index');
         Route::get('/banner/search', 'search')->middleware('permission:banner.view')->name('admin.banner.search');
@@ -179,23 +218,6 @@ Route::middleware(['auth', 'dashboard.only'])->prefix('/admin')->group(function 
         Route::post('/banner/status/{id}', 'toggleStatus')->middleware('permission:banner.toggle')->name('admin.banner.toggleStatus');
     });
 
-    /*
-    |--------------------------------------------------------------------------
-    | Category
-    |--------------------------------------------------------------------------
-    */
-    Route::controller(CategoryController::class)->group(function () {
-        Route::get('/category', 'index')->middleware('permission:category.view')->name('admin.category.index');
-        Route::get('/category/search', 'search')->middleware('permission:category.view')->name('admin.category.search');
-        Route::get('/category/create', 'create')->middleware('permission:category.create')->name('admin.category.create');
-        Route::post('/category/store', 'store')->middleware('permission:category.create')->name('admin.category.store');
-        Route::get('/category/show/{id}', 'show')->middleware('permission:category.view')->name('admin.category.show');
-        Route::get('/category/showSubCategories/{id}', 'showSubCategories')->middleware('permission:category.view')->name('admin.category.showSubCategories');
-        Route::get('/category/edit/{id}', 'edit')->middleware('permission:category.update')->name('admin.category.edit');
-        Route::put('/category/update/{id}', 'update')->middleware('permission:category.update')->name('admin.category.update');
-        Route::delete('/category/delete/{id}', 'destroy')->middleware('permission:category.delete')->name('admin.category.delete');
-        Route::post('/category/status/{id}', 'toggleStatus')->middleware('permission:category.toggle')->name('admin.category.toggleStatus');
-    });
 
     /*
     |--------------------------------------------------------------------------

@@ -46,9 +46,9 @@ class WeeklyReportTest extends TestCase
         $this->seedCore();
         $this->geo = $this->seedGeo();
         $this->catalog = $this->seedCatalog();
-        $this->a = $this->laundryWithOwner('A', '01011110001', '01011110002');
-        $this->b = $this->laundryWithOwner('B', '01011120001', '01011120002');
-        $this->customer = $this->customer('01055550001');
+        $this->a = $this->laundryWithOwner('A', '+201011110001', '+201011110002');
+        $this->b = $this->laundryWithOwner('B', '+201011120001', '+201011120002');
+        $this->customer = $this->customer('+201055550001');
 
         Mail::fake();
     }

@@ -32,7 +32,7 @@ class VerifyOtpRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'phone.regex' => __('Please enter a valid Egyptian phone number.'),
+            'phone.regex' => __('Enter the number with its country code, e.g. +201012345678.'),
             'code.digits' => __('The code must be :digits digits.', ['digits' => config('sms.otp.length', 6)]),
         ];
     }

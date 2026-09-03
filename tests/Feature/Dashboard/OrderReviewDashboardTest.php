@@ -115,7 +115,7 @@ class OrderReviewDashboardTest extends TestCase
     {
         [$order] = $this->collectedOrder();
 
-        $intruder = $this->laundryWithOwner('B', '01022220001', '01022220002');
+        $intruder = $this->laundryWithOwner('B', '+201022220001', '+201022220002');
 
         // The tenant scope makes the row invisible, so findOrFail 404s — there is
         // no ownership check to forget.
@@ -229,7 +229,7 @@ class OrderReviewDashboardTest extends TestCase
             'message' => 'سؤال',
         ]);
 
-        $intruder = $this->laundryWithOwner('B', '01022220001', '01022220002');
+        $intruder = $this->laundryWithOwner('B', '+201022220001', '+201022220002');
 
         $this->actingAs($intruder['owner'])->post("/admin/order/query/{$order->id}", [
             'query_id' => $query->id,
@@ -244,7 +244,7 @@ class OrderReviewDashboardTest extends TestCase
      */
     private function collectedOrder(?array $items = null): array
     {
-        $tenant = $this->laundryWithOwner('A', '01011110001', '01011110002');
+        $tenant = $this->laundryWithOwner('A', '+201011110001', '+201011110002');
         $this->cover($tenant['laundry'], $this->geo['zones'][0]->id, $this->catalog['service']->id);
 
         $customer = $this->customer();
@@ -267,7 +267,7 @@ class OrderReviewDashboardTest extends TestCase
     /** An order that has not been collected yet, on an already-covered zone. */
     private function placeOnly(): Order
     {
-        $customer = $this->customer('01099887799');
+        $customer = $this->customer('+201099887799');
         $address = $this->addressFor($customer, $this->geo['zones'][0]);
 
         return app(OrderService::class)->place($customer, [

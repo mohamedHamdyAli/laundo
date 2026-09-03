@@ -831,3 +831,260 @@ TestCase seeds `'password'` while the registration payload uses `secret123`.
 Read the factory or helper rather than assuming a value that appears elsewhere
 in the same file.
 
+## Derive an advertised number, never let someone type it
+
+The offers badge could have been a translatable `badge_text` column — one
+migration line, total operator freedom. It would also have let a card say «خصم
+20%» while the coupon behind it gave 15, with nothing in the system able to
+notice. Reading it off the coupon means the two cannot disagree, and it costs an
+eager-load.
+
+The second half matters as much: the badge is withheld unless the coupon would
+actually be *accepted*. A card advertising a discount the checkout refuses is
+worse than a card with no badge.
+
+## A docblock is not a test
+
+`Coupon::scopeLive()` says «Active, in date, and not exhausted» and its query
+checks only status and the dates. It has zero call sites, so nothing has ever
+caught it. I nearly built the badge on it.
+
+**Rule:** when reusing a scope or helper you did not write, read its body, not
+its comment — especially one with no callers, because nothing has been holding
+it honest.
+
+## Moving a field into a list payload is a query-count change
+
+`pickup_slot` was detail-only. Promoting it to the summary looked like moving
+one line, but `index()` and `find()` eager-load different relations — so the
+list would have fired one slot query per order, invisible until a customer with
+a page of orders opened the app.
+
+**Rule:** when adding a relation-backed key to a *list* presenter, check the
+list query's `with()` in the same edit, and pin it with a query-count assertion
+so the next person cannot undo it silently.
+
+## `page.fill()` does not fire keyup
+
+The AJAX search looked broken — typing a nonsense term left the row in place
+and no request was sent. `setupAjaxSearch` binds `keyup`; `fill()` sets the
+value and fires `input`/`change` but never a key event. `page.type()` showed the
+search working perfectly.
+
+**Rule:** to test a handler, trigger the event it actually listens for. And a
+"hit" assertion on a one-row table proves nothing — the miss is the test.
+
+## A counter column is usually not fillable
+
+`Coupon::create(['redemptions_count' => 5])` silently produced a coupon with
+zero redemptions, so the "exhausted" test case was quietly testing a fresh
+coupon. `redemptions_count` is maintained by the redemption path and is not in
+`$fillable`.
+
+**Rule:** when a test sets up a state that some other code path normally
+produces, assert the state took — or read `$fillable` first. Mass assignment
+drops unknown keys without a word.
+
+## New UI strings need the language file in the same pass
+
+The Offer screen rendered half-Arabic on first look: the column labels
+translated, «SCHEDULE» and «Always» did not. Panel translations live in
+`resources/lang/ar.json` (1,161 keys) — not the `ar_panel.json` stub, which is
+for the apps. Adding a screen without adding its strings ships a bilingual
+screen to a team that works in Arabic.
+
+## A number the design draws is often a position, not a column
+
+The «1 · 2 · 3» beside the journey-step cards looked like a field. It is the
+order, which `sort_order` already decides. Storing it as well would let a card
+labelled «3» arrive second the moment somebody reorders the list, with the
+database perfectly consistent and the screen wrong.
+
+**Rule:** before adding a column for something visible, ask whether an existing
+column already determines it. If it does, derive it — and pin the payload's
+exact key set in a test, so nobody adds it back later.
+
+## Changing a validation format is a data migration
+
+Widening `phoneRegex()` to accept any country was one line. What that line
+actually did was make every existing account unreachable: sign-in looks the user
+up by the exact string the app sends, and the app would now send `+2010…`
+against a column holding `010…`. The stored data, the seeder, and 298 numbers
+across 41 test files all had to move with it.
+
+**Rule:** when a format rule changes, ask what is already stored in that format
+before touching anything else. And make the migration idempotent — leaving
+already-converted values exactly alone is what makes it safe to run twice.
+
+## Dropping a module means proving nothing depends on it, in four places
+
+Before deleting Category: the table's row count (0), the foreign keys pointing
+*at* it (only its own self-referencing `parent_id`), every import of the model
+class (none), and the one suspicious call — `Item::with('category')`, which
+turned out to be `belongsTo(ItemCategory::class)`, a different relation with a
+confusingly similar name.
+
+Also: `PermissionGenerator` only ever creates. Its five `category.*` rows and
+their role links survive the module's deletion and have to be pruned by hand.
+
+## Don't write the changelog for work you have not done
+
+I drafted a changelog bullet for the «at least one language» change across three
+modules while it was still on the list, not in the code. Caught it before it
+landed, but only because I re-read what I had written.
+
+**Rule:** the changelog is a record, not a plan. Write each entry after the
+verification that backs it, not alongside the intention.
+
+## A form that refuses silently may be the browser, not the server
+
+The moderator form rejected a bare `01…` with no visible message, which looked
+like a validation path that fails without saying why. It was the browser
+blocking submission on an empty `required` file input — the request never
+reached Laravel. Filling every required field showed the server's message
+appearing correctly.
+
+**Rule:** before diagnosing a server-side silent failure, check
+`form.checkValidity()` and whether a request was actually sent.
+
+## Never clean up test data with a LIKE
+
+Deleting a probe city I had just created, I matched it with
+`where('name', 'LIKE', '%الإسكندرية%')` instead of the id I had in hand. It
+deleted two rows: mine, and the real Alexandria governorate the seeder had
+written months earlier. Nothing referenced it, so nothing broke visibly — which
+is the dangerous part. I restored it from the seeder with its original id and
+its siblings' timestamps.
+
+**Rule:** delete a row you created by the primary key you got back when you
+created it. If you do not have the id, you do not have permission to use a
+pattern — go and find the id. And when a delete reports a count, check that the
+count is the one you expected: `removed 2` when you created one is the whole
+warning.
+
+## Removing a client-side `required` is part of relaxing a server-side rule
+
+The three requests accepted Arabic-only content the moment I changed them, and
+the three forms still refused to submit it — the default-language box kept its
+`required` attribute, so the browser blocked the save before Laravel saw it. The
+server-side change was invisible from the screen it was for.
+
+**Rule:** a validation rule lives in two places. Change one and the pair is
+inconsistent; the symptom is a form that refuses without a message, because the
+message is on the server that was never reached.
+
+## A `<textarea>` whose content is indented saves the indentation
+
+Everything between `>` and `</textarea>` is the value, newlines and leading
+spaces included. The Terms and Privacy fields had their content on its own
+indented line, so each save folded twenty spaces into the stored text and the
+next save added them again. It had never shown, because the only values in
+there were seeded — nobody had saved through that form yet.
+
+The same markup also carried `value="…"` on a textarea, which is not an
+attribute it has, holding the raw JSON of every language.
+
+**Rule:** textarea content goes flush against both tags. And trim on the way in
+regardless, because the markup is one edit away from drifting back.
+
+## Extract before the second copy, not after the third
+
+The driver reset needed the same ticket the customer reset had just gained:
+digest, expiry, single use. Copying it would have been quicker and would have
+left the two able to disagree — one keeping a ticket alive after the other
+expired it. `PasswordResetTicket` holds the mechanics; the audience check stays
+with each caller, because a customer's ticket must not open a driver's password.
+
+That last part is worth a test of its own. Shared mechanics invite the
+assumption that the *permission* is shared too.
+
+## Money formatting is a locale question and a business question, and they are separate
+
+`NumberFormatter` renders `ar` with Arabic-Indic digits, which is
+standard-correct and not what Egyptian apps do. `-u-nu-latn` changes the
+numbering system and leaves the symbol, its position and the separators alone —
+which is what you want, because those *are* locale decisions. Reaching for
+`str_replace` on the digits would have broken the rest.
+
+Separately: the currency was a parameter default (`'USD'`) rather than a
+setting, and defaults are invisible. Nobody chose dollars for an Egyptian
+laundry; nobody chose anything.
+
+## «I checked it in the browser» is not a test
+
+The currency setting and the Western-digit change both touch every screen that
+shows a price. I verified both by driving the panel and calling the API, wrote
+the changelog, and moved on — with **zero tests** on either. The owner asked
+whether I had tested them, which is the only reason it got caught.
+
+A browser check proves it works now. A test is what stops it coming back. The
+two are not substitutes, and the temptation to treat them as one is strongest
+exactly where the change is broad and the verification felt convincing.
+
+## An API that returns the raw setting disagrees with a panel that resolves it
+
+`/app-settings` handed the `Currency` column straight to the apps while
+`moneyFormat()` resolved a malformed or empty one to EGP. So a half-finished
+edit in the panel would have the apps formatting prices with an empty string
+and every panel screen showing EGP — the exact disagreement the setting was
+added to prevent. `App_Logo` already went through `brandLogo()` for the same
+reason, which was the precedent I should have followed the first time.
+
+**Rule:** if a helper resolves a setting, the API returns the helper's answer,
+not the row.
+
+## A guillemet in a double-quoted PHP string eats the variable name
+
+`"«$bad» should not…"` reads the identifier as `$bad»` — the closing guillemet
+is multibyte and PHP takes it as part of the name. The test failed with
+«Undefined variable», not an assertion failure, and the assertion message I had
+written to identify the failing case was itself the cause.
+
+**Rule:** brace interpolated variables — `{$bad}` — whenever anything but a
+space or ASCII punctuation follows them.
+
+## Restore what a probe changed, in the same command
+
+A throwaway script that wrote six bad values into the live `Currency` setting
+crashed before reaching its restore line, and left the setting empty. The next
+API call showed it. Put the restore in a `finally`, or write the probe against
+the test database instead of the running one.
+
+## A constrained eager load makes a missing column look like a deliberate null
+
+`DriverCard` loads the driver as `driver:id,name,image_profile`. Adding a
+`phone` field to the card returned null for every driver — and null was already
+the card's way of saying «withheld», so it read as the gate working rather than
+as the column never having been fetched.
+
+**Rule:** when adding a field to a payload built from a relation, check the
+relation's column list in the same edit. And a test that asserts the *positive*
+case is what catches this — one that only checks the withheld case passes
+happily.
+
+## Two gates that answer the same question must be one predicate
+
+The driver's number and the driver's live dot both answer «is this person on
+their way to me right now». Written as two copies of the same four conditions
+they would drift, and the failure would be a number still reachable after the
+map had gone quiet — the exact thing the original withholding was protecting
+against. One `reachableWhileLive()` both read from, and a test that drives the
+leg to completion and asserts *both* disappear together.
+
+## Reversing a documented decision means rewriting what documented it
+
+The driver's phone was withheld with a class docblock explaining why, and a test
+named `the_drivers_phone_number_is_not_handed_out` asserting it. Reversing the
+decision meant editing both — not deleting them. The docblock now records that
+the design grew a call button and what the withholding was costing; the test
+records the narrower line that survived, that the number is never a standing
+field. A decision reversed without touching its reasoning leaves the codebase
+arguing with itself.
+
+## When the design contradicts itself, say so rather than picking
+
+Three tracking mocks in the same Figma file disagree about whether «تم تأكيد
+السعر» is a step. The enum had already chosen six and written down why. The
+right move was to surface the contradiction and the reasoning and let the owner
+decide — not to quietly match whichever screenshot arrived last.
+

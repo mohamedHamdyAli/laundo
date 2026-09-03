@@ -34,7 +34,7 @@
             <label class="form-label">{{ __('Phone') }} <span class="text-danger">*</span></label>
             <div class="controls">
                 <input type="text" name="phone" class="form-control"
-                    placeholder="{{ __('Egyptian number, e.g. 01XXXXXXXXX or +201XXXXXXXXX') }}"
+                    placeholder="{{ __('With the country code, e.g. +201012345678') }}"
                     value="{{ isset($row) ? $row->phone : old('phone') }}"
                     {{ Route::is('*.create') ? 'required' : '' }} {{ Route::is('*.show') ? 'readonly' : '' }}>
             </div>

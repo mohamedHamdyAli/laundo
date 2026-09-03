@@ -1,5 +1,107 @@
 # Changelog
 
+## 2026-09-04
+
+### Feature
+
+- **One discount per order.** A customer may type a promo code while placing the order, or arrive through an offer from the home carousel — never both. The offer wins, because it is what the card promised them, and a code sent alongside it is **refused with a message** rather than dropped: charging the offer's price while the customer believes a second discount applied is the worst of the three outcomes. Refused at the quote too, which is where they are actually deciding — by the time they press submit the wizard has already told them.
+
+  Mechanically this needed `offer_id` on both the quote and the order, mutually exclusive with `coupon_code`, which also finally answers the question the offer targets were made a closed set for: **which card won which order.** The restriction is on two *discounts*, not on offers — a card pointing at a service carries no coupon, so a promo code beside it passes through, and an expired offer neither discounts nor blocks. Six tests (Migration / Request / Service / Blade).
+- **The handover method is asked once per leg.** `orders.delivery_method` was one `enum('door','leave')` for the whole order, so a customer who wanted the bag taken from their hands but the clean clothes left at the door could not say so — the design asks twice and the schema could only answer once. `pickup_method` beside it, both defaulting to `door`, both in the payload and the reorder basket, and both shown to whoever is dispatching: that is two different instructions to two different drivers (Migration / Request / Service / API / Blade).
+- **«ملاحظة للمندوب» is a property of the address.** The design shows it inside the address card and the only note like it was `orders.driver_note`, attached to one order. «Call before arriving», a gate code, «the bell on the left doesn't work» — written once on the address, every order to it carries them; written on the order, the customer retypes them every time and forgets on the one delivery where it matters. `orders.driver_note` stays for instructions about that one order, and the panel's order screen now shows the address's standing note above it (Migration / Request / API / Blade).
+- **The driver's number is reachable while they are on their way.** It was withheld outright, on the reasoning that handing a driver's personal mobile to every customer is a policy decision rather than a field — and that the design showed no call button. The design has since grown one, and the decision was reversed: a customer with a driver outside their building and no way to say «I'm on the third floor» is what the withholding was costing.
+
+  Gated **exactly** as the live location is — an `Assigned`/`Started` task on one of the two legs that end at the customer — because the two answer the same question and a number still reachable after the dot had gone would be that gate having drifted apart in two places. One shared predicate, five tests, one of which drives the whole leg lifecycle to prove the pair moves together. There is still **no chat**: nothing in the system carries a message between a customer and a driver, and the button comes off the design rather than pointing at nothing (Service / Tests).
+
+### Fix
+
+- **The driver's phone read as «withheld» when it was actually not loaded.** `DriverCard::liveTask()` eager-loads the driver with a column list — `driver:id,name,image_profile` — and a constrained eager load returns null for anything left out. The number would have looked deliberately absent rather than missing. Caught by the test, not by reading (Service).
+
+### Note
+
+- The tracking timeline keeps **six** steps. «تم تأكيد السعر» stays: it is the only step the order waits on the customer for, and hiding it hides from them why nothing is moving. Three mocks in the Figma disagree about this — one omits it, two include it — and the ones that omit it get updated rather than the API.
+
+## 2026-09-03
+
+### Feature
+
+- **The currency is a setting.** `moneyFormat()` defaulted to `'USD'` and almost nothing passed the second argument, so a laundry in Cairo was quoting dollars on every screen, invoice and app payload. There is now a `Currency` setting on the general settings screen — a closed list of six codes, because free text reaches `NumberFormatter` and renders as the literal string on every price — read by `appCurrency()`, and falling back to `EGP` rather than `USD`. One field instead of a search-and-replace across the 27 files that format money.
+
+  `/app-settings` returns **`appCurrency()`, not the raw column** — the same treatment `App_Logo` already had, and for the same reason: handing the row straight over would have the apps formatting prices with an empty string while every panel screen showed EGP, which is the disagreement the setting exists to prevent (Setting / Helper / API / Blade).
+- **Money renders in Western digits.** `NumberFormatter` writes `ar` with Arabic-Indic numerals — `١٠٫٠٠` — which is correct by the standard and is not what Egyptian apps use. The `-u-nu-latn` locale extension changes only the numbering system, so the currency symbol, its position and the decimal separator all stay correct for the locale. Measured in the panel: `EGP 61.00` in English, `61.00 ج.م.` in Arabic, zero Arabic-Indic digits and zero dollar signs (Helper).
+- **Agreeing to the terms is recorded.** `accepted_terms` was validated and thrown away, so the only evidence anybody had consented was that their registration had not been refused — which answers nothing if the question is ever asked. `accepted_terms_at` holds the moment, is set at registration, and is shown read-only on the customer's screen in the panel beside the phone-verification date: recording consent and never showing it would prove nothing. Existing accounts read «Not recorded», which is the honest answer — nobody is told retroactively that they consented at the moment of a migration (Migration / Service / Blade / Tests).
+- **The driver's password reset is two calls, like the customer's.** It still took phone + code + password together, so the two apps had two contracts for one operation and the driver app's verify screen was checking nothing. The ticket mechanics — the digest, the expiry, the single use — were extracted into `PasswordResetTicket` and are now shared rather than duplicated; what is *not* shared is who may hold one, which the caller checks. A test asserts a customer's ticket cannot reset a driver's password, and the reverse (Service / Controller / Route / Tests).
+- **Terms and Privacy Policy drafts, in Arabic and English.** Both settings held German lorem ipsum from the vendor template, and the sign-up screen links to them. Written from what the system actually does — the four-leg journey, estimate-then-final pricing, time windows rather than exact times, the wallet, coupon conditions, the OTP identity, the complaint window. **Each is marked as a draft in its own first lines and needs a lawyer's pass before it is published**: Egyptian consumer protection (181/2018) and the personal data law (151/2020) both bear on it, and holding customer balances is separately regulated (Content).
+
+
+- **«رحلتك معنا بسيطة» is dashboard-managed content.** The three numbered how-it-works cards on the home screen had no source at all — not the API, not `app-settings`, not `intros`. The only way to ship them was to hardcode the copy in both apps, where nobody in operations could correct a word and it would never be translated by the same route as everything else. New **JourneyStep** module (the five classes, nine routes behind `permission:journey_step.*`, the five generated permissions, a sidebar entry under Content, seven views in the Stack layout) plus public `GET /api/v1/journey-steps`.
+
+  Its own table rather than a flag on `intros`, by decision: onboarding is a full-screen sequence swiped once before an account exists, and these are cards on the screen people open every day. Sharing a table would put a discriminator on every query of either and give one dashboard screen two unrelated jobs.
+
+  **The number beside each card is not a column.** It is the position, which `sort_order` already decides, so the payload does not carry it and the client numbers the array it was given. Storing it twice is how a «3» ends up second in the list — a test asserts the payload has exactly `id, title, description, image` (Migration / Module / API / Blade).
+- The three real steps are entered, in Arabic, from the Figma — with **placeholder icons**, which need replacing with the exported illustrations (Content).
+- **«عروض متميزة» has a model of its own.** The home screen has two carousels — the hero above and featured offers below, with different card shapes — and both were being asked of `GET /api/v1/banners`, which returns one flat list with no placement. The app could only have guessed which banner belonged where, and operations could not have moved a card between them. New **Offer** module (migration, model, repository, `offerCrudService` with `shredData()`, request, controller, `OfferTarget` enum, nine routes behind `permission:offer.*`, the five generated permissions, a sidebar entry under Content, and the seven views in the shared Stack layout) plus `GET /api/v1/offers` beside `/banners` and `/intros`.
+
+  Two things an offer has that a banner does not, and the reason it is a table rather than a `placement` column: a **validity window**, so «استعد للشتاء» stops showing in June without anybody remembering it, and a **coupon**, which is where the discount badge comes from (Migration / Module / API / Blade).
+- **The discount badge is derived, never typed.** `Offer::badge()` reads the linked coupon, so a card cannot advertise 20% while the code gives 15 — and it is withheld unless the coupon *would actually be accepted*. That last part uses the same three tests `CouponService::validate()` applies (`hasStarted`, `! hasExpired`, `! isExhausted`) rather than `Coupon::scopeLive()`, whose docblock claims «and not exhausted» while its query never checks `redemptions_count` — a spent coupon passes it. A test covers all four refusal cases, and asserts the offer still appears while its badge does not: the card is not the discount (Model / API).
+- **`Coupon::discountLabel()`** — the shared formatter that should have existed. The only «20%» in the codebase was inline in the coupon list's Blade partial, `rtrim`ing the trailing zeros the `decimal:2` cast leaves on `20.00`. It is one method now, used by the offers payload and that partial, so the badge in the app and the figure in the panel cannot drift (Model / Blade).
+
+### Fix
+
+- **The Terms and Privacy fields corrupted their own value on every save.** Each `<textarea>`'s content sat on its own indented line, so a newline and twenty spaces before the text — and sixteen after — were part of the value. Every save folded that in and the next save added it again; the stored text would have grown each time somebody opened the screen. Only seeded values had escaped it, because nobody had ever saved through the form. The text is flush against the tags now, and `updateSettings()` trims strings and each translation on the way in. Each field also carried `value="{{ getSettingValue(...) }}"` — an attribute a textarea does not have, holding the raw JSON of *every* language, which rendered the whole blob into the page's HTML. And `rows="3"` for a privacy policy is now 16 (Blade / Service).
+
+### Migration
+
+- **Every stored phone number now carries its country code.** `phoneRegex()` accepted Egypt only — `+?201[0125]…` or a bare `01[0125]…` — while the design showed a country picker with a chevron, so a customer could pick a country and then be refused after typing the number. The market is not settled, so it accepts any country: E.164, `+` then 8–15 digits.
+
+  **The `+` is mandatory, not optional.** `01012345678` is an Egyptian mobile *and* a valid Italian landline, and the phone is the account's identity here — one that can be read two ways can collide, or split one person across two accounts.
+
+  `2026_09_03_120000_normalise_phones_to_e164` converts what is already stored, because without it every existing account becomes unreachable: sign-in looks the user up by the exact string the app sends, and the app now sends `+2010…` against a column holding `010…`. Three shapes are handled — already-prefixed numbers are left exactly alone (so the migration is safe to run twice), a leading `0` is a national number whose trunk prefix is *dropped* before `+20` is added, and a bare `20…` just gains its plus. Anything it cannot read is left alone and printed rather than guessed at. Verified: 12 numbers across `users` and `laundries` converted, and every stored number now passes the new rule.
+
+  The eleven «Please enter a valid Egyptian phone number.» messages became «Enter the number with its country code, e.g. +201012345678.», the six dashboard phone placeholders say the same, and 298 test and seeder numbers across 41 files were converted so the suite exercises the real contract (Helper / Migration / Request / Blade / Tests).
+
+### Refactor
+
+- **The Category module is retired.** Five working screens, routes, permissions and entries in `config/menu.php`'s icons/titles/routes maps — but it appeared in neither `groups` nor `singles`, so `MenuBuilder` never rendered it and nobody could reach any of it except by typing the URL. Checked before removing: the table held **no rows**, the only foreign key pointing at `categories` was its own self-referencing `parent_id`, nothing imported the model class, and `Item::category()` is a `belongsTo(ItemCategory::class)` — a different relation entirely. Module, views, routes, config entries and the five orphaned `category.*` permissions all gone, with a forward `drop` migration rather than a rewrite of the original create (which has already run everywhere). `/admin/category` now 404s rather than 500ing (Module / Migration / Config).
+- `Coupon::scopeLive()` removed. Its docblock claimed «active, in date, and not exhausted» while the query never checked `redemptions_count`, and it had zero call sites, so nothing had ever caught it. `Coupon::isRedeemable()` applies all four tests and is what the offers badge uses (Model).
+- **«At least one language» in Banner, City and Country too**, and the browser-side `required` came off their default-language boxes to match — the server accepted Arabic-only content while the form still refused to submit it, which is a save refused with no message because the message lives on the server the request never reached. Verified end to end: a city saved in Arabic alone. The same rule already applied to Intro, Offer and JourneyStep; requiring every configured language contradicts the read path, where `pickTranslation()` walks preferred → default → any (Request / Blade).
+
+### Improvement
+
+- **`GET /orders` carries `pickup_slot` and `qr`.** Both were detail-only, which meant the home screen's «طلبك الحالي» card — a row from this list — could not draw the pickup time or its «مسح QR» button without a second request per order. `index()` gained `pickupSlot` to its eager loads at the same time: adding the label to the summary without that is one slot query per order in every page, and a query-count test now guards it (Controller / Tests).
+- **Banners can be ordered.** `banners()` sorted by `latest('id')`, so the newest was always first and nothing in the panel could change the carousel's sequence. `sort_order` on the table, a field on the form, and `sort_order` then `id` in the query — the same deterministic tie-break `intros()` already used, and for the reason stated there (Migration / API / Blade).
+- **33 new Arabic panel strings.** Every string added across this pass — the Offer screens, the intro and banner order fields, and the two-step reset's two messages — went into `resources/lang/ar.json`, which is where the panel's 1,161 existing translations live. Verified by driving the Arabic panel: the list's six column labels, the add button and the search placeholder all in Arabic, and zero untranslated labels, hints or legends on the create form (i18n).
+- The API reference described `/banners` as «كاروسيل عروض متميزة» — which was wrong before offers existed, since banners are the hero. Corrected, and the reference and the Postman collection both gained the new endpoint (Docs).
+
+### Documentation
+
+- **A screen-to-action map for every Figma screen walked so far** — `docs/laundo-screen-actions.pdf`, 7 pages, with `docs/laundo-screen-actions.html` beside it as the source it renders from. Built on the axis the owner asked for: not what fills a screen, but **which route its button actually calls** and the panel page an operator performs the matching job from. Three lanes per screen (Feed / Action / Panel), covering the 3 onboarding slides, login, register, OTP, home, the 5 wizard steps, both success screens, tracking and payment.
+
+  Four things only became visible once the reads were separated from the writes: the two **request/response pairs** that carry the order (staff `POST /admin/order/review/{id}` → customer `/orders/{id}/confirm` or `/dispute`; staff `POST /admin/order/query/{id}` → customer `/orders/{id}/queries`), both halves live; the address screen's **four writes against zero panel routes**, so a customer reporting a wrong address cannot be helped; `/admin/payment` holding **no write route at all**, which is why the paid screen has to poll rather than be told; and three screens with no action whatsoever, the slot among them — nothing is reserved before `POST /orders`.
+
+  Rendered with headless Chrome's `--print-to-pdf` rather than by adding a PDF package: the same file serves the web page and the paper, with one `@media print` block, so the two cannot drift. Its light palette is declared against all three theme selectors — a bare `:root` loses to the screen's `:root:not([data-theme="light"])` on specificity and printed the whole document dark (Docs).
+
+- **The Postman collection and the HTML reference caught up with the fields this pass added.** Endpoint *coverage* turned out to be complete already — a diff of the collection against `route:list` matched 102 requests to 102 method+path pairs, the only three differences being places the collection sends a real value (`/pages/terms`, `/translations/app`, `/payments/webhook/fake`) where the route has a parameter, which is better than a placeholder rather than worse. What was stale was the request *bodies*, which no endpoint diff would ever have shown.
+
+  Four requests were missing fields the API now reads: `driver_note` on **Create** and **Update address**, `pickup_method` and `offer_id` on **Place order**, and `offer_id` on **Quote**. The generated reference had two of its own gaps — `POST /addresses` had never listed `driver_note` at all, and `POST /orders/quote` had never listed `offer_id`, even though the one-discount refusal is raised at the quote precisely so the customer hears about it while they are still deciding.
+
+  Two smaller corrections while in there. **Create address** used «Ring the bell twice» as its example `notes` — which is a driver instruction sitting in the wrong field of the two, now that `driver_note` exists beside it; both examples were rewritten so the fields read as the different things they are, and both the collection and the reference now say which is which and that the address's note and the order's `driver_note` do not replace each other. And **Place order** now sends `pickup_method: door` with `delivery_method: leave` rather than the same value twice, because two identical values quietly suggest one field would have done (Docs).
+
+### Verification
+
+- **Money formatting has its own tests**, added after the owner asked whether it did — it did not. `tests/Unit/MoneyFormatTest.php`: the setting is read, an unset one falls back to EGP and not USD, six malformed values (`''`, `'   '`, `EG`, `EGPP`, a name, digits) all fall back rather than reaching `NumberFormatter`, lowercase is understood, an explicit override still wins, Arabic renders no Arabic-Indic digits, the locale still decides the symbol and separators, and a `decimal:2` string amount formats rather than being dropped. Plus three in `ContentTest` for the resolved currency reaching the apps. A browser check proves it works now; these are what stop it coming back.
+
+- The whole suite passes: **740 tests, 2,250 assertions** (448 of them the API group, up from 432). 16 new around the offers and journey steps: offer liveness across four states, the derived badge for percentage and fixed, no badge without a coupon, no badge for each of the four refusal cases, `sort_order` with an `id` tie-break, the null-until-set action, a query-count assertion on `/offers`, banner ordering, `/orders` carrying the two new keys, and a query-count assertion on `/orders`.
+- Driven end to end in the real dashboard: an offer saved with **Arabic-only copy** and a linked coupon; the sidebar item, the Stack list with matching `--stack-cols` on the label strip and the rows, the status toggle round-tripped, AJAX search filtering to zero and back, the detail screen fully locked (0 enabled controls) and the edit screen prefilled. Dark mode measured at 7.69:1 and 14.37:1. RTL checked: 6 labels over 6 cells, thumbnail on the trailing edge, no horizontal overflow.
+- The **JourneyStep** module driven the same way: the sidebar item, the three real Figma steps saved in Arabic, the numbers 1·2·3 derived from position, the toggle round-tripped, AJAX search filtering to zero and back, the detail screen fully locked, and RTL with all five column labels in Arabic and the number on the trailing edge. Its endpoint returns the three steps in order with the images resolving.
+- 273 Blade views compile and lint clean.
+
+### Still open
+
+- The currency is **USD** throughout — `moneyFormat()` defaults to it, so the new badge reads `$10.00` and the order list reads `$61.00`. For an Egyptian laundry it should be EGP. Pre-existing and global, so left for a decision rather than changed quietly.
+- In Arabic the badge renders with Arabic-Indic digits (`١٠٫٠٠`), which is `NumberFormatter` doing its job for the `ar` locale. Correct by the standard; many Egyptian apps use Western digits instead. Also a decision.
+- Four rows in the dev database carry the Figma's real copy with **placeholder images** — one offer and the three journey steps — left in place so the screens can be looked at. The illustrations need exporting from Figma, as the three onboarding slides still do.
+
 ## 2026-09-02
 
 ### Refactor
@@ -16,29 +118,18 @@
 
 - `reset-password` answered a malformed token and an unknown one with different `msg` values: a request-validation failure passes through `failedValidation()`, which promotes the first error into `msg`, while the controller's own refusal left the generic «Invalid data send» there. Both now carry the same sentence in the field an app is most likely to show (Controller).
 
-### Fix
 
 - **Every `<select>` in the panel sat 2px shorter than the text input beside it.** `custom.css` pinned `.select2-selection--single` to `height: 36px !important` — a fixed pixel height from when the panel's inputs were 36px too; they are 37.85px now, and being px it also stayed 36px at every `--ui-zoom` level while its neighbours scaled. The height follows the padding and line-height instead, which theme.css sets to the same values as `.form-control`, so the two match by construction rather than by two hand-kept numbers. The line-height on the rendered value was also 1.35 against the control's 1.5. Verified equal at 37.85px on five screens, text still centred (CSS).
 - **An onboarding slide could not be saved unless every configured language had copy.** `IntroRequest` had `title.*` and `description.*` as `required`, so the three designed slides — whose copy exists in Arabic only — were unsaveable. The rule is now «copy in at least one language», which is what the read side already does: `pickTranslation()` tests each candidate with `filled()` and walks preferred → default → any. Requiring the *default* language instead was the obvious fix and would have changed nothing here, since this install's default is `en` — it would only have moved which language blocked the save. The browser-side `required` came off both language boxes to match, since no single `required` attribute can express «at least one» and putting it on the default would have the browser refuse a save the server accepts. Exercised across six cases including Arabic-only (passes) and all-blank (rejected) (Request / Blade).
 - `<input type="description">` in the intro and banner forms — not an input type, so the browser fell back to a single-line box for what the design lays out as a two-line paragraph. The default language got that while the other languages on the same form got `type="text"`: one field, two different controls. Both are textareas now, as `service` and `faq` already were (Blade).
 - The intro form's `order` was `type="text"` for an integer column validated `required|integer`, so letters reached the server to be rejected there rather than at the keyboard; and its placeholder was two translation keys concatenated with no separator, rendering as one run-together word. Also `Upload a clear image for the Intro.` and the per-language `Title (…)` / `Description (…)` labels were bare strings while their default-language counterparts were wrapped in `__()`, so an Arabic panel translated half of one form (Blade).
 
-### Improvement
-
-- **The intro form's fields are laid out for what they hold.** Title, Description and Order were `col-md-4` each — a three-row textarea for a two-line paragraph squeezed into the same third of the card as the field for a single-digit sort number, with a single-line input on either side. The row below mixed `col-lg-6` (image) with `col-md-4` (status): ten of twelve columns, so it ended in a two-column hole, and the two halves of one row answered to different breakpoints. Now the three short controls share one 5+3+4 line at matching heights, and the paragraph and the upload box each take the full width. «Translation Optional» as a bare line of text became the legend-and-rule the other eight translatable modules use, and Order and Status carry a line saying what they do — lowest-first, and that only active slides reach the app (Blade).
-
-### Fix
 
 - **`public/storage` was an empty directory, not the symlink — so every uploaded file in the app was unreachable.** 765 files sat in `storage/app/public` with nothing serving them: order signatures, the login cover, every banner, category, avatar and driver document. A signature link answered **403**. Found by following the 403 the user hit; the empty directory also made `storage:link` a no-op-with-an-error rather than a fix, so it was removed first and the junction recreated (Infrastructure).
 - **The language flag was a broken image on every page in the panel.** The `en` row's `icon` was `place2.jpg`, a vendor-seed filename whose file was never shipped (403), and the `ar` row's was `NULL`, which made `asset('storage/' . $icon)` resolve to the bare `/storage` directory (404). Both rows now point at the flags that do ship with the template, copied into the uploads disk under the same `images/lang/icon` path the language service writes to. The top bar also checks the file exists before emitting an `<img>` — the same guard the avatar beside it already used — so a language added without an icon renders nothing rather than a broken image (Database / Blade).
 - **The missing-image placeholder was itself a missing image.** `getImageDashboardUrl()` and `getImageassetUrl()` fell back to `storage/default.png` — a path on the *uploads* disk that nothing in the codebase ever writes — so every record without an image requested a file that 403s. They fall back to the bundled `assets/images/no_image_available.png`, which ships and returns 200 (Helper).
 - Verified: zero failed requests and zero broken images across six screens including the order detail page, where before there were three failures on every page in the panel. The signature the report came from now returns 200 `image/png`.
 
-### Improvement
-
-- **The orders list was the only one of 26 with no visible way into a record.** The whole row has always been the link — both routes sit behind `order.view`, so there is no second action to reserve a column for — but «the whole row is a link» is invisible: a reader saw five columns of text and nothing saying the details were one click away. A chevron on the trailing edge is that affordance, as a plain glyph inside the anchor rather than a button or a second link, since a control nested in a control is invalid, unreachable by keyboard, and would give each row two tab stops to the same page. Verified: 6 head labels = 6 row cells = 6 declared grid tracks, one tab stop per row, mirrored in RTL, and 6.54:1 in dark mode (Blade / CSS).
-
-### Fix
 
 - **The browser tab mark was invisible against a dark tab.** `laundo-mark.png` was the wordmark's L in brand navy on transparency, which reads on a light tab strip and disappears on a dark one — where the user found it. It is a navy rounded tile with the **L in white** now, so the mark carries its own ground and is legible on either. A bare white glyph would have inverted the same bug rather than fixed it (Asset).
 - **The top bar could not be made shorter from its own padding.** `app.css`'s `.navbar` sets `height: 80px` outright, which overrode the padding and, being a pixel length, also meant the bar stayed exactly 80px at every `--ui-zoom` level while everything around it scaled. `height: auto` hands the height back to the rem padding (CSS).
@@ -46,17 +137,6 @@
 - **The upload box on 14 form partials drew a `#ddd` dashed border that had no dark-mode value**, so on a dark card it was a pale grey dotted rectangle. The colour is a token now, at a measured 1.93:1 (light) and 2.01:1 (dark) against the fill it sits on — `--surface-border` is tuned for hairlines against white and landed at 1.19:1, too faint for a dashed rule to read as one (CSS / Blade).
 - The role panels were the only flat cards in the app: `shadow-sm` in the markup carries Bootstrap's `!important` and beat the shared card shadow. Removed (Blade).
 
-### Improvement
-
-- **Something moves behind the page for as long as it is open.** Two fixed layers, each carrying two very soft radial brand tints, drifting on different clocks (26s and 34s) so the arrangement never repeats twice in a sitting. Only `transform` is animated — transforms are composited, so the drift costs no layout and no repaint per frame, where animating `background-position` would repaint two full-viewport boxes 60 times a second. `z-index: -1` puts the layers above the page ground and below every in-flow box; `pointer-events: none` means a full-viewport overlay can never eat a click, verified by typing into a field through it. `prefers-reduced-motion: reduce` stops the drift and keeps the tints, since they are part of the page's colour rather than the animation. Measured: 81% of the page ground is visibly tinted, and a third of the content area shifts over five seconds (CSS).
-- **The form card is a sheet resting on the page rather than a box drawn on it.** The shadow is layered — a tight 1px contact shadow for the edge and a wide, mostly transparent one spreading down and out for the lift, two jobs a single small shadow cannot do at once; the border drops to 6% black so the edge is defined by the shadow's gradient instead of a grey line; and an inset highlight along the top edge gives the surface a direction, lit from where the shadow falls. Dark mode restates all of it, because shadows barely read against a near-black ground and the border has to do more of the work there. The dashboard hero panel tracks the same radius (CSS).
-- **The top bar is 55px instead of 80px** — it was holding a 39px row of controls inside 34px of vendor padding — and it scales with `--ui-zoom` now that the fixed height is gone. Nothing is clipped at the shorter height, verified in both themes and both directions (CSS).
-- **The language switcher was the odd control out**: a white pill with a grey ring on a white bar, so the only part of it that read was the ring, and 39px tall against the 34px of the three controls beside it, which is what made the row look ragged. Same tint, height and round shape as the bell and the theme toggle. `.dropdown-toggle` was also painting a caret next to the `.arrow` span already in the markup — two chevrons on one control; the Bootstrap one is suppressed (CSS).
-- A hairline separates the account control from the three utilities, which had read as four interchangeable buttons (Blade / CSS).
-- **The image upload box was a card nested inside the form's card** — `class="card p-2 shadow-sm"` with an inline dashed border, in 14 places. It inherited the panel treatment meant for a page-level sheet (radius, layered shadow, top highlight) and then drew over it. It is a field, not a panel: same fill, radius and hover as the text inputs beside it, with the dashed edge that says «drop something here» (Blade / CSS).
-- Verified across 15 screens with a logged-in session — every list, four forms, the roles page and change-password — plus the login page logged out: 200, no exception, no JS error, one card radius and one shadow treatment throughout, the top bar at 55px on all of them, both ambient layers present and drifting, and no horizontal overflow anywhere. RTL checked separately: the control cluster on the leading edge, the hairline on the trailing side of the account control, one centre line. All 259 Blade views compile and lint clean.
-
-### Fix
 
 - **`/admin/user/show` had never worked and `/admin/user/edit` was worse.** `UserController` passed the record as `$user`, but every shared form partial in the panel reads it as `$row` — and this module's own `formInput` does so nine times. The show screen was a 500 on `$row->phone`; the edit screen quietly rendered an **empty form**, which on submit would have written the blanks back over the record. Both were masked behind the parse error above, which had kept the template from compiling at all. Fixed to the convention the rest of the panel already follows, and every module's show/edit was scanned for the same mistake (Controller).
 - **The report bar chart had never drawn a bar.** `_bars` gave each bar a `height: N%` inside a content-sized wrapper — and a percentage height needs a parent with a definite height to resolve against. It silently fell back to the 4px `min-height`, so all five report screens rendered a row of identical dashes where a distribution should be. The bar is absolutely positioned inside a track that takes its height from `flex: 1` in a fixed-height column; measured after the fix, a peak day draws 150px and a one-order day 56px (Blade / CSS).
@@ -66,7 +146,38 @@
 - «Change Profile» in the user menu pointed at `#`. There is no dashboard profile route — only the two API ones — so it was a menu item that did nothing, which is worse than one item fewer. Removed (Blade).
 - **A Blade template had been a PHP parse error since it was written, and nobody could tell.** `{{ __('Printed on this customer's bags') }}` in `user/forms/formInput` — an apostrophe closing its own single-quoted string. It stayed invisible because Laravel only recompiles a view when the source mtime changes, so the stale compiled file kept serving; the next edit to that file, or a `view:clear` on deploy, would have taken `/admin/user/create` and `/admin/user/edit` down. Now double-quoted, and all 259 views are compiled and linted (Blade).
 
+
+- **Three of Bootstrap's semantic text colours fail on the dark card**, and one of them is everywhere. Measured against `--surface-card`: `.text-success` and `.text-danger` at 3.59:1, `.text-primary` at 3.15:1 — all under the 4.5:1 body text needs, and `.text-danger` appears 99 times across the panel, on every warning line there is. Remapped to the tone tokens; all three now measure 7.7–8.4:1. `.text-warning` and `.text-info` were measured and left alone at 9.75:1 and 8.31:1, and `.text-dark` was left alone too — it appears only inside badges with a light fill, where dark text is correct in either theme (CSS).
+- The refunds list coloured its pending count `text-info` — Bootstrap's cyan at **1.96:1 on white**, for the one figure on the card. The sibling money screens already use `text-attention` for «a nonzero count that needs looking at», so it follows them now (Blade).
+
+
+- **The favicon in every tab was another product's logo** — the vendor template's cyan magnifying glass, shipped as `assets/images/logo/favicon.png` and pointed at from both the dashboard and the login page. It is the Laundo mark now: `laundo-mark.png`, the leading letterform of the wordmark cropped square and padded so it still reads at 16px, where the wide wordmark is only a smear. Declared `type="image/png"` rather than `image/x-icon` — the file was always a PNG, and a mismatched type makes some browsers fall back to `/favicon.ico`, which shipped **empty** in this repo, hence the blank icon. That file now holds the mark too (Blade / assets).
+- **Every addon in an input group was invisible.** app.css:3338 sets `.input-group-text { background: #e6eef5; color: #E5F2F2 }` — near-white on near-white, about **1.05:1**. The login page's show-password eye had been rendering the whole time and simply could not be seen; it measures 8.95:1 now, and the toggle was confirmed still flipping the field (CSS).
+
+
+- **`theme.css` was loading before every vendor extension.** Its own header says it comes after `app.css`/`rtl.css`/`custom.css` — and it did, but it sat in the language branch at the top of `include.blade.php`, ahead of select2, sweetalert2, filepond, toastify and the rest. Styling the dropdown was the first thing to notice: identical specificity, and select2's stylesheet won on load order alone. It is the last stylesheet on the page now (Blade).
+- **`--brand-primary` was being used as a text colour on nine surfaces**, and it is a *fill* — picked to carry white text, which it does in both themes. As text on the dark card it measures about **1.3:1**, which meant the record-name link on every one of the 26 list screens was unreadable in dark mode. `--brand-text` is the same intent resolved per theme; the links measure 5.17:1 light and 7.69:1 dark (CSS).
+- **Two chevrons were stacked on every select in the panel.** The bootstrap-5 theme paints its own arrow as an SVG background-image on `.select2-selection--single`, and the border chevron added alongside it doubled up. The image is the one that went, not the border chevron: its colour is a grey baked into the data URI, so it could never follow `--text-muted` into dark mode or turn brand blue on open. Verified across both themes and both directions — exactly one chevron per select, inside the field, on the trailing edge, and following the theme (#424655 light, #9aa5b8 dark) (CSS).
+- A first pass at the select2 chevron put a stray 2px tick under every select on the page: the bootstrap-5 theme leaves that span `display: inline`, so `height: 100%` silently does nothing and an absolutely-positioned child resolving `top: 50%` against the collapsed line box landed below the field. It is a flex box with the field's actual height now, and the chevron a static child it can centre — and it flips on open (CSS).
+- The option rules had to be restated at the theme's own five-class depth. A two-class rule loses to `… .select2-dropdown .select2-results__options .select2-results__option.select2-results__option--highlighted` however late it loads, which is how the highlighted option kept its hard-coded `#000` on the dark card (CSS).
+- Verified by compositing the alpha rather than reading the nearest background — a first measurement compared the highlighted option's text against a 14%-opacity version of itself and reported 1:1. Composited: highlighted option 5.72:1 light, 5.84:1 dark; closed control 16.5:1 and 10.8:1; RTL matching light. No stray slivers anywhere on the page, and the chevron sits inside the field.
+
 ### Improvement
+
+- **The intro form's fields are laid out for what they hold.** Title, Description and Order were `col-md-4` each — a three-row textarea for a two-line paragraph squeezed into the same third of the card as the field for a single-digit sort number, with a single-line input on either side. The row below mixed `col-lg-6` (image) with `col-md-4` (status): ten of twelve columns, so it ended in a two-column hole, and the two halves of one row answered to different breakpoints. Now the three short controls share one 5+3+4 line at matching heights, and the paragraph and the upload box each take the full width. «Translation Optional» as a bare line of text became the legend-and-rule the other eight translatable modules use, and Order and Status carry a line saying what they do — lowest-first, and that only active slides reach the app (Blade).
+
+
+- **The orders list was the only one of 26 with no visible way into a record.** The whole row has always been the link — both routes sit behind `order.view`, so there is no second action to reserve a column for — but «the whole row is a link» is invisible: a reader saw five columns of text and nothing saying the details were one click away. A chevron on the trailing edge is that affordance, as a plain glyph inside the anchor rather than a button or a second link, since a control nested in a control is invalid, unreachable by keyboard, and would give each row two tab stops to the same page. Verified: 6 head labels = 6 row cells = 6 declared grid tracks, one tab stop per row, mirrored in RTL, and 6.54:1 in dark mode (Blade / CSS).
+
+
+- **Something moves behind the page for as long as it is open.** Two fixed layers, each carrying two very soft radial brand tints, drifting on different clocks (26s and 34s) so the arrangement never repeats twice in a sitting. Only `transform` is animated — transforms are composited, so the drift costs no layout and no repaint per frame, where animating `background-position` would repaint two full-viewport boxes 60 times a second. `z-index: -1` puts the layers above the page ground and below every in-flow box; `pointer-events: none` means a full-viewport overlay can never eat a click, verified by typing into a field through it. `prefers-reduced-motion: reduce` stops the drift and keeps the tints, since they are part of the page's colour rather than the animation. Measured: 81% of the page ground is visibly tinted, and a third of the content area shifts over five seconds (CSS).
+- **The form card is a sheet resting on the page rather than a box drawn on it.** The shadow is layered — a tight 1px contact shadow for the edge and a wide, mostly transparent one spreading down and out for the lift, two jobs a single small shadow cannot do at once; the border drops to 6% black so the edge is defined by the shadow's gradient instead of a grey line; and an inset highlight along the top edge gives the surface a direction, lit from where the shadow falls. Dark mode restates all of it, because shadows barely read against a near-black ground and the border has to do more of the work there. The dashboard hero panel tracks the same radius (CSS).
+- **The top bar is 55px instead of 80px** — it was holding a 39px row of controls inside 34px of vendor padding — and it scales with `--ui-zoom` now that the fixed height is gone. Nothing is clipped at the shorter height, verified in both themes and both directions (CSS).
+- **The language switcher was the odd control out**: a white pill with a grey ring on a white bar, so the only part of it that read was the ring, and 39px tall against the 34px of the three controls beside it, which is what made the row look ragged. Same tint, height and round shape as the bell and the theme toggle. `.dropdown-toggle` was also painting a caret next to the `.arrow` span already in the markup — two chevrons on one control; the Bootstrap one is suppressed (CSS).
+- A hairline separates the account control from the three utilities, which had read as four interchangeable buttons (Blade / CSS).
+- **The image upload box was a card nested inside the form's card** — `class="card p-2 shadow-sm"` with an inline dashed border, in 14 places. It inherited the panel treatment meant for a page-level sheet (radius, layered shadow, top highlight) and then drew over it. It is a field, not a panel: same fill, radius and hover as the text inputs beside it, with the dashed edge that says «drop something here» (Blade / CSS).
+- Verified across 15 screens with a logged-in session — every list, four forms, the roles page and change-password — plus the login page logged out: 200, no exception, no JS error, one card radius and one shadow treatment throughout, the top bar at 55px on all of them, both ambient layers present and drifting, and no horizontal overflow anywhere. RTL checked separately: the control cluster on the leading edge, the hairline on the trailing side of the account control, one centre line. All 259 Blade views compile and lint clean.
+
 
 - **The top bar is a flex row, not a 6/6 grid.** The left half held one burger button and 555px of nothing, and the controls were spaced with non-breaking spaces. A row with a `gap` does the same job in a way that answers to `--ui-zoom` and mirrors in RTL by itself. The nav's `background-color: white` came off the element and into a token, so dark mode no longer has to beat an inline style with `!important` (Blade / CSS).
 - The notification badge was positioned `top:-4px; right:-4px` — px that ignored the zoom, and a `right` that would have put the badge on the wrong corner in Arabic. Logical properties now (CSS).
@@ -87,7 +198,6 @@
 - Verified by walking 67 rendered screens with a logged-in session — and since the top bar is on all of them, every page was also asserted to carry no duplicate id, no control nested in a control, no form inside a list, no inline nav colour and no dead `#` link. The three dropdowns and the theme toggle were driven and confirmed working after the rewrite — every list, every create, the five reports, the three translation editors, both settings screens, the invoice, and a show and an edit: all 200, no exception, and none carrying `.live-preview`, an `<h4>` title, an inline percentage width, a `select.form-control` or 9px text. All 259 Blade views compile and lint clean.
 - Verified across all 18 create screens with a logged-in session: 200, no exception, no `.live-preview`, no `<h4>` title, no inline width, no `select.form-control`, and `.form-actions` inside the form in every one.
 
-### Improvement
 
 - **All 26 list screens are one shared «Stack» layout instead of 26 tables.** Chosen from three directions built side by side as a working comparison page; the two table directions were rejected. Each record is a row-card separated by space rather than rules, with a stripe down the leading edge and a label strip above the stack that shares the row's own grid template, so the column names sit exactly over the fields they name (Blade / CSS).
 - Each screen declares its own widths once, as `--stack-cols` on the container, inherited by the label strip and every row. Verified as an invariant rather than by eye: on all 17 screens carrying data, label count = row cell count = declared grid tracks (CSS / Blade).
@@ -102,12 +212,6 @@
 - Verified with a logged-in session across all 26 routes: every one returns 200 with no exception, the label strip renders, rows or the empty state render, and zero `<tr>`/`<td>` remain inside any stack. Spot-checked in light and dark, LTR and RTL.
 
 
-### Fix
-
-- **Three of Bootstrap's semantic text colours fail on the dark card**, and one of them is everywhere. Measured against `--surface-card`: `.text-success` and `.text-danger` at 3.59:1, `.text-primary` at 3.15:1 — all under the 4.5:1 body text needs, and `.text-danger` appears 99 times across the panel, on every warning line there is. Remapped to the tone tokens; all three now measure 7.7–8.4:1. `.text-warning` and `.text-info` were measured and left alone at 9.75:1 and 8.31:1, and `.text-dark` was left alone too — it appears only inside badges with a light fill, where dark text is correct in either theme (CSS).
-- The refunds list coloured its pending count `text-info` — Bootstrap's cyan at **1.96:1 on white**, for the one figure on the card. The sibling money screens already use `text-attention` for «a nonzero count that needs looking at», so it follows them now (Blade).
-
-### Improvement
 
 - **«Add …» was a badge doing a button's job** on 17 of the 21 list screens: `class="badge alert-info primary-background-color"`, three classes fighting over the colour and no gap between the plus and the label, so it rendered as «+Add City». A badge is sized for a count, which is why the most important control on the page was also the smallest thing on it. One `.btn-add` — solid because it is the primary action, but with real padding, a soft radius and a gentle lift on hover (Blade / CSS).
 - The same confusion appeared on four other controls — «Invoice» and «Back» in the order header, «Back» on the coupon and wallet detail screens — all `badge alert-*`. They and the 16 detail-screen Back buttons now share one `.btn-quiet`: a single definition for the secondary action rather than one class per label (Blade / CSS).
@@ -116,12 +220,6 @@
 - Verified after the review: 41 classes introduced and none dead, 259 views compile and lint clean, and 67 screens walked with a live session — all 200, no exception, no badge-as-button, no duplicate id, no `.live-preview`, no `<h4>` title anywhere.
 
 
-### Fix
-
-- **The favicon in every tab was another product's logo** — the vendor template's cyan magnifying glass, shipped as `assets/images/logo/favicon.png` and pointed at from both the dashboard and the login page. It is the Laundo mark now: `laundo-mark.png`, the leading letterform of the wordmark cropped square and padded so it still reads at 16px, where the wide wordmark is only a smear. Declared `type="image/png"` rather than `image/x-icon` — the file was always a PNG, and a mismatched type makes some browsers fall back to `/favicon.ico`, which shipped **empty** in this repo, hence the blank icon. That file now holds the mark too (Blade / assets).
-- **Every addon in an input group was invisible.** app.css:3338 sets `.input-group-text { background: #e6eef5; color: #E5F2F2 }` — near-white on near-white, about **1.05:1**. The login page's show-password eye had been rendering the whole time and simply could not be seen; it measures 8.95:1 now, and the toggle was confirmed still flipping the field (CSS).
-
-### Improvement
 
 - **One treatment for every form control in the panel.** Measured first: a 33px input with a **3.5px** radius and a 0.888px border, inside a card with a **12.6px** radius, beside an «Add …» button with an **8.4px** one — three corner radii in a single form, and a sub-pixel border that renders at a different weight depending on where it lands on the pixel grid. Now one `--control-radius` across inputs, selects and buttons, one border colour, and enough vertical padding that a 14px value is not pinned between two 5px gaps (CSS).
 - **A field reads as a field.** A 1px `#e0e3e5` outline on a white card is not enough on its own to say «you can type here», so the control carries a faint ground of its own, a border a step more definite than the card's, and lifts to white on focus with a brand-coloured ring instead of Bootstrap's diffuse glow. Inverted on dark, where depth reads the other way: the field sits slightly above the card rather than inset into it. All four values are tokens, declared once per theme (CSS).
@@ -130,23 +228,12 @@
 - The login page's two `alt` texts and the logo's inline `max-height` were the last of each on the page: `alt` now reads `getSettingValue('App_Name')` like the sidebar does, since `config('app.name')` is still the framework default in this install, and the height is a rem in the stylesheet (Blade / CSS).
 
 
-### Improvement
 
 - **Every form control in the panel is direction «Filled»**, chosen from four built side by side. No border at rest — a soft ground carries the field, and the border appears on focus in the brand colour. Far fewer lines on a page that already has cards, dividers and row-cards, and the eye goes to the labels and values rather than to eight rectangles. The two grounds are `--text-strong` mixed into `--surface-card` at 4% and 7%, written as literals so there is no `color-mix()` support question, and re-resolved against the dark card (CSS).
 - On a filled control the fill carries the error, not a red outline; a disabled field keeps its ground and drops to muted rather than changing colour entirely (CSS).
 - **The dropdowns are real elements now.** A native `<select>`'s open list is drawn by the operating system, takes no CSS, and matched nothing around it. select2 was already bundled *and* already loaded — but initialised only on a `.select2` class that none of the 55 selects in the admin forms carried, so the library shipped unused while every dropdown stayed a system menu. Initialised narrowly: `.form-select` only, skipping anything already converted, skipping multiples, with a search box only past ten options and a `dropdownParent` inside modals so it is not clipped by the overlay (Blade).
 - The open panel is a card of its own — the surface, border and radius of the field it belongs to, plus a shadow and a 4px gap so it floats. The bootstrap-5 theme welds it on instead, zeroing the top border and the top two corners so the open control is one tall shape with a seam across it (CSS).
 - The chosen option and the one under the cursor were both a solid blue bar and indistinguishable. The cursor gets a tint, the chosen one gets the accent and a check mark (CSS).
-
-### Fix
-
-- **`theme.css` was loading before every vendor extension.** Its own header says it comes after `app.css`/`rtl.css`/`custom.css` — and it did, but it sat in the language branch at the top of `include.blade.php`, ahead of select2, sweetalert2, filepond, toastify and the rest. Styling the dropdown was the first thing to notice: identical specificity, and select2's stylesheet won on load order alone. It is the last stylesheet on the page now (Blade).
-- **`--brand-primary` was being used as a text colour on nine surfaces**, and it is a *fill* — picked to carry white text, which it does in both themes. As text on the dark card it measures about **1.3:1**, which meant the record-name link on every one of the 26 list screens was unreadable in dark mode. `--brand-text` is the same intent resolved per theme; the links measure 5.17:1 light and 7.69:1 dark (CSS).
-- **Two chevrons were stacked on every select in the panel.** The bootstrap-5 theme paints its own arrow as an SVG background-image on `.select2-selection--single`, and the border chevron added alongside it doubled up. The image is the one that went, not the border chevron: its colour is a grey baked into the data URI, so it could never follow `--text-muted` into dark mode or turn brand blue on open. Verified across both themes and both directions — exactly one chevron per select, inside the field, on the trailing edge, and following the theme (#424655 light, #9aa5b8 dark) (CSS).
-- A first pass at the select2 chevron put a stray 2px tick under every select on the page: the bootstrap-5 theme leaves that span `display: inline`, so `height: 100%` silently does nothing and an absolutely-positioned child resolving `top: 50%` against the collapsed line box landed below the field. It is a flex box with the field's actual height now, and the chevron a static child it can centre — and it flips on open (CSS).
-- The option rules had to be restated at the theme's own five-class depth. A two-class rule loses to `… .select2-dropdown .select2-results__options .select2-results__option.select2-results__option--highlighted` however late it loads, which is how the highlighted option kept its hard-coded `#000` on the dark card (CSS).
-- Verified by compositing the alpha rather than reading the nearest background — a first measurement compared the highlighted option's text against a 14%-opacity version of itself and reported 1:1. Composited: highlighted option 5.72:1 light, 5.84:1 dark; closed control 16.5:1 and 10.8:1; RTL matching light. No stray slivers anywhere on the page, and the chevron sits inside the field.
-
 
 ## 2026-09-01
 
@@ -227,16 +314,6 @@
 - `superAdmin()` in the test harness inserted a new row on every call, so a test checking two screens in one block hit the `users.phone` unique index. Its identity is fixed, so it is `firstOrCreate` now (Tests).
 - A payments test asserted that a payment two days old still counted toward the month. True on 28 days out of 30, and today is the 1st — the kind of test that fails on exactly the days somebody would doubt the screen. It travels to mid-month now (Tests).
 
-### Improvement
-
-- **The dashboard reads one zoom step further out.** Every screen sat at the browser's 16px default, so a 1440px viewport showed roughly two thirds of the home page and cut the sidebar off at «Drivers». The panel now renders on a 14px root — the standard admin base — which fits the whole navigation and about a card and a half more content without anyone touching their browser zoom (Blade / CSS).
-- Done with a single root font-size rather than a sweep of hand-tuned paddings: the vendored template sizes almost everything in `rem` (1156 `rem` values in `app.css` against 386 `px`, and only three `px` font-sizes in `custom.css`), so type, padding, gaps, icons, radii and borders shrink together and stay in proportion. `--ui-zoom` in `theme.css` is the one number to change to retune the whole panel (CSS).
-- The two layout dimensions the template hard-codes in `px` — the 300px sidebar and the `#main` offset mirroring it — are restated in `rem` so they follow the same knob instead of staying full-size around shrunken contents. They use `inset-inline-start` / `margin-inline-start` because `app.css` writes them as `left`/`margin-left` and `rtl.css` as `right`/`margin-right`, and one logical rule covers both stylesheets (CSS).
-- Text already at the legibility floor — badges, stat labels, `small` — keeps its absolute size via `max(.78rem, 11px)`. Below that the scale costs reading more than it buys room (CSS).
-- Verified by driving the running app in both directions: LTR and RTL home, orders table and a create form at 1440px, plus the collapsed sidebar at 1000px where the off-canvas panel still hides fully and opens flush with no horizontal overflow.
-
-
-### Fix
 
 - **The footer was a bar bolted over every screen.** `otherpages.css` pins `.footer` `position: fixed; left: 0; right: 0` with an opaque background, a shadow and `z-index: 3` — 61px of viewport held permanently, across the full width, for a line of copyright, on every screen above 767px. It is an ordinary block at the end of the content column now, and it was moved inside `#main` in the layout so it stops ignoring the sidebar offset (Blade / CSS).
 - `#main` is a `min-height: 100vh` flex column with the content growing to fill it, so on a short screen — an empty list, a four-field form — the footer lands on the bottom edge instead of stranded halfway up with blank page beneath it (CSS).
@@ -246,8 +323,15 @@
 - **Dark mode's muted text and headings were not dim, they were gone.** `.text-muted` is `#4D5454 !important` and `h1–h6` are `#4D5454`, both chosen against white; on the dark card that is roughly 1.5:1, which took out every card title, every hint line and the whole «Every order is moving» empty state. Remapped to the theme's own tokens (~7:1) (CSS).
 - The dashboard's «Look at these first» empty state had no `colspan`, so «Every order is moving.» centred itself inside the first of four columns instead of across the table (Blade).
 
-
 ### Improvement
+
+- **The dashboard reads one zoom step further out.** Every screen sat at the browser's 16px default, so a 1440px viewport showed roughly two thirds of the home page and cut the sidebar off at «Drivers». The panel now renders on a 14px root — the standard admin base — which fits the whole navigation and about a card and a half more content without anyone touching their browser zoom (Blade / CSS).
+- Done with a single root font-size rather than a sweep of hand-tuned paddings: the vendored template sizes almost everything in `rem` (1156 `rem` values in `app.css` against 386 `px`, and only three `px` font-sizes in `custom.css`), so type, padding, gaps, icons, radii and borders shrink together and stay in proportion. `--ui-zoom` in `theme.css` is the one number to change to retune the whole panel (CSS).
+- The two layout dimensions the template hard-codes in `px` — the 300px sidebar and the `#main` offset mirroring it — are restated in `rem` so they follow the same knob instead of staying full-size around shrunken contents. They use `inset-inline-start` / `margin-inline-start` because `app.css` writes them as `left`/`margin-left` and `rtl.css` as `right`/`margin-right`, and one logical rule covers both stylesheets (CSS).
+- Text already at the legibility floor — badges, stat labels, `small` — keeps its absolute size via `max(.78rem, 11px)`. Below that the scale costs reading more than it buys room (CSS).
+- Verified by driving the running app in both directions: LTR and RTL home, orders table and a create form at 1440px, plus the collapsed sidebar at 1000px where the off-canvas panel still hides fully and opens flush with no horizontal overflow.
+
+
 
 - **Card headers and card bodies were padded by different hands.** `.card-body` is `1.5rem` (app.css:20872) but otherpages.css:1894 forces `padding: 15px 30px !important` on `.card-header` — so a card title started 31px from the card edge while the content under it started 22px, a 9px step repeated on every card on every screen. Worse, the header's inset is hard-coded in px: it was the one part of the panel that did not answer to `--ui-zoom`, so the mismatch widened each time the panel was scaled. One `--card-inset` variable now sets both, in rem (CSS).
 - app.css:20860 zeroes the body's top padding whenever a header precedes it, leaving the first row of content sitting on the divider — a card that is only a header and a list read as one crushed block. Restored (CSS).
@@ -261,7 +345,6 @@
 - Verified by measuring header-vs-body insets on all six dashboard cards in both directions: 22px, delta 0 across the board, no horizontal overflow. Frame retention verified in both directions: kept on the orders data table, gone from both dashboard stat lists. Both card pairs now match header height exactly, and their first stat rows share a pixel row.
 
 
-### Improvement
 
 - **The orders list is six compound columns instead of nine thin ones.** «Placed», «Laundry» and «Pickup» became the second line of the cell they qualify — the code with when it arrived, the service with which laundry holds it, the status with its pickup date. Each cell carries a fact and the fact that qualifies it, which is how the row is actually read (Blade / CSS).
 - **Zebra striping is gone across every list, and it was not a taste call.** app.css:2398 hard-codes `--bs-table-striped-color: #607080`, a grey picked against white — every odd row rendered at a measured **3.2:1** on the dark card while its neighbours sat at 14.4:1, so half the rows of every list were unreadable in dark mode. The stripe itself is `rgba(0,0,0,.05)`, invisible on a dark surface, so it cost the contrast without buying the banding. Hairline dividers and a hover band replace it, both from theme tokens, correct in either theme by construction. All rows now measure 14.4:1 (CSS).
@@ -273,7 +356,6 @@
 - The orders toolbar leads with search rather than pushing both controls to the far end of a full-width card, where they left 274px of empty card beside them. Extracted as `.list-toolbar` for the other 25 list pages (Blade / CSS).
 - Added the Arabic strings for the two new labels (i18n).
 - Verified in light and dark, LTR and RTL: every row at 14.4:1, empty-state colspan matches the six headers and spans the full table, no horizontal overflow, and pagination confirmed rendering on `/admin/city` (27 rows, 3 pages) since orders' 11 rows sit under the 15-per-page limit.
-
 
 ## 2026-08-31
 
@@ -415,18 +497,6 @@
 - Charts are drawn with divs. The vendor template ships several chart libraries and wires up none of them; a dependency maintained forever for a proportional bar is not a trade worth making (Blade).
 - **70 new strings translated to Arabic** — the same check that P11 taught: build the report screens, extract every `__()` key, diff against `ar.json`, translate the gap before closing the phase rather than a day later (Translation).
 
-### Fix
-
-- **An unbounded date range hung the report page.** `?from=1900-01-01` produced a daily series of **36,525 entries and one chart bar each** — and these dates come off a URL built to be bookmarked and pasted, so a range nobody would type on purpose still arrives eventually. Ranges are now clamped to `DateRange::MAX_DAYS` (366), keeping the end that was asked for and walking the start forward, because a report is read backwards from a known date (Service).
-- **The range form echoed the URL rather than the window actually used.** With the clamp and the existing backwards-range swap, the inputs could show dates the figures below them did not cover — a report quietly measuring something other than what is on screen. The form now renders `$range`, so every correction is visible (Blade).
-
-### Note
-
-- Testing: **382 PHPUnit tests / 1293 assertions** (from 362 / 1221) and **11 new browser tests**, all passing; `composer stan` clean, pint applied. The report tests assert exact figures against rows the test placed itself — a report that is merely plausible is worse than none, because nobody re-checks a number that looks about right.
-- Verified additionally by cross-checking every headline figure against raw SQL on the development database: gross, refunds and net reconcile; the daily series and each breakdown sum back to gross; `byStatus` sums to the order total; price movement covers exactly the reviewed orders; no negative turnaround; no wallet drift.
-- Carried forward, unchanged: no payment provider is wired, so nothing can actually be charged; no Firebase credentials, so push is unproven end to end; **holding customer balances is a regulated activity in Egypt and still needs a legal answer**; `Cash_Surcharge` is settable but never applied; «طلب التأجيل» still has no rescheduling path; nothing times out a customer's silence at `reviewed`.
-
-### Feature
 
 - **P11 — Notifications.** Every phase since P6 left a seam where a message belonged and said so: the recurrence prompt «محتاج تغسل النهاردة؟» recorded a question nobody delivered, the customer was never told «السعر النهائي جاهز», and a driver was never told a task was theirs. All three are now actually sent (Database / Service / API / Blade).
 - **The state machine announces, because it is the only thing that sees every move.** Wiring notifications into the eight call sites that shift an order would mean forgetting the ninth; hooking `OrderStateMachine::transition()` means a stage cannot change without the person waiting on it hearing about it (Service).
@@ -441,44 +511,11 @@
 - A **notification log screen** for operations, with sent/failed/skipped counters and filters by event and status (Blade / Controller).
 - **32 new strings translated.** The phase that just closed the Arabic gap would have reopened it: the notification copy is the only Laundo text many customers ever read, and it arrives without a screen around it to give it context. So «السعر النهائي جاهز» carries the figure rather than saying «افتح التطبيق» (Translation).
 
-### Fix
-
-- The conflict check in the translation build caught a real one: `Failed` was «فاشلة» for a task status and «فشل» for a notification. One key cannot hold two values — whichever file loaded second would have won on every screen. Both a مهمة and a رسالة are feminine, so «فاشلة» serves both (Translation).
-
-### Migration
-
-- `create_device_tokens_table` (unique on the token, not per user), `create_notification_preferences_table` (**absence means enabled**, so a new channel is opted-in without a backfill), `create_notification_logs_table`.
-
-### Note
-
-- Testing: **362 PHPUnit tests / 1221 assertions** (from 330 / 1136), all passing, `composer stan` clean, pint applied. Coverage includes each stage announced exactly once, a repeated transition staying silent, the recurrence prompt actually delivered, a throwing push vendor proven not to roll back a status change, a muted channel skipped *and the skip logged*, a muted user still hearing a transactional message, a permanent rejection pruning a token while a transient one keeps it, a handset following the token rather than the account, and the stuck-task alert proven not to repeat itself over three runs.
-- The FCM driver is unit-tested against a faked Google with a **generated throwaway key** — a real private key does not belong in a repository even as a fixture. Windows PHP ships an `openssl.cnf` it does not point at, so key *generation* fails out of the box; loading and signing, which is all the driver ever does, need no config. The test locates PHP's bundled config and skips with a clear reason if it cannot.
-- A looped test over HTTP status codes was silently testing the same response three times: **`Http::fake()` merges its stubs rather than replacing them**, so a 403 registered by an earlier iteration kept matching. It looked like a driver bug and was a test bug. Split per status with a data provider.
-- **`config/push.php` stays on the `log` driver.** The FCM code is complete and its parts are proven, but a real send needs a Firebase service-account JSON this environment does not have, so **no message has reached a handset**. Said plainly rather than reported as working: set `FCM_CREDENTIALS` and `PUSH_DRIVER=fcm` and nothing else changes.
-- **SMS remains authentication-only**, by decision. No business moment sends one, which is already how the system behaved, so the per-message bill stays at what security requires.
-
-### Feature
 
 - **The dashboard speaks Arabic.** `resources/lang/ar.json` held ten stub entries copied from a template — one of which read «web Dashboard» — so every one of the 692 translatable strings fell through to its English key. In a product whose design is entirely Arabic, six phases of work (orders, piece review, dispatch, payments, invoices, the money desk) had been rendering English labels. The file now carries **743 entries**, and nothing falls through (Translation).
 - **The design's own vocabulary was used, not a synonym for it.** «مراجعة القطع», «السعر النهائي», «الرصيد المعلق», «تعذر الاستلام», «بانتظار استلام القطع», «جاري التنظيف», «تم التوصيل» and the rest are lifted verbatim from the Figma screens. A dashboard that invents its own words for the same things makes the panel and the apps disagree about what a thing is called — which is worse than English, because at least English is obviously untranslated.
 - Failure reasons match the driver app's fixed list exactly: العميل غير متاح · العنوان غير صحيح · العميل طلب التأجيل · عدد القطع غير مطابق · سبب آخر (Translation).
 
-### Fix
-
-- The stub `ar.json` shipped `"Dashboard": "web Dashboard"` — a template artefact that rendered as visible nonsense in the sidebar the moment anybody switched language (Translation).
-- **The translation would not have survived a deploy.** `resources/lang/.gitignore` ignored `*`, so the 743-entry file existed on one machine and nowhere else. The rule made sense when each file held ten template keys and was purely generated; it stopped making sense the moment the panel's own copy went in. The JSON files are now tracked — copy is source, not build output (Infrastructure).
-- **And it would not have survived somebody adding a language.** `LanguageHelper::generateJsonLanguageFiles()` overwrote `{code}.json` wholesale from the ten-key templates, and `LanguageSeeder` calls it for `ar` — so `php artisan db:seed --class=LanguageSeeder` would have wiped a day's translation without a word. It now **merges**, and existing values win: a key the template introduces is added, a key both have keeps what is already there. Proven by running the seeder against the finished file and watching the count go up rather than down (Helper).
-
-### Note
-
-- Method: every `__()`, `@lang()` and `trans()` call across `app/`, `resources/views/`, `routes/`, `config/` and `database/seeders/` was extracted mechanically — 692 unique keys — then translated and checked back against that list, so the work is provably complete rather than complete-looking. Three automated checks ran before the file was written: **no value left in English**, **no value empty**, and **no `:placeholder` lost in translation** — a message that drops `:code` renders as a sentence with a hole in it.
-- 42 entries do not appear in the extraction and are correct anyway: enum labels and menu titles reach `__()` through a variable (`__($status->label())`), which no regex can see. That is exactly the class of string a naive translation pass leaves behind, so the browser tests assert an order status renders in Arabic.
-- Testing: **8 new Playwright tests**, all passing — RTL flips, the sidebar, the orders list, the review screen, the transport panel, the three money screens, and two guards worth keeping: **that no English key leaks onto any page built since P6**, and that Arabic renders as text rather than as `\uXXXX` escapes or replacement characters. **330 PHPUnit / 1136 assertions** and `composer stan` unchanged and green.
-- The nine lowercase keys the `storage/app` templates define (`users`, `settings`, `logout`…) are translated too. They are merged into `ar.json` on every generation, so leaving them English would have put nine English strings back into an Arabic file each time somebody touched a language.
-- Verified in `tinker` that placeholders survive translation: «استرداد الطلب 10244», «فشلت المهمة 2 مرات وتحتاج متابعة.», «تمت إضافة محمود كمشرف.»
-- Deliberately untouched: `ar_panel.json`, `ar_mobile.json` and `ar_web.json` are the API-facing scoped files generated by `LanguageHelper` from the `storage/app` templates. They serve the mobile and web clients, not this dashboard, and populating them is a separate job with a different key list.
-
-### Feature
 
 - **The money screens.** P9b built the services and left them unreachable: operations had no way to create a coupon or approve a refund except through code. Three dashboard surfaces close that (Blade / Controller / Config).
 - **Discount codes** — full CRUD on the project's module pattern, with AJAX search and a status toggle. The form separates the two caps because they answer different questions («Total Uses Allowed» is what a campaign may cost, «Uses Per Customer» is whether one person can drain it), and a hint changes with the discount type, because a value box that does not say which it means invites somebody to type 50 meaning fifty pounds. Codes are upper-cased on save so a customer typing either case matches (Module / Blade).
@@ -488,19 +525,6 @@
 - An adjustment's reason is **required**, not optional: one nobody explained is one nobody can defend later. It is recorded against the person who made it (Controller / Blade).
 - Registered `Coupon`, `Refund` and `Wallet` in `config/dashboard.php` (15 generated permissions) and added a **Money** group to the sidebar with all three UI maps (Config / Seeder).
 
-### Fix
-
-- `Refund` and `Wallet` did not carry the `DashboardModel` trait, so `PermissionGenerator` skipped them and their routes were gated on permissions that did not exist. The trait is how a model opts into having permissions at all (Models).
-- `(string) $paginator->links()` does not type-check — `links()` returns an `Htmlable`, which PHP will not cast. Replaced with `->toHtml()`, which is both correct and what the cast was reaching for. The older modules get away with it only because their paginators come back untyped from repositories (Controllers).
-- A copy-pasted `@return array<string, mixed>` sat above a `void` method in `CouponRequest` (Request).
-
-### Note
-
-- Testing: **330 PHPUnit tests / 1136 assertions** (from 309 / 1059) and **11 new Playwright tests**, all passing, `composer stan` clean, pint applied. Coverage includes a percentage over 100 refused, a duplicate code refused, ceilings proven clearable, a used code proven undeletable and an unused one deletable, a refund approved to a wallet crediting it and reconciling, a card refund with no card payment refused *with advice*, a decided request proven undecidable twice, an adjustment demanding a reason, an over-balance adjustment refused, and — in the browser — that **no screen exposes a balance field**.
-- Both test failures on the first run were fixtures, not code: three customers created with one phone number, and `/home` rather than `/admin/home`.
-- Still open: `Cash_Surcharge` is settable and not yet applied to a total; no payment provider is wired; paying a driver out still happens outside the app. The Arabic translations remain the last planned step, and the gap has grown — Orders, review, dispatch, payments, invoices and now the money screens all render English labels in an Arabic product.
-
-### Feature
 
 - **P9b — Wallet, coupons, refunds and driver earnings.** The rest of the money (Database / Service / API).
 - **The wallet is a ledger, not a number.** `wallets.balance` exists as a cache, but every change is a `wallet_transactions` row and the balance is the sum of them — a wallet you can set directly is a wallet nobody can audit, and the first time a customer asks «فين فلوسي» there is no answer. `balance_after` on each row is redundant by construction, and that is the point: any single row can be checked against everything before it, so a corrupted ledger is detectable rather than merely wrong. `isReconciled()` proves the two agree (Database / Service).
@@ -515,25 +539,6 @@
 - Customer API: `/wallet`, `/wallet/transactions` with the design's four tabs (الكل / المدفوعات / الإضافات / الاستردادات), `/wallet/withdraw`, `/coupons/check`, and refund request/list per order. Driver API: `/driver/earnings`, with pending, released, and the sum behind each (API).
 - **`/wallet/top-up` deliberately credits nothing** and says so. Money has to arrive through a provider first; crediting on request would let anybody with a token print money (API).
 
-### Fix
-
-- **A wallet payment reference collided with itself.** It was built from `now()->timestamp`, so a retry after a failed attempt landed in the same second and hit the unique key — a constraint violation where the customer should have seen a second chance. Now random, like the QR token. **Found by the end-to-end walk on the live database, not by any test**, and a test was added for it (Service).
-- **`OrderQuoteRequest` had no `coupon_code`.** The quote *is* the summary screen and «تطبيق» sits on it, but the request validated the code away before the service could see it — so a code could be applied at checkout and never previewed. The quote response also never surfaced `coupon_error`, so a refused code failed silently (Request / Controller).
-- **A refund refused for the wrong reason.** Omitting the amount asks for everything refundable; when that was zero the customer was told to «enter an amount greater than zero» rather than that there was nothing to refund — sending them to fix the wrong thing. The guards are now ordered so the honest message wins (Service).
-
-### Migration
-
-- `create_wallets_table` (wallets + wallet_transactions), `create_coupons_table` (coupons + coupon_redemptions), `create_refunds_table`, `create_driver_earnings_table` — the last with a unique key on `order_task_id`, so a replayed completion cannot pay a driver twice for one journey.
-
-### Note
-
-- Testing: **309 PHPUnit tests / 1059 assertions** (from 264 / 897), all passing, `composer stan` clean, pint applied. New coverage: the ledger reconciling after every operation, a running balance on each row, overdrafts and frozen wallets refused **leaving no trace**, pending money proven unspendable until released, every reason a coupon can be refused, a code checked five times and spent zero, a redemption returned on cancellation, a refund proven to move nothing until approved, the earning rate proven to come from a setting and proven not to restate past rows when it changes, and a replayed completion paying once.
-- Ran against the live MySQL database end to end: coupon applied (discount 10.00, the first non-zero in the project's history) → two legs earning into pending → review → confirm → wallet payment refused on an empty balance, then succeeding → all four legs → order completed → 4 earnings released and the driver's ledger reconciled → refund requested, nothing moved → approved to wallet, credited, reconciled, and the refundable ceiling reduced.
-- **Still no payment provider.** Nothing can be charged; the wallet works because it is our own ledger. Choosing a provider remains one class plus a config entry.
-- **Flagged, not resolved: holding customer balances is a regulated activity in Egypt.** «إضافة أموال» is built to the design, but the top-up endpoint refuses rather than pretending, and this is worth confirming with counsel before it ships.
-- A withdrawal debits the ledger and records intent; **actually paying a driver out happens outside the app**, and nothing here claims otherwise.
-
-### Feature
 
 - **P9a — Payments and invoices.** Every phase so far was careful to record what was owed and never to pretend it had arrived. This is where that stops being a placeholder: an order can now be paid (Database / Service / API / Blade).
 - Added the **`PaymentGateway` contract** with `charge`, `parseWebhook` and `refund`, plus `ChargeRequest` / `ChargeResult` / `WebhookEvent` value objects. The domain talks to nothing else, so choosing Paymob or Fawry later is a new class rather than a new flow. Note what the contract deliberately cannot express: **no method returns "paid"** — a gateway only reports what it was told, and deciding an order is settled belongs to `PaymentService` (Contract).
@@ -546,23 +551,6 @@
 - **«تحميل الفاتورة»** — an invoice assembled from the order's stored figures and **never recomputed**, for the same reason prices are copied onto the order: a document that recalculates itself can disagree with the copy the customer already holds, and theirs is the one produced in an argument. An unreviewed order's invoice says plainly that it is an estimate, because an estimate that looks like a bill is how a dispute starts (Service / Blade).
 - Payments listed on the dashboard's order page — every attempt, its reference, its outcome and its failure reason — with a link to the invoice (Blade).
 
-### Fix
-
-- `bootstrap/providers.php` uses imported class names, so the script that registered `PaymentServiceProvider` matched nothing and **silently did nothing**. The container then failed to build the gateway interface. Fixed, and the patch helper now asserts that a replacement actually changed the file rather than trusting that it matched (Infrastructure).
-
-### Migration
-
-- `create_payments_table` — attempts, with a unique key on `(provider, provider_reference)` as the webhook's idempotency guarantee, and `payload` kept verbatim: when a settlement disagrees with our figures six weeks later, the provider's own words are the only thing that settles it.
-
-### Note
-
-- Testing: **264 PHPUnit tests / 897 assertions** (from 241 / 813), all passing, `composer stan` clean, pint applied. New coverage: an attempt that settles nothing until the webhook, a replayed webhook capturing exactly once over four deliveries, an unknown reference ignored rather than guessed at, a malformed webhook answering 200 so a provider does not retry forever, a late failure unable to un-capture money, an estimate refused as unpayable, cash proven to create no payment row while still settling at the door, cross-customer isolation, and an invoice proven not to follow a price change made after it.
-- Ran against the live MySQL database end to end: place → review → confirm → estimate refused → cash refused a gateway call → card attempt → capture by webhook → three replays with `paid_at` unchanged → unknown reference ignored → late failure rejected → invoice rendered and proven stable against a matrix change.
-- **Nothing can actually be charged yet** — by decision, only the seam was built. Choosing a provider is one class implementing `PaymentGateway` plus a config entry.
-- **No PDF.** No PDF package is installed and adding a dependency is not a decision to slip into a phase; the invoice is a printable HTML page, and the browser's own print-to-PDF produces the same document.
-- Deferred to **P9b**: wallet (top-ups and withdrawals, as the design draws them), coupons — «خصم الترحيب» is in the design's own arithmetic and `discount_total` has still never been non-zero — refunds with their «قيد المراجعة» state, and driver earnings as a share of the delivery fee. **Flagged: holding customer balances is a regulated activity in Egypt and worth confirming before the wallet ships.**
-
-### Feature
 
 - **P8 — Tasks and dispatch.** Until now an order was placed, priced, agreed and cleaned entirely on paper: nobody had ever been told to collect anything. Every order now becomes the **four physical journeys** the delivery app is built around — استلام من العميل → تسليم للمغسلة → استلام من المغسلة → تسليم للعميل — with a driver API to walk them (Database / Service / API / Blade).
 - Added `order_tasks`. `sequence` is the safety property the whole phase rests on: **nothing can be delivered that was never collected.** All four legs are created together so a driver can see tomorrow's delivery and operations can see the whole chain, but three of them are not *doable* — `predecessorComplete()` is checked on every start and every completion, not only on start, because a predecessor can be undone by an operator after the fact (Database / Service).
@@ -573,27 +561,6 @@
 - **The QR scan is a comparison, not a lookup.** `verify` checks the submitted token against *this* task's order, so scanning the wrong parcel is caught before anything is signed for — the driver is confirming the order they were sent for, not discovering which one they are holding (Service).
 - Dispatch in the dashboard: the four legs on the order page with driver, status, lateness, duration, piece counts, the receiver's name, and a **short collection called out in red**. Reassign and release only — **there is no route and no control to complete a leg**, because a handover is proved by a scan and a signature taken in the field, and ticking one off from a desk would destroy that proof (Blade / Controller).
 
-### Fix
-
-- **Tasks were being generated at the wrong moment.** The first implementation created the chain when the customer confirmed the final price — but confirmation happens *after* the review, which happens after the pickup. The pickup leg was being created after the pickup it was supposed to schedule. Generation moved to **order placement**: the first thing that has to happen to a new order is somebody going to collect it. Found by a failing test, not by reading (Service).
-- **Starting the first leg now moves the order to `driver_on_way`.** Without it, completing that leg tried `awaiting_pickup → picked_up`, which the state machine correctly refuses. It is also simply right: «في الطريق للاستلام» is what the tracking screen should say while the driver is on the way, not after they arrive (Enum / Service).
-- **An exhausted task could not be revived.** Two failures escalate a task to operations — but `assign()` refused any finished task, so the escalation had no resolution. It now refuses only a *completed* leg (re-running one would ask a driver to collect clothes that are no longer there) and accepts a failed one, which is exactly how a person resolves an escalation. The attempt count is deliberately preserved so the history is not laundered. Found by the end-to-end walk, not by a unit test (Service).
-- **Cancelling an order left four live tasks behind.** Drivers would have kept a journey nobody wanted in their lists, and the first anyone would have learned of it is a driver at a door. `cancel()` now closes the open legs (Service).
-- **The orders list ignored `?status=` in the URL.** The status filter only ever worked through AJAX, so a deep link to a filtered view silently showed everything — worse than showing nothing, because it looks like an answer. The first render now honours it and the select shows what is actually filtered (Service / Blade).
-- **`max_concurrent_orders` and `city_id` were unreachable from the dashboard.** Added by migration in P6 and never given a form field, so both were null on every driver — and the dispatch rules P8 exists to enforce are built on exactly them. The same gap as the zone rate in P6, and closed the same way: wired through the request, the service and the form, with the clearing case handled, because a cap that can be set but never removed is a driver permanently throttled by a typo (Request / Service / Blade).
-
-### Migration
-
-- `create_order_tasks_table` — the four legs, with a unique key on `(order_id, type)` so a double-generated chain cannot put two drivers at one door. `driver_id` is nullable throughout rather than only before the first dispatch: a task whose driver failed it returns to null, which is the same state as one never assigned, because that is exactly what it is.
-
-### Note
-
-- Testing: **241 PHPUnit tests / 813 assertions** (from 191 / 621) and **89 Playwright tests** (from 83), all passing, `composer stan` clean. New coverage: the chain generated once and only once, a leg refused before its predecessor, every eligibility rule (zone, availability, capacity, city) proven to exclude, the sweep picking up a driver who arrived late, the wrong QR refused, a signature required where the design implies it and not where it does not, cash in full marking an order paid while a short collection leaves it unpaid, all three failure outcomes, cross-driver and customer-token isolation, and — in a real browser — that the dashboard offers no way to complete a leg.
-- Ran against the live MySQL database end to end: place → 4 legs dispatched → leg 2 refused before leg 1 → leg 1 (wrong QR refused, signature enforced) → leg 2 with a receiver name → review → confirm → clean → leg 3 failed twice, escalated, revived, completed → leg 4 with a short collection. The audit trail reads correctly throughout.
-- The design's five-point bar on every leg screen draws 1 استلام من العميل → 2 تسليم للمغسلة → 3 استلام من المغسلة → 4 تسليم للعميل → 5 **المراجعة**, but the laundry's review happens between legs 2 and 3, not after leg 4. Either «المراجعة» is a fifth driver-side wrap-up or the bar is drawn out of order. Display-only, so it is recorded for the mobile team rather than guessed at here.
-- Still open: driver earnings and the «الرصيد المعلق» are **P9 by decision** — a task records who did it and when, and nothing about money. The printable order card (`193:2391`) is not built. **And «العميل طلب التأجيل» has no rescheduling path**: it returns to the pool like any other failure, so another driver will be sent at the time the customer already declined.
-
-### Feature
 
 - **P7 — Piece review and final pricing.** The loop P6 left open. An order carried an *estimate* built from the customer's own count; P7 is where the laundry physically counts the pieces, prices what actually arrived, and the customer agrees to that figure before anything is cleaned (Service / Blade / API / Database).
 - Added `OrderReviewService`, governed by three rules. **The estimated lines are never touched** — a review writes a second set of rows with `phase = final`, which is what makes the design's «مقارنة القطع» (8 قطع at ordering against 9 قطع after counting) reconstructable at any later date, including in an argument. **Prices are re-read once and copied**, same rule as `OrderPricing`. And **only the pieces are re-priced** — the delivery fee and discount carry over untouched, because the laundry counted clothes, not kilometres (Service).
@@ -602,28 +569,118 @@
 - **«طلب مراجعة إضافية» is a state, not a note.** New `ReviewDisputed`: `Reviewed → ReviewDisputed → Reviewed`, with `orders.review_round` counting how many times the pieces have been counted. It gives the laundry a queue of questioned orders, which is the entire point of offering the customer that button (Enum / Database).
 - **«لدي استفسار عن السعر» records a question without moving the order.** New `order_price_queries` table, kept apart from `order_status_logs` because a question is not a movement — which is precisely why it is easy to lose, and why it needs a row of its own rather than a note in a log nobody filters. Answerable from the dashboard; full support threads remain P10 (Database / Blade).
 
-### Refactor
-
-- **`AwaitingPayment` renamed to `Confirmed`, and payment left the pipeline.** The old name asserted that money gates cleaning, which cannot be true while «الدفع نقدًا عند الاستلام» is on offer: a COD customer pays at delivery, long after the clothes are washed. Confirmation is now the gate and `payment_status` carries the money beside the pipeline. The new name is the design's own timeline word — `416:6541` draws تم الطلب → مراجعة → **تأكيد** → تنظيف → توصيل, and `399:2762` draws … → مراجعة القطع → **تأكيد السعر** → بدء التنظيف (Enum).
-- `Returned` is now reachable only around the review (`Reviewed` / `ReviewDisputed`) and only by an operator. Decision: there is no customer-facing rejection, so it is the escape hatch for an argument that re-counting cannot settle — not a dead state, and not a cancellation, since the pieces travel back and the delivery fee is still owed.
-- The tracking timeline gained a sixth point. The design's three timelines disagree about which five to draw — `413:5365` omits تأكيد السعر while `416:6541` and `399:2762` include it — and confirmation is a step the customer has to *act* on, so leaving it off would hide from them the one place the order waits on nobody but themselves. `ReviewDisputed` is deliberately absent: a detour, not a milestone (Enum / API).
-
 ### Fix
+
+- **An unbounded date range hung the report page.** `?from=1900-01-01` produced a daily series of **36,525 entries and one chart bar each** — and these dates come off a URL built to be bookmarked and pasted, so a range nobody would type on purpose still arrives eventually. Ranges are now clamped to `DateRange::MAX_DAYS` (366), keeping the end that was asked for and walking the start forward, because a report is read backwards from a known date (Service).
+- **The range form echoed the URL rather than the window actually used.** With the clamp and the existing backwards-range swap, the inputs could show dates the figures below them did not cover — a report quietly measuring something other than what is on screen. The form now renders `$range`, so every correction is visible (Blade).
+
+
+- The conflict check in the translation build caught a real one: `Failed` was «فاشلة» for a task status and «فشل» for a notification. One key cannot hold two values — whichever file loaded second would have won on every screen. Both a مهمة and a رسالة are feminine, so «فاشلة» serves both (Translation).
+
+
+- The stub `ar.json` shipped `"Dashboard": "web Dashboard"` — a template artefact that rendered as visible nonsense in the sidebar the moment anybody switched language (Translation).
+- **The translation would not have survived a deploy.** `resources/lang/.gitignore` ignored `*`, so the 743-entry file existed on one machine and nowhere else. The rule made sense when each file held ten template keys and was purely generated; it stopped making sense the moment the panel's own copy went in. The JSON files are now tracked — copy is source, not build output (Infrastructure).
+- **And it would not have survived somebody adding a language.** `LanguageHelper::generateJsonLanguageFiles()` overwrote `{code}.json` wholesale from the ten-key templates, and `LanguageSeeder` calls it for `ar` — so `php artisan db:seed --class=LanguageSeeder` would have wiped a day's translation without a word. It now **merges**, and existing values win: a key the template introduces is added, a key both have keeps what is already there. Proven by running the seeder against the finished file and watching the count go up rather than down (Helper).
+
+
+- `Refund` and `Wallet` did not carry the `DashboardModel` trait, so `PermissionGenerator` skipped them and their routes were gated on permissions that did not exist. The trait is how a model opts into having permissions at all (Models).
+- `(string) $paginator->links()` does not type-check — `links()` returns an `Htmlable`, which PHP will not cast. Replaced with `->toHtml()`, which is both correct and what the cast was reaching for. The older modules get away with it only because their paginators come back untyped from repositories (Controllers).
+- A copy-pasted `@return array<string, mixed>` sat above a `void` method in `CouponRequest` (Request).
+
+
+- **A wallet payment reference collided with itself.** It was built from `now()->timestamp`, so a retry after a failed attempt landed in the same second and hit the unique key — a constraint violation where the customer should have seen a second chance. Now random, like the QR token. **Found by the end-to-end walk on the live database, not by any test**, and a test was added for it (Service).
+- **`OrderQuoteRequest` had no `coupon_code`.** The quote *is* the summary screen and «تطبيق» sits on it, but the request validated the code away before the service could see it — so a code could be applied at checkout and never previewed. The quote response also never surfaced `coupon_error`, so a refused code failed silently (Request / Controller).
+- **A refund refused for the wrong reason.** Omitting the amount asks for everything refundable; when that was zero the customer was told to «enter an amount greater than zero» rather than that there was nothing to refund — sending them to fix the wrong thing. The guards are now ordered so the honest message wins (Service).
+
+
+- `bootstrap/providers.php` uses imported class names, so the script that registered `PaymentServiceProvider` matched nothing and **silently did nothing**. The container then failed to build the gateway interface. Fixed, and the patch helper now asserts that a replacement actually changed the file rather than trusting that it matched (Infrastructure).
+
+
+- **Tasks were being generated at the wrong moment.** The first implementation created the chain when the customer confirmed the final price — but confirmation happens *after* the review, which happens after the pickup. The pickup leg was being created after the pickup it was supposed to schedule. Generation moved to **order placement**: the first thing that has to happen to a new order is somebody going to collect it. Found by a failing test, not by reading (Service).
+- **Starting the first leg now moves the order to `driver_on_way`.** Without it, completing that leg tried `awaiting_pickup → picked_up`, which the state machine correctly refuses. It is also simply right: «في الطريق للاستلام» is what the tracking screen should say while the driver is on the way, not after they arrive (Enum / Service).
+- **An exhausted task could not be revived.** Two failures escalate a task to operations — but `assign()` refused any finished task, so the escalation had no resolution. It now refuses only a *completed* leg (re-running one would ask a driver to collect clothes that are no longer there) and accepts a failed one, which is exactly how a person resolves an escalation. The attempt count is deliberately preserved so the history is not laundered. Found by the end-to-end walk, not by a unit test (Service).
+- **Cancelling an order left four live tasks behind.** Drivers would have kept a journey nobody wanted in their lists, and the first anyone would have learned of it is a driver at a door. `cancel()` now closes the open legs (Service).
+- **The orders list ignored `?status=` in the URL.** The status filter only ever worked through AJAX, so a deep link to a filtered view silently showed everything — worse than showing nothing, because it looks like an answer. The first render now honours it and the select shows what is actually filtered (Service / Blade).
+- **`max_concurrent_orders` and `city_id` were unreachable from the dashboard.** Added by migration in P6 and never given a form field, so both were null on every driver — and the dispatch rules P8 exists to enforce are built on exactly them. The same gap as the zone rate in P6, and closed the same way: wired through the request, the service and the form, with the clearing case handled, because a cap that can be set but never removed is a driver permanently throttled by a typo (Request / Service / Blade).
+
 
 - **The order wizard's consent was shown but never recorded.** `35:2797` carries a required tick — «أوافق على مراجعة القطع وتحديد السعر النهائي قبل بدء التنظيف» — and P6 neither validated nor stored it. It is the customer's agreement to this entire mechanism, so `POST /orders` now requires it (`accepted`, not `boolean` — an unticked box must fail) and `orders.review_terms_accepted_at` records when it was given. Carried through the recurrence path too: confirming a prompt *is* the consent, and without it a recurring order would reach the laundry with no record that anybody agreed to being re-priced (Request / Service / Database).
 
-### Migration
-
-- `add_review_fields_to_orders_table` — `review_terms_accepted_at`, `confirmed_at` (distinct from `paid_at`, and that distinction is the shape of this whole phase), `review_round`.
-- `create_order_price_queries_table` — question, answer, and the `(answered_at, answered_by)` pair that turns an open question into a closed one.
-
 ### Note
+
+- Testing: **382 PHPUnit tests / 1293 assertions** (from 362 / 1221) and **11 new browser tests**, all passing; `composer stan` clean, pint applied. The report tests assert exact figures against rows the test placed itself — a report that is merely plausible is worse than none, because nobody re-checks a number that looks about right.
+- Verified additionally by cross-checking every headline figure against raw SQL on the development database: gross, refunds and net reconcile; the daily series and each breakdown sum back to gross; `byStatus` sums to the order total; price movement covers exactly the reviewed orders; no negative turnaround; no wallet drift.
+- Carried forward, unchanged: no payment provider is wired, so nothing can actually be charged; no Firebase credentials, so push is unproven end to end; **holding customer balances is a regulated activity in Egypt and still needs a legal answer**; `Cash_Surcharge` is settable but never applied; «طلب التأجيل» still has no rescheduling path; nothing times out a customer's silence at `reviewed`.
+
+
+- Testing: **362 PHPUnit tests / 1221 assertions** (from 330 / 1136), all passing, `composer stan` clean, pint applied. Coverage includes each stage announced exactly once, a repeated transition staying silent, the recurrence prompt actually delivered, a throwing push vendor proven not to roll back a status change, a muted channel skipped *and the skip logged*, a muted user still hearing a transactional message, a permanent rejection pruning a token while a transient one keeps it, a handset following the token rather than the account, and the stuck-task alert proven not to repeat itself over three runs.
+- The FCM driver is unit-tested against a faked Google with a **generated throwaway key** — a real private key does not belong in a repository even as a fixture. Windows PHP ships an `openssl.cnf` it does not point at, so key *generation* fails out of the box; loading and signing, which is all the driver ever does, need no config. The test locates PHP's bundled config and skips with a clear reason if it cannot.
+- A looped test over HTTP status codes was silently testing the same response three times: **`Http::fake()` merges its stubs rather than replacing them**, so a 403 registered by an earlier iteration kept matching. It looked like a driver bug and was a test bug. Split per status with a data provider.
+- **`config/push.php` stays on the `log` driver.** The FCM code is complete and its parts are proven, but a real send needs a Firebase service-account JSON this environment does not have, so **no message has reached a handset**. Said plainly rather than reported as working: set `FCM_CREDENTIALS` and `PUSH_DRIVER=fcm` and nothing else changes.
+- **SMS remains authentication-only**, by decision. No business moment sends one, which is already how the system behaved, so the per-message bill stays at what security requires.
+
+
+- Method: every `__()`, `@lang()` and `trans()` call across `app/`, `resources/views/`, `routes/`, `config/` and `database/seeders/` was extracted mechanically — 692 unique keys — then translated and checked back against that list, so the work is provably complete rather than complete-looking. Three automated checks ran before the file was written: **no value left in English**, **no value empty**, and **no `:placeholder` lost in translation** — a message that drops `:code` renders as a sentence with a hole in it.
+- 42 entries do not appear in the extraction and are correct anyway: enum labels and menu titles reach `__()` through a variable (`__($status->label())`), which no regex can see. That is exactly the class of string a naive translation pass leaves behind, so the browser tests assert an order status renders in Arabic.
+- Testing: **8 new Playwright tests**, all passing — RTL flips, the sidebar, the orders list, the review screen, the transport panel, the three money screens, and two guards worth keeping: **that no English key leaks onto any page built since P6**, and that Arabic renders as text rather than as `\uXXXX` escapes or replacement characters. **330 PHPUnit / 1136 assertions** and `composer stan` unchanged and green.
+- The nine lowercase keys the `storage/app` templates define (`users`, `settings`, `logout`…) are translated too. They are merged into `ar.json` on every generation, so leaving them English would have put nine English strings back into an Arabic file each time somebody touched a language.
+- Verified in `tinker` that placeholders survive translation: «استرداد الطلب 10244», «فشلت المهمة 2 مرات وتحتاج متابعة.», «تمت إضافة محمود كمشرف.»
+- Deliberately untouched: `ar_panel.json`, `ar_mobile.json` and `ar_web.json` are the API-facing scoped files generated by `LanguageHelper` from the `storage/app` templates. They serve the mobile and web clients, not this dashboard, and populating them is a separate job with a different key list.
+
+
+- Testing: **330 PHPUnit tests / 1136 assertions** (from 309 / 1059) and **11 new Playwright tests**, all passing, `composer stan` clean, pint applied. Coverage includes a percentage over 100 refused, a duplicate code refused, ceilings proven clearable, a used code proven undeletable and an unused one deletable, a refund approved to a wallet crediting it and reconciling, a card refund with no card payment refused *with advice*, a decided request proven undecidable twice, an adjustment demanding a reason, an over-balance adjustment refused, and — in the browser — that **no screen exposes a balance field**.
+- Both test failures on the first run were fixtures, not code: three customers created with one phone number, and `/home` rather than `/admin/home`.
+- Still open: `Cash_Surcharge` is settable and not yet applied to a total; no payment provider is wired; paying a driver out still happens outside the app. The Arabic translations remain the last planned step, and the gap has grown — Orders, review, dispatch, payments, invoices and now the money screens all render English labels in an Arabic product.
+
+
+- Testing: **309 PHPUnit tests / 1059 assertions** (from 264 / 897), all passing, `composer stan` clean, pint applied. New coverage: the ledger reconciling after every operation, a running balance on each row, overdrafts and frozen wallets refused **leaving no trace**, pending money proven unspendable until released, every reason a coupon can be refused, a code checked five times and spent zero, a redemption returned on cancellation, a refund proven to move nothing until approved, the earning rate proven to come from a setting and proven not to restate past rows when it changes, and a replayed completion paying once.
+- Ran against the live MySQL database end to end: coupon applied (discount 10.00, the first non-zero in the project's history) → two legs earning into pending → review → confirm → wallet payment refused on an empty balance, then succeeding → all four legs → order completed → 4 earnings released and the driver's ledger reconciled → refund requested, nothing moved → approved to wallet, credited, reconciled, and the refundable ceiling reduced.
+- **Still no payment provider.** Nothing can be charged; the wallet works because it is our own ledger. Choosing a provider remains one class plus a config entry.
+- **Flagged, not resolved: holding customer balances is a regulated activity in Egypt.** «إضافة أموال» is built to the design, but the top-up endpoint refuses rather than pretending, and this is worth confirming with counsel before it ships.
+- A withdrawal debits the ledger and records intent; **actually paying a driver out happens outside the app**, and nothing here claims otherwise.
+
+
+- Testing: **264 PHPUnit tests / 897 assertions** (from 241 / 813), all passing, `composer stan` clean, pint applied. New coverage: an attempt that settles nothing until the webhook, a replayed webhook capturing exactly once over four deliveries, an unknown reference ignored rather than guessed at, a malformed webhook answering 200 so a provider does not retry forever, a late failure unable to un-capture money, an estimate refused as unpayable, cash proven to create no payment row while still settling at the door, cross-customer isolation, and an invoice proven not to follow a price change made after it.
+- Ran against the live MySQL database end to end: place → review → confirm → estimate refused → cash refused a gateway call → card attempt → capture by webhook → three replays with `paid_at` unchanged → unknown reference ignored → late failure rejected → invoice rendered and proven stable against a matrix change.
+- **Nothing can actually be charged yet** — by decision, only the seam was built. Choosing a provider is one class implementing `PaymentGateway` plus a config entry.
+- **No PDF.** No PDF package is installed and adding a dependency is not a decision to slip into a phase; the invoice is a printable HTML page, and the browser's own print-to-PDF produces the same document.
+- Deferred to **P9b**: wallet (top-ups and withdrawals, as the design draws them), coupons — «خصم الترحيب» is in the design's own arithmetic and `discount_total` has still never been non-zero — refunds with their «قيد المراجعة» state, and driver earnings as a share of the delivery fee. **Flagged: holding customer balances is a regulated activity in Egypt and worth confirming before the wallet ships.**
+
+
+- Testing: **241 PHPUnit tests / 813 assertions** (from 191 / 621) and **89 Playwright tests** (from 83), all passing, `composer stan` clean. New coverage: the chain generated once and only once, a leg refused before its predecessor, every eligibility rule (zone, availability, capacity, city) proven to exclude, the sweep picking up a driver who arrived late, the wrong QR refused, a signature required where the design implies it and not where it does not, cash in full marking an order paid while a short collection leaves it unpaid, all three failure outcomes, cross-driver and customer-token isolation, and — in a real browser — that the dashboard offers no way to complete a leg.
+- Ran against the live MySQL database end to end: place → 4 legs dispatched → leg 2 refused before leg 1 → leg 1 (wrong QR refused, signature enforced) → leg 2 with a receiver name → review → confirm → clean → leg 3 failed twice, escalated, revived, completed → leg 4 with a short collection. The audit trail reads correctly throughout.
+- The design's five-point bar on every leg screen draws 1 استلام من العميل → 2 تسليم للمغسلة → 3 استلام من المغسلة → 4 تسليم للعميل → 5 **المراجعة**, but the laundry's review happens between legs 2 and 3, not after leg 4. Either «المراجعة» is a fifth driver-side wrap-up or the bar is drawn out of order. Display-only, so it is recorded for the mobile team rather than guessed at here.
+- Still open: driver earnings and the «الرصيد المعلق» are **P9 by decision** — a task records who did it and when, and nothing about money. The printable order card (`193:2391`) is not built. **And «العميل طلب التأجيل» has no rescheduling path**: it returns to the pool like any other failure, so another driver will be sent at the time the customer already declined.
+
 
 - Testing: **191 PHPUnit tests / 621 assertions** (from 158 / 491) and **83 Playwright tests** (from 76), all passing, `composer stan` clean. New coverage: the estimated basket surviving a review, final prices proven copied by moving the matrix afterwards, the delivery fee proven untouched, cleaning refused before confirmation, confirmation proven *not* to take money, a re-review replacing rather than stacking the final set, a question proven not to move the order, cross-tenant pricing refused, and — in a real browser — the live total and the signed difference, which are the numbers a person actually decides on.
 - Six P6 tests failed on the first full run after the consent became required. Expected, not a regression: they were written before the field existed, and their payloads were updated.
 - Ran against the live MySQL database end to end: place → collect → review (2 → 4 pieces) → question → answered → dispute → re-review → confirm → cleaning, with the audit trail reading correctly at every step.
 - `DevFixturesSeeder` now parks one order at `picked_up`. The review screen renders for exactly one status, so without a fixture sitting at it there is nothing to look at and nothing for a browser test to drive. Idempotent: it makes one only if none is already waiting.
 - Still open: no payment capture (P9) — `payment_status` is set, no gateway is called, so a card order is as unpaid as a cash one and saying otherwise in the data would be a lie the accounting later inherits. No support threads (P10). **And no timeout on silence** — the decision did not choose auto-approval, so an order whose customer never answers waits indefinitely; it needs an operations eye on `reviewed`, which the dashboard's status filter already provides.
+
+### Migration
+
+- `create_device_tokens_table` (unique on the token, not per user), `create_notification_preferences_table` (**absence means enabled**, so a new channel is opted-in without a backfill), `create_notification_logs_table`.
+
+
+- `create_wallets_table` (wallets + wallet_transactions), `create_coupons_table` (coupons + coupon_redemptions), `create_refunds_table`, `create_driver_earnings_table` — the last with a unique key on `order_task_id`, so a replayed completion cannot pay a driver twice for one journey.
+
+
+- `create_payments_table` — attempts, with a unique key on `(provider, provider_reference)` as the webhook's idempotency guarantee, and `payload` kept verbatim: when a settlement disagrees with our figures six weeks later, the provider's own words are the only thing that settles it.
+
+
+- `create_order_tasks_table` — the four legs, with a unique key on `(order_id, type)` so a double-generated chain cannot put two drivers at one door. `driver_id` is nullable throughout rather than only before the first dispatch: a task whose driver failed it returns to null, which is the same state as one never assigned, because that is exactly what it is.
+
+
+- `add_review_fields_to_orders_table` — `review_terms_accepted_at`, `confirmed_at` (distinct from `paid_at`, and that distinction is the shape of this whole phase), `review_round`.
+- `create_order_price_queries_table` — question, answer, and the `(answered_at, answered_by)` pair that turns an open question into a closed one.
+
+### Refactor
+
+- **`AwaitingPayment` renamed to `Confirmed`, and payment left the pipeline.** The old name asserted that money gates cleaning, which cannot be true while «الدفع نقدًا عند الاستلام» is on offer: a COD customer pays at delivery, long after the clothes are washed. Confirmation is now the gate and `payment_status` carries the money beside the pipeline. The new name is the design's own timeline word — `416:6541` draws تم الطلب → مراجعة → **تأكيد** → تنظيف → توصيل, and `399:2762` draws … → مراجعة القطع → **تأكيد السعر** → بدء التنظيف (Enum).
+- `Returned` is now reachable only around the review (`Reviewed` / `ReviewDisputed`) and only by an operator. Decision: there is no customer-facing rejection, so it is the escape hatch for an argument that re-counting cannot settle — not a dead state, and not a cancellation, since the pieces travel back and the delivery fee is still owed.
+- The tracking timeline gained a sixth point. The design's three timelines disagree about which five to draw — `413:5365` omits تأكيد السعر while `416:6541` and `399:2762` include it — and confirmation is a step the customer has to *act* on, so leaving it off would hide from them the one place the order waits on nobody but themselves. `ReviewDisputed` is deliberately absent: a detour, not a milestone (Enum / API).
 
 ## 2026-08-26
 
@@ -642,33 +699,6 @@
 - Orders dashboard (`admin/order`): list with All / Active / **Unassigned** counters, AJAX search composing a term with a status filter, and a detail page showing pieces, pricing, the audit trail and photos. **No create and no delete** — an order is a customer's agreement, not a row an operator invents or erases. Assignment is offered only while the order is still assignable, and only to laundries that actually cover it (Blade / Controller).
 - Registered `Order` in `config/dashboard.php` (five generated permissions) and in `config/menu.php` with all three UI maps. `laundry_owner` gets `order.view` + `order.update`; `laundry_staff` gets `order.view` only — assigning is the owner's call (Config / Seeder).
 
-### Improvement
-
-- **The delivery rate columns are now reachable from the dashboard.** `zones.price_per_km` / `min_delivery_fee` and `laundries.lat` / `lng` were added by migration, but a column nobody can set is a column that is always null — and every fee would have come back «unknown». Wired through the Zone and Laundry forms, requests and services. Both are handled *outside* the services' `array_filter`, so an emptied value clears the field instead of being silently dropped: a rate that can be set but never unset is a trap (Blade / Request / Service).
-- `DevFixturesSeeder` now seeds what an order needs to exist at all: coordinates on both laundries (Mohandessin and Nasr City, ~9 km apart, so the haversine fee and the nearest-laundry sort produce figures a person can sanity-check), full zone and service coverage, a per-km rate on any unpriced zone, and a default address for the fixture customer. Without these the pricing and assignment paths look broken by hand when they are only unseeded. The zone rate fills gaps only — a rate set in the dashboard is never overwritten (Seeder).
-- Test harness: added `seedCatalog()` (a priced per-item service, a quote-priced one, two items with prices), `cover()` (zone + service + coordinates for a laundry) and `addressFor()`. Every order test needs a real (service, item, price) triple, because `OrderPricing` refuses a piece it cannot price (Tests).
-
-### Fix
-
-- `OrderService::assignLaundry()` initially logged the assignment by calling `transition($order, $order->status)`, which the state machine treats as idempotent and therefore recorded **nothing** — an assignment with no audit trail. Added `OrderStateMachine::note()` for facts that are not status changes (Service).
-- `RecurrenceService::promptDue()` captured `$on` in its chunk closure and never used it. The unused variable was the symptom; the question it raised was the point — a prompt belongs to **the cycle it was due for**, not to the day the scheduler happened to run. Confirmed by test: a scheduler two days late still records Monday's prompt as Monday's, and the schedule stays on Mondays (Service).
-- Relations on the six new models carried no generic return types, so PHPStan saw `Model|null` throughout and could not resolve `->label()`, `->toDateString()` or any cast attribute — 17 errors. Fixed at the root with `@return BelongsTo<X, $this>` / `HasMany<X, $this>` and full `@property` blocks, not with suppressions. `composer stan` is clean (Models / Tooling).
-- `Order::$delivery_fee` is cast `decimal:2` and therefore reads as a string; assigning a float to it directly conflicted with the declared type. Routed through `update()` with an array, which is how the rest of the codebase writes (Service).
-
-### Migration
-
-- `add_coordinates_to_laundries_table`, `add_delivery_rate_to_zones_table`, `add_capacity_to_driver_profiles_table` (`max_concurrent_orders`, `city_id` — enforced in P8), `create_order_recurrences_table`, `create_orders_table`, `create_order_items_table`, `create_order_status_logs_table`, `create_order_media_table`, `create_recurrence_prompts_table`.
-- `orders.laundry_id` is **nullable by design** — an unassigned order is a legitimate state, not an error. A consequence worth naming: with `laundry_id` null the row falls outside every tenant's scope, so only a super admin sees the triage queue. That is correct — nobody should be looking at work that has not been given to them.
-- `order_items.unit_price` is a **copy** taken at ordering, and `phase` (`estimated` | `final`) separates the customer's count from the laundry's, so a review that finds an extra shirt adds a row without destroying the record of what was agreed.
-
-### Note
-
-- Testing: **158 PHPUnit tests / 491 assertions** (from 111 / 289) and **76 Playwright tests** (from 63), all passing, `composer stan` clean. New coverage: the transition table (including that `isCancellable()` and `allowedNext()` can never disagree), the fee arithmetic and its three "unknown" reasons, price-copying proven by moving the matrix *after* the order and asserting the order did not follow, cross-customer isolation on every order endpoint, the tenant boundary around the dashboard (including that an unassigned order is invisible to tenants and that a collected order cannot be reassigned), scheduler idempotency, late-run weekday stability, and — in a real browser — the AJAX search, the status filter, and that the rate fields exist on the Zone and Laundry forms.
-- Two of the three initial unit-test failures were **wrong expectations, not bugs**: the fee is computed from the full-precision distance while `distance_km` is rounded for display, so comparing them needs a tolerance. The third had Cairo Tower → the Pyramids at ~14 km; it is ~11.4.
-- `./vendor/bin/pint` reformatted ~90 pre-existing files as a side effect (line endings, import order, quote style). Formatting only, no behaviour change, but it widens this diff well beyond P6.
-- Still open, and deliberately not invented: no coupon/discount engine exists, so `coupon_code` is stored and `discount_total` is always 0 until a promotions module lands. `payment_method` / `payment_status` columns exist so the state machine can already speak about payment, but nothing is wired — P9. Time-slot capacity is not yet enforced. `order.create` / `order.delete` / `order.toggle` permissions are generated by `PermissionGenerator`'s fixed action set but have no routes, by design.
-
-### Feature
 
 - **P1 — multi-tenancy.** The panel served one audience; it now serves laundries as tenants alongside the super admin. `roles.type` widened to `enum('dashboard','app','laundry')` via a raw `ALTER` (no doctrine/dbal is installed, so `->change()` cannot alter an enum), and `users.laundry_id` added as a nullable FK to `laundries` (Database / Migration).
 - Added `App\Support\LaundryContext` as the single source of truth for "which laundry is the current actor confined to". All four bypass rules live in one place: no authenticated actor (console, seeders, queue) → unrestricted; super admin → unrestricted; actor without a laundry (moderators, customers) → unrestricted; actor with a laundry → mandatory filter (Support).
@@ -679,27 +709,6 @@
 - Seeded system roles `laundry_owner` (7 permissions: its own laundry view/update, full control of its own staff) and `laundry_staff` (view only), plus a `syncPermissions()` helper in `RoleSeeder` that attaches only permissions that already exist, so seeder order does not matter (Seeder).
 - Added `phoneRegex()` to `Helpers.php` as the one place the accepted phone format is defined (Helper).
 
-### Fix
-
-- **Permission leak on the dashboard home page.** `HomeController::index()` built its stat tiles unconditionally, so every actor saw links to Customers / Categories / Banners / Countries plus a global count of each. Harmless while only moderators had accounts; a real leak once laundry users existed. Each tile is now gated on the same permission as the page it links to, and the count is only queried once the gate passes. Added a Laundries tile, which correctly reports 1 to a laundry owner and 2 to the super admin — the tenant scope reaches the aggregate too (Controller).
-- `ModeratorRequest` validated phone numbers against a **Kuwaiti** pattern (`^(\+?965)?[569]\d{7}$`), so the moderator form rejected every Egyptian number. Both it and the new laundry forms now use `phoneRegex()`; the form placeholder was updated to match (Request / Blade).
-- Made `composer stan` clean (0 errors, from 6). Root causes, not suppressions: `use Str;` in `RoleController` imported the root-namespace facade alias instead of `Illuminate\Support\Str`; `Auth` was unimported in `Helpers.php`; `Role::permissions()` and `User::role()` had no relation return types; and `ResponseService::toggleStatus()` declared `Model&object{status: ...}`, an intersection that made the property read-only to static analysis (Tooling / Models / Service).
-
-### Migration
-
-- `create_laundries_table`, `add_laundry_type_to_roles_table`, `add_laundry_id_to_users_table`. The roles migration guards on the MySQL driver (SQLite has no native enum) and its `down()` refuses to run while `type=laundry` rows exist, rather than silently truncating them to `''`.
-
-### Improvement
-
-- Upgraded `laravel/framework` v13.26.1 -> v13.29.0 (plus `laravel/prompts` and `laravel/serializable-closure` patch bumps) — all semver-safe within v13. Verified afterwards: `composer stan` 0 errors, all 128 routes registered, migrations intact, the four P0 API endpoints and the full P1 tenant-isolation matrix unchanged, all 15 dashboard pages 200 (Dependencies).
-- Added `DevFixturesSeeder` — two laundries with an owner and staff account each, plus a customer, so tenant isolation can be exercised by signing in rather than only by reading code. Idempotent, deliberately NOT wired into `DatabaseSeeder`, and it refuses to run outside `local`/`testing` so known-password accounts cannot reach production. Replaces the ad-hoc rows left behind by P1's verification (Seeder).
-
-### Note
-
-- **Correction to the 2026-08-25 entry's premise:** during P0 the tooling reported "33 security vulnerability advisories affecting 11 packages", and that figure was wrong. It appeared while `vendor/` was in a half-installed state; `composer audit` now reports **no advisories** in all four modes (installed, `--locked`, `--no-dev`, `--abandoned=report`). Nothing needed patching. The only dependency actually behind was the framework, bumped above; `phpunit` 11 -> 12 was left alone deliberately, since it is a major bump and `CLAUDE.md` pins PHPUnit 11.
-- Repeated `vendor/` corruption during composer operations on this machine traces to Windows file locking (antivirus / Search Indexer) preventing composer from removing its temp extraction directories, which leaves the autoloader stale. Recovery is `composer install --no-scripts` followed by `composer dump-autoload`.
-
-### Feature
 
 - **P2 — catalogue and pricing.** The arithmetic base every order will be costed from. Five tables: `services`, `item_categories`, `items`, `item_prices` (the matrix, `unique(service_id,item_id)`), and `laundry_services` (Database / Migration).
 - Modelled the design's three-level hierarchy — **service -> category -> item -> price** — rather than reusing the existing `categories` tree. A price depends on the *pair* (item, service), which a single `default_price` column cannot express (Architecture).
@@ -710,16 +719,6 @@
 - Registered the five new models in `config/dashboard.php`, which generated 25 permissions automatically, and added a **Catalog** menu group. `laundry_owner` gained only `laundry_service.view|update` — deliberately no `service.*`, `item.*` or `item_price.*`, because prices are global and a tenant only declares what it offers (Config / Seeder).
 - Added `CatalogSeeder` with the design's real catalogue: 4 services with their turnarounds, 5 categories, 10 items, and 30 prices taken off the "الاسعار" screen (قميص على شماعة 17, مطوي 19, كتان 24, حرير 30, …) (Seeder).
 
-### Fix
-
-- **`CatalogSeeder` was not idempotent and silently doubled the catalogue on its second run** (8 services, 20 items, 59 prices). `updateOrCreate(['name' => json_encode(...)])` can never match its own output on a MySQL `json` column: MySQL normalizes what it stores, sorting the keys and inserting a space after each colon, so `{"en":"…","ar":"…"}` comes back as `{"ar": "…", "en": "…"}` and the equality check always fails. Lookups now use a JSON path (`where('name->en', …)`). Verified idempotent across three consecutive runs (Seeder).
-- Retired the legacy `categories` entry from the sidebar. The table is empty, was never used, and its label collided with the new "Item Categories". Removed from `config/menu.php`'s `singles` only — table, module, routes and permissions are all untouched, so restoring it is one line (Config).
-
-### Improvement
-
-- `pricingService::saveGrid()` filters the posted grid against the set of active per-item services rather than trusting the payload, so a forged `prices[item][quoted_service]` is dropped instead of written (verified) (Service).
-
-### Feature
 
 - **P3 — zones and time slots.** Three tables: `zones` (the المنطقة level inside a city), `time_slots` (reusable pickup/delivery windows), and `laundry_zones` (the service areas deferred from P1 because zones did not exist yet) (Database / Migration).
 - Added the **Zone**, **TimeSlot** and **LaundryZone** modules. Zones and slots are global and super-admin owned, exactly like prices; a laundry only picks the zones it covers. `laundry_owner` gained `laundry_zone.view|update` and nothing else — no `zone.*`, no `time_slot.*` (Modules / Blade / Seeder).
@@ -728,16 +727,6 @@
 - Added `GeoSeeder` — Egypt, all 27 governorates as cities, and 25 zones across Greater Cairo (مدينة نصر, الدقي and الرحاب appear verbatim in the design). Added `TimeSlotSeeder` with five windows covering 09:00 to 23:59, including the late window the design implies with "09:00 مساءً إلى 12:00 منتصف الليل". Both idempotent across repeated runs (Seeder).
 - Added a `zones()` relation to the City model, annotated `HasMany<Zone, $this>` so its element type is known to static analysis rather than degrading to `Model` (Model).
 
-### Fix
-
-- **The application was running on UTC.** `countries` and `cities` were both empty and the `Country_Id` setting was unset, so `SetTimezone` had nothing to resolve and `/api/v1/ping` reported `timezone: UTC`. Every pickup and delivery window would have been stored and compared 2–3 hours off from Cairo — invisible today, wrong the moment orders exist in P6. `GeoSeeder` now seeds Egypt (whose timezone `CountryTimezones` already maps to `Africa/Cairo`), sets `Country_Id`, and drops the `setting_Country_Id` cache entry, since `getSettingValue()` uses `rememberForever`. Verified: `/api/v1/ping` now reports `Africa/Cairo` with a `+03:00` offset (Seeder / Config).
-
-### Note
-
-- Both new seeders use JSON-path lookups (`where('name->en', …)`) rather than comparing whole JSON blobs, applying the fix from the CatalogSeeder duplication bug. `TimeSlotSeeder` matches on the `(start_time, end_time)` pair, which are plain columns and avoid the problem entirely.
-- `days_of_week` was **not** added to `time_slots`: one set applies to every day and every day is a working day, per the business decision. Adding per-weekday windows later is an additive migration.
-
-### Feature
 
 - **P4 — customers, addresses and authentication.** The first phase the mobile apps consume for more than browsing. 24 API endpoints across auth, profile and addresses (API).
 - Added an **SMS abstraction**: `App\Services\Sms\SmsSender` plus a `LogSmsDriver` that writes the code to the log, and `config/sms.php` with a driver switch. The full OTP flow is exercisable end to end with no vendor account, and a real Egyptian provider drops in as one class and one config line. Same seam as the payment driver planned for P9 (Service / Config).
@@ -748,38 +737,12 @@
 - Added `users.phone_verified_at` — phone is the primary identity here, yet only `email_verified_at` existed. Existing dashboard accounts are backfilled as verified, since they were created administratively and would otherwise be locked out (Migration).
 - Account closure is a **soft delete** by decision: orders and invoices stay attached for accounting and disputes. A consequence worth stating — the unique indexes on phone and email still cover trashed rows, so a closed account's number cannot be registered again, which matches the decision taken on phone reuse (Model / Migration).
 
-### Security
-
-- **OTP codes are stored hashed.** A plaintext six-digit code in a column any dashboard query can read is a credential in the clear. `otp` was also added to the model's `$hidden`, and `otp`/`otp_expires_at`/`otp_attempts` were removed from `$fillable` — `OtpService` writes them with `forceFill`, so no request payload can set or clear a verification code by mass assignment (Service / Model).
-- **Verification attempts are counted, not just sends.** Six digits is a million combinations, which an unthrottled verify endpoint concedes in minutes. A code is burned after 5 misses, and two new rate limiters back that up: `otp-verify` (10/min per phone, 30/min per IP) and `login` (5/min per phone, 20/min per IP), each keyed on the IP as well so a rotating phone parameter does not bypass them (Provider / Routes).
-- Codes are generated with `random_int`, are single-use, and expire after 120 seconds — just past the design's 01:59 countdown, so a code never dies while the timer still reads a second (Service).
-- `login`, `resend-otp` and `forgot-password` answer identically whether or not a number is registered, so none of them can be used to enumerate which numbers exist (Service / Controller).
-- Addresses are always reached through `$request->user()->addresses()`, never `Address::find()`. Verified: a second customer requesting, updating, deleting or re-defaulting another customer's address gets **404** on every route, and the target row is untouched (Controller).
-
-### Fix
-
-- **Registration without an email returned a 500.** `users.email` was declared `string('email')->unique()` with no `nullable()`, while the design marks email optional — «البريد الإلكتروني (اختياري)». Every customer registering without one hit a NOT NULL violation. The column is now nullable; the unique index is kept, since MySQL permits many NULLs in one (Migration).
-- `UserRepository::find()` was a bare `findOrFail`, so `/admin/user/show/{id}` would render a moderator or laundry owner given their id — the "Customers" page showing a staff account. Now scoped to customers, matching `getAll()` and `search()`. This was logged as a follow-up in P1 (Repository).
-
-### Feature
 
 - **Test coverage for P0–P4.** The project shipped with two stub tests, one of which failed on every run. It now has **83 PHPUnit tests / 213 assertions** and **52 Playwright browser tests**, both green. `composer test`, `composer test:browser` and `composer test:all` run them (Tests).
 - Rebuilt `tests/TestCase.php` into a real base: `seedCore()` (languages, roles, permissions generated through the real `PermissionGenerator`, laundry role grants) and `seedGeo()` (Egypt, Cairo, zones, the `Country_Id` setting), plus factories for a super admin, a laundry with its owner, and a customer. Deliberately does not call `LanguageSeeder`, which writes JSON files to `resources/lang` as a side effect (Tests).
 - PHPUnit coverage: the response envelope and locale resolution; registration, verification, sign-in and password reset; OTP hashing, single use, expiry and attempt burning; address CRUD with cross-customer isolation on every route; tenant isolation including a forged `laundry_id` on create; the price grid's blank-deletes-row and quoted-service rules; the public catalogue and time-slot filtering (Tests).
 - Playwright coverage: every dashboard page and create form renders without an error page; the sidebar shows each role only what it should; tenant isolation as rendered; the price grid draws 30 cells and excludes the quoted service; the AJAX search and status toggle actually work in a browser; RTL flips with the language and Arabic survives a form round trip (Tests).
 
-### Fix
-
-- **`roles.type` could not hold `laundry` on any driver but MySQL.** The P1 widening migration used a raw `ALTER` behind a `getDriverName() === 'mysql'` guard, on the belief that `->change()` still needs doctrine/dbal — untrue since Laravel 11. On SQLite the original `enum` becomes a CHECK constraint, so inserting `laundry` failed with "CHECK constraint failed: type": the entire tenancy feature was untestable, and a deploy on any other driver would have broken identically. Added a cross-driver migration converting the column to `varchar(20)`; a string plus the application's own validation also means the next role type is not a schema change at all (Migration).
-- **`users.email` stayed NOT NULL on any driver but MySQL**, for the same reason and with the same effect: no test could register a customer. Rewritten to use `->change()` (Migration).
-- **`Language::$fillable` omitted `default` and `app_scope`** while `LanguageRequest` validated both, so marking a language as default from the dashboard silently did nothing. MySQL hid half of it by quietly substituting the first enum value for `app_scope` on insert; SQLite refuses, which is how it surfaced. Proven before and after: asking for `default=true` stored `false` (Model).
-- **Timestamps were written and compared in different timezones.** `SetTimezone` called `date_default_timezone_set()` per request, so anything writing a timestamp outside the HTTP lifecycle — the queue worker, console commands, seeders, and the recurring-order scheduler planned for P6 — stored a UTC wall-clock string that the next request re-read as Cairo local time, three hours earlier. Concretely, OTP codes were born already expired. Storage and comparison now stay in UTC; `SetTimezone` publishes `app.display_timezone` instead, and `humanDate()` is the single place a stored value is converted for display. The nine dashboard timestamp call sites were routed through it, so displayed times remain local (Middleware / Helper / Blade).
-- **Six of the modules I added read the wrong search parameter.** `setupAjaxSearch` sends the term as `query`, which is what the ten pre-existing modules read via `$request->get('query')`; Laundry, LaundryStaff, Service, Item, ItemCategory and Zone read `$request->search`, which was always null, so those six search boxes re-rendered the full list unchanged. Note the controllers cannot read `query` as a property: Symfony's `Request` has a public `$query` holding a ParameterBag (Controllers).
-- `CategoryController::search()` ignored the search term entirely, calling `shredData()` while the repository had a `search()` all along. Wired up (Controller / Service).
-- Rewrote the stock `ExampleTest`, which failed on every run: it lacked `RefreshDatabase`, so there were no tables, and `/` renders a view whose layout reads the settings and languages tables (Tests).
-- Removed a stray `console.log` from `setupAjaxSearch` (Blade).
-
-### Feature
 
 - **P5 — drivers.** Driver identity, vehicle, documents, working hours, service areas and the availability switch. The four transport tasks themselves are P8; this phase builds the person who will execute them. **111 PHPUnit tests / 289 assertions** and **63 Playwright tests**, both green (Migration / Module / API / Tests).
 - Added the **Driver** module: a `User` subclass over the same table scoped to the `driver` role, following the Moderator and LaundryStaff pattern. Deliberately **not** tenant-scoped — drivers belong to Laundo and move between laundries, which is the whole point of the four-leg journey (Model / Module).
@@ -790,13 +753,90 @@
 - Availability is refused while the account is inactive, so a suspended driver cannot flip themselves back into the dispatch pool. `Driver::isDispatchable()` requires both active and available (Model / Controller).
 - Document expiry is recorded and flagged in the dashboard, and deliberately does **not** stop assignment — a person decides. A licence expiring today counts as valid through the whole day (Model / Blade).
 
-### Refactor
+### Improvement
 
-- Renamed the `employee` role to `driver`, with `Role::EMPLOYEE` becoming `Role::DRIVER` and `isEmployee()` becoming `isDriver()`. The role came from the original seeder, carried zero users and was referenced by no feature, while the design says مندوب / السائق throughout. The migration refuses to run if anyone has since been given the role, rather than silently re-labelling their account (Migration / Model / Helper / Seeder).
+- **The delivery rate columns are now reachable from the dashboard.** `zones.price_per_km` / `min_delivery_fee` and `laundries.lat` / `lng` were added by migration, but a column nobody can set is a column that is always null — and every fee would have come back «unknown». Wired through the Zone and Laundry forms, requests and services. Both are handled *outside* the services' `array_filter`, so an emptied value clears the field instead of being silently dropped: a rate that can be set but never unset is a trap (Blade / Request / Service).
+- `DevFixturesSeeder` now seeds what an order needs to exist at all: coordinates on both laundries (Mohandessin and Nasr City, ~9 km apart, so the haversine fee and the nearest-laundry sort produce figures a person can sanity-check), full zone and service coverage, a per-km rate on any unpriced zone, and a default address for the fixture customer. Without these the pricing and assignment paths look broken by hand when they are only unseeded. The zone rate fills gaps only — a rate set in the dashboard is never overwritten (Seeder).
+- Test harness: added `seedCatalog()` (a priced per-item service, a quote-priced one, two items with prices), `cover()` (zone + service + coordinates for a laundry) and `addressFor()`. Every order test needs a real (service, item, price) triple, because `OrderPricing` refuses a piece it cannot price (Tests).
+
+
+- Upgraded `laravel/framework` v13.26.1 -> v13.29.0 (plus `laravel/prompts` and `laravel/serializable-closure` patch bumps) — all semver-safe within v13. Verified afterwards: `composer stan` 0 errors, all 128 routes registered, migrations intact, the four P0 API endpoints and the full P1 tenant-isolation matrix unchanged, all 15 dashboard pages 200 (Dependencies).
+- Added `DevFixturesSeeder` — two laundries with an owner and staff account each, plus a customer, so tenant isolation can be exercised by signing in rather than only by reading code. Idempotent, deliberately NOT wired into `DatabaseSeeder`, and it refuses to run outside `local`/`testing` so known-password accounts cannot reach production. Replaces the ad-hoc rows left behind by P1's verification (Seeder).
+
+
+- `pricingService::saveGrid()` filters the posted grid against the set of active per-item services rather than trusting the payload, so a forged `prices[item][quoted_service]` is dropped instead of written (verified) (Service).
 
 ### Fix
 
+- `OrderService::assignLaundry()` initially logged the assignment by calling `transition($order, $order->status)`, which the state machine treats as idempotent and therefore recorded **nothing** — an assignment with no audit trail. Added `OrderStateMachine::note()` for facts that are not status changes (Service).
+- `RecurrenceService::promptDue()` captured `$on` in its chunk closure and never used it. The unused variable was the symptom; the question it raised was the point — a prompt belongs to **the cycle it was due for**, not to the day the scheduler happened to run. Confirmed by test: a scheduler two days late still records Monday's prompt as Monday's, and the schedule stays on Mondays (Service).
+- Relations on the six new models carried no generic return types, so PHPStan saw `Model|null` throughout and could not resolve `->label()`, `->toDateString()` or any cast attribute — 17 errors. Fixed at the root with `@return BelongsTo<X, $this>` / `HasMany<X, $this>` and full `@property` blocks, not with suppressions. `composer stan` is clean (Models / Tooling).
+- `Order::$delivery_fee` is cast `decimal:2` and therefore reads as a string; assigning a float to it directly conflicted with the declared type. Routed through `update()` with an array, which is how the rest of the codebase writes (Service).
+
+
+- **Permission leak on the dashboard home page.** `HomeController::index()` built its stat tiles unconditionally, so every actor saw links to Customers / Categories / Banners / Countries plus a global count of each. Harmless while only moderators had accounts; a real leak once laundry users existed. Each tile is now gated on the same permission as the page it links to, and the count is only queried once the gate passes. Added a Laundries tile, which correctly reports 1 to a laundry owner and 2 to the super admin — the tenant scope reaches the aggregate too (Controller).
+- `ModeratorRequest` validated phone numbers against a **Kuwaiti** pattern (`^(\+?965)?[569]\d{7}$`), so the moderator form rejected every Egyptian number. Both it and the new laundry forms now use `phoneRegex()`; the form placeholder was updated to match (Request / Blade).
+- Made `composer stan` clean (0 errors, from 6). Root causes, not suppressions: `use Str;` in `RoleController` imported the root-namespace facade alias instead of `Illuminate\Support\Str`; `Auth` was unimported in `Helpers.php`; `Role::permissions()` and `User::role()` had no relation return types; and `ResponseService::toggleStatus()` declared `Model&object{status: ...}`, an intersection that made the property read-only to static analysis (Tooling / Models / Service).
+
+
+- **`CatalogSeeder` was not idempotent and silently doubled the catalogue on its second run** (8 services, 20 items, 59 prices). `updateOrCreate(['name' => json_encode(...)])` can never match its own output on a MySQL `json` column: MySQL normalizes what it stores, sorting the keys and inserting a space after each colon, so `{"en":"…","ar":"…"}` comes back as `{"ar": "…", "en": "…"}` and the equality check always fails. Lookups now use a JSON path (`where('name->en', …)`). Verified idempotent across three consecutive runs (Seeder).
+- Retired the legacy `categories` entry from the sidebar. The table is empty, was never used, and its label collided with the new "Item Categories". Removed from `config/menu.php`'s `singles` only — table, module, routes and permissions are all untouched, so restoring it is one line (Config).
+
+
+- **The application was running on UTC.** `countries` and `cities` were both empty and the `Country_Id` setting was unset, so `SetTimezone` had nothing to resolve and `/api/v1/ping` reported `timezone: UTC`. Every pickup and delivery window would have been stored and compared 2–3 hours off from Cairo — invisible today, wrong the moment orders exist in P6. `GeoSeeder` now seeds Egypt (whose timezone `CountryTimezones` already maps to `Africa/Cairo`), sets `Country_Id`, and drops the `setting_Country_Id` cache entry, since `getSettingValue()` uses `rememberForever`. Verified: `/api/v1/ping` now reports `Africa/Cairo` with a `+03:00` offset (Seeder / Config).
+
+
+- **Registration without an email returned a 500.** `users.email` was declared `string('email')->unique()` with no `nullable()`, while the design marks email optional — «البريد الإلكتروني (اختياري)». Every customer registering without one hit a NOT NULL violation. The column is now nullable; the unique index is kept, since MySQL permits many NULLs in one (Migration).
+- `UserRepository::find()` was a bare `findOrFail`, so `/admin/user/show/{id}` would render a moderator or laundry owner given their id — the "Customers" page showing a staff account. Now scoped to customers, matching `getAll()` and `search()`. This was logged as a follow-up in P1 (Repository).
+
+
+- **`roles.type` could not hold `laundry` on any driver but MySQL.** The P1 widening migration used a raw `ALTER` behind a `getDriverName() === 'mysql'` guard, on the belief that `->change()` still needs doctrine/dbal — untrue since Laravel 11. On SQLite the original `enum` becomes a CHECK constraint, so inserting `laundry` failed with "CHECK constraint failed: type": the entire tenancy feature was untestable, and a deploy on any other driver would have broken identically. Added a cross-driver migration converting the column to `varchar(20)`; a string plus the application's own validation also means the next role type is not a schema change at all (Migration).
+- **`users.email` stayed NOT NULL on any driver but MySQL**, for the same reason and with the same effect: no test could register a customer. Rewritten to use `->change()` (Migration).
+- **`Language::$fillable` omitted `default` and `app_scope`** while `LanguageRequest` validated both, so marking a language as default from the dashboard silently did nothing. MySQL hid half of it by quietly substituting the first enum value for `app_scope` on insert; SQLite refuses, which is how it surfaced. Proven before and after: asking for `default=true` stored `false` (Model).
+- **Timestamps were written and compared in different timezones.** `SetTimezone` called `date_default_timezone_set()` per request, so anything writing a timestamp outside the HTTP lifecycle — the queue worker, console commands, seeders, and the recurring-order scheduler planned for P6 — stored a UTC wall-clock string that the next request re-read as Cairo local time, three hours earlier. Concretely, OTP codes were born already expired. Storage and comparison now stay in UTC; `SetTimezone` publishes `app.display_timezone` instead, and `humanDate()` is the single place a stored value is converted for display. The nine dashboard timestamp call sites were routed through it, so displayed times remain local (Middleware / Helper / Blade).
+- **Six of the modules I added read the wrong search parameter.** `setupAjaxSearch` sends the term as `query`, which is what the ten pre-existing modules read via `$request->get('query')`; Laundry, LaundryStaff, Service, Item, ItemCategory and Zone read `$request->search`, which was always null, so those six search boxes re-rendered the full list unchanged. Note the controllers cannot read `query` as a property: Symfony's `Request` has a public `$query` holding a ParameterBag (Controllers).
+- `CategoryController::search()` ignored the search term entirely, calling `shredData()` while the repository had a `search()` all along. Wired up (Controller / Service).
+- Rewrote the stock `ExampleTest`, which failed on every run: it lacked `RefreshDatabase`, so there were no tables, and `/` renders a view whose layout reads the settings and languages tables (Tests).
+- Removed a stray `console.log` from `setupAjaxSearch` (Blade).
+
+
 - **`abort(403)` inside an API controller returned a 500.** The P0 exception renderer matched `AccessDeniedHttpException`, `NotFoundHttpException` and `TooManyRequestsHttpException` by class, so a plain `HttpException` — which is what `abort()` produces — fell through to the generic server-error arm. Any deliberate abort anywhere under `api/*` was reported as a crash. Now a `HttpExceptionInterface` keeps its own status and maps to the matching envelope helper, with only real 5xx becoming a server error (Infrastructure).
+
+### Migration
+
+- `add_coordinates_to_laundries_table`, `add_delivery_rate_to_zones_table`, `add_capacity_to_driver_profiles_table` (`max_concurrent_orders`, `city_id` — enforced in P8), `create_order_recurrences_table`, `create_orders_table`, `create_order_items_table`, `create_order_status_logs_table`, `create_order_media_table`, `create_recurrence_prompts_table`.
+- `orders.laundry_id` is **nullable by design** — an unassigned order is a legitimate state, not an error. A consequence worth naming: with `laundry_id` null the row falls outside every tenant's scope, so only a super admin sees the triage queue. That is correct — nobody should be looking at work that has not been given to them.
+- `order_items.unit_price` is a **copy** taken at ordering, and `phase` (`estimated` | `final`) separates the customer's count from the laundry's, so a review that finds an extra shirt adds a row without destroying the record of what was agreed.
+
+
+- `create_laundries_table`, `add_laundry_type_to_roles_table`, `add_laundry_id_to_users_table`. The roles migration guards on the MySQL driver (SQLite has no native enum) and its `down()` refuses to run while `type=laundry` rows exist, rather than silently truncating them to `''`.
+
+### Note
+
+- Testing: **158 PHPUnit tests / 491 assertions** (from 111 / 289) and **76 Playwright tests** (from 63), all passing, `composer stan` clean. New coverage: the transition table (including that `isCancellable()` and `allowedNext()` can never disagree), the fee arithmetic and its three "unknown" reasons, price-copying proven by moving the matrix *after* the order and asserting the order did not follow, cross-customer isolation on every order endpoint, the tenant boundary around the dashboard (including that an unassigned order is invisible to tenants and that a collected order cannot be reassigned), scheduler idempotency, late-run weekday stability, and — in a real browser — the AJAX search, the status filter, and that the rate fields exist on the Zone and Laundry forms.
+- Two of the three initial unit-test failures were **wrong expectations, not bugs**: the fee is computed from the full-precision distance while `distance_km` is rounded for display, so comparing them needs a tolerance. The third had Cairo Tower → the Pyramids at ~14 km; it is ~11.4.
+- `./vendor/bin/pint` reformatted ~90 pre-existing files as a side effect (line endings, import order, quote style). Formatting only, no behaviour change, but it widens this diff well beyond P6.
+- Still open, and deliberately not invented: no coupon/discount engine exists, so `coupon_code` is stored and `discount_total` is always 0 until a promotions module lands. `payment_method` / `payment_status` columns exist so the state machine can already speak about payment, but nothing is wired — P9. Time-slot capacity is not yet enforced. `order.create` / `order.delete` / `order.toggle` permissions are generated by `PermissionGenerator`'s fixed action set but have no routes, by design.
+
+
+- **Correction to the 2026-08-25 entry's premise:** during P0 the tooling reported "33 security vulnerability advisories affecting 11 packages", and that figure was wrong. It appeared while `vendor/` was in a half-installed state; `composer audit` now reports **no advisories** in all four modes (installed, `--locked`, `--no-dev`, `--abandoned=report`). Nothing needed patching. The only dependency actually behind was the framework, bumped above; `phpunit` 11 -> 12 was left alone deliberately, since it is a major bump and `CLAUDE.md` pins PHPUnit 11.
+- Repeated `vendor/` corruption during composer operations on this machine traces to Windows file locking (antivirus / Search Indexer) preventing composer from removing its temp extraction directories, which leaves the autoloader stale. Recovery is `composer install --no-scripts` followed by `composer dump-autoload`.
+
+
+- Both new seeders use JSON-path lookups (`where('name->en', …)`) rather than comparing whole JSON blobs, applying the fix from the CatalogSeeder duplication bug. `TimeSlotSeeder` matches on the `(start_time, end_time)` pair, which are plain columns and avoid the problem entirely.
+- `days_of_week` was **not** added to `time_slots`: one set applies to every day and every day is a working day, per the business decision. Adding per-weekday windows later is an additive migration.
+
+### Security
+
+- **OTP codes are stored hashed.** A plaintext six-digit code in a column any dashboard query can read is a credential in the clear. `otp` was also added to the model's `$hidden`, and `otp`/`otp_expires_at`/`otp_attempts` were removed from `$fillable` — `OtpService` writes them with `forceFill`, so no request payload can set or clear a verification code by mass assignment (Service / Model).
+- **Verification attempts are counted, not just sends.** Six digits is a million combinations, which an unthrottled verify endpoint concedes in minutes. A code is burned after 5 misses, and two new rate limiters back that up: `otp-verify` (10/min per phone, 30/min per IP) and `login` (5/min per phone, 20/min per IP), each keyed on the IP as well so a rotating phone parameter does not bypass them (Provider / Routes).
+- Codes are generated with `random_int`, are single-use, and expire after 120 seconds — just past the design's 01:59 countdown, so a code never dies while the timer still reads a second (Service).
+- `login`, `resend-otp` and `forgot-password` answer identically whether or not a number is registered, so none of them can be used to enumerate which numbers exist (Service / Controller).
+- Addresses are always reached through `$request->user()->addresses()`, never `Address::find()`. Verified: a second customer requesting, updating, deleting or re-defaulting another customer's address gets **404** on every route, and the target row is untouched (Controller).
+
+### Refactor
+
+- Renamed the `employee` role to `driver`, with `Role::EMPLOYEE` becoming `Role::DRIVER` and `isEmployee()` becoming `isDriver()`. The role came from the original seeder, carried zero users and was referenced by no feature, while the design says مندوب / السائق throughout. The migration refuses to run if anyone has since been given the role, rather than silently re-labelling their account (Migration / Model / Helper / Seeder).
 
 ## 2026-08-25
 
@@ -815,12 +855,31 @@
 - Filled in `config/constants.php` with the `RESPONSE_CODE` and `RESPONSE_KEY` blocks. `App\Services\ResponseService` had been reading `constants.RESPONSE_CODE.*`, which did not exist, so every response code it produced was `null` (Config).
 - Generated `@property` docblocks for the `User`, `Moderator` and `Role` models via the project's own `ide-helper:models -W`. Took `composer stan` from 13 errors to 6; the models had relation methods with no annotations, which is why seven separate files reported "undefined property `$role`" (Models).
 
+
+- Unlinked the local repository from GitHub (Infrastructure): removed the `origin` remote, which still pointed at the upstream template repo `https://github.com/mohamedHamdyAli/laravel_templete_blade.git`. `main` no longer tracks a remote branch, so `git push`/`git pull` require an explicit remote until a new one is added.
+
+
+- Rewrote `CLAUDE.md` from a codebase audit (Documentation). Corrected stale facts (Laravel 13 not 12, PHPUnit 11 not Pest, static `public/assets` vendor template not Vite/Tailwind, added the missing Moderator module) and documented previously-undocumented conventions: the `shredData()` view-data contract, the manual translatable-JSON encode/decode cycle (`stdClass` on read), the `index` + `search` AJAX list pattern with `setupAjaxSearch`, permission generation via `config/dashboard.php` + the `DashboardModel` trait, `config/menu.php`'s three parallel UI maps, route-name exceptions, and the split language-cache invalidation gap. Added a "Known rough edges" section (missing `constants.RESPONSE_CODE`, lowercase `App\Modules\setting` import, undefined `auth('api')` guard, template leftovers in `.env`, stale `PROJECT_DOCUMENTATION.md`). Previous version kept at `CLAUDE.md.bak`.
+
 ### Fix
 
 - `routes/web.php` imported `App\Modules\setting\Controllers\SettingController` with a lowercase namespace segment while the class declares `App\Modules\Setting\Controllers`. Worked on Windows, would fatal on a case-sensitive filesystem — i.e. on any Linux deploy (Routing).
 - `phpstan.neon` included `./vendor/nunomaduro/larastan/extension.neon`, but larastan moved to `larastan/larastan` at v3. `composer stan` aborted before analysing anything, so static analysis had never actually run on this codebase (Tooling).
 - Set `APP_NAME=Laundo` in `.env` (was still the `Laravel` template default).
 - Deleted `PROJECT_DOCUMENTATION.md` — documentation for an unrelated project ("Clean-X", Laravel 12) that contradicted this codebase — and the stray `CLAUDE.md.bak`.
+
+## 2026-08-12
+
+### Fix
+
+- Fixed sidebar link/icon colors being invisible against the new navy sidebar background: the vendor template's `.sidebar-wrapper .menu .sidebar-link`/`i` rules (`public/assets/css/main/app.css`) had higher CSS specificity than the theme override in `public/assets/css/theme.css`, so the original light-sidebar colors (`#000`/`#4D5454`) always won regardless of load order. Matched the selector specificity in `theme.css` so the navy-friendly colors take effect.
+- Fixed the home page's floating "3D hero" icon tiles rendering as visually scattered, disconnected boxes (randomly-placed `position: absolute` percentages). Replaced with a contained 2×2 grid inside the same panel, with a synchronized gentle hover/float instead of independent random offsets.
+- Fixed data tables across list pages looking squared-off against the rounded card around them. `.table-responsive` now gets its own border + rounded corners (clipping the header background and striped rows to match), instead of relying on the outer `.card` radius alone.
+- Fixed a Blade syntax bug (`:permission="x.toggle"` instead of `permission="x.toggle"`) in the status-toggle button usage on the Category, City, Banner, Country, and Intro list pages. The leading `:` makes Blade evaluate the attribute as a raw PHP expression, so `category.toggle` etc. was interpreted as an undefined PHP constant — this crashed the entire list page with a 500 error as soon as the table had at least one row (previously masked because those tables were empty in the dev DB). Verified via a live create → list → edit → delete round trip against the Category module after the fix.
+- Found and fixed the real reason the table rounding fix above didn't show up on most list pages: Country, City, Banner, Intro, Category, and Language render `<table>` directly inside `.card-body` with no `.table-responsive` wrapper (only Moderator/User use that wrapper), so the earlier fix never reached them. Added a matching rule for `.card-body > table.table` (using `border-collapse: separate` so `border-radius` + `overflow: hidden` reliably clip the header background across browsers).
+- Fixed the topbar dark-mode toggle and notification bell icons rendering nearly invisible: that markup isn't wrapped in Bootstrap's `.nav-link`, so it never received `--bs-navbar-color` and fell back to a very light inherited color. Gave both explicit, theme-aware colors (muted by default, full contrast on hover) consistent with the sidebar icon fix above.
+- Fixed the notification bell sitting lower than the other topbar icons and looking washed out even after the previous pass: unlike the dark-mode toggle, the bell's markup (`.avatar`) never got a sized circle backdrop, so it stayed at its natural inline baseline instead of being vertically centered like its siblings. Gave it the same 38px flex-centered circle as the dark-mode toggle, and switched both icons from a muted gray to a bold navy (gold on hover/dark mode) so they read as clearly "on" rather than faded.
+- Fixed the dark-mode/bell glyphs still not sitting dead-center inside their circles after the flex-centering fix above: bootstrap-icons' vendor CSS puts `vertical-align: -0.125em` on every glyph (a nudge meant for inline text flow), which offsets it from true center inside a flex-centered circle. Zeroed that out specifically for these two icons so `align-items: center` centers the glyph itself instead of its text-baseline position.
 
 ## 2026-08-03
 
@@ -837,26 +896,3 @@
 - Added a Moderator management module (`app/Modules/Moderator/`) — CRUD for dashboard staff (name/email/phone/role/profile image/status/password), reusing the existing `users` table via a `Moderator` model scoped to `role.type = dashboard` and excluding `super_admin`. A Moderator's CRUD permissions are entirely derived from whichever Role they're assigned (reusing the existing Role↔Permission system — no separate per-moderator overrides). Added sidebar entry, routes under `permission:moderator.*` middleware, and generated `moderator.{view,create,update,delete,toggle}` permissions via the existing `PermissionGenerator`.
 - Added an in-app notification system: Laravel database notifications (`app/Notifications/AdminNotification.php`, sent synchronously, not queued), a topbar bell with unread badge + dropdown, and a `public/assets/js/custom/notifications.js` polling script (15s interval, no page refresh) backed by new `admin/notifications/*` endpoints. Creating a Moderator now notifies all Super Admin and Admin users.
 - Added a Country/timezone setting: General Settings now has a Country selector (`Country_Id`) whose timezone drives the app's per-request timezone via a new `SetTimezone` middleware (mirrors the existing `SetLocale` middleware). Countries auto-fill a sensible IANA timezone from a static code map (`app/Support/CountryTimezones.php`) when created/edited without one specified, and admins can override per-country via the Country form.
-
-## 2026-08-12
-
-### Fix
-
-- Fixed sidebar link/icon colors being invisible against the new navy sidebar background: the vendor template's `.sidebar-wrapper .menu .sidebar-link`/`i` rules (`public/assets/css/main/app.css`) had higher CSS specificity than the theme override in `public/assets/css/theme.css`, so the original light-sidebar colors (`#000`/`#4D5454`) always won regardless of load order. Matched the selector specificity in `theme.css` so the navy-friendly colors take effect.
-- Fixed the home page's floating "3D hero" icon tiles rendering as visually scattered, disconnected boxes (randomly-placed `position: absolute` percentages). Replaced with a contained 2×2 grid inside the same panel, with a synchronized gentle hover/float instead of independent random offsets.
-- Fixed data tables across list pages looking squared-off against the rounded card around them. `.table-responsive` now gets its own border + rounded corners (clipping the header background and striped rows to match), instead of relying on the outer `.card` radius alone.
-- Fixed a Blade syntax bug (`:permission="x.toggle"` instead of `permission="x.toggle"`) in the status-toggle button usage on the Category, City, Banner, Country, and Intro list pages. The leading `:` makes Blade evaluate the attribute as a raw PHP expression, so `category.toggle` etc. was interpreted as an undefined PHP constant — this crashed the entire list page with a 500 error as soon as the table had at least one row (previously masked because those tables were empty in the dev DB). Verified via a live create → list → edit → delete round trip against the Category module after the fix.
-- Found and fixed the real reason the table rounding fix above didn't show up on most list pages: Country, City, Banner, Intro, Category, and Language render `<table>` directly inside `.card-body` with no `.table-responsive` wrapper (only Moderator/User use that wrapper), so the earlier fix never reached them. Added a matching rule for `.card-body > table.table` (using `border-collapse: separate` so `border-radius` + `overflow: hidden` reliably clip the header background across browsers).
-- Fixed the topbar dark-mode toggle and notification bell icons rendering nearly invisible: that markup isn't wrapped in Bootstrap's `.nav-link`, so it never received `--bs-navbar-color` and fell back to a very light inherited color. Gave both explicit, theme-aware colors (muted by default, full contrast on hover) consistent with the sidebar icon fix above.
-- Fixed the notification bell sitting lower than the other topbar icons and looking washed out even after the previous pass: unlike the dark-mode toggle, the bell's markup (`.avatar`) never got a sized circle backdrop, so it stayed at its natural inline baseline instead of being vertically centered like its siblings. Gave it the same 38px flex-centered circle as the dark-mode toggle, and switched both icons from a muted gray to a bold navy (gold on hover/dark mode) so they read as clearly "on" rather than faded.
-- Fixed the dark-mode/bell glyphs still not sitting dead-center inside their circles after the flex-centering fix above: bootstrap-icons' vendor CSS puts `vertical-align: -0.125em` on every glyph (a nudge meant for inline text flow), which offsets it from true center inside a flex-centered circle. Zeroed that out specifically for these two icons so `align-items: center` centers the glyph itself instead of its text-baseline position.
-
-## 2026-08-25
-
-### Improvement
-
-- Unlinked the local repository from GitHub (Infrastructure): removed the `origin` remote, which still pointed at the upstream template repo `https://github.com/mohamedHamdyAli/laravel_templete_blade.git`. `main` no longer tracks a remote branch, so `git push`/`git pull` require an explicit remote until a new one is added.
-
-### Improvement
-
-- Rewrote `CLAUDE.md` from a codebase audit (Documentation). Corrected stale facts (Laravel 13 not 12, PHPUnit 11 not Pest, static `public/assets` vendor template not Vite/Tailwind, added the missing Moderator module) and documented previously-undocumented conventions: the `shredData()` view-data contract, the manual translatable-JSON encode/decode cycle (`stdClass` on read), the `index` + `search` AJAX list pattern with `setupAjaxSearch`, permission generation via `config/dashboard.php` + the `DashboardModel` trait, `config/menu.php`'s three parallel UI maps, route-name exceptions, and the split language-cache invalidation gap. Added a "Known rough edges" section (missing `constants.RESPONSE_CODE`, lowercase `App\Modules\setting` import, undefined `auth('api')` guard, template leftovers in `.env`, stale `PROJECT_DOCUMENTATION.md`). Previous version kept at `CLAUDE.md.bak`.

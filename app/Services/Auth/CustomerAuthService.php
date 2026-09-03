@@ -24,7 +24,10 @@ use Illuminate\Support\Facades\Hash;
  */
 class CustomerAuthService
 {
-    public function __construct(private readonly OtpService $otp) {}
+    public function __construct(
+        private readonly OtpService $otp,
+        private readonly PasswordResetTicket $tickets,
+    ) {}
 
     /**
      * Create an unverified customer and send the first code.
@@ -46,6 +49,11 @@ class CustomerAuthService
                 'status' => 'active',
                 // Explicitly unverified: the OTP step sets this.
                 'phone_verified_at' => null,
+                // `accepted_terms` was validated and then discarded, so the
+                // only evidence anybody had agreed was that the request had not
+                // been refused. Recorded with the moment, because «yes» on its
+                // own does not say which version of the terms was agreed to.
+                'accepted_terms_at' => now(),
             ]);
 
             // Recorded now, paid later — the reward waits for their first paid
@@ -147,22 +155,16 @@ class CustomerAuthService
             return $result;
         }
 
-        $ttl = (int) config('sms.password_reset_token.ttl_seconds', 600);
-        $token = bin2hex(random_bytes(32));
+        // Answering the code is what proves possession of the number, so the
+        // verification is recorded at this step rather than waiting for a
+        // password that may never be set.
+        if (! $user->phone_verified_at) {
+            $user->forceFill(['phone_verified_at' => now()])->save();
+        }
 
-        $user->forceFill([
-            // SHA-256, not bcrypt: the password step arrives with the token and
-            // no phone number, so this column has to be searchable. Safe for 32
-            // random bytes in a way it would not be for a six-digit code.
-            'password_reset_token' => hash('sha256', $token),
-            'password_reset_token_expires_at' => now()->addSeconds($ttl),
-            // Answering the code is what proves possession of the number, so
-            // the verification is recorded at this step rather than waiting for
-            // a password that may never be set.
-            'phone_verified_at' => $user->phone_verified_at ?? now(),
-        ])->save();
+        $ticket = $this->tickets->issue($user);
 
-        return ['ok' => true, 'token' => $token, 'expires_in' => $ttl];
+        return ['ok' => true, 'token' => $ticket['token'], 'expires_in' => $ticket['expires_in']];
     }
 
     /**
@@ -175,17 +177,11 @@ class CustomerAuthService
      */
     public function completePasswordReset(string $token, string $password): array
     {
-        $user = User::where('password_reset_token', hash('sha256', $token))->first();
+        $user = $this->tickets->holder($token);
 
-        // One answer for «no such ticket», «not a customer's» and «expired», so
-        // the endpoint says nothing about tokens that exist.
+        // One answer for «no such ticket», «expired» and «that ticket belongs to
+        // a driver», so the endpoint says nothing about tickets that exist.
         if (! $user || ! $this->isCustomer($user)) {
-            return ['ok' => false, 'reason' => 'invalid_token'];
-        }
-
-        if (! $user->password_reset_token_expires_at || now()->greaterThan($user->password_reset_token_expires_at)) {
-            $this->burnResetToken($user);
-
             return ['ok' => false, 'reason' => 'invalid_token'];
         }
 
@@ -198,17 +194,6 @@ class CustomerAuthService
         $user->tokens()->delete();
 
         return ['ok' => true, 'user' => $user];
-    }
-
-    /**
-     * Discard whatever reset ticket is on the account.
-     */
-    public function burnResetToken(User $user): void
-    {
-        $user->forceFill([
-            'password_reset_token' => null,
-            'password_reset_token_expires_at' => null,
-        ])->save();
     }
 
     /**

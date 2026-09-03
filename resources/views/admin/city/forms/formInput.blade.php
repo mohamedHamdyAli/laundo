@@ -8,10 +8,15 @@
         <div class="form-group">
             <label for="city-name" class="form-label">{{ __('Name') }}</label>
             <div class="controls">
+                {{-- No `required` here: the rule is «copy in at least one
+                     language», which no single `required` attribute can
+                     express, and leaving it on the default language has the
+                     browser refuse a save the server accepts. The Request
+                     enforces it, with its own message. --}}
                 <input type="text" name="name[{{ getDefaultLanguage('code') }}]" id="city-name" class="form-control"
                     placeholder="{{ __('Enter City Name') }}"
                     value="{{ $nameTranslations[getDefaultLanguage('code')] ?? '' }}"
-                    {{ Route::is('*.show') ? 'disabled' : '' }} {{ Route::is('*.create') ? 'required' : '' }}>
+                    {{ Route::is('*.show') ? 'disabled' : '' }}>
             </div>
         </div>
     </div>

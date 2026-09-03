@@ -3,10 +3,14 @@
 namespace Tests\Feature\Api;
 
 use App\Modules\Banner\Models\banner;
+use App\Modules\Coupon\Models\Coupon;
 use App\Modules\Intro\Models\intro;
+use App\Modules\JourneyStep\Models\JourneyStep;
+use App\Modules\Offer\Models\Offer;
 use App\Modules\Setting\Models\Setting;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
@@ -361,6 +365,284 @@ class ContentTest extends TestCase
         $this->getJson('/api/v1/pages/TERMS')->assertOk()->assertJsonPath('data.slug', 'terms');
     }
 
+    // ------------------------------------------------------------- offers
+
+    /** @param array<string, mixed> $overrides */
+    private function offer(array $overrides = []): Offer
+    {
+        return Offer::create(array_merge([
+            'title' => $this->tr(['en' => 'Blanket wash bundle', 'ar' => 'باقة غسيل البطاطين']),
+            'description' => $this->tr(['en' => 'Ready for winter', 'ar' => 'استعد للشتاء']),
+            'status' => 'active',
+            'sort_order' => 0,
+        ], $overrides));
+    }
+
+    /** @param array<string, mixed> $overrides */
+    private function coupon(array $overrides = []): Coupon
+    {
+        // `redemptions_count` is not fillable — it is a counter the redemption
+        // path maintains, so `create()` drops it silently and an "exhausted"
+        // coupon would quietly be a fresh one. Set after the fact.
+        $redemptions = $overrides['redemptions_count'] ?? null;
+        unset($overrides['redemptions_count']);
+
+        $coupon = Coupon::create(array_merge([
+            'code' => 'WINTER20',
+            'name' => $this->tr(['en' => 'Winter', 'ar' => 'شتاء']),
+            'type' => Coupon::PERCENTAGE,
+            'value' => 20,
+            'max_per_user' => 1,
+            'status' => 'active',
+        ], $overrides));
+
+        if ($redemptions !== null) {
+            $coupon->forceFill(['redemptions_count' => $redemptions])->save();
+        }
+
+        return $coupon;
+    }
+
+    #[Test]
+    public function offers_return_only_the_live_ones(): void
+    {
+        $this->offer(['title' => $this->tr(['en' => 'Running'])]);
+        $this->offer(['title' => $this->tr(['en' => 'Switched off']), 'status' => 'inactive']);
+        $this->offer(['title' => $this->tr(['en' => 'Not yet']), 'starts_at' => now()->addDay()]);
+        $this->offer(['title' => $this->tr(['en' => 'Over']), 'ends_at' => now()->subDay()]);
+
+        $data = $this->getJson('/api/v1/offers')->assertOk()->json('data');
+
+        $this->assertCount(1, $data);
+        $this->assertSame('Running', $data[0]['title']);
+    }
+
+    #[Test]
+    public function an_offer_with_no_window_runs_until_switched_off(): void
+    {
+        $this->offer();
+
+        $this->getJson('/api/v1/offers')->assertOk()->assertJsonCount(1, 'data');
+    }
+
+    #[Test]
+    public function the_badge_is_derived_from_the_coupon(): void
+    {
+        $this->offer(['coupon_id' => $this->coupon()->id]);
+
+        // «20%», not «20.00%» — the decimal:2 cast reads back with the zeros.
+        $this->assertSame('20%', $this->getJson('/api/v1/offers')->json('data.0.badge'));
+    }
+
+    #[Test]
+    public function a_fixed_coupon_badges_as_money_not_a_percentage(): void
+    {
+        $this->offer(['coupon_id' => $this->coupon(['type' => Coupon::FIXED, 'value' => 15])->id]);
+
+        $badge = $this->getJson('/api/v1/offers')->json('data.0.badge');
+
+        $this->assertNotSame('15%', $badge);
+        $this->assertStringContainsString('15', (string) $badge);
+    }
+
+    #[Test]
+    public function an_offer_without_a_coupon_has_no_badge(): void
+    {
+        $this->offer();
+
+        $this->assertNull($this->getJson('/api/v1/offers')->json('data.0.badge'));
+    }
+
+    /**
+     * The case the derived badge exists to prevent: a card advertising a
+     * discount the checkout would refuse. Each of these is a coupon
+     * `CouponService::validate()` rejects, so none may show a badge — and the
+     * offer itself still appears, because the card is not the discount.
+     */
+    #[Test]
+    public function a_coupon_that_would_be_refused_shows_no_badge(): void
+    {
+        $cases = [
+            'inactive' => ['status' => 'inactive'],
+            'expired' => ['ends_at' => now()->subDay()],
+            'not started' => ['starts_at' => now()->addDay()],
+            'exhausted' => ['max_redemptions' => 5, 'redemptions_count' => 5],
+        ];
+
+        foreach ($cases as $label => $overrides) {
+            Offer::query()->delete();
+            Coupon::query()->delete();
+
+            $this->offer(['coupon_id' => $this->coupon($overrides)->id]);
+
+            $data = $this->getJson('/api/v1/offers')->assertOk()->json('data');
+
+            $this->assertCount(1, $data, "the offer itself should still show: $label");
+            $this->assertNull($data[0]['badge'], "a $label coupon must not be advertised");
+        }
+    }
+
+    #[Test]
+    public function sort_order_decides_the_sequence_and_id_breaks_a_tie(): void
+    {
+        $this->offer(['title' => $this->tr(['en' => 'Third']), 'sort_order' => 5]);
+        $first = $this->offer(['title' => $this->tr(['en' => 'First']), 'sort_order' => 1]);
+        $this->offer(['title' => $this->tr(['en' => 'Second']), 'sort_order' => 1]);
+
+        $data = $this->getJson('/api/v1/offers')->assertOk()->json('data');
+
+        // Two rows share `sort_order` 1, so the lower id comes first — without
+        // the `id` tie-break their order would be whatever MySQL returned.
+        $this->assertSame(['First', 'Second', 'Third'], collect($data)->pluck('title')->all());
+        $this->assertSame($first->id, $data[0]['id']);
+    }
+
+    #[Test]
+    public function the_action_is_null_until_there_is_somewhere_to_go(): void
+    {
+        $this->offer();
+        $this->assertNull($this->getJson('/api/v1/offers')->json('data.0.action'));
+
+        Offer::query()->delete();
+        $this->offer(['target_type' => 'coupon', 'target_value' => 'WINTER20']);
+
+        $this->assertSame(
+            ['type' => 'coupon', 'value' => 'WINTER20'],
+            $this->getJson('/api/v1/offers')->json('data.0.action')
+        );
+    }
+
+    #[Test]
+    public function the_offers_list_does_not_query_per_row(): void
+    {
+        for ($i = 0; $i < 5; $i++) {
+            $this->offer(['coupon_id' => $this->coupon(['code' => "CODE$i"])->id]);
+        }
+
+        DB::enableQueryLog();
+        $this->getJson('/api/v1/offers')->assertOk()->assertJsonCount(5, 'data');
+        $queries = count(DB::getQueryLog());
+        DB::disableQueryLog();
+
+        // The offers, their coupons eagerly, and the language lookups the locale
+        // helpers make. Five offers must not mean five coupon queries.
+        $this->assertLessThan(8, $queries, "the badge should not cost a query per offer; ran $queries");
+    }
+
+    #[Test]
+    public function banners_follow_the_order_operations_set(): void
+    {
+        banner::create(['name' => $this->tr(['en' => 'B']), 'status' => 'active', 'sort_order' => 2]);
+        banner::create(['name' => $this->tr(['en' => 'A']), 'status' => 'active', 'sort_order' => 1]);
+
+        $names = collect($this->getJson('/api/v1/banners')->json('data'))->pluck('title')->all();
+
+        // Was `latest('id')`, which put the newest first and left operations no
+        // way to reorder the carousel.
+        $this->assertSame(['A', 'B'], $names);
+    }
+
+    // ------------------------------------------------------- journey steps
+
+    /** @param array<string, mixed> $overrides */
+    private function step(array $overrides = []): JourneyStep
+    {
+        return JourneyStep::create(array_merge([
+            'title' => $this->tr(['en' => 'Pick a time', 'ar' => 'حدد الموعد والعنوان']),
+            'description' => $this->tr(['en' => 'Choose when we collect', 'ar' => 'اختر وقت ومكان الاستلام']),
+            'status' => 'active',
+            'sort_order' => 0,
+        ], $overrides));
+    }
+
+    #[Test]
+    public function journey_steps_return_only_the_active_ones(): void
+    {
+        $this->step(['title' => $this->tr(['en' => 'Shown'])]);
+        $this->step(['title' => $this->tr(['en' => 'Hidden']), 'status' => 'inactive']);
+
+        $data = $this->getJson('/api/v1/journey-steps')->assertOk()->json('data');
+
+        $this->assertCount(1, $data);
+        $this->assertSame('Shown', $data[0]['title']);
+    }
+
+    #[Test]
+    public function journey_steps_come_back_in_the_order_operations_set(): void
+    {
+        $this->step(['title' => $this->tr(['en' => 'Third']), 'sort_order' => 30]);
+        $first = $this->step(['title' => $this->tr(['en' => 'First']), 'sort_order' => 10]);
+        $this->step(['title' => $this->tr(['en' => 'Second']), 'sort_order' => 10]);
+
+        $data = $this->getJson('/api/v1/journey-steps')->assertOk()->json('data');
+
+        // Two share `sort_order` 10, so the lower id breaks the tie — the app
+        // numbers the array it is given, and a sequence that reshuffles between
+        // visits would renumber the cards.
+        $this->assertSame(['First', 'Second', 'Third'], collect($data)->pluck('title')->all());
+        $this->assertSame($first->id, $data[0]['id']);
+    }
+
+    /**
+     * The «1 · 2 · 3» beside each card is the position, so it must not be in
+     * the payload — sending it as a field is how a «3» arrives second.
+     */
+    #[Test]
+    public function a_journey_step_does_not_carry_its_own_number(): void
+    {
+        $this->step();
+
+        $keys = array_keys($this->getJson('/api/v1/journey-steps')->json('data.0'));
+
+        $this->assertSame(['id', 'title', 'description', 'image'], $keys);
+    }
+
+    #[Test]
+    public function a_journey_step_falls_back_to_a_language_that_has_copy(): void
+    {
+        // Arabic only, which is how the designed copy exists.
+        $this->step(['title' => $this->tr(['ar' => 'حدد الموعد والعنوان'])]);
+
+        $english = $this->getJson('/api/v1/journey-steps', ['lang' => 'en'])->json('data.0.title');
+
+        $this->assertSame('حدد الموعد والعنوان', $english);
+    }
+
+    // ------------------------------------------------------------ currency
+
+    /**
+     * The apps format their own prices, so they need the same currency the
+     * panel is using. Resolved rather than raw, for the reason the logo beside
+     * it is: an unset or half-typed setting would hand the column straight
+     * over, and the apps would render an empty currency while every screen in
+     * the panel showed EGP.
+     */
+    #[Test]
+    public function app_settings_carry_the_resolved_currency(): void
+    {
+        $this->setting('Currency', 'SAR');
+
+        $this->assertSame('SAR', $this->getJson('/api/v1/app-settings')->assertOk()->json('data.currency'));
+    }
+
+    #[Test]
+    public function an_unset_currency_reaches_the_apps_as_egp_not_empty(): void
+    {
+        Setting::where('key', 'Currency')->delete();
+        Cache::flush();
+
+        $this->assertSame('EGP', $this->getJson('/api/v1/app-settings')->assertOk()->json('data.currency'));
+    }
+
+    #[Test]
+    public function a_malformed_currency_reaches_the_apps_as_egp(): void
+    {
+        // What a half-finished edit in the panel leaves behind.
+        $this->setting('Currency', 'EG');
+
+        $this->assertSame('EGP', $this->getJson('/api/v1/app-settings')->assertOk()->json('data.currency'));
+    }
+
     // --------------------------------------------------------------- open
 
     #[Test]
@@ -368,7 +650,10 @@ class ContentTest extends TestCase
     {
         // Onboarding runs before an account exists and guest mode browses the home
         // screen. A token here would hide the content from its own audience.
-        foreach (['/api/v1/banners', '/api/v1/intros', '/api/v1/app-settings', '/api/v1/pages/about'] as $url) {
+        foreach ([
+            '/api/v1/banners', '/api/v1/intros', '/api/v1/offers',
+            '/api/v1/journey-steps', '/api/v1/app-settings', '/api/v1/pages/about',
+        ] as $url) {
             $this->getJson($url)->assertOk();
         }
     }

@@ -48,7 +48,7 @@ class OrderReviewTest extends TestCase
         $this->catalog = $this->seedCatalog();
         $this->geo['zones'][0]->update(['price_per_km' => 5.00, 'min_delivery_fee' => 20.00]);
 
-        $this->tenant = $this->laundryWithOwner('A', '01011110001', '01011110002');
+        $this->tenant = $this->laundryWithOwner('A', '+201011110001', '+201011110002');
         $this->cover($this->tenant['laundry'], $this->geo['zones'][0]->id, $this->catalog['service']->id);
 
         $this->customer = $this->customer();
@@ -331,7 +331,7 @@ class OrderReviewTest extends TestCase
     {
         $order = $this->reviewedOrder();
 
-        $stranger = $this->customer('01088776655');
+        $stranger = $this->customer('+201088776655');
         Sanctum::actingAs($stranger);
 
         $this->getJson("/api/v1/orders/{$order->id}/review", $this->apiHeaders())->assertNotFound();

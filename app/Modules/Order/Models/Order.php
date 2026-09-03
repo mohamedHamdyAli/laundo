@@ -87,7 +87,8 @@ class Order extends Model
         'code', 'user_id', 'laundry_id', 'service_id', 'status',
         'pickup_address_id', 'delivery_address_id',
         'pickup_slot_id', 'delivery_slot_id', 'pickup_date', 'delivery_date',
-        'delivery_method', 'driver_note', 'special_instructions', 'review_terms_accepted_at',
+        'delivery_method', 'pickup_method', 'offer_id',
+        'driver_note', 'special_instructions', 'review_terms_accepted_at',
         'estimated_items_count', 'estimated_subtotal', 'delivery_fee',
         'discount_total', 'cash_surcharge', 'estimated_total',
         'final_items_count', 'final_subtotal', 'final_total', 'review_note', 'reviewed_at',
@@ -170,6 +171,16 @@ class Order extends Model
     public function service(): BelongsTo
     {
         return $this->belongsTo(Service::class, 'service_id');
+    }
+
+    /**
+     * The «عروض متميزة» card this order came through, when it did.
+     *
+     * Null for an order placed straight from the wizard, which is most of them.
+     */
+    public function offer(): BelongsTo
+    {
+        return $this->belongsTo(\App\Modules\Offer\Models\Offer::class, 'offer_id');
     }
 
     /**

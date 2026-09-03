@@ -52,6 +52,9 @@ class OrderRepository
             'items.item', 'statusLogs.actor:id,name', 'media',
             'priceQueries.customer:id,name', 'priceQueries.responder:id,name',
             'tasks.driver:id,name', 'payments',
+            // The detail screen names the «عروض متميزة» card this order came
+            // through; without it that one line is its own query.
+            'offer',
         ])->findOrFail($id);
     }
 

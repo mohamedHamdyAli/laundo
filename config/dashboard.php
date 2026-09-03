@@ -3,7 +3,6 @@
 use App\Models\Language;
 use App\Models\Role;
 use App\Modules\Banner\Models\banner;
-use App\Modules\Category\Models\Category;
 use App\Modules\City\Models\City;
 use App\Modules\Complaint\Models\Complaint;
 use App\Modules\Country\Models\Country;
@@ -11,6 +10,8 @@ use App\Modules\Coupon\Models\Coupon;
 use App\Modules\Driver\Models\Driver;
 use App\Modules\Faq\Models\Faq;
 use App\Modules\Intro\Models\intro;
+use App\Modules\JourneyStep\Models\JourneyStep;
+use App\Modules\Offer\Models\Offer;
 use App\Modules\Item\Models\Item;
 use App\Modules\ItemCategory\Models\ItemCategory;
 use App\Modules\Laundry\Models\Laundry;
@@ -37,7 +38,6 @@ use App\Modules\Zone\Models\Zone;
 return [
     'models' => [
         User::class,
-        Category::class,
         banner::class,
         Language::class,
         City::class,
@@ -59,6 +59,8 @@ return [
         Driver::class,
         Order::class,
         Coupon::class,
+        Offer::class,
+        JourneyStep::class,
         Refund::class,
         Wallet::class,
         NotificationLog::class,

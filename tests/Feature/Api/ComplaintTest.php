@@ -46,9 +46,9 @@ class ComplaintTest extends TestCase
         $this->seedCore();
         $this->geo = $this->seedGeo();
         $this->catalog = $this->seedCatalog();
-        $this->tenant = $this->laundryWithOwner('A', '01011110001', '01011110002');
-        $this->customer = $this->customer('01055550001');
-        $this->driver = $this->driverUser('01066660001');
+        $this->tenant = $this->laundryWithOwner('A', '+201011110001', '+201011110002');
+        $this->customer = $this->customer('+201055550001');
+        $this->driver = $this->driverUser('+201066660001');
     }
 
     private function order(?User $for = null): Order
@@ -119,7 +119,7 @@ class ComplaintTest extends TestCase
     #[Test]
     public function somebody_elses_order_cannot_be_named(): void
     {
-        $stranger = $this->customer('01055550002');
+        $stranger = $this->customer('+201055550002');
         $theirOrder = $this->order($stranger);
 
         // Otherwise a complaint gets filed against a laundry over an order the
@@ -195,7 +195,7 @@ class ComplaintTest extends TestCase
     #[Test]
     public function a_complainant_reads_their_own_complaints_and_nobody_elses(): void
     {
-        $stranger = $this->customer('01055550002');
+        $stranger = $this->customer('+201055550002');
 
         $this->actingAs($this->customer)
             ->postJson('/api/v1/complaints', ['category' => 'other', 'body' => 'my own complaint'])

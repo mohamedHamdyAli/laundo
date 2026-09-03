@@ -44,7 +44,7 @@ class RegisterRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'phone.regex' => __('Please enter a valid Egyptian phone number.'),
+            'phone.regex' => __('Enter the number with its country code, e.g. +201012345678.'),
             'phone.unique' => __('This phone number is already registered.'),
             'accepted_terms.accepted' => __('You must accept the terms and privacy policy.'),
         ];

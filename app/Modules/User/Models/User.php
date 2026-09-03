@@ -104,6 +104,7 @@ class User extends Authenticatable
         'status',
         'password',
         'phone_verified_at',
+        'accepted_terms_at',
     ];
 
     /**
@@ -127,6 +128,7 @@ class User extends Authenticatable
     protected function casts(): array
     {
         return [
+            'accepted_terms_at' => 'datetime',
             'email_verified_at' => 'datetime',
             'phone_verified_at' => 'datetime',
             'otp_expires_at' => 'datetime',

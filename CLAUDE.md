@@ -130,7 +130,7 @@ Don't "fix" these blind, but know they're there:
 - `CachingService::getSystemSettings()` plucks by a `name` column; the `settings` table has `key`. It is currently unreferenced — dead code.
 - Settings are key/value rows with **PascalCase keys** (`App_Name`, `App_Logo`, `About`, `Privacy_Policy`, `Terms`, `Country_Id`); `About`/`Privacy_Policy`/`Terms` hold translatable JSON.
 - `resources/lang/` ships **`en*` only** — no `ar` JSON files despite RTL support.
-- `.env`'s `DB_DATABASE=templete` and `APP_NAME=Laravel` are still template leftovers.
+- `.env` is no longer a leftover (`APP_NAME=Laundo`, `DB_DATABASE=laundo`), but the **`App_Name` setting row still says `BaseCode`** — and that is the one the apps, the invoice and the login alt text read, via `getSettingValue('App_Name')`. `config('app.name')` is only the browser tab title.
 - `PROJECT_DOCUMENTATION.md` is a **stale doc from another project** ("Clean-X", claims Laravel 12). Prefer this file.
 
 ## Frontend

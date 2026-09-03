@@ -5,7 +5,9 @@ namespace App\Http\Controllers\Api\V1;
 use App\Http\Controllers\Controller;
 use App\Modules\Banner\Models\banner;
 use App\Modules\Faq\Models\Faq;
+use App\Modules\JourneyStep\Models\JourneyStep;
 use App\Modules\Intro\Models\intro;
+use App\Modules\Offer\Models\Offer;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -34,7 +36,13 @@ class ContentController extends Controller
     public function banners(): JsonResponse
     {
         $banners = banner::where('status', 'active')
-            ->latest('id')
+            // `sort_order` then `id`, for the reason `intros()` states below:
+            // two rows sharing a number would otherwise arrive in whatever
+            // sequence MySQL felt like, and a carousel that reshuffles between
+            // visits looks broken. This was `latest('id')`, so the newest
+            // banner was always first and operations could not reorder it.
+            ->orderBy('sort_order')
+            ->orderBy('id')
             ->get()
             ->map(function (banner $row) {
                 $target = $row->target();
@@ -54,6 +62,55 @@ class ContentController extends Controller
             ->values();
 
         return successReturnData($banners);
+    }
+
+    /**
+     * «عروض متميزة» — the second carousel on the home screen.
+     *
+     * Its own endpoint rather than a `placement` filter on `/banners`, because
+     * the home screen asks for two different things: the hero above and these
+     * below, with different card shapes. One flat list left the app guessing
+     * which was which and left operations unable to move a card between them.
+     */
+    public function offers(): JsonResponse
+    {
+        $offers = Offer::live()
+            // The badge is read off the coupon, so without this a page of ten
+            // offers is ten extra queries.
+            ->with('coupon')
+            // `sort_order` then `id`, for the reason `intros()` states: two rows
+            // sharing a number would otherwise arrive in whatever sequence
+            // MySQL felt like, and a carousel that reshuffles between visits
+            // looks broken.
+            ->orderBy('sort_order')
+            ->orderBy('id')
+            ->get()
+            ->map(function (Offer $row) {
+                $target = $row->target();
+
+                return [
+                    'id' => $row->id,
+                    'title' => getLocalizedValue($row, 'title'),
+                    'description' => getLocalizedValue($row, 'description'),
+                    'image' => getImageassetUrl($row->image),
+                    // «خصم 20%». Derived from the linked coupon and withheld
+                    // unless that coupon would actually be accepted, so a card
+                    // cannot promise a discount the checkout then refuses.
+                    'badge' => $row->badge(),
+                    // Null rather than a kind of "none", so a client can simply
+                    // check for absence before drawing the button. Same shape
+                    // banners already return.
+                    'action' => $target->needsValue() && filled($row->target_value)
+                        ? ['type' => $target->value, 'value' => $row->target_value]
+                        : null,
+                    // For «ينتهي بعد …». ISO 8601 rather than a formatted
+                    // string: only the app knows how much room it has.
+                    'ends_at' => $row->ends_at?->toIso8601String(),
+                ];
+            })
+            ->values();
+
+        return successReturnData($offers);
     }
 
     /**
@@ -79,6 +136,34 @@ class ContentController extends Controller
             ->values();
 
         return successReturnData($intros);
+    }
+
+    /**
+     * «رحلتك معنا بسيطة» — the three how-it-works cards on the home screen.
+     *
+     * Separate from `intros()` by decision, though the shape is nearly the
+     * same: onboarding is a full-screen sequence swiped once before an account
+     * exists, and these are cards on the screen people open every day.
+     *
+     * The number the design draws beside each card is the position, so it is
+     * not in the payload — the client numbers the array it was given. Sending
+     * it as a column would let a «3» arrive second.
+     */
+    public function journeySteps(): JsonResponse
+    {
+        $steps = JourneyStep::where('status', 'active')
+            ->orderBy('sort_order')
+            ->orderBy('id')
+            ->get()
+            ->map(fn (JourneyStep $row) => [
+                'id' => $row->id,
+                'title' => getLocalizedValue($row, 'title'),
+                'description' => getLocalizedValue($row, 'description'),
+                'image' => getImageassetUrl($row->image),
+            ])
+            ->values();
+
+        return successReturnData($steps);
     }
 
     /**

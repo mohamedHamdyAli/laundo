@@ -43,7 +43,7 @@ class SlotCapacityTest extends TestCase
         $this->seedCore();
         $this->geo = $this->seedGeo();
         $this->catalog = $this->seedCatalog();
-        $this->customer = $this->customer('01055550001');
+        $this->customer = $this->customer('+201055550001');
 
         $this->slot = TimeSlot::create([
             'start_time' => '15:00:00', 'end_time' => '18:00:00',

@@ -54,7 +54,7 @@ class PaymentTest extends TestCase
         $this->catalog = $this->seedCatalog();
         $this->geo['zones'][0]->update(['price_per_km' => 5.00, 'min_delivery_fee' => 20.00]);
 
-        $this->tenant = $this->laundryWithOwner('A', '01011110001', '01011110002');
+        $this->tenant = $this->laundryWithOwner('A', '+201011110001', '+201011110002');
         $this->cover($this->tenant['laundry'], $this->geo['zones'][0]->id, $this->catalog['service']->id);
 
         $this->customer = $this->customer();
@@ -334,7 +334,7 @@ class PaymentTest extends TestCase
     #[Test]
     public function cash_at_the_door_still_settles_without_any_payment_row(): void
     {
-        $driver = $this->driverUser('01044440001', zoneIds: [$this->geo['zones'][0]->id]);
+        $driver = $this->driverUser('+201044440001', zoneIds: [$this->geo['zones'][0]->id]);
         $order = $this->readyForDelivery($driver);
 
         Sanctum::actingAs($this->customer);
@@ -369,7 +369,7 @@ class PaymentTest extends TestCase
     {
         $order = $this->reviewedOrder();
 
-        $stranger = $this->customer('01088776655');
+        $stranger = $this->customer('+201088776655');
         Sanctum::actingAs($stranger);
 
         $this->postJson("/api/v1/orders/{$order->id}/pay", ['method' => 'card'], $this->apiHeaders())

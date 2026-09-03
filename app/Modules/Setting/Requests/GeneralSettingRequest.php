@@ -46,6 +46,10 @@ class GeneralSettingRequest extends FormRequest
                 'Call' => 'nullable|string|max:20',
                 'Email' => 'nullable|string|max:191',
                 'Tax' => 'nullable|numeric|min:0',
+                // A closed list, not free text: an unrecognised code reaches
+                // NumberFormatter and renders as the literal string on every
+                // price in the panel and both apps.
+                'Currency' => 'nullable|in:EGP,SAR,AED,KWD,QAR,USD',
                 // The driver's share of the delivery fee, as a percentage —
                 // which is how anybody setting it thinks about it.
                 'Driver_Earning_Rate' => 'nullable|numeric|min:0|max:100',

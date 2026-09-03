@@ -2240,6 +2240,153 @@ questions — and one of the questions turned up a real gap.
 
 ---
 
+# Workstream — Figma walkthrough, screen by screen (API + dashboard)
+
+Each screen checked against the API and the dashboard together. A screen is done
+when every input it shows is served, and an operator can produce what it shows.
+
+- [x] **Onboarding — 3 slides.** Module complete end to end; the table was empty,
+      so the app showed no onboarding at all. `IntroRequest` demanded copy in
+      every configured language, which made the Arabic-only designed copy
+      unsaveable; now «at least one». Description was `<input type="description">`
+      — not an input type — for a two-line paragraph. Layout rebuilt.
+      - [ ] The three illustrations still need exporting from Figma
+- [x] **Login / register / phone verification.** Every visible field is served.
+      `length` is 6 and `ttl_seconds` is 120, matching the six boxes and the
+      01:59 timer exactly.
+      - [ ] `accepted_terms` is **required by the API and there is no checkbox in
+            the design** — decide: add the control, or treat the button as
+            acceptance. It is also validated and never recorded, so consent is
+            not provable
+      - [x] Phones are **E.164 with a mandatory country code**, any country
+            accepted. Stored data migrated, 298 test numbers converted, every
+            stored number passes the new rule
+      - [ ] Terms and privacy still hold German lorem ipsum from the template
+      - [ ] The reset flow needs a «new password» screen in the file — the OTP
+            screen shown is the registration one
+- [x] **Home screen.** Four gaps found, all closed:
+      offers given their own model and endpoint; `pickup_slot` and `qr` moved
+      into the order summary (with the eager-load that stops the N+1);
+      «رحلتك معنا بسيطة» given a module; banners given an order.
+      - [ ] The four seeded rows carry placeholder images
+      - [ ] Currency is **USD** system-wide — `moneyFormat()`'s default. For an
+            Egyptian laundry it should be EGP. Global decision
+      - [ ] In Arabic, money renders with Arabic-Indic digits (`١٠٫٠٠`).
+            Standard-correct; many Egyptian apps use Western digits
+      - [ ] `pickup_slot` is a **window** («04:00 PM – 06:00 PM») while the card
+            shows a single time. Windows are deliberate; the design needs a range
+- [x] **The order wizard (5 steps), tracking, and payment — 9 screens.** The
+      wizard's contract already covered every step; five gaps closed, the rest
+      raised below.
+      - [x] Handover per leg — `pickup_method` beside `delivery_method`
+      - [x] «ملاحظة للمندوب» — a column on `addresses`
+      - [x] The driver's number, gated to the live customer-facing leg
+      - [x] One discount per order — `offer_id`, mutually exclusive with
+            `coupon_code`, plus the attribution it brings
+      - [x] Timeline stays six steps — a decision, no code change
+- [ ] Next screen — send it
+
+## Decisions taken (2026-09-04) — the order wizard, tracking and payment screens
+
+**All five are built.**
+
+- **Handover method is per leg.** The design asks twice; add `pickup_method`
+  beside `delivery_method` rather than making one answer cover both journeys.
+- **The driver's number is exposed only while their leg is live** — the same gate
+  `DriverCard::location()` already applies: an `Assigned`/`Started` task on one
+  of the two customer-facing legs. It disappears when the leg ends. The class
+  docblock currently documents the opposite decision and has to change with it.
+  **The chat button comes off the design** — there is no messaging anywhere in
+  the system and it is not a session's work.
+- **The tracking timeline keeps six steps.** «تم تأكيد السعر» stays: it is the
+  only step the order waits on the customer for, and hiding it hides from them
+  why nothing is moving. The mocks that omit it get updated.
+- **«ملاحظة للمندوب» becomes a column on `addresses`.** «Call before arriving»
+  or a gate code is a property of the place, written once and carried by every
+  order to it. `orders.driver_note` stays, for instructions about that one order.
+- **One discount per order.** A customer may type a promo code *while placing
+  the order*, or arrive through an offer from the home carousel — never both.
+  The offer wins and a typed code is refused **with a message saying why**;
+  silently dropping a discount somebody typed is the worst of the three
+  outcomes. Mechanically this needs `offer_id` on the quote and the order,
+  mutually exclusive with `coupon_code`, which also finally answers the question
+  the offer targets were made a closed set for: which offer produced which
+  order.
+  - Read from the rule rather than stated in it: an offer pointing at a
+    **service** carries no discount, so a promo code alongside it is fine. The
+    restriction is on two *discounts*, not on offers.
+
+## Decisions taken (2026-09-03) — do not re-ask
+
+- **Currency**: a `Currency` setting in the panel, read by `moneyFormat()`,
+  exposed in `/app-settings`, falling back to EGP. **Done.**
+- **Money digits in Arabic**: Western, via the `-u-nu-latn` locale extension.
+  **Done.**
+- **Consent**: `accepted_terms_at` records the moment, shown read-only on the
+  customer's panel screen. **Done.**
+- **Phones**: E.164, country code mandatory, any country accepted. **Done.**
+- **Terms & privacy**: drafts written in Arabic and English, marked as drafts,
+  live on `/pages/terms` and `/pages/privacy`. **Awaiting legal review before
+  publication** — that part is not mine to close.
+- **Driver reset-password**: split like the customer's, ticket mechanics shared
+  via `PasswordResetTicket`. **Done.**
+- **Terms checkbox**: the API records consent and the reference says the design
+  needs the control — **the checkbox itself is a Figma change**, then one field
+  in the app's sign-up form.
+- **Pickup time**: the design shows the window, not a single time. *Theirs to
+  change in Figma.*
+
+## Raised on the wizard / tracking / payment screens (2026-09-04) — undecided
+
+None of these blocks the screens.
+
+- [ ] **Service turnaround arrives in pieces.** `/services` returns
+      `duration: "24–48"` and `duration_unit: "hour"`, and **`ar.json` has no
+      `hours` or `days` key at all** — so the app cannot compose «24–48 ساعة»
+      and has no translation to work from. Either serve a finished label or ship
+      the two words.
+- [ ] **Money types disagree between two endpoints one screen calls.**
+      `/catalog` returns `price` as the string `"17.00"` (a `decimal:2` cast);
+      `/orders/quote` returns floats.
+- [ ] **No «estimated vs final» flag in the API.** A client derives it from
+      `pricing.final_total !== null`, and `total` in the order *list* is
+      `payableTotal()`, which falls back to the estimate **silently**. The PDF
+      invoice has an explicit `is_final`; the API does not.
+- [ ] **The «قطعة إضافية» banner needs a third call.** Not renderable from
+      `/track` or `/orders/{id}` — it takes `GET /orders/{id}/review` plus a
+      client-side `estimated.items_count` vs `final.items_count` comparison. The
+      operator's sentence lands in `review_note`, surfaced there as `note`.
+- [ ] **The payment screen needs two calls for its own summary.** `/payments`
+      carries `amount_due` but no التنظيف/التوصيل/الخصم breakdown, so those
+      lines come from `GET /orders/{id}`.
+- [ ] `/payment-methods` returns all four (card, wallet, InstaPay, cash)
+      unfiltered; the screen draws two. The app filters, or the design is
+      missing options.
+- [ ] **The design's success screen contradicts itself**: badge «سعر تقديري»,
+      row «الإجمالي النهائي». Should read «الإجمالي التقديري».
+- [ ] The driver card has no address, ETA or handover method — all three are on
+      the design's card and all three live in `GET /orders/{id}`, so drawing it
+      takes a second call.
+
+## Found on the way
+
+- [x] `Coupon::scopeLive()` **deleted** — its docblock claimed «and not
+      exhausted» while the query never checked `redemptions_count`, and it had
+      zero call sites. `Coupon::isRedeemable()` applies all four tests and is
+      what the offers badge uses
+- [x] The all-languages-required rule — unified across **Banner, City and
+      Country** (Category was retired). Exercised in all three: Arabic-only,
+      English-only and both pass, all-blank is rejected
+- [ ] The driver's `POST /driver/reset-password` still takes phone + code +
+      password in one call. The customer flow was split; these are now two
+      different contracts for the same operation
+- [x] `Category` **retired** — 0 rows, no inbound foreign keys, nothing imported
+      the model, and `Item::category()` points at `ItemCategory`. Module, views,
+      routes, config entries and the five orphaned permissions all removed;
+      `/admin/category` 404s rather than 500ing
+
+---
+
 # Workstream — Dashboard design pass (page by page)
 
 Full inventory of every rendered admin screen, in sidebar order. 104 pages.

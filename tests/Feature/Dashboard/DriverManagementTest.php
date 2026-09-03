@@ -46,7 +46,7 @@ class DriverManagementTest extends TestCase
     {
         $this->actingAs($this->superAdmin())->post('/admin/driver/store', [
             'name' => 'Mahmoud',
-            'phone' => '01055550001',
+            'phone' => '+201055550001',
             'password' => 'password',
             'password_confirmation' => 'password',
             'status' => 'active',
@@ -59,7 +59,7 @@ class DriverManagementTest extends TestCase
             'zones' => $this->zoneIds,
         ])->assertRedirect(route('admin.driver.index'));
 
-        $driver = Driver::where('phone', '01055550001')->first();
+        $driver = Driver::where('phone', '+201055550001')->first();
 
         $this->assertNotNull($driver);
         $this->assertSame(Role::DRIVER, $driver->role->slug);
@@ -92,7 +92,7 @@ class DriverManagementTest extends TestCase
 
         $this->actingAs($this->superAdmin())->post('/admin/driver/store', [
             'name' => 'Mahmoud',
-            'phone' => '01055550001',
+            'phone' => '+201055550001',
             'password' => 'password',
             'password_confirmation' => 'password',
             'status' => 'active',
@@ -102,11 +102,11 @@ class DriverManagementTest extends TestCase
 
     public function test_a_duplicate_phone_is_refused(): void
     {
-        $this->customer('01055550001');
+        $this->customer('+201055550001');
 
         $this->actingAs($this->superAdmin())->post('/admin/driver/store', [
             'name' => 'Mahmoud',
-            'phone' => '01055550001',
+            'phone' => '+201055550001',
             'password' => 'password',
             'password_confirmation' => 'password',
             'status' => 'active',
@@ -117,7 +117,7 @@ class DriverManagementTest extends TestCase
     {
         $this->actingAs($this->superAdmin())->post('/admin/driver/store', [
             'name' => 'Mahmoud',
-            'phone' => '01055550001',
+            'phone' => '+201055550001',
             'password' => 'password',
             'password_confirmation' => 'password',
             'status' => 'active',
@@ -129,8 +129,8 @@ class DriverManagementTest extends TestCase
     public function test_the_driver_list_shows_only_drivers(): void
     {
         $this->driverUser();
-        $this->customer('01044440001');
-        $this->laundryWithOwner('A', '01011110001', '01011110002');
+        $this->customer('+201044440001');
+        $this->laundryWithOwner('A', '+201011110001', '+201011110002');
 
         $this->actingAs($this->superAdmin());
 
@@ -139,7 +139,7 @@ class DriverManagementTest extends TestCase
 
     public function test_a_driver_cannot_be_opened_by_a_non_driver_id(): void
     {
-        $customer = $this->customer('01044440001');
+        $customer = $this->customer('+201044440001');
 
         $this->actingAs($this->superAdmin())
             ->get("/admin/driver/show/{$customer->id}")
@@ -173,8 +173,8 @@ class DriverManagementTest extends TestCase
 
     public function test_dispatchability_needs_both_active_and_available(): void
     {
-        $this->assertTrue($this->driverUser('01033330001')->isDispatchable());
-        $this->assertFalse($this->driverUser('01033330002', available: false)->isDispatchable());
-        $this->assertFalse($this->driverUser('01033330003', active: false)->isDispatchable());
+        $this->assertTrue($this->driverUser('+201033330001')->isDispatchable());
+        $this->assertFalse($this->driverUser('+201033330002', available: false)->isDispatchable());
+        $this->assertFalse($this->driverUser('+201033330003', active: false)->isDispatchable());
     }
 }

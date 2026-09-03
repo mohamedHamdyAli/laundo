@@ -48,8 +48,8 @@ class PaymentLedgerTest extends TestCase
         $this->seedCore();
         $this->geo = $this->seedGeo();
         $this->catalog = $this->seedCatalog();
-        $this->tenant = $this->laundryWithOwner('A', '01011110001', '01011110002');
-        $this->customer = $this->customer('01055550001');
+        $this->tenant = $this->laundryWithOwner('A', '+201011110001', '+201011110002');
+        $this->customer = $this->customer('+201055550001');
     }
 
     private function order(): Order
@@ -96,7 +96,7 @@ class PaymentLedgerTest extends TestCase
      */
     private function defaultDriver(): User
     {
-        return $this->defaultDriver ??= $this->driverUser('01066660001');
+        return $this->defaultDriver ??= $this->driverUser('+201066660001');
     }
 
     private function earning(string $status, float $amount, ?User $driver = null): DriverEarning
@@ -241,7 +241,7 @@ class PaymentLedgerTest extends TestCase
     public function what_each_driver_is_owed_is_grouped_and_ordered(): void
     {
         $small = $this->defaultDriver();
-        $large = $this->driverUser('01066660002');
+        $large = $this->driverUser('+201066660002');
 
         $this->earning(DriverEarning::PENDING, 5, $small);
         $this->earning(DriverEarning::PENDING, 40, $large);
@@ -325,7 +325,7 @@ class PaymentLedgerTest extends TestCase
     #[Test]
     public function search_finds_earnings_by_driver_phone(): void
     {
-        $driver = $this->driverUser('01066669999');
+        $driver = $this->driverUser('+201066669999');
         $this->earning(DriverEarning::PENDING, 12, $driver);
 
         $response = $this->actingAs($this->superAdmin())
@@ -333,6 +333,6 @@ class PaymentLedgerTest extends TestCase
                 'X-Requested-With' => 'XMLHttpRequest',
             ])->assertOk();
 
-        $this->assertStringContainsString('01066669999', $response->json('table'));
+        $this->assertStringContainsString('+201066669999', $response->json('table'));
     }
 }

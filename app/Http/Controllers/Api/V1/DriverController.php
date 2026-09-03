@@ -7,6 +7,7 @@ use App\Models\Role;
 use App\Modules\Driver\Models\Driver;
 use App\Modules\Order\Enums\TaskStatus;
 use App\Services\Auth\OtpService;
+use App\Services\Auth\PasswordResetTicket;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -24,7 +25,10 @@ use Illuminate\Support\Facades\Hash;
  */
 class DriverController extends Controller
 {
-    public function __construct(private readonly OtpService $otp) {}
+    public function __construct(
+        private readonly OtpService $otp,
+        private readonly PasswordResetTicket $tickets,
+    ) {}
 
     public function login(Request $request): JsonResponse
     {
@@ -32,7 +36,7 @@ class DriverController extends Controller
             'phone' => ['required', 'string', 'regex:'.phoneRegex()],
             'password' => ['required', 'string'],
         ], [
-            'phone.regex' => __('Please enter a valid Egyptian phone number.'),
+            'phone.regex' => __('Enter the number with its country code, e.g. +201012345678.'),
         ]);
 
         // Queried through Driver, so its role scope means a customer or a laundry
@@ -221,12 +225,22 @@ class DriverController extends Controller
         return returnSuccessMsg(__('If the number is registered, a code has been sent.'));
     }
 
-    public function resetPassword(Request $request): JsonResponse
+    /**
+     * The middle step: check the code, hand back a ticket.
+     *
+     * Split out of `resetPassword` to match the customer flow, which was split
+     * for a reason that applies here just as much — the app's verify screen was
+     * checking nothing and carrying the six digits forward to be re-sent with
+     * the password. Two different shapes for one operation was also two
+     * contracts for the driver app and the customer app to get right.
+     */
+    public function verifyResetCode(Request $request): JsonResponse
     {
         $data = $request->validate([
             'phone' => ['required', 'string', 'regex:'.phoneRegex()],
             'code' => ['required', 'string', 'digits:'.(int) config('sms.otp.length', 6)],
-            'password' => ['required', 'string', 'min:8', 'confirmed'],
+        ], [
+            'phone.regex' => __('Enter the number with its country code, e.g. +201012345678.'),
         ]);
 
         $driver = Driver::where('phone', $data['phone'])->first();
@@ -238,18 +252,64 @@ class DriverController extends Controller
         $result = $this->otp->verify($driver, $data['code']);
 
         if (! $result['ok']) {
-            return match ($result['reason']) {
-                'expired' => failReturnValidation(['code' => [__('This code has expired. Please request a new one.')]]),
-                'too_many_attempts' => failReturnThrottled(null, __('Too many incorrect attempts. Please request a new code.')),
-                'no_code' => failReturnValidation(['code' => [__('No active code. Please request one.')]]),
-                default => failReturnValidation(['code' => [__('This code is incorrect.')]]),
-            };
+            return $this->otpFailure($result['reason'] ?? 'invalid');
         }
 
-        $driver->forceFill(['password' => Hash::make($data['password'])])->save();
+        $ticket = $this->tickets->issue($driver);
+
+        return successReturnData([
+            'reset_token' => $ticket['token'],
+            'expires_in' => $ticket['expires_in'],
+        ], __('Code confirmed.'));
+    }
+
+    /**
+     * The last step: spend the ticket and set the password.
+     *
+     * No phone and no code — the ticket carries the identity, and the code was
+     * consumed by `verifyResetCode`, which is what stops it being replayed here.
+     */
+    public function resetPassword(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'reset_token' => ['required', 'string', 'size:64'],
+            'password' => ['required', 'string', 'min:8', 'confirmed'],
+        ]);
+
+        $holder = $this->tickets->holder($data['reset_token']);
+
+        // Re-read through Driver, not the holder as returned: the model's role
+        // scope is what makes a customer's ticket useless on this endpoint.
+        $driver = $holder ? Driver::whereKey($holder->getKey())->first() : null;
+
+        if (! $driver) {
+            $message = __('This password reset is no longer valid. Please request a new code.');
+
+            return failReturnValidation(['reset_token' => [$message]], $message);
+        }
+
+        $driver->forceFill([
+            'password' => Hash::make($data['password']),
+            'password_reset_token' => null,
+            'password_reset_token_expires_at' => null,
+        ])->save();
+
         $driver->tokens()->delete();
 
         return returnSuccessMsg(__('Password updated. Please sign in again.'));
+    }
+
+    /**
+     * The OTP refusals, answered the same way on both driver code endpoints.
+     */
+    private function otpFailure(string $reason): JsonResponse
+    {
+        return match ($reason) {
+            'expired' => failReturnValidation(['code' => [__('This code has expired. Please request a new one.')]]),
+            'too_many_attempts' => failReturnThrottled(null, __('Too many incorrect attempts. Please request a new code.')),
+            'no_code' => failReturnValidation(['code' => [__('No active code. Please request one.')]]),
+            default => failReturnValidation(['code' => [__('This code is incorrect.')]]),
+        };
     }
 
     /**

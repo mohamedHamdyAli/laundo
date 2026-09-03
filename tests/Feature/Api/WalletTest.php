@@ -248,7 +248,7 @@ class WalletTest extends TestCase
     {
         $this->wallets->credit($this->customer, 300, TransactionReason::TopUp);
 
-        $stranger = $this->customer('01088776655');
+        $stranger = $this->customer('+201088776655');
         Sanctum::actingAs($stranger);
 
         // Reached through its owner and never by key, so there is no id to guess.

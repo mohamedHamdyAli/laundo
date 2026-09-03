@@ -32,8 +32,8 @@ class AddressTest extends TestCase
         $this->cityId = $geo['city']->id;
         $this->zoneId = $geo['zones'][0]->id;
 
-        $this->alice = $this->customer('01011111111');
-        $this->bob = $this->customer('01022222222');
+        $this->alice = $this->customer('+201011111111');
+        $this->bob = $this->customer('+201022222222');
     }
 
     /**

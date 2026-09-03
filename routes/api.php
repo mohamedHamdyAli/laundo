@@ -87,6 +87,8 @@ Route::get('/catalog', [CatalogController::class, 'catalog'])->name('api.v1.cata
 */
 Route::get('/banners', [ContentController::class, 'banners'])->name('api.v1.banners');
 Route::get('/intros', [ContentController::class, 'intros'])->name('api.v1.intros');
+Route::get('/offers', [ContentController::class, 'offers'])->name('api.v1.offers');
+Route::get('/journey-steps', [ContentController::class, 'journeySteps'])->name('api.v1.journey-steps');
 Route::get('/app-settings', [AppSettingController::class, 'index'])->name('api.v1.app-settings');
 
 // «الأسئلة الشائعة» — the first item under «المساعدة والدعم» in both apps.
@@ -163,6 +165,12 @@ Route::prefix('driver')->name('api.v1.driver.')->group(function () {
     Route::post('/forgot-password', [DriverController::class, 'forgotPassword'])
         ->middleware('throttle:otp')->name('forgot-password');
 
+    // The code step keeps the `otp-verify` limiter: it is the one that takes
+    // guesses at a six-digit code.
+    Route::post('/verify-reset-code', [DriverController::class, 'verifyResetCode'])
+        ->middleware('throttle:otp-verify')->name('verify-reset-code');
+
+    // The password step takes a 64-character ticket, which is not guessable.
     Route::post('/reset-password', [DriverController::class, 'resetPassword'])
         ->middleware('throttle:otp-verify')->name('reset-password');
 });

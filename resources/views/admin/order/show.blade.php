@@ -168,9 +168,48 @@
                                 @endunless
                             </dd>
 
+                            {{-- Both legs. Whoever is dispatching needs to know
+                                 the customer wants the bag taken in person and
+                                 the clean clothes left at the door — that is two
+                                 different instructions to two drivers. --}}
+                            <dt>{{ __('Handover') }}</dt>
+                            <dd>
+                                {{ __('Collection') }}:
+                                {{ $row->pickup_method === 'leave' ? __('Leave at the door') : __('Hand to the customer') }}
+                                <small class="text-muted d-block">
+                                    {{ __('Return') }}:
+                                    {{ $row->delivery_method === 'leave' ? __('Leave at the door') : __('Hand to the customer') }}
+                                </small>
+                            </dd>
+
+                            {{-- The address's own standing instruction, which
+                                 travels with every order to it, shown before the
+                                 note about this one order so a dispatcher reads
+                                 them in that order. --}}
+                            @if ($row->pickupAddress?->driver_note)
+                                <dt>{{ __('Note on the address') }}</dt>
+                                <dd>{{ $row->pickupAddress->driver_note }}</dd>
+                            @endif
+
                             @if ($row->driver_note)
                                 <dt>{{ __('Note to driver') }}</dt>
                                 <dd>{{ $row->driver_note }}</dd>
+                            @endif
+
+                            {{-- Which «عروض متميزة» card won this order. The
+                                 whole point of recording it is that somebody can
+                                 ask whether a card ever sold anything. --}}
+                            @if ($row->offer)
+                                <dt>{{ __('Came from offer') }}</dt>
+                                <dd>
+                                    @if (canDo('offer.view'))
+                                        <a href="{{ route('admin.offer.show', $row->offer->id) }}">
+                                            {{ getLocalizedValueDashboard($row->offer, 'title') ?: '—' }}
+                                        </a>
+                                    @else
+                                        {{ getLocalizedValueDashboard($row->offer, 'title') ?: '—' }}
+                                    @endif
+                                </dd>
                             @endif
 
                             @if ($row->special_instructions)

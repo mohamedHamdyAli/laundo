@@ -54,7 +54,7 @@ class DriverTaskTest extends TestCase
             $zone->update(['price_per_km' => 5.00, 'min_delivery_fee' => 20.00]);
         }
 
-        $this->tenant = $this->laundryWithOwner('A', '01011110001', '01011110002');
+        $this->tenant = $this->laundryWithOwner('A', '+201011110001', '+201011110002');
         $this->cover($this->tenant['laundry'], $this->geo['zones'][0]->id, $this->catalog['service']->id);
 
         $this->customer = $this->customer();
@@ -128,7 +128,7 @@ class DriverTaskTest extends TestCase
     public function a_task_nobody_can_take_waits_in_the_queue(): void
     {
         // A driver who serves a different zone entirely.
-        $this->driverUser('01033330001', zoneIds: [$this->geo['zones'][1]->id]);
+        $this->driverUser('+201033330001', zoneIds: [$this->geo['zones'][1]->id]);
 
         $order = $this->placedOrder();
 
@@ -142,7 +142,7 @@ class DriverTaskTest extends TestCase
     #[Test]
     public function an_unavailable_driver_is_not_offered_work(): void
     {
-        $this->driverUser('01033330001', available: false, zoneIds: [$this->geo['zones'][0]->id]);
+        $this->driverUser('+201033330001', available: false, zoneIds: [$this->geo['zones'][0]->id]);
 
         $this->placedOrder();
 
@@ -159,7 +159,7 @@ class DriverTaskTest extends TestCase
         // One order in hand; the cap is one.
         $this->assertSame(1, app(DriverDispatcher::class)->activeOrders($driver));
 
-        $second = $this->placedOrder('01099887777');
+        $second = $this->placedOrder('+201099887777');
 
         $this->assertSame(
             4,
@@ -526,7 +526,7 @@ class DriverTaskTest extends TestCase
         $order = $this->placedOrder();
         $task = $this->leg($order, TaskType::PickupFromCustomer);
 
-        $stranger = $this->driverUser('01044440002', zoneIds: [$this->geo['zones'][0]->id]);
+        $stranger = $this->driverUser('+201044440002', zoneIds: [$this->geo['zones'][0]->id]);
 
         Sanctum::actingAs($stranger);
 
@@ -632,16 +632,16 @@ class DriverTaskTest extends TestCase
 
     private function eligibleDriver(): Driver
     {
-        return $this->driverUser('01044440001', zoneIds: [$this->geo['zones'][0]->id]);
+        return $this->driverUser('+201044440001', zoneIds: [$this->geo['zones'][0]->id]);
     }
 
     /**
      * A freshly placed order — which, from P8, already has its four legs.
      */
-    private function placedOrder(string $phone = '01099887766'): Order
+    private function placedOrder(string $phone = '+201099887766'): Order
     {
-        $customer = $phone === '01099887766' ? $this->customer : $this->customer($phone);
-        $address = $phone === '01099887766'
+        $customer = $phone === '+201099887766' ? $this->customer : $this->customer($phone);
+        $address = $phone === '+201099887766'
             ? $this->address
             : $this->addressFor($customer, $this->geo['zones'][0]);
 

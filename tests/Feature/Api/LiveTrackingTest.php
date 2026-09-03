@@ -42,8 +42,8 @@ class LiveTrackingTest extends TestCase
         $this->seedCore();
         $this->geo = $this->seedGeo();
         $this->catalog = $this->seedCatalog();
-        $this->customer = $this->customer('01055550001');
-        $this->driver = $this->driverUser('01066660001');
+        $this->customer = $this->customer('+201055550001');
+        $this->driver = $this->driverUser('+201066660001');
     }
 
     private function order(): Order
@@ -208,7 +208,7 @@ class LiveTrackingTest extends TestCase
         $this->leg($order, TaskType::PickupFromCustomer);
         $this->report();
 
-        $stranger = $this->customer('01055550002');
+        $stranger = $this->customer('+201055550002');
 
         // The position rides on the order, so the order's own boundary is what
         // protects it.
@@ -231,5 +231,107 @@ class LiveTrackingTest extends TestCase
 
         $this->assertSame($this->driver->name, $card['name']);
         $this->assertNull($card['location']);
+    }
+
+    // ---------------------------------------------------------- the number
+
+    /** @return array<string, mixed>|null */
+    private function card(Order $order): ?array
+    {
+        return $this->actingAs($this->customer)
+            ->getJson('/api/v1/orders/'.$order->id.'/track')
+            ->assertOk()
+            ->json('data.driver');
+    }
+
+    /**
+     * The design's call button. Withheld outright until now, on the reasoning
+     * that a driver's personal mobile is a policy decision rather than a field
+     * — revisited because a customer with a driver outside and no way to say
+     * «I'm on the third floor» is what that was costing.
+     */
+    #[Test]
+    public function the_number_is_reachable_while_the_driver_is_on_their_way(): void
+    {
+        $order = $this->order();
+        $this->leg($order, TaskType::PickupFromCustomer, TaskStatus::Started);
+
+        $this->assertSame($this->driver->phone, $this->card($order)['phone']);
+    }
+
+    /**
+     * And gone the moment the leg ends. A number reachable for ever is the
+     * thing the original decision was protecting against; twenty minutes at
+     * somebody's door is not.
+     */
+    #[Test]
+    public function the_number_disappears_once_the_leg_is_finished(): void
+    {
+        $order = $this->order();
+        $this->leg($order, TaskType::PickupFromCustomer, TaskStatus::Completed);
+
+        $card = $this->card($order);
+
+        $this->assertNotNull($card, 'the card still names the driver');
+        $this->assertNull($card['phone']);
+    }
+
+    /**
+     * The two legs between us and the laundry are none of the customer's
+     * business — they are not waiting at the laundry's door — so neither the
+     * dot nor the number appears for them.
+     */
+    #[Test]
+    public function the_laundry_legs_expose_neither_the_number_nor_the_dot(): void
+    {
+        $order = $this->order();
+        $this->leg($order, TaskType::DeliverToLaundry, TaskStatus::Started);
+        $this->report();
+
+        $card = $this->card($order);
+
+        $this->assertNull($card['phone']);
+        $this->assertNull($card['location']);
+    }
+
+    /**
+     * The number and the dot answer the same question, so they must not be able
+     * to disagree — a number still reachable after the dot had gone would be
+     * the gate having drifted apart in two places.
+     */
+    #[Test]
+    public function the_number_and_the_dot_are_gated_together(): void
+    {
+        $order = $this->order();
+        $this->leg($order, TaskType::DeliverToCustomer, TaskStatus::Started);
+        $this->report();
+
+        $live = $this->card($order);
+        $this->assertNotNull($live['phone']);
+        $this->assertNotNull($live['location']);
+
+        $order->tasks()->where('type', TaskType::DeliverToCustomer->value)
+            ->update(['status' => TaskStatus::Completed->value]);
+
+        $done = $this->card($order);
+        $this->assertNull($done['phone']);
+        $this->assertNull($done['location']);
+    }
+
+    /**
+     * There is no chat. Nothing in the system carries a message between a
+     * customer and a driver, and the card must not imply otherwise.
+     */
+    #[Test]
+    public function the_card_promises_no_chat(): void
+    {
+        $order = $this->order();
+        $this->leg($order, TaskType::PickupFromCustomer);
+
+        $card = $this->card($order);
+
+        foreach (['chat', 'thread', 'conversation', 'chat_id', 'thread_id'] as $key) {
+            $this->assertArrayNotHasKey($key, $card);
+        }
     }
 }

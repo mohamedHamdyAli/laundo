@@ -1,0 +1,785 @@
+<title>Laundo Screen Actions</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+  :root {
+    /* Neutrals pulled toward the brand blue rather than left flat grey. */
+    --ink: #10192b;
+    --ink-soft: #4a5670;
+    --ink-faint: #78839c;
+    --ground: #f7f8fb;
+    --line: #e2e7f0;
+    --line-soft: #eef1f7;
+
+    --navy: #0f2d52;
+    --accent: #2563eb;
+    --accent-wash: #eef3fe;
+
+    /* The panel's own status tones, so coverage is graded in the colours
+       the product already grades status in. */
+    --warn: #b45309;
+    --gap: #b3261e;
+
+    --mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+    --sans: "IBM Plex Sans Arabic", system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ink: #e8ecf4;
+      --ink-soft: #a5b0c7;
+      --ink-faint: #7c87a1;
+      --ground: #0e1421;
+      --line: #26324a;
+      --line-soft: #1c2537;
+
+      --navy: #c3d4f0;
+      --accent: #7ba4f7;
+      --accent-wash: #1a2740;
+
+      --warn: #fbbf24;
+      --gap: #ff9b92;
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --ink: #e8ecf4;
+    --ink-soft: #a5b0c7;
+    --ink-faint: #7c87a1;
+    --ground: #0e1421;
+    --line: #26324a;
+    --line-soft: #1c2537;
+
+    --navy: #c3d4f0;
+    --accent: #7ba4f7;
+    --accent-wash: #1a2740;
+
+    --warn: #fbbf24;
+    --gap: #ff9b92;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    background: var(--ground);
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: 15px;
+    line-height: 1.6;
+    margin: 0;
+    padding: 0 1.25rem 6rem;
+  }
+
+  .wrap { margin: 0 auto; max-width: 64rem; }
+
+  /* --------------------------------------------------------------- header */
+
+  header { border-bottom: 2px solid var(--navy); padding: 3.5rem 0 1.75rem; }
+
+  .eyebrow {
+    color: var(--accent);
+    font-family: var(--mono);
+    font-size: .72rem;
+    letter-spacing: .14em;
+    margin: 0 0 .9rem;
+    text-transform: uppercase;
+  }
+
+  h1 {
+    font-size: clamp(1.9rem, 4.5vw, 2.5rem);
+    font-weight: 600;
+    letter-spacing: -.02em;
+    line-height: 1.15;
+    margin: 0 0 .85rem;
+    text-wrap: balance;
+  }
+
+  .standfirst { color: var(--ink-soft); margin: 0; max-width: 44rem; }
+
+  .legend {
+    display: grid;
+    gap: .5rem 1.5rem;
+    grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+    margin-top: 1.75rem;
+  }
+
+  .legend div { color: var(--ink-soft); font-size: .84rem; }
+
+  .legend b {
+    color: var(--ink);
+    font-family: var(--mono);
+    font-size: .68rem;
+    font-weight: 600;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+  }
+
+  /* --------------------------------------------------------------- stages */
+
+  .stage { padding-top: 3rem; }
+
+  .stage-head {
+    align-items: baseline;
+    border-bottom: 1px solid var(--line);
+    display: flex;
+    flex-wrap: wrap;
+    gap: .75rem;
+    padding-bottom: .6rem;
+  }
+
+  .stage-head h2 {
+    font-size: 1.05rem;
+    font-weight: 600;
+    letter-spacing: -.01em;
+    margin: 0;
+  }
+
+  .stage-count { color: var(--ink-faint); font-family: var(--mono); font-size: .74rem; }
+
+  /* ----------------------------------------------------------------- rows */
+
+  .screen {
+    border-bottom: 1px solid var(--line-soft);
+    display: grid;
+    gap: .5rem 1.75rem;
+    grid-template-columns: minmax(10rem, 13rem) 1fr;
+    padding: 1.6rem 0;
+  }
+
+  .screen-name { font-size: 1rem; font-weight: 600; margin: 0; }
+
+  /* The Figma names are Arabic and the paths beside them are not; isolating
+     each run keeps the bidi boundary from dragging punctuation across. */
+  .ar { direction: rtl; unicode-bidi: isolate; }
+
+  .screen-meta {
+    color: var(--ink-faint);
+    font-family: var(--mono);
+    font-size: .7rem;
+    margin: .3rem 0 0;
+  }
+
+  .lanes { display: grid; gap: .9rem; min-width: 0; }
+
+  .lane {
+    display: grid;
+    gap: .35rem .9rem;
+    grid-template-columns: 4.6rem 1fr;
+    min-width: 0;
+  }
+
+  .lane-label {
+    font-family: var(--mono);
+    font-size: .66rem;
+    font-weight: 600;
+    letter-spacing: .1em;
+    padding-top: .2rem;
+    text-transform: uppercase;
+  }
+
+  .lane-feed   > .lane-label { color: var(--ink-faint); }
+  .lane-action > .lane-label { color: var(--accent); }
+  .lane-panel  > .lane-label { color: var(--navy); }
+
+  .rows { display: flex; flex-direction: column; gap: .32rem; min-width: 0; }
+
+  .row {
+    align-items: baseline;
+    display: flex;
+    flex-wrap: wrap;
+    gap: .45rem;
+    min-width: 0;
+  }
+
+  code {
+    background: var(--line-soft);
+    border-radius: 3px;
+    font-family: var(--mono);
+    font-size: .79rem;
+    padding: .1rem .34rem;
+  }
+
+  /* The action routes are the point of the page, so they are the one thing
+     that carries the accent. */
+  .lane-action code { background: var(--accent-wash); color: var(--ink); }
+
+  .verb {
+    color: var(--ink-faint);
+    font-family: var(--mono);
+    font-size: .67rem;
+    font-weight: 600;
+    letter-spacing: .06em;
+    min-width: 3.1rem;
+    padding-top: .1rem;
+  }
+  .lane-action .verb { color: var(--accent); }
+
+  .why { color: var(--ink-soft); font-size: .84rem; }
+  .why .ar { font-weight: 500; }
+
+  .none { color: var(--gap); font-size: .86rem; font-style: italic; margin: 0; }
+  .quiet { color: var(--ink-faint); font-size: .86rem; font-style: italic; margin: 0; }
+
+  /* The pairing that matters most: one side asks, the other answers. */
+  .pair {
+    border-inline-start: 2px solid var(--accent);
+    display: grid;
+    gap: .3rem;
+    margin-top: .3rem;
+    padding: .35rem 0 .35rem .8rem;
+  }
+
+  /* ---------------------------------------------------------------- flags */
+
+  .flag {
+    align-items: baseline;
+    border-inline-start: 2px solid;
+    display: flex;
+    font-size: .85rem;
+    gap: .55rem;
+    line-height: 1.5;
+    margin-top: .5rem;
+    padding: .35rem 0 .35rem .8rem;
+  }
+  .flag.warn { border-color: var(--warn); color: var(--ink-soft); }
+  .flag.gap  { border-color: var(--gap);  color: var(--ink-soft); }
+
+  .flag-tag {
+    font-family: var(--mono);
+    font-size: .63rem;
+    font-weight: 600;
+    letter-spacing: .08em;
+    padding-top: .2rem;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+  .flag.warn .flag-tag { color: var(--warn); }
+  .flag.gap  .flag-tag { color: var(--gap); }
+
+  /* The wizard is the one real sequence here, so it is the one thing
+     numbered. */
+  .step-no { color: var(--accent); font-family: var(--mono); font-size: .8rem; font-weight: 600; }
+
+  footer {
+    border-top: 1px solid var(--line);
+    color: var(--ink-faint);
+    font-size: .82rem;
+    margin-top: 3.5rem;
+    padding-top: 1.5rem;
+  }
+  footer p { margin: 0 0 .55rem; max-width: 46rem; }
+
+  @media (max-width: 46rem) {
+    .screen { grid-template-columns: 1fr; gap: 1rem; }
+  }
+  @media (max-width: 34rem) {
+    .lane { grid-template-columns: 1fr; }
+  }
+
+  /* ---------------------------------------------------------------- print */
+  /* One source for the web page and the PDF: Chrome renders this same file
+     with --print-to-pdf, so print is restated here at paper scale rather
+     than kept as a second copy that drifts. */
+
+  @page { margin: 13mm 11mm; size: A4; }
+
+  @media print {
+    /* All three selectors, because the screen's dark block is
+       `:root:not([data-theme="light"])` — specificity (0,2,0) against a bare
+       `:root`'s (0,1,0), so it would win on paper whatever the source order.
+       Matching its weight here is what actually forces light ink. */
+    :root,
+    :root:not([data-theme="light"]),
+    :root[data-theme="dark"] {
+      /* Paper is always the light set — the dark tokens above are keyed to a
+         screen preference that means nothing here. Ink darkened a shade,
+         since these hold less contrast on white than on the screen ground. */
+      --ink: #10192b;
+      --ink-soft: #454f66;
+      --ink-faint: #6b7690;
+      --ground: #ffffff;
+      --line: #d6dceb;
+      --line-soft: #eef1f7;
+      --navy: #0f2d52;
+      --accent: #1d4fd8;
+      --accent-wash: #eef3fe;
+      --warn: #92400e;
+      --gap: #9c1f18;
+    }
+
+    * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+
+    body { font-size: 9.6pt; padding: 0; }
+    .wrap { max-width: none; }
+
+    header { padding: 0 0 1rem; }
+    h1 { font-size: 19pt; }
+    .standfirst { max-width: none; }
+    .legend { gap: .25rem 1.25rem; margin-top: .9rem; }
+
+    .stage { padding-top: 1.3rem; }
+    .stage-head { break-after: avoid; }
+
+    /* Restated because the narrow-screen breakpoints above would otherwise
+       fire: A4 less its margins is about 703px, under the 46rem (736px)
+       query — media-query rem resolves against 16px whatever the root size. */
+    .screen {
+      gap: .4rem 1.25rem;
+      grid-template-columns: 9.5rem 1fr;
+      padding: .85rem 0;
+    }
+    .lane { grid-template-columns: 4.2rem 1fr; }
+
+    /* A long screen may flow across a page break; a lane, a flag or the
+       pair note may not be split down the middle. */
+    .lane, .flag, .pair, footer { break-inside: avoid; }
+
+    .rows { gap: .2rem; }
+    code { font-size: 8.4pt; }
+    footer { margin-top: 1.5rem; }
+  }
+</style>
+
+<div class="wrap">
+  <header>
+    <p class="eyebrow">Figma → API → Panel</p>
+    <h1>Laundo Screen Actions</h1>
+    <p class="standfirst">
+      For every screen sent through so far: what fills it, <strong>which route the
+      button actually calls</strong>, and the panel page an operator does the
+      matching job from. Paths read from <code>artisan route:list</code>.
+    </p>
+    <div class="legend">
+      <div><b>Feed</b> — the reads that draw the screen.</div>
+      <div><b>Action</b> — what a tap writes. This is the axis.</div>
+      <div><b>Panel</b> — where staff perform or answer it.</div>
+    </div>
+  </header>
+
+  <!-- ========================================================== onboarding -->
+  <section class="stage">
+    <div class="stage-head"><h2>Onboarding</h2><span class="stage-count">3 screens</span></div>
+
+    <div class="screen">
+      <div>
+        <p class="screen-name ar">شاشات الترحيب</p>
+        <p class="screen-meta">on1 ×3</p>
+      </div>
+      <div class="lanes">
+        <div class="lane lane-feed">
+          <span class="lane-label">Feed</span>
+          <div class="rows">
+            <span class="row"><span class="verb">GET</span><code>/api/v1/intros</code><span class="why">public — runs before an account exists</span></span>
+          </div>
+        </div>
+        <div class="lane lane-action">
+          <span class="lane-label">Action</span>
+          <div class="rows">
+            <p class="quiet">None. «التالي» and «تخطي» only move the pager — nothing is written, and nothing is remembered server-side.</p>
+          </div>
+        </div>
+        <div class="lane lane-panel">
+          <span class="lane-label">Panel</span>
+          <div class="rows">
+            <span class="row"><code>/admin/intro/create</code></span>
+            <span class="row"><code>/admin/intro/edit/{id}</code><span class="why">copy, illustration, order</span></span>
+            <span class="row"><span class="verb">POST</span><code>/admin/intro/status/{id}</code><span class="why">retire a slide without deleting it</span></span>
+          </div>
+        </div>
+        <p class="flag warn"><span class="flag-tag">content</span><span>All three slides are written in Arabic. The illustrations are placeholders — they need exporting from Figma as PNG under 2&nbsp;MB.</span></p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================================================================ auth -->
+  <section class="stage">
+    <div class="stage-head"><h2>Account</h2><span class="stage-count">3 screens</span></div>
+
+    <div class="screen">
+      <div><p class="screen-name ar">تسجيل الدخول</p></div>
+      <div class="lanes">
+        <div class="lane lane-feed">
+          <span class="lane-label">Feed</span>
+          <div class="rows">
+            <span class="row"><span class="verb">GET</span><code>/api/v1/pages/terms</code><span class="why">the two footer links</span></span>
+            <span class="row"><span class="verb">GET</span><code>/api/v1/pages/privacy</code></span>
+          </div>
+        </div>
+        <div class="lane lane-action">
+          <span class="lane-label">Action</span>
+          <div class="rows">
+            <span class="row"><span class="verb">POST</span><code>/api/v1/auth/login</code><span class="why">«تسجيل الدخول»</span></span>
+            <span class="row"><span class="verb">POST</span><code>/api/v1/auth/forgot-password</code><span class="why">«نسيت كلمة المرور» — sends the code</span></span>
+            <span class="row"><span class="verb">POST</span><code>/api/v1/auth/verify-reset-code</code><span class="why">spends the code, returns a single-use ticket</span></span>
+            <span class="row"><span class="verb">POST</span><code>/api/v1/auth/reset-password</code><span class="why">takes the ticket, never the code</span></span>
+          </div>
+        </div>
+        <div class="lane lane-panel">
+          <span class="lane-label">Panel</span>
+          <div class="rows">
+            <span class="row"><span class="verb">POST</span><code>/admin/user/status/{id}</code><span class="why">suspend an account, so login is refused</span></span>
+            <span class="row"><span class="verb">POST</span><code>/admin/PrivacyAndTerms</code><span class="why">edits both documents, per language</span></span>
+          </div>
+        </div>
+        <p class="flag warn"><span class="flag-tag">missing screen</span><span>Reset is three calls and the Figma has two screens for it. The «كلمة مرور جديدة» screen is missing — the verification screen in the file is the registration one, its button reads «تحقق».</span></p>
+      </div>
+    </div>
+
+    <div class="screen">
+      <div><p class="screen-name ar">إنشاء حساب</p></div>
+      <div class="lanes">
+        <div class="lane lane-action">
+          <span class="lane-label">Action</span>
+          <div class="rows">
+            <span class="row"><span class="verb">POST</span><code>/api/v1/auth/register</code><span class="why">name, phone, optional email, password, <code>accepted_terms</code></span></span>
+          </div>
+        </div>
+        <div class="lane lane-panel">
+          <span class="lane-label">Panel</span>
+          <div class="rows">
+            <span class="row"><code>/admin/user/create</code><span class="why">staff can open an account by phone</span></span>
+            <span class="row"><code>/admin/user/show/{id}</code><span class="why">reads back the consent date and the verification date</span></span>
+          </div>
+        </div>
+        <p class="flag gap"><span class="flag-tag">design</span><span>The route requires <code>accepted_terms</code> and the screen has only footer links — no checkbox. Consent is recorded and shown in the panel; the control itself is a Figma change.</span></p>
+      </div>
+    </div>
+
+    <div class="screen">
+      <div><p class="screen-name ar">التحقق من الهاتف</p></div>
+      <div class="lanes">
+        <div class="lane lane-action">
+          <span class="lane-label">Action</span>
+          <div class="rows">
+            <span class="row"><span class="verb">POST</span><code>/api/v1/auth/verify-otp</code><span class="why">6 digits — the six boxes</span></span>
+            <span class="row"><span class="verb">POST</span><code>/api/v1/auth/resend-otp</code><span class="why">«إعادة إرسال», throttled per number and per address</span></span>
+          </div>
+        </div>
+        <div class="lane lane-panel">
+          <span class="lane-label">Panel</span>
+          <div class="rows">
+            <p class="none">No panel page — deliberately.</p>
+            <span class="why">Length and lifetime are environment settings: <code>OTP_LENGTH</code>&nbsp;=&nbsp;6, <code>OTP_TTL_SECONDS</code>&nbsp;=&nbsp;120 — which is the 01:59 the screen counts down.</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================================================================ home -->
+  <section class="stage">
+    <div class="stage-head"><h2>Home</h2><span class="stage-count">1 screen, 8 reads, 1 write</span></div>
+
+    <div class="screen">
+      <div>
+        <p class="screen-name ar">الرئيسية</p>
+        <p class="screen-meta">no /home endpoint</p>
+      </div>
+      <div class="lanes">
+        <div class="lane lane-feed">
+          <span class="lane-label">Feed</span>
+          <div class="rows">
+            <span class="row"><span class="verb">GET</span><code>/api/v1/profile</code><span class="why">the name in the greeting, and the avatar</span></span>
+            <span class="row"><span class="verb">GET</span><code>/api/v1/addresses</code><span class="why">the address strip — the default is element 0</span></span>
+            <span class="row"><span class="verb">GET</span><code>/api/v1/notifications/unread-count</code><span class="why">the bell</span></span>
+            <span class="row"><span class="verb">GET</span><code>/api/v1/banners</code><span class="why">the hero carousel</span></span>
+            <span class="row"><span class="verb">GET</span><code>/api/v1/offers</code><span class="why"><span class="ar">عروض متميزة</span> — badge derived from the linked coupon</span></span>
+            <span class="row"><span class="verb">GET</span><code>/api/v1/journey-steps</code><span class="why"><span class="ar">رحلتك معنا بسيطة</span> — the number is the position</span></span>
+            <span class="row"><span class="verb">GET</span><code>/api/v1/orders?tab=active</code><span class="why"><span class="ar">طلبك الحالي</span>, with its window and QR</span></span>
+            <span class="row"><span class="verb">GET</span><code>/api/v1/app-settings</code><span class="why">the currency every price is formatted in</span></span>
+          </div>
+        </div>
+        <div class="lane lane-action">
+          <span class="lane-label">Action</span>
+          <div class="rows">
+            <span class="row"><span class="verb">POST</span><code>/api/v1/notifications/read-all</code><span class="why">the only write on this screen</span></span>
+            <p class="quiet">Every other tap navigates. Tapping an offer card writes nothing — it carries <code>offer_id</code> into the wizard, which is how «which card won which order» gets answered.</p>
+          </div>
+        </div>
+        <div class="lane lane-panel">
+          <span class="lane-label">Panel</span>
+          <div class="rows">
+            <span class="row"><code>/admin/banner/create</code> · <code>/admin/banner/edit/{id}</code></span>
+            <span class="row"><code>/admin/offer/create</code> · <code>/admin/offer/edit/{id}</code><span class="why">where the coupon is linked</span></span>
+            <span class="row"><code>/admin/journey-step/edit/{id}</code></span>
+            <span class="row"><span class="verb">POST</span><code>/admin/generalSetting/updateGeneralSetting</code><span class="why">currency, tax, cash surcharge</span></span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================================================== wizard -->
+  <section class="stage">
+    <div class="stage-head"><h2>Placing an order</h2><span class="stage-count">5 steps + confirmation</span></div>
+
+    <div class="screen">
+      <div><p class="screen-name ar"><span class="step-no">1</span> تاريخ ووقت الاستلام</p></div>
+      <div class="lanes">
+        <div class="lane lane-feed">
+          <span class="lane-label">Feed</span>
+          <div class="rows">
+            <span class="row"><span class="verb">GET</span><code>/api/v1/time-slots?date=</code><span class="why">windows carrying <code>remaining</code> and <code>is_full</code>, so a full one greys out</span></span>
+          </div>
+        </div>
+        <div class="lane lane-action">
+          <span class="lane-label">Action</span>
+          <div class="rows">
+            <p class="quiet">Nothing written. The slot is held in the wizard and travels with <code>POST /orders</code> at step&nbsp;5 — no slot is reserved before the order exists.</p>
+          </div>
+        </div>
+        <div class="lane lane-panel">
+          <span class="lane-label">Panel</span>
+          <div class="rows">
+            <span class="row"><code>/admin/time-slot/create</code> · <code>/admin/time-slot/edit/{id}</code><span class="why">the windows and their capacity</span></span>
+          </div>
+        </div>
+        <p class="flag warn"><span class="flag-tag">design</span><span>Slots are <em>windows</em> («04:00&nbsp;PM – 06:00&nbsp;PM»), on purpose: a driver on a route cannot promise a minute. The card showing «4:30 مساءً» has to show the range.</span></p>
+      </div>
+    </div>
+
+    <div class="screen">
+      <div><p class="screen-name ar"><span class="step-no">2</span> اختر الخدمة</p></div>
+      <div class="lanes">
+        <div class="lane lane-feed">
+          <span class="lane-label">Feed</span>
+          <div class="rows">
+            <span class="row"><span class="verb">GET</span><code>/api/v1/services</code><span class="why">name, icon, <code>pricing_mode</code>, turnaround</span></span>
+          </div>
+        </div>
+        <div class="lane lane-action">
+          <span class="lane-label">Action</span>
+          <div class="rows"><p class="quiet">Selection only — travels as <code>service_id</code>.</p></div>
+        </div>
+        <div class="lane lane-panel">
+          <span class="lane-label">Panel</span>
+          <div class="rows">
+            <span class="row"><code>/admin/service/create</code> · <code>/admin/service/edit/{id}</code></span>
+          </div>
+        </div>
+        <p class="flag warn"><span class="flag-tag">incomplete</span><span>Turnaround arrives as <code>"24–48"</code> plus <code>"hour"</code>, and the Arabic file has no <code>hours</code> or <code>days</code> key — the app can neither compose «24–48 ساعة» nor translate it. «حسب النوع والحجم» is not a duration; it is <code>pricing_mode: quote</code>.</span></p>
+      </div>
+    </div>
+
+    <div class="screen">
+      <div><p class="screen-name ar"><span class="step-no">3</span> حدد القطع</p></div>
+      <div class="lanes">
+        <div class="lane lane-feed">
+          <span class="lane-label">Feed</span>
+          <div class="rows">
+            <span class="row"><span class="verb">GET</span><code>/api/v1/catalog?service_id=</code><span class="why">service → categories → items; the tabs are the categories</span></span>
+          </div>
+        </div>
+        <div class="lane lane-action">
+          <span class="lane-label">Action</span>
+          <div class="rows">
+            <span class="row"><span class="verb">POST</span><code>/api/v1/orders/quote</code><span class="why">recalculates the footer's «التكلفة التقديرية» on every ± tap. Creates nothing.</span></span>
+          </div>
+        </div>
+        <div class="lane lane-panel">
+          <span class="lane-label">Panel</span>
+          <div class="rows">
+            <span class="row"><code>/admin/item-category/edit/{id}</code><span class="why">the tab strip and its order</span></span>
+            <span class="row"><code>/admin/item/create</code> · <code>/admin/item/edit/{id}</code></span>
+            <span class="row"><code>/admin/pricing/create</code> · <code>/admin/pricing/edit/{id}</code><span class="why">the item × service price matrix — this is where a number changes</span></span>
+          </div>
+        </div>
+        <p class="flag warn"><span class="flag-tag">inconsistent</span><span>The two routes this one screen calls disagree about money: <code>/catalog</code> sends <code>price</code> as the string <code>"17.00"</code>, <code>/orders/quote</code> sends floats.</span></p>
+      </div>
+    </div>
+
+    <div class="screen">
+      <div><p class="screen-name ar"><span class="step-no">4</span> عنوان الاستلام والتوصيل</p></div>
+      <div class="lanes">
+        <div class="lane lane-feed">
+          <span class="lane-label">Feed</span>
+          <div class="rows">
+            <span class="row"><span class="verb">GET</span><code>/api/v1/addresses</code></span>
+            <span class="row"><span class="verb">GET</span><code>/api/v1/cities</code><span class="why">the city field, with zones</span></span>
+          </div>
+        </div>
+        <div class="lane lane-action">
+          <span class="lane-label">Action</span>
+          <div class="rows">
+            <span class="row"><span class="verb">POST</span><code>/api/v1/addresses</code><span class="why">«إضافة عنوان جديد» — carries the driver note</span></span>
+            <span class="row"><span class="verb">PUT</span><code>/api/v1/addresses/{id}</code><span class="why">the ⋮ menu's edit</span></span>
+            <span class="row"><span class="verb">PUT</span><code>/api/v1/addresses/{id}/default</code></span>
+            <span class="row"><span class="verb">DELETE</span><code>/api/v1/addresses/{id}</code><span class="why">promotes a successor — never leaves the customer with no default</span></span>
+          </div>
+        </div>
+        <div class="lane lane-panel">
+          <span class="lane-label">Panel</span>
+          <div class="rows">
+            <p class="none">No address module at all.</p>
+            <span class="why">An address is only visible inside <code>/admin/order/show/{id}</code> or <code>/admin/recurrence/show/{id}</code>, and read-only there. The customer page does not list them.</span>
+          </div>
+        </div>
+        <p class="flag gap"><span class="flag-tag">panel gap</span><span>A customer who rings to say their address is wrong cannot be helped: there is no page to look at it on and no route to correct it — the four writes above exist only in the app.</span></p>
+      </div>
+    </div>
+
+    <div class="screen">
+      <div><p class="screen-name ar"><span class="step-no">5</span> مراجعة الطلب</p></div>
+      <div class="lanes">
+        <div class="lane lane-feed">
+          <span class="lane-label">Feed</span>
+          <div class="rows">
+            <span class="row"><span class="verb">POST</span><code>/api/v1/orders/quote</code><span class="why">the summary's figures, re-priced once more</span></span>
+          </div>
+        </div>
+        <div class="lane lane-action">
+          <span class="lane-label">Action</span>
+          <div class="rows">
+            <span class="row"><span class="verb">POST</span><code>/api/v1/coupons/check</code><span class="why">prices a typed promo code before submitting</span></span>
+            <span class="row"><span class="verb">POST</span><code>/api/v1/orders</code><span class="why"><strong>the order is created here.</strong> Requires <code>accepts_review_terms</code>; carries both handover methods and, if there was a card, <code>offer_id</code></span></span>
+          </div>
+        </div>
+        <div class="lane lane-panel">
+          <span class="lane-label">Panel</span>
+          <div class="rows">
+            <span class="row"><code>/admin/coupon/create</code> · <code>/admin/coupon/edit/{id}</code><span class="why">codes, ceilings, windows</span></span>
+            <span class="row"><code>/admin/order</code><span class="why">where it lands, seconds later</span></span>
+          </div>
+        </div>
+        <p class="flag warn"><span class="flag-tag">rule</span><span>One discount per order. A typed code <em>or</em> an offer from the home carousel — never both. The offer wins, because it is what the card promised, and a code sent alongside it is refused with a message rather than silently dropped. Refused at the quote too, which is where the customer is actually deciding.</span></p>
+      </div>
+    </div>
+
+    <div class="screen">
+      <div><p class="screen-name ar">تم إنشاء طلبك بنجاح</p></div>
+      <div class="lanes">
+        <div class="lane lane-feed">
+          <span class="lane-label">Feed</span>
+          <div class="rows">
+            <span class="row"><span class="verb">—</span><span class="why">the 201 body of <code>POST /orders</code>. Nothing extra to call.</span></span>
+          </div>
+        </div>
+        <div class="lane lane-action">
+          <span class="lane-label">Action</span>
+          <div class="rows"><p class="quiet">None — both buttons navigate.</p></div>
+        </div>
+        <div class="lane lane-panel">
+          <span class="lane-label">Panel</span>
+          <div class="rows">
+            <span class="row"><span class="verb">POST</span><code>/admin/order/task/generate/{id}</code><span class="why">builds the two legs</span></span>
+            <span class="row"><span class="verb">POST</span><code>/admin/order/task/assign/{id}</code><span class="why">a driver per leg</span></span>
+            <span class="row"><span class="verb">PUT</span><code>/admin/order/assign/{id}</code><span class="why">which laundry does the work</span></span>
+          </div>
+        </div>
+        <p class="flag gap"><span class="flag-tag">design</span><span>The card contradicts itself — the badge reads «سعر تقديري» and the row beneath it «الإجمالي النهائي». It should read «الإجمالي التقديري»: no final price exists until the pieces are counted.</span></p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================================================ tracking -->
+  <section class="stage">
+    <div class="stage-head"><h2>Tracking</h2><span class="stage-count">2 screens — the busiest actions in the app</span></div>
+
+    <div class="screen">
+      <div><p class="screen-name ar">تتبع الطلب</p></div>
+      <div class="lanes">
+        <div class="lane lane-feed">
+          <span class="lane-label">Feed</span>
+          <div class="rows">
+            <span class="row"><span class="verb">GET</span><code>/api/v1/orders/{id}/track</code><span class="why">the timeline, the driver card, the live dot</span></span>
+            <span class="row"><span class="verb">GET</span><code>/api/v1/orders/{id}</code><span class="why">the pricing lines, the QR, handover, ETA</span></span>
+            <span class="row"><span class="verb">GET</span><code>/api/v1/orders/{id}/review</code><span class="why">estimated vs final counts</span></span>
+          </div>
+        </div>
+        <div class="lane lane-action">
+          <span class="lane-label">Action</span>
+          <div class="rows">
+            <span class="row"><span class="verb">POST</span><code>/api/v1/orders/{id}/confirm</code><span class="why">accepts the re-count — this is the step the order is waiting on</span></span>
+            <span class="row"><span class="verb">POST</span><code>/api/v1/orders/{id}/dispute</code><span class="why">rejects it, and opens a complaint</span></span>
+            <span class="row"><span class="verb">POST</span><code>/api/v1/orders/{id}/queries</code><span class="why">answers a question staff asked</span></span>
+            <span class="row"><span class="verb">PUT</span><code>/api/v1/orders/{id}/cancel</code><span class="why">only while it is still cancellable</span></span>
+            <span class="row"><span class="verb">POST</span><code>/api/v1/orders/{id}/reschedule</code><span class="why">moves the window</span></span>
+            <span class="row"><span class="verb">POST</span><code>/api/v1/orders/{id}/rating</code><span class="why">after delivery</span></span>
+          </div>
+        </div>
+        <div class="lane lane-panel">
+          <span class="lane-label">Panel</span>
+          <div class="rows">
+            <span class="row"><span class="verb">POST</span><code>/admin/order/review/{id}</code><span class="why">the count that turns the estimate into a final price</span></span>
+            <span class="row"><span class="verb">POST</span><code>/admin/order/query/{id}</code><span class="why">asks the customer something</span></span>
+            <span class="row"><span class="verb">POST</span><code>/admin/order/task/release/{id}</code><span class="why">takes a leg off a driver</span></span>
+            <span class="row"><code>/admin/order/show/{id}</code> · <code>/admin/driver</code> · <code>/admin/complaint</code></span>
+          </div>
+        </div>
+        <div class="pair">
+          <span class="why"><strong>The two pairs to hold onto.</strong> Staff post <code>/admin/order/review/{id}</code>; the customer answers with <code>/orders/{id}/confirm</code> or <code>/orders/{id}/dispute</code>. Staff post <code>/admin/order/query/{id}</code>; the customer answers with <code>/orders/{id}/queries</code>. Both halves are live — neither is a stub.</span>
+        </div>
+        <p class="flag warn"><span class="flag-tag">six, not five</span><span>The timeline has six points and this screen draws five. «تم تأكيد السعر» stays: it is the only step waiting on the customer, and hiding it hides why nothing is moving. Two other mocks in the file already include it.</span></p>
+        <p class="flag gap"><span class="flag-tag">third call</span><span>«تم العثور على قطعة إضافية» cannot be drawn from <code>/track</code>. It needs <code>/orders/{id}/review</code> and a comparison of <code>estimated.items_count</code> against <code>final.items_count</code>; the operator's sentence is that response's <code>note</code>.</span></p>
+        <p class="flag warn"><span class="flag-tag">driver card</span><span>Name, rating and phone come from <code>/track</code> — the number only while that leg is live, gated exactly as the live dot is. Address, ETA and handover come from <code>/orders/{id}</code>, so the card as drawn needs both. There is <strong>no chat route anywhere</strong>: the message button has nothing behind it and should come off the design.</span></p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================================================= payment -->
+  <section class="stage">
+    <div class="stage-head"><h2>Payment</h2><span class="stage-count">2 screens</span></div>
+
+    <div class="screen">
+      <div><p class="screen-name ar">الدفع</p></div>
+      <div class="lanes">
+        <div class="lane lane-feed">
+          <span class="lane-label">Feed</span>
+          <div class="rows">
+            <span class="row"><span class="verb">GET</span><code>/api/v1/payment-methods</code><span class="why">card, wallet, InstaPay, cash — all four, unfiltered</span></span>
+            <span class="row"><span class="verb">GET</span><code>/api/v1/orders/{id}</code><span class="why">the <span class="ar">التنظيف / التوصيل / الخصم</span> lines</span></span>
+            <span class="row"><span class="verb">GET</span><code>/api/v1/wallet</code><span class="why">the balance shown beside the wallet option</span></span>
+          </div>
+        </div>
+        <div class="lane lane-action">
+          <span class="lane-label">Action</span>
+          <div class="rows">
+            <span class="row"><span class="verb">POST</span><code>/api/v1/orders/{id}/pay</code><span class="why">body is <code>{method}</code> only — the server takes the amount, never the client</span></span>
+            <span class="row"><span class="verb">POST</span><code>/api/v1/coupons/check</code><span class="why">if a code is entered here instead</span></span>
+            <span class="row"><span class="verb">POST</span><code>/api/v1/orders/{id}/refunds</code><span class="why">asks for money back after the fact</span></span>
+          </div>
+        </div>
+        <div class="lane lane-panel">
+          <span class="lane-label">Panel</span>
+          <div class="rows">
+            <span class="row"><code>/admin/payment</code><span class="why"><strong>read-only</strong> — no write route exists, on purpose: a payment is settled by the gateway, not by staff</span></span>
+            <span class="row"><span class="verb">POST</span><code>/admin/refund/approve/{id}</code> · <code>reject/{id}</code> · <code>settle/{id}</code></span>
+            <span class="row"><code>/admin/wallet</code><span class="why">balances, adjustments, freezes</span></span>
+            <span class="row"><code>/admin/order/invoice/{id}</code><span class="why">the printable invoice</span></span>
+          </div>
+        </div>
+        <p class="flag warn"><span class="flag-tag">correct as drawn</span><span>An estimate cannot be paid — <code>/pay</code> refuses with <code>no_final_price</code>. So this screen's «سعر نهائي» badge holds by construction, not by the app checking.</span></p>
+        <p class="flag gap"><span class="flag-tag">no gateway</span><span>Only a stub provider exists and <code>redirect_url</code> points at a placeholder. InstaPay is a value in the enum, not an integration.</span></p>
+      </div>
+    </div>
+
+    <div class="screen">
+      <div><p class="screen-name ar">تم الدفع بنجاح</p></div>
+      <div class="lanes">
+        <div class="lane lane-feed">
+          <span class="lane-label">Feed</span>
+          <div class="rows">
+            <span class="row"><span class="verb">GET</span><code>/api/v1/orders/{id}/payments</code><span class="why">polled until <code>paid</code> turns true; «رقم المعاملة» is <code>transaction_reference</code></span></span>
+          </div>
+        </div>
+        <div class="lane lane-action">
+          <span class="lane-label">Action</span>
+          <div class="rows">
+            <span class="row"><span class="verb">POST</span><code>/api/v1/payments/webhook/{provider}</code><span class="why">not the app's call — the gateway's. It is the only thing that marks an order paid.</span></span>
+          </div>
+        </div>
+        <div class="lane lane-panel">
+          <span class="lane-label">Panel</span>
+          <div class="rows">
+            <span class="row"><code>/admin/payment</code> · <code>/admin/order/invoice/{id}</code></span>
+          </div>
+        </div>
+        <p class="flag warn"><span class="flag-tag">why polling</span><span>A payment settles on the webhook and on nothing else — not on the redirect the customer returns through, which they can close. So this screen has to wait on <code>/payments</code>; it is never told directly.</span></p>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <p>102 endpoints under <code>/api/v1</code> — 41 of them writes; 238 under <code>/admin</code>. Verified with <code>artisan route:list</code>, not from memory.</p>
+    <p>Everything under a red marker is recorded in <code>tasks/todo.md</code> with its reasoning. None of it blocks building these screens.</p>
+  </footer>
+</div>

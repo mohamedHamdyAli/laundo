@@ -7,6 +7,7 @@ use App\Modules\Coupon\Models\Coupon;
 use App\Modules\Coupon\Services\CouponService;
 use App\Modules\Laundry\Models\Laundry;
 use App\Modules\Notification\Services\OrderNotifier;
+use App\Modules\Offer\Models\Offer;
 use App\Modules\Order\Enums\OrderStatus;
 use App\Modules\Order\Models\Order;
 use App\Modules\Order\Models\OrderItem;
@@ -55,7 +56,7 @@ class OrderService
         // never ordered, and consuming one here would spend a customer's single
         // use of a welcome code on a screen they walked away from.
         [$coupon, $discount, $couponError] = $this->resolveCoupon(
-            $data['coupon_code'] ?? null,
+            $this->discountCode($data),
             $customer,
             $service,
             $data['items'] ?? [],
@@ -98,7 +99,7 @@ class OrderService
         $laundry = $this->assigner->assign($pickup, $service);
 
         [$coupon, $discount] = $this->resolveCoupon(
-            $data['coupon_code'] ?? null,
+            $this->discountCode($data),
             $customer,
             $service,
             $data['items'] ?? [],
@@ -150,6 +151,10 @@ class OrderService
                 'delivery_slot_id' => $data['delivery_slot_id'] ?? null,
                 'pickup_date' => $data['pickup_date'] ?? null,
                 'delivery_date' => $data['delivery_date'] ?? null,
+                // Two legs, two answers. One column meant a customer who
+                // wanted to hand the bag over in person and have the clean
+                // clothes left at the door could not say so.
+                'pickup_method' => $data['pickup_method'] ?? 'door',
                 'delivery_method' => $data['delivery_method'] ?? 'door',
                 'driver_note' => $data['driver_note'] ?? null,
                 'special_instructions' => $data['special_instructions'] ?? null,
@@ -167,6 +172,11 @@ class OrderService
                 'estimated_total' => $quote['total'],
                 // The code that actually applied, not the one that was typed.
                 'coupon_code' => $coupon?->code,
+                // Which offer won this order. The reason the offer targets are
+                // a closed set in the first place — a discount with no
+                // provenance makes «did that card ever sell anything» an
+                // unanswerable question.
+                'offer_id' => $data['offer_id'] ?? null,
                 'payment_method' => $data['payment_method'] ?? null,
                 'qr_token' => Order::generateQrToken(),
                 'recurrence_id' => $data['recurrence_id'] ?? null,
@@ -289,6 +299,7 @@ class OrderService
             'service_id' => $order->service_id,
             'pickup_address_id' => $order->pickup_address_id,
             'delivery_address_id' => $order->delivery_address_id,
+            'pickup_method' => $order->pickup_method,
             'delivery_method' => $order->delivery_method,
             'special_instructions' => $order->special_instructions,
             'items' => $items,
@@ -320,6 +331,37 @@ class OrderService
      * @param  array<int, array{item_id: int, qty: int}>  $items
      * @return array{0: Coupon|null, 1: float, 2: string|null}
      */
+    /**
+     * Which code the discount comes from.
+     *
+     * An offer from the home carousel that points at a coupon *is* the
+     * discount — the card promised it, so the customer should not have to type
+     * anything. A code sent alongside such an offer never reaches here: the
+     * request refuses it, because one discount per order.
+     *
+     * An offer pointing at a service carries no coupon, so whatever the
+     * customer typed stands.
+     *
+     * @param  array<string, mixed>  $data
+     */
+    private function discountCode(array $data): ?string
+    {
+        $typed = $data['coupon_code'] ?? null;
+        $offerId = $data['offer_id'] ?? null;
+
+        if (! $offerId) {
+            return $typed;
+        }
+
+        // `live()`, not `find()`: an expired offer is not a discount, and its
+        // stale code must not be spent on an order placed after it ended.
+        $offer = Offer::live()->with('coupon')->find($offerId);
+
+        return $offer?->coupon?->isRedeemable()
+            ? $offer->coupon->code
+            : $typed;
+    }
+
     private function resolveCoupon(
         ?string $code,
         User $customer,

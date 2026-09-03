@@ -16,9 +16,25 @@ use Illuminate\Support\Facades\DB;
  * version and the endpoint behind it returned no driver at all: a customer
  * waiting at home could see that a driver was on the way and not who.
  *
- * Deliberately **no phone number.** Handing a driver's personal mobile to every
- * customer they collect from is a policy decision, not a field, and the design
- * shows no call button. Operations has the number; the customer has support.
+ * **The phone number is here, and only while the leg is live.** It was withheld
+ * outright, on the reasoning that handing a driver's personal mobile to every
+ * customer they collect from is a policy decision rather than a field — and
+ * that the design showed no call button. The design has since grown one, and
+ * the decision was revisited: a customer with a driver outside their building
+ * and no way to say «I'm on the third floor» is the case the withholding was
+ * costing.
+ *
+ * So it is gated exactly as the live location is — an `Assigned` or `Started`
+ * task on one of the two legs that end at the customer — and it disappears the
+ * moment that leg finishes. A driver's number is reachable for the twenty
+ * minutes they are at somebody's door, not for ever.
+ *
+ * A masked proxy number would be better than either and needs a telephony
+ * provider; none is wired yet, and neither is SMS.
+ *
+ * There is still no chat: nothing in the system carries a message between a
+ * customer and a driver, and the button for it comes off the design rather than
+ * pointing at nothing.
  */
 class DriverCard
 {
@@ -44,6 +60,11 @@ class DriverCard
             // returning their clothes are usually not the same.
             'role' => __($task->type->label()),
             'rating' => $this->rating((int) $driver->id),
+            // Same gate as the location below, deliberately: the two answer the
+            // same question — «is this person on their way to me right now» —
+            // and letting them disagree would leave a number reachable after
+            // the dot had gone.
+            'phone' => $this->reachableWhileLive($task) ? $driver->phone : null,
             'location' => $this->location($task),
         ];
     }
@@ -68,13 +89,22 @@ class DriverCard
      *
      * @return array<string, mixed>|null
      */
+    /**
+     * Whether this leg is one the customer is currently waiting on.
+     *
+     * The two legs between the laundry and us are none of the customer's
+     * business — they are not waiting at the laundry's door — and a task that
+     * is finished or not yet assigned is not «right now».
+     */
+    private function reachableWhileLive(OrderTask $task): bool
+    {
+        return in_array($task->type, [TaskType::PickupFromCustomer, TaskType::DeliverToCustomer], true)
+            && in_array($task->status, [TaskStatus::Assigned, TaskStatus::Started], true);
+    }
+
     private function location(OrderTask $task): ?array
     {
-        if (! in_array($task->type, [TaskType::PickupFromCustomer, TaskType::DeliverToCustomer], true)) {
-            return null;
-        }
-
-        if (! in_array($task->status, [TaskStatus::Assigned, TaskStatus::Started], true)) {
+        if (! $this->reachableWhileLive($task)) {
             return null;
         }
 
@@ -127,7 +157,14 @@ class DriverCard
      */
     private function liveTask(Order $order): ?OrderTask
     {
-        $tasks = $order->tasks()->with(['driver:id,name,image_profile', 'driver.profile'])->orderBy('sequence')->get();
+        $tasks = $order->tasks()
+            // `phone` is in the column list because the card now carries it
+            // while a leg is live. A constrained eager load silently returns
+            // null for anything left out, so the number would have read as
+            // «withheld» rather than as a mistake.
+            ->with(['driver:id,name,phone,image_profile', 'driver.profile'])
+            ->orderBy('sequence')
+            ->get();
 
         return $tasks->first(fn (OrderTask $t) => in_array(
             $t->status,

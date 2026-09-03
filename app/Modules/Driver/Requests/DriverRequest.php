@@ -77,7 +77,7 @@ class DriverRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'phone.regex' => __('Please enter a valid Egyptian phone number.'),
+            'phone.regex' => __('Enter the number with its country code, e.g. +201012345678.'),
             'shift_end.after' => __('The shift end must be after the shift start.'),
             'zones.*.exists' => __('One of the selected areas is not available.'),
         ];

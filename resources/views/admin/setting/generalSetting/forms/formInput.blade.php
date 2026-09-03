@@ -219,14 +219,53 @@
     </div>
 </div>
 
-{{-- App Tax --}}
+{{-- Money --}}
 <div class="row g-3 border rounded p-3 mb-3">
-    <h5 class="mb-3">{{ __('App Tax') }}</h5>
+    <h5 class="mb-3">{{ __('Money') }}</h5>
+
     <div class="col-md-6">
         <div class="form-group">
-            <label class="form-label">{{ __('App Tax') }}</label>
+            <label for="setting-currency" class="form-label">{{ __('Currency') }}</label>
             <div class="controls">
-                <input type="text" name="Tax" class="form-control" placeholder="{{ __('Enter App Tax') }}"
+                {{-- A setting rather than a constant, because the market is not
+                     settled. Everything on every screen is formatted through
+                     `moneyFormat()`, which reads this — so it is one field, not
+                     a search-and-replace across 27 files. --}}
+                <select name="Currency" id="setting-currency" class="form-select">
+                    @php
+                        $currentCurrency = appCurrency();
+                        // The ones this platform could plausibly charge in. A
+                        // closed list, so a typo cannot reach NumberFormatter
+                        // and render as literal text on every price.
+                        $currencies = [
+                            'EGP' => __('Egyptian Pound'),
+                            'SAR' => __('Saudi Riyal'),
+                            'AED' => __('UAE Dirham'),
+                            'KWD' => __('Kuwaiti Dinar'),
+                            'QAR' => __('Qatari Riyal'),
+                            'USD' => __('US Dollar'),
+                        ];
+                    @endphp
+                    @foreach ($currencies as $code => $label)
+                        <option value="{{ $code }}" {{ $currentCurrency === $code ? 'selected' : '' }}>
+                            {{ $label }} ({{ $code }})
+                        </option>
+                    @endforeach
+                </select>
+                <div class="form-text">
+                    {{ __('Every price in the panel, the apps and the invoices is shown in this currency.') }}
+                    {{ __('It changes how amounts are displayed, not the numbers already stored.') }}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6">
+        <div class="form-group">
+            <label for="setting-tax" class="form-label">{{ __('App Tax') }}</label>
+            <div class="controls">
+                <input type="text" name="Tax" id="setting-tax" class="form-control"
+                    placeholder="{{ __('Enter App Tax') }}"
                     value="{{ getSettingValue('Tax') }}" {{ Route::is('*.create') ? 'required' : '' }}>
             </div>
         </div>

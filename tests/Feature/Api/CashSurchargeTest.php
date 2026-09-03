@@ -41,7 +41,7 @@ class CashSurchargeTest extends TestCase
         $this->seedCore();
         $this->geo = $this->seedGeo();
         $this->catalog = $this->seedCatalog();
-        $this->customer = $this->customer('01055550001');
+        $this->customer = $this->customer('+201055550001');
     }
 
     private function surcharge(?string $amount): void

@@ -87,7 +87,7 @@ class ReferralTest extends TestCase
     #[Test]
     public function every_customer_gets_a_code(): void
     {
-        $customer = $this->customer('01055550001');
+        $customer = $this->customer('+201055550001');
 
         $this->assertStringStartsWith('LAUNDO-', (string) $customer->fresh()->referral_code);
     }
@@ -95,8 +95,8 @@ class ReferralTest extends TestCase
     #[Test]
     public function two_customers_never_share_one(): void
     {
-        $a = $this->customer('01055550001')->fresh();
-        $b = $this->customer('01055550002')->fresh();
+        $a = $this->customer('+201055550001')->fresh();
+        $b = $this->customer('+201055550002')->fresh();
 
         $this->assertNotSame($a->referral_code, $b->referral_code);
     }
@@ -104,7 +104,7 @@ class ReferralTest extends TestCase
     #[Test]
     public function a_driver_has_no_code(): void
     {
-        $this->assertNull($this->driverUser('01066660001')->fresh()->referral_code);
+        $this->assertNull($this->driverUser('+201066660001')->fresh()->referral_code);
     }
 
     // ------------------------------------------------------------- signing up
@@ -112,8 +112,8 @@ class ReferralTest extends TestCase
     #[Test]
     public function a_friend_who_uses_the_code_is_attached_to_the_inviter(): void
     {
-        $inviter = $this->customer('01055550001')->fresh();
-        $friend = $this->register('01055559999', $inviter->referral_code);
+        $inviter = $this->customer('+201055550001')->fresh();
+        $friend = $this->register('+201055559999', $inviter->referral_code);
 
         $this->assertSame($inviter->id, $friend->referred_by);
     }
@@ -123,7 +123,7 @@ class ReferralTest extends TestCase
     {
         // A mistyped code must not be the reason a customer cannot sign up, and
         // telling a stranger whether a code exists is a way to enumerate them.
-        $friend = $this->register('01055559999', 'LAUNDO-NOPE12');
+        $friend = $this->register('+201055559999', 'LAUNDO-NOPE12');
 
         $this->assertNull($friend->referred_by);
     }
@@ -131,7 +131,7 @@ class ReferralTest extends TestCase
     #[Test]
     public function nobody_invites_themselves(): void
     {
-        $customer = $this->customer('01055550001')->fresh();
+        $customer = $this->customer('+201055550001')->fresh();
 
         app(ReferralService::class)
             ->link($customer, $customer->referral_code);
@@ -146,8 +146,8 @@ class ReferralTest extends TestCase
     {
         $this->reward('20');
 
-        $inviter = $this->customer('01055550001')->fresh();
-        $friend = $this->register('01055559999', $inviter->referral_code);
+        $inviter = $this->customer('+201055550001')->fresh();
+        $friend = $this->register('+201055559999', $inviter->referral_code);
 
         $this->assertSame(0, Coupon::count());
 
@@ -163,8 +163,8 @@ class ReferralTest extends TestCase
     {
         $this->reward('20');
 
-        $inviter = $this->customer('01055550001')->fresh();
-        $this->register('01055559999', $inviter->referral_code);
+        $inviter = $this->customer('+201055550001')->fresh();
+        $this->register('+201055559999', $inviter->referral_code);
 
         // The whole point of the timing: five phone numbers must not mint five
         // coupons without anybody washing anything.
@@ -176,8 +176,8 @@ class ReferralTest extends TestCase
     {
         $this->reward('20');
 
-        $inviter = $this->customer('01055550001')->fresh();
-        $friend = $this->register('01055559999', $inviter->referral_code);
+        $inviter = $this->customer('+201055550001')->fresh();
+        $friend = $this->register('+201055559999', $inviter->referral_code);
 
         $this->payFor($friend);
         $this->payFor($friend);
@@ -191,8 +191,8 @@ class ReferralTest extends TestCase
     {
         $this->reward('20');
 
-        $inviter = $this->customer('01055550001')->fresh();
-        $friend = $this->register('01055559999', $inviter->referral_code);
+        $inviter = $this->customer('+201055550001')->fresh();
+        $friend = $this->register('+201055559999', $inviter->referral_code);
 
         $order = $this->payFor($friend);
         // A webhook arriving after the driver already collected cash.
@@ -206,7 +206,7 @@ class ReferralTest extends TestCase
     {
         $this->reward('20');
 
-        $this->payFor($this->register('01055559999'));
+        $this->payFor($this->register('+201055559999'));
 
         $this->assertSame(0, Coupon::count());
     }
@@ -216,8 +216,8 @@ class ReferralTest extends TestCase
     {
         $this->reward(null);
 
-        $inviter = $this->customer('01055550001')->fresh();
-        $friend = $this->register('01055559999', $inviter->referral_code);
+        $inviter = $this->customer('+201055550001')->fresh();
+        $friend = $this->register('+201055559999', $inviter->referral_code);
         $this->payFor($friend);
 
         // The size of a discount is the owner's decision, not a default worth
@@ -231,8 +231,8 @@ class ReferralTest extends TestCase
     {
         $this->reward(null);
 
-        $inviter = $this->customer('01055550001')->fresh();
-        $friend = $this->register('01055559999', $inviter->referral_code);
+        $inviter = $this->customer('+201055550001')->fresh();
+        $friend = $this->register('+201055559999', $inviter->referral_code);
         $this->payFor($friend);
 
         $this->reward('20');
@@ -250,12 +250,12 @@ class ReferralTest extends TestCase
     {
         $this->reward('20');
 
-        $inviter = $this->customer('01055550001')->fresh();
-        $friend = $this->register('01055559999', $inviter->referral_code);
+        $inviter = $this->customer('+201055550001')->fresh();
+        $friend = $this->register('+201055559999', $inviter->referral_code);
         $this->payFor($friend);
 
         $theirs = Coupon::where('user_id', $inviter->id)->firstOrFail();
-        $stranger = $this->customer('01055550003');
+        $stranger = $this->customer('+201055550003');
 
         // Coupons here have always been public codes limited by a redemption
         // count. A personal reward issued as a public code is a reward for
@@ -270,8 +270,8 @@ class ReferralTest extends TestCase
     {
         $this->reward('20');
 
-        $inviter = $this->customer('01055550001')->fresh();
-        $friend = $this->register('01055559999', $inviter->referral_code);
+        $inviter = $this->customer('+201055550001')->fresh();
+        $friend = $this->register('+201055559999', $inviter->referral_code);
         $this->payFor($friend);
 
         $theirs = Coupon::where('user_id', $inviter->id)->firstOrFail();
@@ -295,7 +295,7 @@ class ReferralTest extends TestCase
         ]);
 
         $result = app(CouponService::class)
-            ->validate($coupon->code, $this->customer('01055550001'), 500);
+            ->validate($coupon->code, $this->customer('+201055550001'), 500);
 
         $this->assertEquals(50.0, $result['discount']);
     }
@@ -307,9 +307,9 @@ class ReferralTest extends TestCase
     {
         $this->reward('20');
 
-        $inviter = $this->customer('01055550001')->fresh();
-        $ordered = $this->register('01055559998', $inviter->referral_code);
-        $this->register('01055559999', $inviter->referral_code);
+        $inviter = $this->customer('+201055550001')->fresh();
+        $ordered = $this->register('+201055559998', $inviter->referral_code);
+        $this->register('+201055559999', $inviter->referral_code);
         $this->payFor($ordered);
 
         $data = $this->actingAs($inviter)

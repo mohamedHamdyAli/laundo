@@ -45,8 +45,8 @@ class RatingDashboardTest extends TestCase
         $this->seedCore();
         $this->geo = $this->seedGeo();
         $this->catalog = $this->seedCatalog();
-        $this->tenant = $this->laundryWithOwner('A', '01011110001', '01011110002');
-        $this->customer = $this->customer('01055550001');
+        $this->tenant = $this->laundryWithOwner('A', '+201011110001', '+201011110002');
+        $this->customer = $this->customer('+201055550001');
     }
 
     /**
@@ -113,7 +113,7 @@ class RatingDashboardTest extends TestCase
     #[Test]
     public function a_laundry_owner_sees_only_their_own_verdicts(): void
     {
-        $other = $this->laundryWithOwner('B', '01011110003', '01011110004');
+        $other = $this->laundryWithOwner('B', '+201011110003', '+201011110004');
 
         $this->rating(5);
         $this->rating(1, [], $other['laundry']->id);
@@ -275,7 +275,7 @@ class RatingDashboardTest extends TestCase
     {
         // Two ratings for A, none for B. If B came back as 0 it would sort below
         // a laundry customers actively disliked.
-        $other = $this->laundryWithOwner('B', '01011110003', '01011110004');
+        $other = $this->laundryWithOwner('B', '+201011110003', '+201011110004');
 
         $this->rating(5);
         // An order for B with no rating at all.
@@ -294,7 +294,7 @@ class RatingDashboardTest extends TestCase
     #[Test]
     public function a_laundry_owner_reading_the_report_sees_only_their_own_rating(): void
     {
-        $other = $this->laundryWithOwner('B', '01011110003', '01011110004');
+        $other = $this->laundryWithOwner('B', '+201011110003', '+201011110004');
 
         $this->rating(5);
         $this->rating(1, [], $other['laundry']->id);

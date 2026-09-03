@@ -40,6 +40,11 @@ class AddressRequest extends FormRequest
             'apartment' => ['nullable', 'string', 'max:50'],
             'landmark' => ['nullable', 'string', 'max:191'],
             'notes' => ['nullable', 'string', 'max:1000'],
+            // «ملاحظة للمندوب» — an instruction to somebody standing outside,
+            // which is a property of the place rather than of one order.
+            // `notes` above is the address's own description; the two are not
+            // the same thing and the design shows this one on the card.
+            'driver_note' => ['nullable', 'string', 'max:500'],
             // Null means "use the account number", per the design toggle.
             'contact_phone' => ['nullable', 'string', 'regex:'.phoneRegex()],
             'lat' => [$req, 'numeric', 'between:-90,90'],
@@ -54,7 +59,7 @@ class AddressRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'contact_phone.regex' => __('Please enter a valid Egyptian phone number.'),
+            'contact_phone.regex' => __('Enter the number with its country code, e.g. +201012345678.'),
             'lat.required' => __('Please pick the location on the map.'),
             'lng.required' => __('Please pick the location on the map.'),
         ];

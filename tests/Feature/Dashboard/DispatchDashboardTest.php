@@ -44,7 +44,7 @@ class DispatchDashboardTest extends TestCase
             $zone->update(['price_per_km' => 5.00, 'min_delivery_fee' => 20.00]);
         }
 
-        $this->tenant = $this->laundryWithOwner('A', '01011110001', '01011110002');
+        $this->tenant = $this->laundryWithOwner('A', '+201011110001', '+201011110002');
         $this->cover($this->tenant['laundry'], $this->geo['zones'][0]->id, $this->catalog['service']->id);
     }
 
@@ -100,7 +100,7 @@ class DispatchDashboardTest extends TestCase
         $order = $this->placedOrder();
 
         // A driver who serves a different zone entirely.
-        $wrong = $this->driverUser('01033330009', zoneIds: [$this->geo['zones'][1]->id]);
+        $wrong = $this->driverUser('+201033330009', zoneIds: [$this->geo['zones'][1]->id]);
         $task = $this->leg($order, TaskType::PickupFromCustomer);
 
         // An override is a person choosing between qualified drivers, not a way
@@ -171,7 +171,7 @@ class DispatchDashboardTest extends TestCase
         $order = $this->placedOrder();
         $task = $this->leg($order, TaskType::PickupFromCustomer);
 
-        $intruder = $this->laundryWithOwner('B', '01022220001', '01022220002');
+        $intruder = $this->laundryWithOwner('B', '+201022220001', '+201022220002');
 
         // Reached through the tenant-scoped Order, so another laundry's task is
         // simply not found.
@@ -244,7 +244,7 @@ class DispatchDashboardTest extends TestCase
 
     private function eligibleDriver(): Driver
     {
-        return $this->driverUser('01044440001', zoneIds: [$this->geo['zones'][0]->id]);
+        return $this->driverUser('+201044440001', zoneIds: [$this->geo['zones'][0]->id]);
     }
 
     private function placedOrder(): Order

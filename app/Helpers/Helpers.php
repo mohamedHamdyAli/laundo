@@ -114,7 +114,24 @@ if (! function_exists('phoneRegex')) {
      */
     function phoneRegex(): string
     {
-        return '/^(?:\+?201[0125]\d{8}|01[0125]\d{8})$/';
+        /*
+         * E.164, with the country code mandatory.
+         *
+         * This was Egypt-only — `+?201[0125]` or a bare `01[0125]`, the four
+         * Egyptian mobile prefixes — while the design showed a country picker
+         * with a chevron, so a customer could choose a country and then be
+         * refused after typing the number. The owner's decision is to accept
+         * any country, the market not being settled yet.
+         *
+         * The `+` is required rather than optional, deliberately: `01012345678`
+         * is an Egyptian mobile *and* a valid Italian landline, and the phone is
+         * the account's identity here — one that can be read two ways is one
+         * that can collide, or split one person across two accounts.
+         *
+         * `[1-9]` after the plus because no country code begins with zero, and
+         * 8–15 digits in total, which is E.164's own ceiling.
+         */
+        return '/^\+[1-9]\d{7,14}$/';
     }
 }
 
@@ -579,16 +596,52 @@ if (! function_exists('randomCode')) {
     }
 }
 
+if (! function_exists('appCurrency')) {
+    /**
+     * The currency the platform charges in.
+     *
+     * A setting rather than a constant, because the market is not settled — the
+     * same reason the phone rule now accepts any country. `getSettingValue()`
+     * caches forever, so this costs no query per call, which matters: money is
+     * formatted dozens of times on a single order screen.
+     *
+     * `EGP` is the fallback rather than `USD`, which is what the default used to
+     * be — a laundry in Cairo was quoting dollars on every screen because
+     * nobody had chosen.
+     */
+    function appCurrency(): string
+    {
+        $currency = strtoupper(trim((string) getSettingValue('Currency')));
+
+        // Three letters or the fallback: an empty or half-typed setting would
+        // otherwise reach NumberFormatter and render as the literal text.
+        return preg_match('/^[A-Z]{3}$/', $currency) ? $currency : 'EGP';
+    }
+}
+
 if (! function_exists('moneyFormat')) {
     /**
-     * Format money by locale & currency.
+     * Money, as the current locale writes it.
+     *
+     * Two decisions are expressed here.
+     *
+     * The currency comes from the setting, not from a parameter default. It was
+     * `'USD'`, and since almost nothing passed the second argument, every screen
+     * in an Egyptian laundry showed dollars. The parameter survives for the rare
+     * caller that genuinely means a different currency.
+     *
+     * `-u-nu-latn` forces Western digits. `NumberFormatter` renders `ar` with
+     * Arabic-Indic numerals — ١٠٫٠٠ — which is correct by the standard and is
+     * not what Egyptian apps use or what people here read prices in. The
+     * extension changes only the numbering system, so the currency symbol, its
+     * position and the decimal separator all stay correct for the locale.
      */
-    function moneyFormat($amount, string $currency = 'USD'): string
+    function moneyFormat($amount, ?string $currency = null): string
     {
-        $locale = getCurrentLocale();
+        $locale = getCurrentLocale().'-u-nu-latn';
         $formatter = new NumberFormatter($locale, NumberFormatter::CURRENCY);
 
-        return $formatter->formatCurrency($amount, $currency);
+        return $formatter->formatCurrency((float) $amount, $currency ?? appCurrency());
     }
 }
 

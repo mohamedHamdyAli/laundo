@@ -42,8 +42,8 @@ class RecurrenceDashboardTest extends TestCase
         $this->seedCore();
         $this->geo = $this->seedGeo();
         $this->catalog = $this->seedCatalog();
-        $this->customer = $this->customer('01099998888');
-        $this->tenant = $this->laundryWithOwner('A', '01011110001', '01011110002');
+        $this->customer = $this->customer('+201099998888');
+        $this->tenant = $this->laundryWithOwner('A', '+201011110001', '+201011110002');
     }
 
     private function schedule(string $status = 'active', ?string $nextOn = null): OrderRecurrence
@@ -344,7 +344,7 @@ class RecurrenceDashboardTest extends TestCase
             'X-Requested-With' => 'XMLHttpRequest',
         ])->assertOk();
 
-        $this->assertStringContainsString('01099998888', $response->json('table'));
+        $this->assertStringContainsString('+201099998888', $response->json('table'));
     }
 
     #[Test]
@@ -358,6 +358,6 @@ class RecurrenceDashboardTest extends TestCase
             'X-Requested-With' => 'XMLHttpRequest',
         ])->assertOk();
 
-        $this->assertStringNotContainsString('01099998888', $response->json('table'));
+        $this->assertStringNotContainsString('+201099998888', $response->json('table'));
     }
 }

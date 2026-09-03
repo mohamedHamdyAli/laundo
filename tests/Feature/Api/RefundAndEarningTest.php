@@ -59,7 +59,7 @@ class RefundAndEarningTest extends TestCase
         $this->catalog = $this->seedCatalog();
         $this->geo['zones'][0]->update(['price_per_km' => 5.00, 'min_delivery_fee' => 20.00]);
 
-        $this->tenant = $this->laundryWithOwner('A', '01011110001', '01011110002');
+        $this->tenant = $this->laundryWithOwner('A', '+201011110001', '+201011110002');
         $this->cover($this->tenant['laundry'], $this->geo['zones'][0]->id, $this->catalog['service']->id);
 
         $this->customer = $this->customer();
@@ -216,7 +216,7 @@ class RefundAndEarningTest extends TestCase
     {
         $order = $this->paidOrder();
 
-        Sanctum::actingAs($this->customer('01088776655'));
+        Sanctum::actingAs($this->customer('+201088776655'));
 
         $this->postJson("/api/v1/orders/{$order->id}/refunds",
             ['amount' => 10, 'reason' => 'x'], $this->apiHeaders())->assertNotFound();
@@ -376,7 +376,7 @@ class RefundAndEarningTest extends TestCase
 
     private function eligibleDriver(): Driver
     {
-        return $this->driverUser('01044440001', zoneIds: [$this->geo['zones'][0]->id]);
+        return $this->driverUser('+201044440001', zoneIds: [$this->geo['zones'][0]->id]);
     }
 
     private function placedOrder(): Order

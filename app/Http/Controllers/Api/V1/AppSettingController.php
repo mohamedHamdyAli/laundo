@@ -44,6 +44,11 @@ class AppSettingController extends Controller
         'Terms' => true,
 
         // «تواصل معنا» reads these.
+        // The apps format their own prices; without this they would each have
+        // to guess, and a guess that disagrees with the panel is a price the
+        // customer sees two ways.
+        'Currency' => false,
+
         'Hotline' => false,
         'Call' => false,
         'Email' => false,
@@ -89,6 +94,18 @@ class AppSettingController extends Controller
                 // used to resolve to the generic missing-image placeholder, so
                 // the apps were being handed that as the brand.
                 $payload['app_logo'] = brandLogo('dark');
+
+                continue;
+            }
+
+            if ($key === 'Currency') {
+                // Through appCurrency() for the same reason as the logo above:
+                // it is the resolved value, not the row. An unset or half-typed
+                // setting hands the raw column straight to the apps — so they
+                // would format prices with an empty string while every screen
+                // in the panel showed EGP, which is precisely the disagreement
+                // the setting exists to prevent.
+                $payload['currency'] = appCurrency();
 
                 continue;
             }

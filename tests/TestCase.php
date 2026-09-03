@@ -236,7 +236,7 @@ abstract class TestCase extends BaseTestCase
     protected function superAdmin(): User
     {
         return User::firstOrCreate(
-            ['phone' => '01000000001'],
+            ['phone' => '+201000000001'],
             [
                 'name' => 'Super', 'email' => 'super@test.local',
                 'password' => 'password', 'status' => 'active',
@@ -271,7 +271,7 @@ abstract class TestCase extends BaseTestCase
         return ['laundry' => $laundry, 'owner' => $owner];
     }
 
-    protected function customer(string $phone = '01099887766', bool $verified = true): User
+    protected function customer(string $phone = '+201099887766', bool $verified = true): User
     {
         return User::create([
             'name' => 'Customer', 'phone' => $phone, 'password' => 'password', 'status' => 'active',
@@ -286,7 +286,7 @@ abstract class TestCase extends BaseTestCase
      * @param  array<int, int>  $zoneIds
      */
     protected function driverUser(
-        string $phone = '01033330001',
+        string $phone = '+201033330001',
         bool $available = true,
         bool $active = true,
         array $zoneIds = [],

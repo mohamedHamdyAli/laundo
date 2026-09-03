@@ -50,9 +50,9 @@ class RescheduleTest extends TestCase
         $this->seedCore();
         $this->geo = $this->seedGeo();
         $this->catalog = $this->seedCatalog();
-        $this->tenant = $this->laundryWithOwner('A', '01011110001', '01011110002');
+        $this->tenant = $this->laundryWithOwner('A', '+201011110001', '+201011110002');
         $this->cover($this->tenant['laundry'], $this->geo['zones'][0]->id, $this->catalog['service']->id);
-        $this->customer = $this->customer('01055550001');
+        $this->customer = $this->customer('+201055550001');
     }
 
     private function order(): Order
@@ -92,7 +92,7 @@ class RescheduleTest extends TestCase
      */
     private function postpone(Order $order): OrderTask
     {
-        $driver = $this->driverUser('01066660001');
+        $driver = $this->driverUser('+201066660001');
 
         $task = $order->tasks()->orderBy('sequence')->firstOrFail();
         $task->forceFill(['status' => TaskStatus::Assigned, 'driver_id' => $driver->id])->save();
@@ -111,7 +111,7 @@ class RescheduleTest extends TestCase
     public function a_postponed_leg_is_not_offered_to_the_next_driver(): void
     {
         // Somebody else who would happily take it.
-        $this->driverUser('01066660002');
+        $this->driverUser('+201066660002');
 
         $order = $this->order();
         $task = $this->postpone($order);
@@ -310,7 +310,7 @@ class RescheduleTest extends TestCase
     public function a_leg_that_failed_for_another_reason_cannot_be_rescheduled(): void
     {
         $order = $this->order();
-        $driver = $this->driverUser('01066660001');
+        $driver = $this->driverUser('+201066660001');
 
         $task = $order->tasks()->orderBy('sequence')->firstOrFail();
         $task->forceFill(['status' => TaskStatus::Assigned, 'driver_id' => $driver->id])->save();
@@ -376,7 +376,7 @@ class RescheduleTest extends TestCase
         $order = $this->order();
         $this->postpone($order);
 
-        $intruder = $this->customer('01055550002');
+        $intruder = $this->customer('+201055550002');
 
         $this->actingAs($intruder)
             ->postJson("/api/v1/orders/{$order->id}/reschedule", [

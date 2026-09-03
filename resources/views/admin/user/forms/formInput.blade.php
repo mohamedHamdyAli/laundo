@@ -24,7 +24,7 @@
         <div class="form-group">
             <label class="form-label">{{ __('Phone') }}</label>
             <div class="controls">
-                <input type="text" name="phone" class="form-control" placeholder="{{ __('Enter Phone') }}"
+                <input type="text" name="phone" class="form-control" placeholder="{{ __('With the country code, e.g. +201012345678') }}"
                     value="{{ Route::is('*.show') ? $row->phone : (isset($userAuth) ? $userAuth->phone : old('phone')) }}"
                     {{ Route::is('*.create') ? 'required' : '' }} {{ Route::is('*.show') ? 'readonly' : '' }}>
             </div>
@@ -79,4 +79,35 @@
             </div>
         </div>
     </div>
+
+    {{-- Read-only, and only on an existing record: these are two things that
+         happened, not two fields somebody sets. Recording the consent and never
+         showing it would prove nothing — the point of storing it is that
+         somebody can be asked and can answer. --}}
+    @if (isset($row))
+        <div class="col-md-4">
+            <div class="form-group">
+                <label class="form-label">{{ __('Phone verified') }}</label>
+                <div class="controls">
+                    <input type="text" class="form-control" disabled
+                        value="{{ $row->phone_verified_at ? humanDate($row->phone_verified_at, 'Y-m-d H:i') : __('Not verified') }}">
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="form-group">
+                <label class="form-label">{{ __('Terms accepted') }}</label>
+                <div class="controls">
+                    <input type="text" class="form-control" disabled
+                        value="{{ $row->accepted_terms_at ? humanDate($row->accepted_terms_at, 'Y-m-d H:i') : __('Not recorded') }}">
+                    {{-- Accounts that registered before the consent was stored
+                         read «Not recorded», which is the honest answer. They
+                         were not backfilled: nobody is told retroactively that
+                         they agreed at the moment of a migration. --}}
+                    <div class="form-text">{{ __('Accounts created before this was recorded show no date.') }}</div>
+                </div>
+            </div>
+        </div>
+    @endif
 </div>

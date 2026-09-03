@@ -59,7 +59,7 @@ class ModeratorRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'phone.regex' => __('Please enter a valid Egyptian phone number.'),
+            'phone.regex' => __('Enter the number with its country code, e.g. +201012345678.'),
             'role_id.exists' => __('Please select a valid moderator role.'),
         ];
     }

@@ -35,7 +35,7 @@ class OperatorInboxTest extends TestCase
     {
         parent::setUp();
         $this->seedCore();
-        $this->customer = $this->customer('01055550001');
+        $this->customer = $this->customer('+201055550001');
     }
 
     private function complain(string $body = 'something went wrong here'): Complaint
@@ -172,7 +172,7 @@ class OperatorInboxTest extends TestCase
         $this->complain();
 
         // A second dashboard user who was not a recipient.
-        $tenant = $this->laundryWithOwner('A', '01011110001', '01011110002');
+        $tenant = $this->laundryWithOwner('A', '+201011110001', '+201011110002');
 
         $this->assertCount(
             0,
@@ -245,7 +245,7 @@ class OperatorInboxTest extends TestCase
 
         $id = $admin->fresh()->notifications()->first()->id;
 
-        $tenant = $this->laundryWithOwner('A', '01011110001', '01011110002');
+        $tenant = $this->laundryWithOwner('A', '+201011110001', '+201011110002');
 
         $this->actingAs($tenant['owner'])
             ->post('/admin/my-notifications/'.$id.'/read')

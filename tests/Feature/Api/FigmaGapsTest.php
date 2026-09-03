@@ -45,8 +45,8 @@ class FigmaGapsTest extends TestCase
         $this->seedCore();
         $this->geo = $this->seedGeo();
         $this->catalog = $this->seedCatalog();
-        $this->tenant = $this->laundryWithOwner('A', '01011110001', '01011110002');
-        $this->customer = $this->customer('01055550001');
+        $this->tenant = $this->laundryWithOwner('A', '+201011110001', '+201011110002');
+        $this->customer = $this->customer('+201055550001');
     }
 
     private function order(?string $method = null): Order
@@ -157,7 +157,7 @@ class FigmaGapsTest extends TestCase
     public function it_is_not_another_customers_qr(): void
     {
         $order = $this->order();
-        $stranger = $this->customer('01055550002');
+        $stranger = $this->customer('+201055550002');
 
         // The order lookup is through the customer's own orders, so the token is
         // protected by the same boundary as everything else on the order.
@@ -178,7 +178,7 @@ class FigmaGapsTest extends TestCase
     public function the_tracking_screen_names_the_driver(): void
     {
         $order = $this->order();
-        $driver = $this->driverUser('01066660001');
+        $driver = $this->driverUser('+201066660001');
         $this->assign($order, $driver);
 
         $card = $this->actingAs($this->customer)
@@ -207,7 +207,7 @@ class FigmaGapsTest extends TestCase
     #[Test]
     public function the_star_is_what_customers_said_about_delivery(): void
     {
-        $driver = $this->driverUser('01066660001');
+        $driver = $this->driverUser('+201066660001');
 
         // Two finished orders this driver carried, rated 5 and 4 on delivery but
         // 1 on the wash. Averaging the aspects together would mark the driver
@@ -241,7 +241,7 @@ class FigmaGapsTest extends TestCase
     public function an_unrated_driver_is_null_and_not_zero(): void
     {
         $order = $this->order();
-        $driver = $this->driverUser('01066660001');
+        $driver = $this->driverUser('+201066660001');
         $this->assign($order, $driver);
 
         // A new driver shown as 0.0 reads as a bad driver rather than an unrated
@@ -253,20 +253,37 @@ class FigmaGapsTest extends TestCase
         );
     }
 
+    /**
+     * This asserted the opposite until the design grew a call button and the
+     * owner reversed the decision: the number is handed out, but only while the
+     * driver is actually on their way, and it disappears when the leg ends.
+     *
+     * The gating itself is covered in `LiveTrackingTest` — this one holds the
+     * narrower line that mattered in the original sweep: it is never a
+     * standing, permanent field on the card.
+     */
     #[Test]
-    public function the_drivers_phone_number_is_not_handed_out(): void
+    public function the_drivers_number_is_reachable_only_while_they_are_coming(): void
     {
         $order = $this->order();
-        $driver = $this->driverUser('01066660001');
+        $driver = $this->driverUser('+201066660001');
         $this->assign($order, $driver);
 
         $card = $this->actingAs($this->customer)
             ->getJson('/api/v1/orders/'.$order->id.'/track')
             ->json('data.driver');
 
-        // Handing a driver's personal mobile to every customer is a policy
-        // decision, not a field. The design shows no call button.
-        $this->assertArrayNotHasKey('phone', $card);
+        $this->assertSame($driver->phone, $card['phone']);
+
+        // Off the customer-facing legs it is withheld, which is what stops it
+        // being a permanent directory of drivers' mobiles.
+        $order->tasks()->update(['status' => 'completed']);
+
+        $this->assertNull(
+            $this->actingAs($this->customer)
+                ->getJson('/api/v1/orders/'.$order->id.'/track')
+                ->json('data.driver.phone')
+        );
     }
 
     // ------------------------------------------------------ 6 · «المرفقات»
@@ -370,7 +387,7 @@ class FigmaGapsTest extends TestCase
     #[Test]
     public function the_driver_can_see_the_documents_on_file(): void
     {
-        $driver = $this->driverUser('01066660001');
+        $driver = $this->driverUser('+201066660001');
         $driver->profile()->update([
             'license_image' => 'images/drivers/licence.jpg',
             'vehicle_registration_image' => 'images/drivers/registration.jpg',
@@ -391,7 +408,7 @@ class FigmaGapsTest extends TestCase
     #[Test]
     public function documents_stay_read_only(): void
     {
-        $driver = $this->driverUser('01066660001');
+        $driver = $this->driverUser('+201066660001');
 
         $this->actingAs($driver, 'sanctum')
             ->postJson('/api/v1/driver/profile', [

@@ -12,10 +12,14 @@
         <div class="form-group">
             <label for="banner-name" class="form-label">{{ __('Name') }}</label>
             <div class="controls">
+                {{-- No `required` here: the rule is «copy in at least one
+                     language», which no single `required` attribute can
+                     express, and leaving it on the default language has the
+                     browser refuse a save the server accepts. The Request
+                     enforces it, with its own message. --}}
                 <input type="text" name="name[{{ getDefaultLanguage('code') }}]" class="form-control"
                     {{ Route::is('*.show') ? 'disabled' : '' }} id="banner-name" placeholder="{{ __('Enter Name') }}"
-                    value="{{ $nameTranslations[getDefaultLanguage('code')] ?? '' }}"
-                    {{ Route::is('*.create') ? 'required' : '' }}>
+                    value="{{ $nameTranslations[getDefaultLanguage('code')] ?? '' }}">
             </div>
         </div>
     </div>
@@ -33,7 +37,7 @@
                 <textarea name="description[{{ getDefaultLanguage('code') }}]" class="form-control" rows="3"
                     {{ Route::is('*.show') ? 'disabled' : '' }} id="banner-description"
                     placeholder="{{ __('Enter Description') }}"
-                    {{ Route::is('*.create') ? 'required' : '' }}>{{ $descriptionTranslations[getDefaultLanguage('code')] ?? '' }}</textarea>
+                    >{{ $descriptionTranslations[getDefaultLanguage('code')] ?? '' }}</textarea>
             </div>
         </div>
     </div>
@@ -47,9 +51,26 @@
                     <option value="inactive" {{ isset($row) && $row->status == 'inactive' ? 'selected' : '' }}>
                         {{ __('inactive') }}</option>
                 </select>
+                <div class="form-text">{{ __('Only active banners are sent to the app.') }}</div>
             </div>
         </div>
     </div>
+
+    {{-- The carousel had no order at all: the API sent the newest banner first
+         and nothing in the panel could change that. --}}
+    <div class="col-md-4">
+        <div class="form-group">
+            <label for="banner-sort" class="form-label">{{ __('Order') }}</label>
+            <div class="controls">
+                <input type="number" name="sort_order" id="banner-sort" class="form-control" min="0" step="1"
+                    {{ Route::is('*.show') ? 'disabled' : '' }}
+                    placeholder="{{ __('Enter Order') }}"
+                    value="{{ isset($row) ? $row->sort_order : old('sort_order', 0) }}">
+                <div class="form-text">{{ __('Lowest first — the order the banners appear in.') }}</div>
+            </div>
+        </div>
+    </div>
+
     {{--
         Where «عرض التفاصيل» goes.
 

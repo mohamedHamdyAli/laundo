@@ -75,7 +75,7 @@ class OrderDashboardTest extends TestCase
         // An address in a zone nobody covers.
         $address = $this->addressFor($customer, $this->geo['zones'][1]);
 
-        $tenant = $this->laundryWithOwner('A', '01011110001', '01011110002');
+        $tenant = $this->laundryWithOwner('A', '+201011110001', '+201011110002');
         $this->cover($tenant['laundry'], $this->geo['zones'][0]->id, $this->catalog['service']->id);
 
         $order = $this->placeFor($customer, $address);
@@ -95,7 +95,7 @@ class OrderDashboardTest extends TestCase
         $customer = $this->customer();
         $address = $this->addressFor($customer, $this->geo['zones'][1]);
 
-        $tenant = $this->laundryWithOwner('A', '01011110001', '01011110002');
+        $tenant = $this->laundryWithOwner('A', '+201011110001', '+201011110002');
         $this->cover($tenant['laundry'], $this->geo['zones'][0]->id, $this->catalog['service']->id);
 
         $order = $this->placeFor($customer, $address);
@@ -165,7 +165,7 @@ class OrderDashboardTest extends TestCase
     #[Test]
     public function orders_are_gated_on_the_view_permission(): void
     {
-        $tenant = $this->laundryWithOwner('A', '01011110001', '01011110002');
+        $tenant = $this->laundryWithOwner('A', '+201011110001', '+201011110002');
         $this->grant('laundry_owner', ['laundry.view']);
 
         $this->actingAs($tenant['owner'])->get('/admin/order')->assertForbidden();
@@ -184,14 +184,14 @@ class OrderDashboardTest extends TestCase
      */
     private function twoTenantsWithOneOrderEach(): array
     {
-        $tenantA = $this->laundryWithOwner('A', '01011110001', '01011110002');
-        $tenantB = $this->laundryWithOwner('B', '01022220001', '01022220002');
+        $tenantA = $this->laundryWithOwner('A', '+201011110001', '+201011110002');
+        $tenantB = $this->laundryWithOwner('B', '+201022220001', '+201022220002');
 
         $this->cover($tenantA['laundry'], $this->geo['zones'][0]->id, $this->catalog['service']->id);
         $this->cover($tenantB['laundry'], $this->geo['zones'][1]->id, $this->catalog['service']->id, 29.9600, 31.2600);
 
-        $customerA = $this->customer('01099887766');
-        $customerB = $this->customer('01099887767');
+        $customerA = $this->customer('+201099887766');
+        $customerB = $this->customer('+201099887767');
 
         $orderA = $this->placeFor($customerA, $this->addressFor($customerA, $this->geo['zones'][0]));
         $orderB = $this->placeFor($customerB, $this->addressFor($customerB, $this->geo['zones'][1], 29.9650, 31.2650));

@@ -33,7 +33,7 @@ class RetentionTest extends TestCase
     {
         parent::setUp();
         $this->seedCore();
-        $this->user = $this->customer('01055550001');
+        $this->user = $this->customer('+201055550001');
     }
 
     private function log(string $status, int $daysAgo): NotificationLog

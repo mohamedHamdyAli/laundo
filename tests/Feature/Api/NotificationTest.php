@@ -58,7 +58,7 @@ class NotificationTest extends TestCase
         $this->catalog = $this->seedCatalog();
         $this->geo['zones'][0]->update(['price_per_km' => 5.00, 'min_delivery_fee' => 20.00]);
 
-        $this->tenant = $this->laundryWithOwner('A', '01011110001', '01011110002');
+        $this->tenant = $this->laundryWithOwner('A', '+201011110001', '+201011110002');
         $this->cover($this->tenant['laundry'], $this->geo['zones'][0]->id, $this->catalog['service']->id);
 
         $this->customer = $this->customer();
@@ -184,7 +184,7 @@ class NotificationTest extends TestCase
     #[Test]
     public function a_driver_is_told_a_task_is_theirs(): void
     {
-        $driver = $this->driverUser('01044440001', zoneIds: [$this->geo['zones'][0]->id]);
+        $driver = $this->driverUser('+201044440001', zoneIds: [$this->geo['zones'][0]->id]);
 
         $this->placedOrder();
 
@@ -308,7 +308,7 @@ class NotificationTest extends TestCase
         });
 
         DeviceToken::create(['user_id' => $this->customer->id, 'token' => 'tok-busy']);
-        $this->placedOrder('01099887799');
+        $this->placedOrder('+201099887799');
 
         // Deleting this one would silence a working handset.
         $this->assertSame(1, DeviceToken::where('token', 'tok-busy')->count());
@@ -357,7 +357,7 @@ class NotificationTest extends TestCase
         $this->placedOrder();
         $id = DatabaseNotification::firstOrFail()->id;
 
-        Sanctum::actingAs($this->customer('01088776655'));
+        Sanctum::actingAs($this->customer('+201088776655'));
 
         $this->getJson('/api/v1/notifications', $this->apiHeaders())
             ->assertOk()->assertJsonCount(0, 'data');
@@ -379,7 +379,7 @@ class NotificationTest extends TestCase
         // FCM reissues a token to whoever installs the app next on that handset.
         // Two users both believing they own it is how somebody receives another
         // person's order updates.
-        $second = $this->customer('01077665544');
+        $second = $this->customer('+201077665544');
         $this->app['auth']->forgetGuards();
         Sanctum::actingAs($second);
 
@@ -482,10 +482,10 @@ class NotificationTest extends TestCase
 
     // ------------------------------------------------------------------ helpers
 
-    private function placedOrder(string $phone = '01099887766'): Order
+    private function placedOrder(string $phone = '+201099887766'): Order
     {
-        $customer = $phone === '01099887766' ? $this->customer : $this->customer($phone);
-        $address = $phone === '01099887766'
+        $customer = $phone === '+201099887766' ? $this->customer : $this->customer($phone);
+        $address = $phone === '+201099887766'
             ? $this->address
             : $this->addressFor($customer, $this->geo['zones'][0]);
 

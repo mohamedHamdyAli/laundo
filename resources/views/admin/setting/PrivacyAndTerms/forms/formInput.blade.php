@@ -1,68 +1,83 @@
-{{-- Privacy_Policy / Terms  --}}
 @php
-    $PrivacyPolicyJson = getSettingValue('Privacy_Policy');
-    $PrivacyPolicyTranslations = !empty($PrivacyPolicyJson) ? json_decode($PrivacyPolicyJson, true) : [];
-
-    $TermsPolicyJson = getSettingValue('Terms');
-    $TermsTranslations = !empty($TermsPolicyJson) ? json_decode($TermsPolicyJson, true) : [];
+    $privacyTranslations = json_decode((string) getSettingValue('Privacy_Policy'), true) ?: [];
+    $termsTranslations = json_decode((string) getSettingValue('Terms'), true) ?: [];
+    $defaultCode = getDefaultLanguage('code');
 @endphp
+
+{{--
+    Two things were wrong with these fields, both invisible until somebody saved.
+
+    Each `<textarea>` carried `value="{{ getSettingValue(...) }}"` — an attribute
+    a textarea does not have, holding the raw JSON of *every* language, which
+    rendered the whole blob into the page's HTML.
+
+    And the content sat on its own indented line, so everything between the tags
+    — a newline and twenty spaces before the text, a newline and sixteen after —
+    was part of the value. Every save folded that in and the next save added it
+    again. The text is flush against the tags now, and the service trims on the
+    way in as well.
+--}}
 <div class="row g-3">
-    <div class="col-md-6">
+    <div class="col-12">
         <div class="form-group">
-            <div class="mb-4">
-                <label class="form-label">{{ __('App Privacy Policy') }}</label>
-                <div class="controls">
-                    <textarea name="Privacy_Policy[{{ getDefaultLanguage('code') }}]" class="form-control" rows="3"
-                        {{ Route::is('*.show') ? 'disabled' : '' }} id="setting-Privacy_Policy" placeholder="{{ __('App Privacy Policy') }}"
-                        {{ Route::is('*.create') ? 'required' : '' }} value="{{ getSettingValue('Privacy_Policy') }}">
-                    {{ $PrivacyPolicyTranslations[getDefaultLanguage('code')] ?? '' }}
-                </textarea>
-                </div>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-6">
-        <div class="form-group">
-            <div class="mb-4">
-                <label class="form-label">{{ __('App Terms') }}</label>
-                <div class="controls">
-                    <textarea name="Terms[{{ getDefaultLanguage('code') }}]" class="form-control" rows="3"
-                        {{ Route::is('*.show') ? 'disabled' : '' }} id="setting-Terms" placeholder="{{ __('App Terms') }}"
-                        {{ Route::is('*.create') ? 'required' : '' }} value="{{ getSettingValue('Terms') }}">
-                    {{ $TermsTranslations[getDefaultLanguage('code')] ?? '' }}
-                </textarea>
+            <label for="setting-terms" class="form-label">{{ __('App Terms') }}</label>
+            <div class="controls">
+                <textarea name="Terms[{{ $defaultCode }}]" id="setting-terms" class="form-control" rows="16"
+                    {{ Route::is('*.show') ? 'disabled' : '' }}
+                    placeholder="{{ __('App Terms') }}">{{ $termsTranslations[$defaultCode] ?? '' }}</textarea>
+                <div class="form-text">
+                    {{ __('Shown in the app under «Terms and Conditions», and linked from the sign-up screen.') }}
                 </div>
             </div>
         </div>
     </div>
 
     <div class="col-12">
-        {{ __('Translation Optional') }}
+        <div class="form-group">
+            <label for="setting-privacy" class="form-label">{{ __('App Privacy Policy') }}</label>
+            <div class="controls">
+                <textarea name="Privacy_Policy[{{ $defaultCode }}]" id="setting-privacy" class="form-control" rows="16"
+                    {{ Route::is('*.show') ? 'disabled' : '' }}
+                    placeholder="{{ __('App Privacy Policy') }}">{{ $privacyTranslations[$defaultCode] ?? '' }}</textarea>
+                <div class="form-text">
+                    {{ __('Shown in the app under «Privacy Policy», and linked from the sign-up screen.') }}
+                </div>
+            </div>
+        </div>
     </div>
+</div>
 
+{{-- The legend and rule the rest of the panel uses, instead of a bare line of
+     text with nothing to say that what follows is the same fields again. --}}
+<div class="col-12 form-divider">
+    <div class="form-section-legend">{{ __('Translation') }}</div>
+</div>
+
+<div class="row g-3">
     @foreach (getAllLanguageWithoutDefault() as $language)
-        <div class="col-lg-6">
-            <div class="mb-3">
-                <label for="setting-Privacy_Policy-{{ $language->code }}" class="form-label">
-                    Privacy Policy ({{ $language->name }})
+        <div class="col-12">
+            <div class="form-group">
+                <label for="setting-terms-{{ $language->code }}" class="form-label">
+                    {{ __('App Terms') }} ({{ $language->name }})
                 </label>
-                <textarea name="Privacy_Policy[{{ $language->code }}]" class="form-control"
-                    id="setting-Privacy_Policy-{{ $language->code }}"
-                    placeholder="Enter Setting Privacy Policy in {{ $language->name }}" {{ Route::is('*.show') ? 'disabled' : '' }}>
-                    {{ $PrivacyPolicyTranslations[$language->code] ?? '' }}
-                </textarea>
+                <div class="controls">
+                    <textarea name="Terms[{{ $language->code }}]" id="setting-terms-{{ $language->code }}"
+                        class="form-control" rows="16" {{ Route::is('*.show') ? 'disabled' : '' }}
+                        placeholder="{{ __('App Terms') }} ({{ $language->name }})">{{ $termsTranslations[$language->code] ?? '' }}</textarea>
+                </div>
             </div>
         </div>
 
-        <div class="col-lg-6">
-            <div class="mb-3">
-                <label for="setting-Terms-{{ $language->code }}" class="form-label">
-                    Terms ({{ $language->name }})
+        <div class="col-12">
+            <div class="form-group">
+                <label for="setting-privacy-{{ $language->code }}" class="form-label">
+                    {{ __('App Privacy Policy') }} ({{ $language->name }})
                 </label>
-                <textarea name="Terms[{{ $language->code }}]" class="form-control" id="setting-Terms-{{ $language->code }}"
-                    placeholder="Enter Setting Terms in {{ $language->name }}" {{ Route::is('*.show') ? 'disabled' : '' }}>
-                    {{ $TermsTranslations[$language->code] ?? '' }}
-                </textarea>
+                <div class="controls">
+                    <textarea name="Privacy_Policy[{{ $language->code }}]" id="setting-privacy-{{ $language->code }}"
+                        class="form-control" rows="16" {{ Route::is('*.show') ? 'disabled' : '' }}
+                        placeholder="{{ __('App Privacy Policy') }} ({{ $language->name }})">{{ $privacyTranslations[$language->code] ?? '' }}</textarea>
+                </div>
             </div>
         </div>
     @endforeach

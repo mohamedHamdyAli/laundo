@@ -51,8 +51,8 @@ class HomeTest extends TestCase
         $this->seedCore();
         $this->geo = $this->seedGeo();
         $this->catalog = $this->seedCatalog();
-        $this->tenant = $this->laundryWithOwner('A', '01011110001', '01011110002');
-        $this->customer = $this->customer('01055550001');
+        $this->tenant = $this->laundryWithOwner('A', '+201011110001', '+201011110002');
+        $this->customer = $this->customer('+201055550001');
     }
 
     private function orderAt(OrderStatus $status, ?int $laundryId = null): Order
@@ -303,7 +303,7 @@ class HomeTest extends TestCase
     #[Test]
     public function a_laundry_sees_only_its_own_orders_on_the_home_page(): void
     {
-        $other = $this->laundryWithOwner('B', '01011110003', '01011110004');
+        $other = $this->laundryWithOwner('B', '+201011110003', '+201011110004');
 
         $this->orderAt(OrderStatus::Cleaning);
         $this->orderAt(OrderStatus::Cleaning, $other['laundry']->id);
@@ -433,7 +433,7 @@ class HomeTest extends TestCase
     #[Test]
     public function a_driver_carrying_an_order_is_not_counted_as_free(): void
     {
-        $driver = $this->driverUser('01066660001');
+        $driver = $this->driverUser('+201066660001');
         $order = $this->orderAt(OrderStatus::PickedUp);
 
         // The four legs already exist — placement creates them, and
@@ -455,7 +455,7 @@ class HomeTest extends TestCase
     #[Test]
     public function a_driver_holding_two_orders_is_counted_once(): void
     {
-        $driver = $this->driverUser('01066660001');
+        $driver = $this->driverUser('+201066660001');
 
         foreach ([1, 2] as $ignored) {
             $order = $this->orderAt(OrderStatus::PickedUp);

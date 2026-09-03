@@ -29,7 +29,7 @@ class CustomerAuthTest extends TestCase
     {
         return array_merge([
             'name' => 'New Customer',
-            'phone' => '01011223344',
+            'phone' => '+201011223344',
             'password' => 'secret123',
             'password_confirmation' => 'secret123',
             'accepted_terms' => '1',
@@ -45,7 +45,7 @@ class CustomerAuthTest extends TestCase
             ->assertStatus(201)
             ->assertJsonPath('key', 'success');
 
-        $this->assertDatabaseHas('users', ['phone' => '01011223344', 'email' => null]);
+        $this->assertDatabaseHas('users', ['phone' => '+201011223344', 'email' => null]);
     }
 
     public function test_registration_leaves_the_account_unverified(): void
@@ -53,7 +53,7 @@ class CustomerAuthTest extends TestCase
         $this->withHeaders($this->apiHeaders())
             ->postJson('/api/v1/auth/register', $this->registrationPayload());
 
-        $this->assertNull(User::where('phone', '01011223344')->first()->phone_verified_at);
+        $this->assertNull(User::where('phone', '+201011223344')->first()->phone_verified_at);
     }
 
     public function test_registration_never_returns_the_code(): void
@@ -69,7 +69,7 @@ class CustomerAuthTest extends TestCase
 
     public function test_a_taken_phone_is_refused(): void
     {
-        $this->customer('01011223344');
+        $this->customer('+201011223344');
 
         $this->withHeaders($this->apiHeaders())
             ->postJson('/api/v1/auth/register', $this->registrationPayload())
@@ -86,46 +86,104 @@ class CustomerAuthTest extends TestCase
             ->assertJsonStructure(['errors' => ['accepted_terms']]);
     }
 
-    public function test_a_non_egyptian_phone_is_refused(): void
+    /**
+     * The agreement used to be validated and then thrown away, so the only
+     * evidence anybody had consented was that the request had not been refused
+     * — which answers nothing if the question is ever asked.
+     */
+    public function test_accepting_the_terms_is_recorded_with_the_moment(): void
+    {
+        $before = now()->subSecond();
+
+        $this->withHeaders($this->apiHeaders())
+            ->postJson('/api/v1/auth/register', $this->registrationPayload())
+            ->assertCreated();
+
+        $user = User::where('phone', '+201011223344')->firstOrFail();
+
+        $this->assertNotNull($user->accepted_terms_at);
+        $this->assertTrue($user->accepted_terms_at->greaterThanOrEqualTo($before));
+    }
+
+    /**
+     * And a refused registration records nothing — there is no account to
+     * record it against, and a consent row without an account would be a
+     * consent nobody gave.
+     */
+    public function test_a_refused_registration_records_no_consent(): void
+    {
+        $this->withHeaders($this->apiHeaders())
+            ->postJson('/api/v1/auth/register', $this->registrationPayload(['accepted_terms' => '0']))
+            ->assertStatus(422);
+
+        $this->assertDatabaseMissing('users', ['phone' => '+201011223344']);
+    }
+
+    /**
+     * A non-Egyptian number used to be refused outright. It is accepted now, by
+     * decision: the market is not settled, and the design's country picker
+     * implied a choice the validation then denied.
+     */
+    public function test_a_number_from_another_country_is_accepted(): void
     {
         $this->withHeaders($this->apiHeaders())
             ->postJson('/api/v1/auth/register', $this->registrationPayload(['phone' => '+96555512345']))
-            ->assertStatus(422)
-            ->assertJsonStructure(['errors' => ['phone']]);
+            ->assertCreated();
+
+        $this->assertDatabaseHas('users', ['phone' => '+96555512345']);
+    }
+
+    /**
+     * What replaced it. The country code is mandatory rather than optional
+     * because `01012345678` is an Egyptian mobile *and* a valid Italian
+     * landline — and the phone is the account's identity here, so one that can
+     * be read two ways is one that can split a person across two accounts.
+     */
+    public function test_a_number_without_a_country_code_is_refused(): void
+    {
+        foreach (['01012345678', '201012345678', '1012345678'] as $bare) {
+            $this->withHeaders($this->apiHeaders())
+                ->postJson('/api/v1/auth/register', $this->registrationPayload(['phone' => $bare]))
+                ->assertStatus(422)
+                ->assertJsonStructure(['errors' => ['phone']]);
+        }
+
+        // None of the three created an account.
+        $this->assertSame(0, User::whereIn('phone', ['01012345678', '201012345678', '1012345678'])->count());
     }
 
     public function test_login_is_refused_before_verification(): void
     {
-        $user = $this->customer('01011223344', verified: false);
+        $user = $this->customer('+201011223344', verified: false);
         $user->forceFill(['password' => Hash::make('secret123')])->save();
 
         $this->withHeaders($this->apiHeaders())
-            ->postJson('/api/v1/auth/login', ['phone' => '01011223344', 'password' => 'secret123'])
+            ->postJson('/api/v1/auth/login', ['phone' => '+201011223344', 'password' => 'secret123'])
             ->assertStatus(403)
             ->assertJsonPath('key', 'forbidden');
     }
 
     public function test_login_is_refused_for_an_inactive_account(): void
     {
-        $user = $this->customer('01011223344');
+        $user = $this->customer('+201011223344');
         $user->forceFill(['password' => Hash::make('secret123'), 'status' => 'inactive'])->save();
 
         $this->withHeaders($this->apiHeaders())
-            ->postJson('/api/v1/auth/login', ['phone' => '01011223344', 'password' => 'secret123'])
+            ->postJson('/api/v1/auth/login', ['phone' => '+201011223344', 'password' => 'secret123'])
             ->assertStatus(403);
     }
 
     public function test_wrong_password_and_unknown_number_answer_identically(): void
     {
         // Otherwise the endpoint tells an attacker which numbers are registered.
-        $user = $this->customer('01011223344');
+        $user = $this->customer('+201011223344');
         $user->forceFill(['password' => Hash::make('secret123')])->save();
 
         $wrongPassword = $this->withHeaders($this->apiHeaders())
-            ->postJson('/api/v1/auth/login', ['phone' => '01011223344', 'password' => 'wrong-one']);
+            ->postJson('/api/v1/auth/login', ['phone' => '+201011223344', 'password' => 'wrong-one']);
 
         $unknownNumber = $this->withHeaders($this->apiHeaders())
-            ->postJson('/api/v1/auth/login', ['phone' => '01055554444', 'password' => 'secret123']);
+            ->postJson('/api/v1/auth/login', ['phone' => '+201055554444', 'password' => 'secret123']);
 
         $this->assertSame($wrongPassword->status(), $unknownNumber->status());
         $this->assertSame($wrongPassword->json('msg'), $unknownNumber->json('msg'));
@@ -136,11 +194,11 @@ class CustomerAuthTest extends TestCase
         $this->withHeaders($this->apiHeaders())
             ->postJson('/api/v1/auth/register', $this->registrationPayload());
 
-        $user = User::where('phone', '01011223344')->first();
+        $user = User::where('phone', '+201011223344')->first();
         $code = app(OtpService::class)->issue($user);
 
         $verify = $this->withHeaders($this->apiHeaders())
-            ->postJson('/api/v1/auth/verify-otp', ['phone' => '01011223344', 'code' => $code]);
+            ->postJson('/api/v1/auth/verify-otp', ['phone' => '+201011223344', 'code' => $code]);
 
         $verify->assertOk()->assertJsonPath('data.user.phone_verified', true);
 
@@ -150,12 +208,12 @@ class CustomerAuthTest extends TestCase
         $this->withHeaders($this->apiHeaders() + ['Authorization' => "Bearer {$token}"])
             ->getJson('/api/v1/profile')
             ->assertOk()
-            ->assertJsonPath('data.phone', '01011223344');
+            ->assertJsonPath('data.phone', '+201011223344');
     }
 
     public function test_logout_revokes_only_the_calling_token(): void
     {
-        $user = $this->customer('01011223344');
+        $user = $this->customer('+201011223344');
 
         $first = $user->createToken('device-one')->plainTextToken;
         $second = $user->createToken('device-two')->plainTextToken;
@@ -183,10 +241,10 @@ class CustomerAuthTest extends TestCase
     public function test_resend_answers_the_same_for_unknown_numbers(): void
     {
         $known = $this->withHeaders($this->apiHeaders())
-            ->postJson('/api/v1/auth/resend-otp', ['phone' => $this->customer('01011223344')->phone]);
+            ->postJson('/api/v1/auth/resend-otp', ['phone' => $this->customer('+201011223344')->phone]);
 
         $unknown = $this->withHeaders($this->apiHeaders())
-            ->postJson('/api/v1/auth/resend-otp', ['phone' => '01099990000']);
+            ->postJson('/api/v1/auth/resend-otp', ['phone' => '+201099990000']);
 
         $this->assertSame($known->status(), $unknown->status());
         $this->assertSame($known->json('msg'), $unknown->json('msg'));
@@ -198,7 +256,7 @@ class CustomerAuthTest extends TestCase
      */
     public function test_password_reset_revokes_every_token(): void
     {
-        $user = $this->customer('01011223344');
+        $user = $this->customer('+201011223344');
         $user->createToken('a');
         $user->createToken('b');
         $this->assertSame(2, $user->tokens()->count());
@@ -207,7 +265,7 @@ class CustomerAuthTest extends TestCase
 
         $token = $this->withHeaders($this->apiHeaders())
             ->postJson('/api/v1/auth/verify-reset-code', [
-                'phone' => '01011223344',
+                'phone' => '+201011223344',
                 'code' => $code,
             ])
             ->assertOk()
@@ -231,7 +289,7 @@ class CustomerAuthTest extends TestCase
      */
     public function test_the_password_step_will_not_accept_the_code(): void
     {
-        $user = $this->customer('01011223344');
+        $user = $this->customer('+201011223344');
         $code = app(OtpService::class)->issue($user);
 
         $this->withHeaders($this->apiHeaders())->postJson('/api/v1/auth/reset-password', [
@@ -250,11 +308,11 @@ class CustomerAuthTest extends TestCase
      */
     public function test_a_reset_ticket_cannot_be_spent_twice(): void
     {
-        $user = $this->customer('01011223344');
+        $user = $this->customer('+201011223344');
         $code = app(OtpService::class)->issue($user);
 
         $token = $this->withHeaders($this->apiHeaders())
-            ->postJson('/api/v1/auth/verify-reset-code', ['phone' => '01011223344', 'code' => $code])
+            ->postJson('/api/v1/auth/verify-reset-code', ['phone' => '+201011223344', 'code' => $code])
             ->assertOk()->json('data.reset_token');
 
         $this->withHeaders($this->apiHeaders())->postJson('/api/v1/auth/reset-password', [
@@ -279,15 +337,15 @@ class CustomerAuthTest extends TestCase
      */
     public function test_a_reset_code_is_consumed_by_the_verify_step(): void
     {
-        $user = $this->customer('01011223344');
+        $user = $this->customer('+201011223344');
         $code = app(OtpService::class)->issue($user);
 
         $this->withHeaders($this->apiHeaders())
-            ->postJson('/api/v1/auth/verify-reset-code', ['phone' => '01011223344', 'code' => $code])
+            ->postJson('/api/v1/auth/verify-reset-code', ['phone' => '+201011223344', 'code' => $code])
             ->assertOk();
 
         $this->withHeaders($this->apiHeaders())
-            ->postJson('/api/v1/auth/verify-reset-code', ['phone' => '01011223344', 'code' => $code])
+            ->postJson('/api/v1/auth/verify-reset-code', ['phone' => '+201011223344', 'code' => $code])
             ->assertStatus(422);
     }
 
@@ -297,11 +355,11 @@ class CustomerAuthTest extends TestCase
      */
     public function test_an_expired_reset_ticket_is_refused(): void
     {
-        $user = $this->customer('01011223344');
+        $user = $this->customer('+201011223344');
         $code = app(OtpService::class)->issue($user);
 
         $token = $this->withHeaders($this->apiHeaders())
-            ->postJson('/api/v1/auth/verify-reset-code', ['phone' => '01011223344', 'code' => $code])
+            ->postJson('/api/v1/auth/verify-reset-code', ['phone' => '+201011223344', 'code' => $code])
             ->assertOk()->json('data.reset_token');
 
         $this->travel((int) config('sms.password_reset_token.ttl_seconds', 600) + 5)->seconds();
@@ -328,11 +386,11 @@ class CustomerAuthTest extends TestCase
      */
     public function test_a_reset_ticket_is_not_an_access_token(): void
     {
-        $user = $this->customer('01011223344');
+        $user = $this->customer('+201011223344');
         $code = app(OtpService::class)->issue($user);
 
         $token = $this->withHeaders($this->apiHeaders())
-            ->postJson('/api/v1/auth/verify-reset-code', ['phone' => '01011223344', 'code' => $code])
+            ->postJson('/api/v1/auth/verify-reset-code', ['phone' => '+201011223344', 'code' => $code])
             ->assertOk()->json('data.reset_token');
 
         $this->withHeaders($this->apiHeaders() + ['Authorization' => 'Bearer '.$token])

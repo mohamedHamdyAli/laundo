@@ -18,13 +18,10 @@
             <span class="row-sub">{{ getLocalizedValueDashboard($coupon, 'name') ?: '—' }}</span>
         </div>
         <div>
-            <span class="row-main">
-                @if ($isPercentage)
-                    {{ rtrim(rtrim($coupon->value, '0'), '.') }}%
-                @else
-                    {{ moneyFormat($coupon->value) }}
-                @endif
-            </span>
+            {{-- `discountLabel()` on the model, not formatted here: the offers
+                 carousel needs the same «20%» and two copies of the rule is how
+                 the badge in the app ends up disagreeing with this figure. --}}
+            <span class="row-main">{{ $coupon->discountLabel() }}</span>
             {{-- What the discount does and does not cover, in one line: a
                  percentage with no cap and one capped at 20 are different offers. --}}
             <span class="row-sub">

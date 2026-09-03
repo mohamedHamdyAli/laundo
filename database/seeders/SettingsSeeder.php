@@ -34,6 +34,9 @@ class SettingsSeeder extends Seeder
         $this->create_new_config('Snapchat_Url', 'http://snapchat.com/en-GB');
         $this->create_new_config('Gmail_Url', 'http://gmail.com');
         $this->create_new_config('Tax', 10);
+        // EGP rather than USD, which is what `moneyFormat()` used to default to
+        // — a laundry in Cairo was quoting dollars on every screen.
+        $this->create_new_config('Currency', 'EGP');
         // Contact Us
         $this->create_new_config('Hotline', null);
         $this->create_new_config('Call', null);

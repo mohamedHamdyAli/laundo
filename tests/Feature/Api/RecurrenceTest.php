@@ -38,7 +38,7 @@ class RecurrenceTest extends TestCase
         $this->catalog = $this->seedCatalog();
         $this->geo['zones'][0]->update(['price_per_km' => 5.00, 'min_delivery_fee' => 20.00]);
 
-        $tenant = $this->laundryWithOwner('A', '01011110001', '01011110002');
+        $tenant = $this->laundryWithOwner('A', '+201011110001', '+201011110002');
         $this->cover($tenant['laundry'], $this->geo['zones'][0]->id, $this->catalog['service']->id);
 
         $this->customer = $this->customer();
@@ -184,7 +184,7 @@ class RecurrenceTest extends TestCase
         $this->artisan('orders:prompt-recurring')->assertSuccessful();
         $prompt = RecurrencePrompt::firstOrFail();
 
-        $stranger = $this->customer('01077665544');
+        $stranger = $this->customer('+201077665544');
         Sanctum::actingAs($stranger);
 
         $this->postJson("/api/v1/recurrences/prompts/{$prompt->id}/confirm", [], $this->apiHeaders())->assertNotFound();

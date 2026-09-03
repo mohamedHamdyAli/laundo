@@ -166,6 +166,7 @@ class AddressController extends Controller
             'apartment' => $address->apartment,
             'landmark' => $address->landmark,
             'notes' => $address->notes,
+            'driver_note' => $address->driver_note,
             'contact_phone' => $address->callablePhone(),
             'lat' => (float) $address->lat,
             'lng' => (float) $address->lng,

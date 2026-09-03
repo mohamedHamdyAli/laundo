@@ -105,6 +105,48 @@ class Coupon extends Model
     }
 
     /**
+     * The discount as a customer reads it: «20%», or «EGP 15.00».
+     *
+     * Added because there was no shared expression of this and one was already
+     * needed twice: the offers carousel's «خصم 20%» badge, and the coupon list
+     * in the panel — which had been formatting it inline in Blade, `rtrim`ing
+     * the trailing zeros the `decimal:2` cast leaves on `20.00`. Two copies of
+     * the same rule is how a badge ends up disagreeing with the figure an
+     * operator is looking at.
+     *
+     * This is the *headline* figure and not what any particular basket saves —
+     * `max_discount` and `min_order_total` can both reduce it. `discountFor()`
+     * is the one that answers for real money.
+     */
+    public function discountLabel(): string
+    {
+        if ($this->type === self::PERCENTAGE) {
+            // `decimal:2` reads back as "20.00"; nobody writes a percentage
+            // that way. Trailing zeros go, and so does a bare point.
+            return rtrim(rtrim((string) $this->value, '0'), '.').'%';
+        }
+
+        return moneyFormat($this->value);
+    }
+
+    /**
+     * Whether this coupon would be accepted right now.
+     *
+     * The same three tests `CouponService::validate()` applies, so anything
+     * advertising a coupon — the offers badge — can ask one question and get
+     * the answer the checkout will give. Deliberately not `scopeLive()`: that
+     * one's docblock claims «and not exhausted» and its query does not check
+     * `redemptions_count`, so a spent coupon passes it.
+     */
+    public function isRedeemable(): bool
+    {
+        return $this->status === 'active'
+            && $this->hasStarted()
+            && ! $this->hasExpired()
+            && ! $this->isExhausted();
+    }
+
+    /**
      * What this coupon takes off a given basket.
      *
      * The ceiling matters: a percentage without one is an open cheque on a large

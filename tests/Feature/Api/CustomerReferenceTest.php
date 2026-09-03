@@ -43,7 +43,7 @@ class CustomerReferenceTest extends TestCase
     #[Test]
     public function a_new_customer_is_given_one(): void
     {
-        $customer = $this->customer('01055550001');
+        $customer = $this->customer('+201055550001');
 
         $this->assertSame('C-001', $customer->fresh()->customer_reference);
     }
@@ -51,12 +51,12 @@ class CustomerReferenceTest extends TestCase
     #[Test]
     public function they_are_sequential_over_customers_only(): void
     {
-        $first = $this->customer('01055550001');
+        $first = $this->customer('+201055550001');
         // Drivers and staff share this table, so the user id sequence skips.
         // Numbering off it would tell the 3rd customer they are the 12th.
-        $this->driverUser('01066660001');
-        $this->laundryWithOwner('A', '01011110001', '01011110002');
-        $second = $this->customer('01055550002');
+        $this->driverUser('+201066660001');
+        $this->laundryWithOwner('A', '+201011110001', '+201011110002');
+        $second = $this->customer('+201055550002');
 
         $this->assertSame('C-001', $first->fresh()->customer_reference);
         $this->assertSame('C-002', $second->fresh()->customer_reference);
@@ -65,10 +65,10 @@ class CustomerReferenceTest extends TestCase
     #[Test]
     public function nobody_but_a_customer_gets_one(): void
     {
-        $this->assertNull($this->driverUser('01066660001')->fresh()->customer_reference);
+        $this->assertNull($this->driverUser('+201066660001')->fresh()->customer_reference);
         $this->assertNull($this->superAdmin()->fresh()->customer_reference);
         $this->assertNull(
-            $this->laundryWithOwner('A', '01011110001', '01011110002')['owner']->fresh()->customer_reference
+            $this->laundryWithOwner('A', '+201011110001', '+201011110002')['owner']->fresh()->customer_reference
         );
     }
 
@@ -80,7 +80,7 @@ class CustomerReferenceTest extends TestCase
         // on it at the other three, which is why this lives on the model.
         $this->postJson('/api/v1/auth/register', [
             'name' => 'Nada',
-            'phone' => '01055559999',
+            'phone' => '+201055559999',
             'password' => 'password',
             'password_confirmation' => 'password',
             'accepted_terms' => true,
@@ -88,22 +88,22 @@ class CustomerReferenceTest extends TestCase
 
         $this->assertSame(
             'C-001',
-            User::where('phone', '01055559999')->value('customer_reference')
+            User::where('phone', '+201055559999')->value('customer_reference')
         );
     }
 
     #[Test]
     public function a_deleted_customer_does_not_hand_their_number_on(): void
     {
-        $first = $this->customer('01055550001');
-        $this->customer('01055550002');
+        $first = $this->customer('+201055550001');
+        $this->customer('+201055550002');
 
         // The reference is printed on labels that outlive the account. Counting
         // rows instead of reading the highest would give C-002 to a third
         // customer and put two people's clothes under one number.
         $first->delete();
 
-        $third = $this->customer('01055550003');
+        $third = $this->customer('+201055550003');
 
         $this->assertSame('C-003', $third->fresh()->customer_reference);
     }
@@ -111,7 +111,7 @@ class CustomerReferenceTest extends TestCase
     #[Test]
     public function it_does_not_change_when_the_customer_is_edited(): void
     {
-        $customer = $this->customer('01055550001');
+        $customer = $this->customer('+201055550001');
         $reference = $customer->fresh()->customer_reference;
 
         $customer->update(['name' => 'A New Name']);
@@ -122,7 +122,7 @@ class CustomerReferenceTest extends TestCase
     #[Test]
     public function assigning_twice_is_a_no_op(): void
     {
-        $customer = $this->customer('01055550001');
+        $customer = $this->customer('+201055550001');
         $reference = $customer->fresh()->customer_reference;
 
         CustomerReference::assign($customer->fresh());
@@ -134,10 +134,10 @@ class CustomerReferenceTest extends TestCase
     #[Test]
     public function the_number_keeps_growing_past_the_padding(): void
     {
-        $customer = $this->customer('01055550001');
+        $customer = $this->customer('+201055550001');
         $customer->forceFill(['customer_reference' => 'C-999'])->save();
 
-        $next = $this->customer('01055550002');
+        $next = $this->customer('+201055550002');
 
         // Padded to three, not capped at three.
         $this->assertSame('C-1000', $next->fresh()->customer_reference);
@@ -148,7 +148,7 @@ class CustomerReferenceTest extends TestCase
     #[Test]
     public function the_reference_finds_the_customer_on_the_dashboard(): void
     {
-        $customer = $this->customer('01055550001');
+        $customer = $this->customer('+201055550001');
 
         // Somebody at the counter holding a parcel has the reference and nothing
         // else — not the phone number, and certainly not the row id.
@@ -177,10 +177,10 @@ class CustomerReferenceTest extends TestCase
     #[Test]
     public function the_driver_gets_everything_the_printed_card_carries(): void
     {
-        $customer = $this->customer('01055550001');
+        $customer = $this->customer('+201055550001');
         $order = $this->orderFor($customer);
 
-        $driver = $this->driverUser('01066660001');
+        $driver = $this->driverUser('+201066660001');
         $task = $order->tasks()->orderBy('sequence')->firstOrFail();
         $task->forceFill(['driver_id' => $driver->id])->save();
 
@@ -203,11 +203,11 @@ class CustomerReferenceTest extends TestCase
     #[Test]
     public function another_drivers_task_has_no_ticket_to_print(): void
     {
-        $customer = $this->customer('01055550001');
+        $customer = $this->customer('+201055550001');
         $order = $this->orderFor($customer);
 
-        $mine = $this->driverUser('01066660001');
-        $theirs = $this->driverUser('01066660002');
+        $mine = $this->driverUser('+201066660001');
+        $theirs = $this->driverUser('+201066660002');
         $task = $order->tasks()->orderBy('sequence')->firstOrFail();
         $task->forceFill(['driver_id' => $theirs->id])->save();
 
@@ -221,14 +221,14 @@ class CustomerReferenceTest extends TestCase
     #[Test]
     public function a_customer_who_predates_the_column_still_prints(): void
     {
-        $customer = $this->customer('01055550001');
+        $customer = $this->customer('+201055550001');
         // Simulate a row created before the migration: the backfill gave every
         // existing customer one, but a null must degrade to a blank line on the
         // card rather than a failed request.
         $customer->forceFill(['customer_reference' => null])->save();
 
         $order = $this->orderFor($customer->fresh());
-        $driver = $this->driverUser('01066660001');
+        $driver = $this->driverUser('+201066660001');
         $task = $order->tasks()->orderBy('sequence')->firstOrFail();
         $task->forceFill(['driver_id' => $driver->id])->save();
 
@@ -251,7 +251,7 @@ class CustomerReferenceTest extends TestCase
         $this->assertNotNull($customerRole);
         $this->assertSame(
             $customerRole,
-            $this->customer('01055550001')->role_id
+            $this->customer('+201055550001')->role_id
         );
     }
 }

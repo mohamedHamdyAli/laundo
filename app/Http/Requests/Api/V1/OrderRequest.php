@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Api\V1;
 
 use App\Modules\Payment\Enums\PaymentMethod;
+use App\Http\Requests\Api\V1\Concerns\OneDiscountPerOrder;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -16,7 +17,9 @@ use Illuminate\Validation\Rule;
  */
 class OrderRequest extends FormRequest
 {
-    public function authorize(): bool
+        use OneDiscountPerOrder;
+
+public function authorize(): bool
     {
         return true;
     }
@@ -60,7 +63,10 @@ class OrderRequest extends FormRequest
                     ->whereIn('applies_to', ['delivery', 'both'])),
             ],
 
-            // «الاستلام من الباب» / «اتركها عند الباب»
+            // Asked twice by the design, once per leg: «الاستلام من خارج
+            // الباب» for the collection and «اتركها عند الباب» for the return.
+            // One field for both could not express wanting them different.
+            'pickup_method' => ['nullable', Rule::in(['door', 'leave'])],
             'delivery_method' => ['nullable', Rule::in(['door', 'leave'])],
 
             'driver_note' => ['nullable', 'string', 'max:1000'],
@@ -75,6 +81,14 @@ class OrderRequest extends FormRequest
             'accepts_review_terms' => ['required', 'accepted'],
 
             'coupon_code' => ['nullable', 'string', 'max:50'],
+            // «عروض متميزة» — the card the customer tapped to get here. Its
+            // discount and a typed promo code are mutually exclusive; see
+            // OneDiscountPerOrder.
+            'offer_id' => [
+                'nullable',
+                'integer',
+                Rule::exists('offers', 'id')->where(fn ($q) => $q->where('status', 'active')),
+            ],
             // Read off the enum, not hand-listed. The hand-listed version left
             // InstaPay out while the quote endpoint and the payment endpoint both
             // accepted it — so «انستا باي» could be chosen on the payment screen,
@@ -99,5 +113,10 @@ class OrderRequest extends FormRequest
             'pickup_slot_id.exists' => __('This pickup window is not available.'),
             'delivery_slot_id.exists' => __('This delivery window is not available.'),
         ];
+    }
+
+    public function withValidator(\Illuminate\Validation\Validator $validator): void
+    {
+        $this->refuseASecondDiscount($validator);
     }
 }

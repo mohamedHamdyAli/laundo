@@ -45,9 +45,9 @@ class RatingTest extends TestCase
         $this->seedCore();
         $this->geo = $this->seedGeo();
         $this->catalog = $this->seedCatalog();
-        $this->tenant = $this->laundryWithOwner('A', '01011110001', '01011110002');
+        $this->tenant = $this->laundryWithOwner('A', '+201011110001', '+201011110002');
         $this->cover($this->tenant['laundry'], $this->geo['zones'][0]->id, $this->catalog['service']->id);
-        $this->customer = $this->customer('01055550001');
+        $this->customer = $this->customer('+201055550001');
     }
 
     /**
@@ -240,7 +240,7 @@ class RatingTest extends TestCase
     public function a_customer_cannot_rate_somebody_elses_order(): void
     {
         $order = $this->finishedOrder();
-        $intruder = $this->customer('01055550002');
+        $intruder = $this->customer('+201055550002');
 
         $this->actingAs($intruder)
             ->postJson("/api/v1/orders/{$order->id}/rating", ['overall' => 1])
@@ -256,7 +256,7 @@ class RatingTest extends TestCase
     #[Test]
     public function the_laundry_cannot_be_named_by_the_client(): void
     {
-        $other = $this->laundryWithOwner('B', '01011110003', '01011110004');
+        $other = $this->laundryWithOwner('B', '+201011110003', '+201011110004');
         $order = $this->finishedOrder();
 
         $this->actingAs($this->customer)
@@ -368,7 +368,7 @@ class RatingTest extends TestCase
             ->postJson("/api/v1/orders/{$order->id}/rating", ['overall' => 5])
             ->assertCreated();
 
-        $other = $this->laundryWithOwner('B', '01011110003', '01011110004');
+        $other = $this->laundryWithOwner('B', '+201011110003', '+201011110004');
 
         // The scope, not a hand-written where. Laundry B's owner must see nothing.
         $this->actingAs($other['owner']);

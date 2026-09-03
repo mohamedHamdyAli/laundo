@@ -74,8 +74,8 @@ class DevFixturesSeeder extends Seeder
 
         $tenants = [
             // Mohandessin and Nasr City — about 9 km apart.
-            ['tag' => 'A', 'laundry_phone' => '01011110001', 'owner_phone' => '01011110002', 'staff_phone' => '01011110003', 'lat' => 30.0561, 'lng' => 31.2003],
-            ['tag' => 'B', 'laundry_phone' => '01022220001', 'owner_phone' => '01022220002', 'staff_phone' => '01022220003', 'lat' => 30.0626, 'lng' => 31.3348],
+            ['tag' => 'A', 'laundry_phone' => '+201011110001', 'owner_phone' => '+201011110002', 'staff_phone' => '+201011110003', 'lat' => 30.0561, 'lng' => 31.2003],
+            ['tag' => 'B', 'laundry_phone' => '+201022220001', 'owner_phone' => '+201022220002', 'staff_phone' => '+201022220003', 'lat' => 30.0626, 'lng' => 31.3348],
         ];
 
         DB::transaction(function () use ($tenants, $ownerRole, $staffRole, $customerRole) {
@@ -135,7 +135,7 @@ class DevFixturesSeeder extends Seeder
                     ['email' => 'customer@test.local'],
                     [
                         'name' => 'Customer',
-                        'phone' => '01055556666',
+                        'phone' => '+201055556666',
                         'password' => self::PASSWORD,
                         'role_id' => $customerRole->id,
                         'status' => 'active',

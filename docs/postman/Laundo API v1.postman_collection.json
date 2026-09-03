@@ -273,6 +273,39 @@
           "response": []
         },
         {
+          "name": "Offers",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "lang",
+                "value": "{{lang}}",
+                "description": "ar | en — read by the ApiLocale middleware. Optional; falls back to the default language."
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/offers",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "offers"
+              ]
+            },
+            "description": "«عروض متميزة» — the featured-offers carousel on the home screen. Public.\n\nIts own endpoint rather than a filter on /banners: the home screen has two carousels with different card shapes, and one flat list left the app guessing which banner belonged to which.\n\nReturns only live offers — active, and inside `starts_at`/`ends_at` when either is set.\n\n`badge` is the «20% off» chip, derived from the linked coupon and null when there is no coupon **or** when the coupon would be refused (inactive, out of date, or exhausted) — so a card never advertises a discount the checkout would reject.\n\n`action` is `{type, value}` or null, the same shape /banners returns. `ends_at` is ISO 8601 or null, for «ينتهي بعد …».",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "response": []
+        },
+        {
           "name": "Intros",
           "event": [
             {
@@ -314,6 +347,39 @@
               ]
             },
             "description": "The onboarding slides, ordered by `order` then `id` so two installs of the same app show the same first-run sequence.",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Journey steps",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "lang",
+                "value": "{{lang}}",
+                "description": "ar | en — read by the ApiLocale middleware. Optional; falls back to the default language."
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/journey-steps",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "journey-steps"
+              ]
+            },
+            "description": "«رحلتك معنا بسيطة» — the three numbered how-it-works cards on the home screen. Public. Active steps only, ordered by sort_order then id.\n\nSeparate from /intros by decision: onboarding is a full-screen sequence swiped once before an account exists, these are cards on the screen people open every day.\n\nThe number beside each card is NOT in the payload — it is the position, so the client numbers the array it was given. Sending it as a field is how a '3' arrives second.",
             "auth": {
               "type": "noauth"
             }
@@ -1545,10 +1611,10 @@
                 "addresses"
               ]
             },
-            "description": "`lat` / `lng` are required by business decision: every address carries a map pin so a driver has a point to navigate to, not just a text description.\n\nThe **first** address a customer saves becomes the default whether or not `is_default` was sent — otherwise they would have none.\n\n`contact_phone` null means «use the account number». `zone_id` must be an *active* zone; it drives laundry and driver assignment.\n\n**Saves `data.id` into `address_id`.**",
+            "description": "`lat` / `lng` are required by business decision: every address carries a map pin so a driver has a point to navigate to, not just a text description.\n\nThe **first** address a customer saves becomes the default whether or not `is_default` was sent — otherwise they would have none.\n\n`contact_phone` null means «use the account number». `zone_id` must be an *active* zone; it drives laundry and driver assignment.\n\n**Saves `data.id` into `address_id`.**\n\n`notes` and `driver_note` are different fields and both come back in the payload. `notes` (max 1000) is the customer's own note about the place. `driver_note` (max 500) is the standing instruction whoever arrives will read — written once here, every order to this address carries it, and it is what the panel's order screen shows the dispatcher. The order's own `driver_note` is for that one delivery and does not replace it.",
             "body": {
               "mode": "raw",
-              "raw": "{\n    \"label\": \"Home\",\n    \"city_id\": 1,\n    \"zone_id\": 1,\n    \"street\": \"12 Gameat El Dewal El Arabeya\",\n    \"building\": \"7\",\n    \"floor\": \"3\",\n    \"apartment\": \"12\",\n    \"landmark\": \"Next to the pharmacy\",\n    \"notes\": \"Ring the bell twice\",\n    \"contact_phone\": \"01012345678\",\n    \"lat\": 30.0444,\n    \"lng\": 31.2357,\n    \"is_default\": true\n}",
+              "raw": "{\n    \"label\": \"Home\",\n    \"city_id\": 1,\n    \"zone_id\": 1,\n    \"street\": \"12 Gameat El Dewal El Arabeya\",\n    \"building\": \"7\",\n    \"floor\": \"3\",\n    \"apartment\": \"12\",\n    \"landmark\": \"Next to the pharmacy\",\n    \"notes\": \"Second entrance from the side street; the main gate is locked after 8 PM\",\n    \"driver_note\": \"Call before arriving, the bell on the left doesn't work\",\n    \"contact_phone\": \"01012345678\",\n    \"lat\": 30.0444,\n    \"lng\": 31.2357,\n    \"is_default\": true\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -1650,10 +1716,10 @@
                 "{{address_id}}"
               ]
             },
-            "description": "On update the required fields relax to `sometimes`, so a partial payload is fine.",
+            "description": "On update the required fields relax to `sometimes`, so a partial payload is fine.\n\nIn practice `driver_note` is the field customers change most, so it is worth having in the partial example.",
             "body": {
               "mode": "raw",
-              "raw": "{\n    \"label\": \"Work\",\n    \"street\": \"5 Tahrir Square\",\n    \"lat\": 30.0444,\n    \"lng\": 31.2357\n}",
+              "raw": "{\n    \"label\": \"Work\",\n    \"street\": \"5 Tahrir Square\",\n    \"driver_note\": \"Ask at reception, I am on the fourth floor\",\n    \"lat\": 30.0444,\n    \"lng\": 31.2357\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -1872,10 +1938,10 @@
                 "quote"
               ]
             },
-            "description": "The summary step's price preview, before anything is saved. Runs the same pricing pass as **Place order**, so the two cannot disagree.\n\nOnly what pricing actually depends on is required — scheduling and notes have no effect on the total.\n\nA refused coupon is never fatal: `coupon_error` explains it and the quote still returns. `delivery_fee_reason` is non-null when the fee could not be worked out, so the app shows «يتم تحديدها لاحقاً» rather than a misleading 0.00.\n\n`payment_method` belongs here because the cash surcharge depends on it and «شاشة اختيار الدفع» re-quotes as the customer picks.\n\n`payment_method` accepts **`cash` | `card` | `wallet` | `instapay`**. It is read by pricing, not merely stored: choosing `cash` adds the configured `Cash_Surcharge` as its own line in the response (`cash_surcharge`), applied **after** any coupon - a coupon discounts the washing, not the cost of handling notes. Sending nothing returns a surcharge of 0, which is right for a quote taken before the customer has chosen how to pay.",
+            "description": "The summary step's price preview, before anything is saved. Runs the same pricing pass as **Place order**, so the two cannot disagree.\n\nOnly what pricing actually depends on is required — scheduling and notes have no effect on the total.\n\nA refused coupon is never fatal: `coupon_error` explains it and the quote still returns. `delivery_fee_reason` is non-null when the fee could not be worked out, so the app shows «يتم تحديدها لاحقاً» rather than a misleading 0.00.\n\n`payment_method` belongs here because the cash surcharge depends on it and «شاشة اختيار الدفع» re-quotes as the customer picks.\n\n`payment_method` accepts **`cash` | `card` | `wallet` | `instapay`**. It is read by pricing, not merely stored: choosing `cash` adds the configured `Cash_Surcharge` as its own line in the response (`cash_surcharge`), applied **after** any coupon - a coupon discounts the washing, not the cost of handling notes. Sending nothing returns a surcharge of 0, which is right for a quote taken before the customer has chosen how to pay.\n\n`coupon_code` and `offer_id` are **mutually exclusive** — one discount per order. Send `offer_id` when the customer arrived through a card in «عروض متميزة»: the offer's own coupon is applied and a `coupon_code` sent beside it is **refused with a message** rather than quietly dropped, because charging the offer's price while the customer believes a second discount applied is the worst outcome of the three. An offer that only points at a service carries no coupon, so a promo code beside *that* one passes through.\n\nThe refusal is raised **here too**, not only at submit: the summary step is where the customer is actually deciding, so by the time they press the button the wizard has already told them.",
             "body": {
               "mode": "raw",
-              "raw": "{\n    \"service_id\": 1,\n    \"items\": [\n        {\n            \"item_id\": 1,\n            \"qty\": 3\n        },\n        {\n            \"item_id\": 2,\n            \"qty\": 1\n        }\n    ],\n    \"pickup_address_id\": \"{{address_id}}\",\n    \"delivery_address_id\": null,\n    \"coupon_code\": null,\n    \"payment_method\": \"cash\"\n}",
+              "raw": "{\n    \"service_id\": 1,\n    \"items\": [\n        {\n            \"item_id\": 1,\n            \"qty\": 3\n        },\n        {\n            \"item_id\": 2,\n            \"qty\": 1\n        }\n    ],\n    \"pickup_address_id\": \"{{address_id}}\",\n    \"delivery_address_id\": null,\n    \"coupon_code\": null,\n    \"offer_id\": null,\n    \"payment_method\": \"cash\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -1937,10 +2003,10 @@
                 "orders"
               ]
             },
-            "description": "`accepts_review_terms` is **required and must be truthy** — the whole of the review flow rests on it: the customer is agreeing that the price they just saw is an estimate and the real one arrives after the pieces are counted.\n\n`items` may be an empty array for a quote-priced service costed after inspection; the service rejects an empty basket where it matters.\n\nAn absent `delivery_address_id` means «same address». `delivery_method` is `door` or `leave`.\n\nTo attach stain photos (max 5, jpg/jpeg/png/webp, 5 MB each) switch the body to **form-data** and send `photos[]`.\n\n**Saves `data.id` into `order_id`.**\n\n`payment_method` accepts **`cash` | `card` | `wallet` | `instapay`**. It is read by pricing, not merely stored: choosing `cash` adds the configured `Cash_Surcharge` as its own line in the response (`cash_surcharge`), applied **after** any coupon - a coupon discounts the washing, not the cost of handling notes. Sending nothing returns a surcharge of 0, which is right for a quote taken before the customer has chosen how to pay.\n\n**Photos** - «أضف صوراً للبقع الصعبة» - are accepted here as up to 5 image files under `photos[]`. That needs a `multipart/form-data` body rather than the JSON above; duplicate the request and switch the body mode to form-data to try it.",
+            "description": "`accepts_review_terms` is **required and must be truthy** — the whole of the review flow rests on it: the customer is agreeing that the price they just saw is an estimate and the real one arrives after the pieces are counted.\n\n`items` may be an empty array for a quote-priced service costed after inspection; the service rejects an empty basket where it matters.\n\nAn absent `delivery_address_id` means «same address».\n\nHandover is asked **once per leg**: `pickup_method` for the bag going out and `delivery_method` for the clean clothes coming back. Each is `door` (handed over in person) or `leave` (left at the door), and each defaults to `door`. The example sends two different values on purpose — a customer may well want the bag taken from their hands and the clean clothes left at the door, and one field could not say that.\n\nTo attach stain photos (max 5, jpg/jpeg/png/webp, 5 MB each) switch the body to **form-data** and send `photos[]`.\n\n**Saves `data.id` into `order_id`.**\n\n`payment_method` accepts **`cash` | `card` | `wallet` | `instapay`**. It is read by pricing, not merely stored: choosing `cash` adds the configured `Cash_Surcharge` as its own line in the response (`cash_surcharge`), applied **after** any coupon - a coupon discounts the washing, not the cost of handling notes. Sending nothing returns a surcharge of 0, which is right for a quote taken before the customer has chosen how to pay.\n\n**Photos** - «أضف صوراً للبقع الصعبة» - are accepted here as up to 5 image files under `photos[]`. That needs a `multipart/form-data` body rather than the JSON above; duplicate the request and switch the body mode to form-data to try it.\n\n`coupon_code` and `offer_id` are **mutually exclusive** — one discount per order. Send `offer_id` when the customer arrived through a card in «عروض متميزة»: the offer's own coupon is applied and a `coupon_code` sent beside it is **refused with a message** rather than quietly dropped, because charging the offer's price while the customer believes a second discount applied is the worst outcome of the three. An offer that only points at a service carries no coupon, so a promo code beside *that* one passes through.",
             "body": {
               "mode": "raw",
-              "raw": "{\n    \"service_id\": 1,\n    \"items\": [\n        {\n            \"item_id\": 1,\n            \"qty\": 3\n        },\n        {\n            \"item_id\": 2,\n            \"qty\": 1\n        }\n    ],\n    \"pickup_address_id\": \"{{address_id}}\",\n    \"delivery_address_id\": null,\n    \"pickup_date\": \"2026-09-05\",\n    \"delivery_date\": \"2026-09-07\",\n    \"pickup_slot_id\": 1,\n    \"delivery_slot_id\": 2,\n    \"delivery_method\": \"door\",\n    \"driver_note\": \"Call before arriving\",\n    \"special_instructions\": \"Separate the whites\",\n    \"accepts_review_terms\": true,\n    \"coupon_code\": null,\n    \"payment_method\": \"cash\"\n}",
+              "raw": "{\n    \"service_id\": 1,\n    \"items\": [\n        {\n            \"item_id\": 1,\n            \"qty\": 3\n        },\n        {\n            \"item_id\": 2,\n            \"qty\": 1\n        }\n    ],\n    \"pickup_address_id\": \"{{address_id}}\",\n    \"delivery_address_id\": null,\n    \"pickup_date\": \"2026-09-05\",\n    \"delivery_date\": \"2026-09-07\",\n    \"pickup_slot_id\": 1,\n    \"delivery_slot_id\": 2,\n    \"pickup_method\": \"door\",\n    \"delivery_method\": \"leave\",\n    \"driver_note\": \"Call before arriving\",\n    \"special_instructions\": \"Separate the whites\",\n    \"accepts_review_terms\": true,\n    \"coupon_code\": null,\n    \"offer_id\": null,\n    \"payment_method\": \"cash\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -4471,6 +4537,67 @@
           "response": []
         },
         {
+          "name": "Driver verify reset code",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "if (body.data && body.data.reset_token) {",
+                  "    pm.collectionVariables.set('driver_reset_token', body.data.reset_token);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "lang",
+                "value": "{{lang}}",
+                "description": "ar | en — read by the ApiLocale middleware. Optional; falls back to the default language."
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/driver/verify-reset-code",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "driver",
+                "verify-reset-code"
+              ]
+            },
+            "description": "Second step of a driver password reset — the same shape as the customer flow, so both apps implement one contract.\n\nSpends the code and returns a single-use `reset_token`. A customer's ticket will not reset a driver's password, or the other way round: the ticket mechanics are shared, the audience check is not.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"phone\": \"{{driver_phone}}\",\n    \"code\": \"{{otp_code}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "response": []
+        },
+        {
           "name": "Driver reset password",
           "event": [
             {
@@ -4516,10 +4643,10 @@
                 "reset-password"
               ]
             },
-            "description": "Throttle: `otp-verify`. Every driver token is revoked afterwards.",
+            "description": "Final step. Takes the `reset_token` from `driver/verify-reset-code` — no phone and no code. Single use, and revokes every token on the account.",
             "body": {
               "mode": "raw",
-              "raw": "{\n    \"phone\": \"{{driver_phone}}\",\n    \"code\": \"{{otp_code}}\",\n    \"password\": \"newpassword\",\n    \"password_confirmation\": \"newpassword\"\n}",
+              "raw": "{\n    \"reset_token\": \"{{driver_reset_token}}\",\n    \"password\": \"newpassword\",\n    \"password_confirmation\": \"newpassword\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -5826,6 +5953,11 @@
     },
     {
       "key": "reset_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "driver_reset_token",
       "value": "",
       "type": "string"
     }

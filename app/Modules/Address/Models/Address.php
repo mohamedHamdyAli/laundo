@@ -43,7 +43,7 @@ class Address extends Model
         'floor',
         'apartment',
         'landmark',
-        'notes',
+        'notes', 'driver_note',
         'contact_phone',
         'lat',
         'lng',

@@ -45,8 +45,16 @@ class banner extends Model
         'description',
         'target_type',
         'target_value',
+        'sort_order',
         'status',
     ];
+
+    protected function casts(): array
+    {
+        return [
+            'sort_order' => 'integer',
+        ];
+    }
 
     protected function asJson($value, $flags = 0)
     {

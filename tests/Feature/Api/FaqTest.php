@@ -191,7 +191,7 @@ class FaqTest extends TestCase
     #[Test]
     public function a_laundry_owner_cannot_edit_the_help_content(): void
     {
-        $tenant = $this->laundryWithOwner('A', '01011110001', '01011110002');
+        $tenant = $this->laundryWithOwner('A', '+201011110001', '+201011110002');
 
         $this->actingAs($tenant['owner'])
             ->get('/admin/faq')

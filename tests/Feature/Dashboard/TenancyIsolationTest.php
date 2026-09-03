@@ -34,8 +34,8 @@ class TenancyIsolationTest extends TestCase
         $this->seedCore();
         $this->seedGeo();
 
-        $a = $this->laundryWithOwner('A', '01011110001', '01011110002');
-        $b = $this->laundryWithOwner('B', '01022220001', '01022220002');
+        $a = $this->laundryWithOwner('A', '+201011110001', '+201011110002');
+        $b = $this->laundryWithOwner('B', '+201022220001', '+201022220002');
 
         $this->laundryA = $a['laundry'];
         $this->ownerA = $a['owner'];
@@ -122,7 +122,7 @@ class TenancyIsolationTest extends TestCase
         $staff = LaundryStaff::create([
             'name' => 'Planted',
             'email' => 'planted@test.local',
-            'phone' => '01033330001',
+            'phone' => '+201033330001',
             'password' => 'password',
             'status' => 'active',
             'role_id' => Role::where('slug', 'laundry_staff')->value('id'),
@@ -138,7 +138,7 @@ class TenancyIsolationTest extends TestCase
 
     public function test_a_customer_role_cannot_reach_the_dashboard(): void
     {
-        $this->actingAs($this->customer('01044440001'))
+        $this->actingAs($this->customer('+201044440001'))
             ->get('/admin/home')
             ->assertForbidden();
     }

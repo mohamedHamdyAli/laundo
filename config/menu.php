@@ -27,8 +27,10 @@ return [
             'icon' => 'bi bi-collection',
             'items' => [
                 'banner' => 1,
-                'intro' => 2,
-                'faq' => 3,
+                'offer' => 2,
+                'intro' => 3,
+                'journey_step' => 4,
+                'faq' => 5,
             ],
         ],
 
@@ -109,8 +111,9 @@ return [
 
     'icons' => [
         'user' => 'bi bi-people',
-        'category' => 'bi bi-list-task',
         'banner' => 'bi bi-image',
+        'offer' => 'bi bi-tags',
+        'journey_step' => 'bi bi-signpost-split',
         'intro' => 'bi bi-collection-play',
         'faq' => 'bi bi-question-circle',
         'country' => 'bi bi-globe2',
@@ -145,8 +148,9 @@ return [
 
     'titles' => [
         'user' => 'Users',
-        'category' => 'Categories',
         'banner' => 'Banners',
+        'offer' => 'Offers',
+        'journey_step' => 'Journey Steps',
         'intro' => 'Intros',
         'faq' => 'FAQ',
         'country' => 'Countries',
@@ -181,8 +185,9 @@ return [
 
     'routes' => [
         'user' => 'admin.user.index',
-        'category' => 'admin.category.index',
         'banner' => 'admin.banner.index',
+        'offer' => 'admin.offer.index',
+        'journey_step' => 'admin.journey_step.index',
         'intro' => 'admin.intro.index',
         'faq' => 'admin.faq.index',
         'country' => 'admin.country.index',

@@ -17,7 +17,7 @@
         <div class="mb-3">
             <label for="laundry-phone" class="form-label">{{ __('Phone') }} <span class="text-danger">*</span></label>
             <input type="text" name="phone" class="form-control" id="laundry-phone"
-                placeholder="{{ __('Egyptian number, e.g. 01XXXXXXXXX or +201XXXXXXXXX') }}"
+                placeholder="{{ __('With the country code, e.g. +201012345678') }}"
                 value="{{ old('phone', $row->phone ?? '') }}"
                 {{ Route::is('*.create') ? 'required' : '' }} {{ Route::is('*.show') ? 'readonly' : '' }}>
         </div>
@@ -131,7 +131,7 @@
             <div class="mb-3">
                 <label for="owner-phone" class="form-label">{{ __('Owner Phone') }} <span class="text-danger">*</span></label>
                 <input type="text" name="owner_phone" class="form-control" id="owner-phone"
-                    placeholder="{{ __('Egyptian number, e.g. 01XXXXXXXXX or +201XXXXXXXXX') }}"
+                    placeholder="{{ __('With the country code, e.g. +201012345678') }}"
                     value="{{ old('owner_phone') }}" required>
             </div>
         </div>
