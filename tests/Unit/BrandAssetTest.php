@@ -30,12 +30,12 @@ class BrandAssetTest extends TestCase
     }
 
     #[Test]
-    public function the_placeholder_is_the_square_mark_and_the_file_exists(): void
+    public function the_placeholder_is_the_navy_plate_and_the_file_exists(): void
     {
         $url = brandPlaceholder();
 
-        $this->assertStringContainsString('laundo-mark.png', $url);
-        $this->assertFileExists(public_path('assets/images/brand/laundo-mark.png'));
+        $this->assertStringContainsString('laundo-placeholder.png', $url);
+        $this->assertFileExists(public_path('assets/images/brand/laundo-placeholder.png'));
     }
 
     #[Test]
@@ -43,7 +43,7 @@ class BrandAssetTest extends TestCase
     {
         // A wordmark scaled into an 80x80 thumbnail is an illegible smudge, so
         // this asserts the shape rather than trusting the filename.
-        [$width, $height] = getimagesize(public_path('assets/images/brand/laundo-mark.png'));
+        [$width, $height] = getimagesize(public_path('assets/images/brand/laundo-placeholder.png'));
 
         $this->assertSame($width, $height, 'the placeholder must be square');
     }

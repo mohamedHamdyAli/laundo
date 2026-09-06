@@ -110,7 +110,7 @@
         // Guarded on the placeholder's own filename: without it, a placeholder
         // that itself fails to load retriggers `error` on every assignment and
         // spins.
-        if (!e.target.src.includes('laundo-mark.png')) {
+        if (!e.target.src.includes('laundo-placeholder.png')) {
             e.target.src = "{{ brandPlaceholder() }}";
         }
     };

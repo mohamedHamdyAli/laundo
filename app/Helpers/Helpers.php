@@ -520,25 +520,33 @@ if (! function_exists('brandPlaceholder')) {
     /**
      * What stands in for a row with no image.
      *
-     * The **square mark**, not `brandLogo()`. The logo is a 560x98 wordmark and
-     * every slot this fills is a small square — an 80x80 table thumbnail, a
-     * form preview — where a wordmark scales down to an illegible smudge. The
-     * mark is the brand at thumbnail size, and it is already the favicon.
+     * The full wordmark on the brand navy, on a square plate. Built by
+     * compositing the two assets that already shipped rather than asked of the
+     * designer: `laundo-mark.png` carries the navy (#0F2D52) and the corner
+     * radius (102px of 512, ~20%), and `laundo-light.png` is the white
+     * wordmark. Both were read out of those files, so the plate cannot drift
+     * from the mark it matches.
      *
-     * Not the uploaded `App_Logo` either, for the same reason plus a worse one:
-     * this install's setting still says `logo1.png`, a template filename with no
-     * file behind it, so honouring it would put a broken image in every empty
-     * row — which is the exact bug the old `storage/default.png` fallback had.
+     * **Square, because every slot this fills is.** The 80x80 table thumbnail
+     * is a fixed square, so a 560x98 wordmark handed to it raw would be
+     * squashed. The wordmark sits at 76% of the plate's width — wider crowds
+     * the rounded corners, narrower and the letters stop being legible once
+     * this is drawn at 80px in a table row.
      *
-     * Falls back to the template's own placeholder if the mark is ever missing,
-     * because a placeholder that 404s is worse than a generic one.
+     * Not the uploaded `App_Logo`: this install's setting still says
+     * `logo1.png`, a template filename with no file behind it, so honouring it
+     * would put a *broken* image in every empty row — the exact bug the old
+     * `storage/default.png` fallback had.
+     *
+     * Falls back to the template's own placeholder if the plate is ever
+     * missing, because a placeholder that 404s is worse than a generic one.
      */
     function brandPlaceholder(): string
     {
-        $mark = 'assets/images/brand/laundo-mark.png';
+        $plate = 'assets/images/brand/laundo-placeholder.png';
 
-        return file_exists(public_path($mark))
-            ? asset($mark)
+        return file_exists(public_path($plate))
+            ? asset($plate)
             : asset('assets/images/no_image_available.png');
     }
 }
