@@ -2,6 +2,13 @@
 
 ## 2026-09-06
 
+### Refactor
+
+- **The Postman collection is 6 folders instead of 21.** Grouped by who actually calls the endpoint — Public (no token), Customer account / ordering / money / support, and Driver app — with the old folders kept intact as subfolders inside them. Twenty-one siblings is a list you scan rather than navigate, and the flat numbering said nothing about which app a folder belonged to (Postman).
+- **Every level carries a numeric prefix** (`1 ·`, then `1.1 ·`), so the tree reads in the right order whether Postman shows it in file order or sorts it alphabetically. The reported symptom was a scrambled sidebar; the file itself was already in perfect `00`→`20` order, so that scramble was Postman's own stored ordering from an earlier import, and prefixes that sort correctly are the part of it this repo can actually control (Postman).
+- **Nothing about any request changed.** Proved rather than asserted: the 102 requests were hashed from the committed version and from the new one, ignoring folder position — no name added, none removed, and **zero whose content differs**. Descriptions (all 102 still present), the 100 test scripts, the 18 collection variables, the auth block and the collection description all carried across (Postman / Verification).
+- The two folder paths named in the collection's own «Getting started» were updated to match, since they are the first thing a new user is told to click (Postman).
+
 ### Fix
 
 - **Push would have deleted every device it notified.** Found by pointing the real service account at the real FCM endpoint rather than at a stub. `data` is a **map** in the v1 schema, and PHP's empty array encodes as `[]` — a list — so FCM refused the whole message with «Cannot bind a list to map for field 'data'». Since `send()` carries no data payload by default, that was **every notification** (Service).
