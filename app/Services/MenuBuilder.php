@@ -50,6 +50,18 @@ class MenuBuilder
                 continue;
             }
 
+            // A dropdown that opens to reveal exactly one row is a wasted click
+            // and reads as a rendering fault. It happens whenever a restricted
+            // role can see one screen out of a group — a laundry owner has
+            // `order_rating.view` and none of the rest of Operations — and it
+            // happens more now that the groups are larger. The item takes the
+            // group's position so the priority order is unchanged.
+            if ($items->count() === 1) {
+                $menu->push(array_merge($items->first(), ['order' => $group['order']]));
+
+                continue;
+            }
+
             $menu->push([
                 'type' => 'group',
                 'order' => $group['order'],

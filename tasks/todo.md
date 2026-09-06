@@ -2511,3 +2511,40 @@ individually. Worth front-loading before walking the list.
 - [ ] Empty state present and correct `colspan`
 - [ ] Buttons/badges/toggles use the shared components, not one-off markup
 - [ ] Dark mode readable
+
+## Workstream — Sidebar reorganisation (DONE 2026-09-06)
+
+Ask: «المنيو ف الداشبورد تكون منظمه اكتر ومترتبه بالاولويه، والحاجات المعتمدين
+على بعض يتحطو مع بعض ف ليست واحدة».
+
+Priority was ambiguous — daily-use-first vs build-order-first give opposite
+lists. Asked; the owner chose **build order**: what everything rests on first.
+
+- [x] Audit the 34 permission-generating models against `config/menu.php` (1:1, no gaps)
+- [x] Confirm the real dependency chains from the FKs, not from the names
+      (`zone.city_id`, `city.country_id`, `item_price.{service_id,item_id}`,
+      `item.item_category_id`, `driver_earning.driver_id`, `wallet.user_id`)
+- [x] Regroup: 6 groups + 10 singles → 8 groups + 3 singles (17 rows → 11)
+- [x] Reorder: Locations → Catalog → Laundries → Delivery → Users → Marketing →
+      Orders → Operations → Money → Reports → System(99)
+- [x] Pair Offers with Discount Codes (one-discount-per-order is one rule)
+- [x] Collapse the four laundry screens into one dropdown — that is the whole of
+      a laundry owner's panel
+- [x] Move `notification_log` out of Money (it was also colliding on `order => 4`)
+- [x] Drop the dead `'dashboard' => 0` single
+- [x] `MenuBuilder`: render a one-item group as a plain link at the group's order
+- [x] Arabic for the three new group headings (العمليات، التسويق، النظام)
+
+### Verification
+- [x] `php -l`, Pint, PHPStan level 5 — all clean
+- [x] 34 keys, no duplicates, no orphan in `icons`/`titles`/`routes`, every
+      `order` value unique (the old config had Locations and Orders both on 1)
+- [x] `MenuBuilder::build()` rendered for **super_admin, laundry_owner and
+      laundry_staff** against the live DB — flatten confirmed (owner sees a plain
+      «Ratings» row, not a one-item Operations dropdown)
+- [x] `/admin/home` rendered in Arabic: 11 headings + 34 items, none in English
+- [x] `composer test` — 767 passed, 2327 assertions
+- [x] Browser: sidebar specs pass. `drivers.spec.js` has **5 pre-existing
+      failures** unrelated to this work — the driver list was migrated from
+      `<table>` to the stack-row pattern and those specs still select
+      `#driver-table-body tr`, which matches nothing. Left alone; not this task.
