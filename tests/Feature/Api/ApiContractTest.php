@@ -26,7 +26,8 @@ class ApiContractTest extends TestCase
         $response->assertOk()
             ->assertJsonPath('key', 'success')
             ->assertJsonPath('code', 200)
-            ->assertJsonStructure(['key', 'msg', 'code', 'data' => ['status', 'time', 'locale', 'timezone']]);
+            ->assertJsonPath('status', 'success')
+            ->assertJsonStructure(['key', 'status', 'msg', 'code', 'data' => ['status', 'time', 'locale', 'timezone']]);
     }
 
     public function test_envelope_code_matches_the_http_status(): void
@@ -97,5 +98,63 @@ class ApiContractTest extends TestCase
 
         $this->assertTrue($arabic['is_rtl'], 'ar must report is_rtl as a real boolean true');
         $this->assertFalse($arabic['is_default']);
+    }
+
+    public function test_status_says_success_on_every_2xx(): void
+    {
+        foreach (['/api/v1/ping', '/api/v1/services', '/api/v1/cities', '/api/v1/app-settings'] as $url) {
+            $this->withHeaders($this->apiHeaders())->getJson($url)
+                ->assertOk()
+                ->assertJsonPath('status', 'success');
+        }
+    }
+
+    public function test_status_says_error_on_every_failure_band(): void
+    {
+        // One per band the API actually answers with, because `status` is
+        // derived from the code and a band nobody tested is a band that could
+        // silently report success.
+        $cases = [
+            // 401 — no token on a protected route
+            ['GET', '/api/v1/orders', [], 401],
+            // 404 — no such route
+            ['GET', '/api/v1/no-such-endpoint', [], 404],
+            // 422 — validation
+            ['POST', '/api/v1/auth/login', [], 422],
+        ];
+
+        foreach ($cases as [$method, $url, $payload, $expected]) {
+            $response = $this->withHeaders($this->apiHeaders())
+                ->json($method, $url, $payload);
+
+            $response->assertStatus($expected)
+                ->assertJsonPath('status', 'error')
+                ->assertJsonPath('code', $expected);
+        }
+    }
+
+    public function test_status_is_derived_from_the_code_and_cannot_contradict_it(): void
+    {
+        // The point of deriving it: there is no call site that can set one and
+        // forget the other. Asserted directly on the helper across the whole
+        // vocabulary of codes this API uses.
+        foreach ([200, 201] as $ok) {
+            $this->assertSame('success', apiResponseStatus($ok), "code {$ok}");
+        }
+
+        foreach ([400, 401, 403, 404, 422, 429, 500] as $bad) {
+            $this->assertSame('error', apiResponseStatus($bad), "code {$bad}");
+        }
+    }
+
+    public function test_the_envelope_status_does_not_shadow_a_status_inside_data(): void
+    {
+        // `ping` carries its own `data.status`, and the two live at different
+        // depths on purpose — the envelope says whether the call worked, the
+        // payload says what the thing's state is.
+        $this->withHeaders($this->apiHeaders())->getJson('/api/v1/ping')
+            ->assertOk()
+            ->assertJsonPath('status', 'success')
+            ->assertJsonPath('data.status', 'ok');
     }
 }

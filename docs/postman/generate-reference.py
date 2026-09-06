@@ -619,7 +619,8 @@ footer { border-top: 1px solid var(--line); margin-top: 20px; padding: 22px 0 50
     <p class="sum" style="margin-top:0"><strong>كل رد ليه نفس الشكل</strong>، نجح أو فشل، و<code>code</code>
     دايمًا بيساوي حالة الـHTTP — فالتطبيق يقدر يفرّع على أي واحد فيهم.</p>
     <table class="params"><tbody>
-      <tr><td><code dir="ltr">key</code></td><td colspan="3"><code>success</code> أو مفتاح الخطأ.</td></tr>
+      <tr><td><code dir="ltr">key</code></td><td colspan="3"><code>success</code> أو مفتاح الخطأ — بيقول <strong>أي</strong> نتيجة، وبيه تفرّق «كلمة سر غلط» عن «محاولات كتير».</td></tr>
+      <tr><td><code dir="ltr">status</code></td><td colspan="3"><code>success</code> أو <code>error</code> وبس. مشتقّ من <code dir="ltr">code</code> فمستحيل يخالفه — فرّع عليه لما كل اللي محتاجه هو «نجح ولا لأ».</td></tr>
       <tr><td><code dir="ltr">msg</code></td><td colspan="3">رسالة مقروءة، مترجمة للغة الطلب.</td></tr>
       <tr><td><code dir="ltr">data</code></td><td colspan="3">البيانات.</td></tr>
       <tr><td><code dir="ltr">errors</code></td><td colspan="3">أخطاء التحقق مفهرسة بالحقل في حالة 422.</td></tr>

@@ -36,6 +36,20 @@ return [
     | The `key` field of every API response. Clients branch on this.
     |
     */
+    /*
+    |--------------------------------------------------------------------------
+    | API Response Status
+    |--------------------------------------------------------------------------
+    |
+    | The `status` field: the one-bit «did it work». Derived from the HTTP code
+    | by `apiResponseStatus()`, never set by a call site.
+    |
+    */
+    'RESPONSE_STATUS' => [
+        'SUCCESS' => 'success',
+        'ERROR' => 'error',
+    ],
+
     'RESPONSE_KEY' => [
         'SUCCESS' => 'success',
         'FAIL' => 'fail',

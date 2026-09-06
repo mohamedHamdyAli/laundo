@@ -14,6 +14,7 @@ use Illuminate\Http\JsonResponse;
 |   {
 |     "key":  "success" | "fail" | "not_auth" | "forbidden" | "not_found"
 |            | "validation_error" | "throttled" | "server_error",
+|     "status": "success" | "error",
 |     "msg":    "human readable, translated",
 |     "code":   200,          // mirrors the HTTP status
 |     "data":   mixed|null,   // present on success / data-carrying failures
@@ -23,6 +24,12 @@ use Illuminate\Http\JsonResponse;
 |
 | The envelope `code` and the HTTP status are always the same value, so a
 | client may branch on either one. Keys come from config/constants.php.
+|
+| `key` and `status` answer different questions and both are worth having.
+| `status` is the one-bit answer — did it work — and is derived from `code`, so
+| it cannot contradict it. `key` says *which* outcome, which is what a client
+| needs to tell «wrong password» from «too many attempts». A client that only
+| ever wants «did this work» no longer has to know the whole key vocabulary.
 |
 */
 
@@ -46,6 +53,27 @@ if (! function_exists('apiResponseKey')) {
     }
 }
 
+if (! function_exists('apiResponseStatus')) {
+    /**
+     * `success` or `error`, from the HTTP status alone.
+     *
+     * Exists so a client has one field to branch on without knowing the whole
+     * vocabulary of `key`. `key` says *which* outcome («not_auth», «throttled»,
+     * «validation_error»); this says only whether it went well, which is the
+     * question almost every caller asks first.
+     *
+     * 2xx is the only success band this API uses — it answers 200 and 201 and
+     * nothing else below 400 — so anything outside it is an error rather than
+     * something needing a third value.
+     */
+    function apiResponseStatus(int $code): string
+    {
+        return $code >= 200 && $code < 300
+            ? (string) config('constants.RESPONSE_STATUS.SUCCESS', 'success')
+            : (string) config('constants.RESPONSE_STATUS.ERROR', 'error');
+    }
+}
+
 if (! function_exists('apiEnvelope')) {
     /**
      * Build the envelope and send it with a matching HTTP status.
@@ -56,6 +84,12 @@ if (! function_exists('apiEnvelope')) {
     {
         return response()->json(array_merge([
             'key' => $key,
+            // Derived from the code, never passed in. A caller that had to
+            // remember to say "error" alongside a 422 is a caller that will
+            // eventually say "success" alongside one, and a client branching on
+            // a field that disagrees with the status is worse off than one with
+            // no field at all.
+            'status' => apiResponseStatus($code),
             'msg' => $msg !== '' ? trans($msg) : '',
             'code' => $code,
         ], $extra), $code);

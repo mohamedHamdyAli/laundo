@@ -119,7 +119,7 @@ Admin routes in `routes/web.php`, prefixed `/admin`, mostly `admin.{module}.{act
 
 `routes/api.php`, 102 endpoints under `/api/v1`, controllers in `app/Http/Controllers/Api/V1/`, requests in `app/Http/Requests/Api/V1/`.
 
-- **Responses** go through `app/Helpers/ApiResponse.php` — `successReturnData()`, `successReturnCreated()`, `successReturnPaginated()`. The panel's `ResponseService` is a different thing (it `throw`s / returns `never`); don't mix them.
+- **Responses** go through `app/Helpers/ApiResponse.php` — `successReturnData()`, `successReturnCreated()`, `successReturnPaginated()`. The envelope is `key`, `status`, `msg`, `code` plus `data`/`errors`/`meta`. **`status` is `success`/`error` derived from the code by `apiResponseStatus()` — never pass it in**, or a call site will eventually disagree with its own HTTP status; `key` is the one that says *which* outcome. The panel's `ResponseService` is a different thing (it `throw`s / returns `never`); don't mix them.
 - **Auth** is Sanctum on the `api` guard, one `users` table for both apps. Customer tokens are named `mobile`, driver tokens `driver-app`.
 - **Driver endpoints are not gated by middleware.** `$request->user()` returns a plain `User`, so each driver controller resolves the driver record and does `abort_unless($driver !== null, 403, …)` itself. Adding a driver endpoint means repeating that, not adding a middleware.
 - **Named rate limiters** beyond `api`: `otp`, `otp-verify`, `login`, `location`. Auth routes carry them individually.

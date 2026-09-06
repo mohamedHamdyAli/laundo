@@ -2,6 +2,15 @@
 
 ## 2026-09-06
 
+### Feature
+
+- **`status` on every API response: `success` or `error`.** Sits beside `key`, on all 102 endpoints, from the one place every response already passed through (`apiEnvelope()`). Additive — no existing field moved or changed, so nothing a client reads today is affected (API).
+- **Derived from the HTTP code, never passed in.** `apiResponseStatus()` maps 2xx to `success` and everything else to `error`, so no call site can set one and forget the other. A caller that had to remember «error» alongside a 422 is a caller that will eventually say «success» alongside one, and a client branching on a field that contradicts the status is worse off than one with no field at all (API).
+- **`key` and `status` answer different questions and both stay.** `status` is the one-bit «did it work», which is what almost every caller asks first and previously required knowing the whole vocabulary of `key`. `key` says *which* outcome — it is what tells «wrong password» apart from «too many attempts» (API).
+- No collision with a `status` inside a payload: the two live at different depths on purpose, and `GET /ping` now returns an envelope `status: "success"` next to its own `data.status: "ok"`. There is a test pinning exactly that, because it is the first thing someone would "tidy up" (API / Tests).
+- Five tests: the field is part of the shared envelope contract, `success` across four 2xx endpoints, `error` across the 401 / 404 / 422 bands the API actually answers with, the derivation asserted directly over all nine codes in `config/constants.php`, and the non-shadowing case above (Tests).
+- Documented in all three places that describe the envelope rather than only the code: the Postman collection's own description, the Arabic reference page (regenerated, 102 endpoints), and CLAUDE.md — where it says plainly not to pass the field in (Documentation).
+
 ### Refactor
 
 - **The Postman collection is 6 folders instead of 21.** Grouped by who actually calls the endpoint — Public (no token), Customer account / ordering / money / support, and Driver app — with the old folders kept intact as subfolders inside them. Twenty-one siblings is a list you scan rather than navigate, and the flat numbering said nothing about which app a folder belonged to (Postman).
