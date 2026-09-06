@@ -1,5 +1,28 @@
 # Changelog
 
+## 2026-09-06
+
+### Feature
+
+- **Root `.htaccess`, for hosting that cannot point the document root at `public/`.** `public/.htaccess` was already the stock Laravel one and needed nothing — it carries the front controller and the `Authorization` passthrough Sanctum depends on. What did not exist was the root file, and the whole of its content is the consequence of one fact: when the docroot is the repository root, `.env`, `vendor/`, `storage/`, `.git` and `docs/` are all a plain GET away.
+
+  The deny rules therefore sit **outside** `<IfModule mod_rewrite.c>` on purpose. The catastrophic case is precisely the one where mod_rewrite is missing or gets switched off: Apache then serves the tree raw, and a protection nested inside a rewrite guard is absent exactly when it is needed. `RedirectMatch` rather than a rewrite rule, and 404 rather than 403, so a prober is not told the layout.
+
+  **`storage` is deliberately not blocked as a prefix.** Uploads are addressed as `asset("storage/$path")` through the `public/storage` symlink, so `/storage/…` is a real public URL — blocking it would 404 every uploaded image in the panel and both apps, and only on hosts where mod_alias wins the phase ordering, which is the worst kind of failure to ship. The dangerous subtrees are blocked individually instead (`/storage/app`, `/storage/framework`, `/storage/logs`, `/storage/playwright-report`).
+
+  Also in it, each for a reason that belongs to this app rather than to Apache in general: `AddDefaultCharset UTF-8`, because a host defaulting to ISO-8859-1 turns every Arabic string into mojibake while the database is perfectly fine; PHP upload limits raised past the app's own 5 MB cap, so `uploadOrUpdateImage()`'s readable message is what the user gets instead of PHP silently discarding the file and handing Laravel an empty `$_FILES`; a year of caching on `public/assets/**`, which is a static vendor template with no build hash — with the matching warning to bump `?v=` when editing one; and the `Authorization` header re-attached at the root as well, since it is not carried across the internal rewrite and losing it means both apps 401 on every authenticated call while the panel keeps working. HTTPS redirect and HSTS are present but commented, so neither is switched on before a certificate exists.
+
+  Verified against real Apache 2.4.62: `httpd -t` clean, then served the actual project root and probed it. Thirteen sensitive paths refused (`.env`, `.git/config`, `composer.json`, `vendor/autoload.php`, `storage/logs/laravel.log`, `storage/app/PanelFile.php`, `config/app.php`, `database/database.sqlite`, `routes/api.php`, `docs/api-reference.html`, `CLAUDE.md`, `artisan`, `tasks/todo.md`); the real nested upload URL returned 200 as a 717-byte `image/png`; `assets/css/theme.css` and the rewrite into the front controller both fine. Not verified end to end: that the `Authorization` header reaches PHP, since the test server had no PHP module — the rewrite is the standard idiom but the header itself was not observed arriving (Infrastructure).
+
+### Fix
+
+- **`LanguageSeeder` crashed on the Linux server: `Translation source file not found at …/storage/app/panelFile.php`.** The template was committed as `storage/app/PanelFile.php` while `LanguageHelper::generateJsonLanguageFiles()` loads `storage_path('app/panelFile.php')` — a mismatch a case-insensitive Windows/macOS filesystem silently absorbs and ext4 does not, so the seeder passed locally and threw on every deploy. Renamed the file to `panelFile.php`, matching both the code and its two siblings (`mobileFile.php`, `webFile.php`), which were already lowercase.
+
+  `storage/app/.gitignore` ignores `*` and whitelists the three templates by name; gitignore patterns are case-sensitive too, so `!PanelFile.php` was updated in the same breath — otherwise the renamed file would have stopped being tracked and the server would have gone from *wrong name* to *no file at all* (Infrastructure).
+
+- Swept the repo for the same class of bug ahead of the next deploy: every `storage_path()`/`base_path()`/`resource_path()`/`public_path()` literal, every PSR-4 class-name-vs-filename pair under `app/`, and every `view()`/`@extends`/`@include` name against the Blade tree. No further case mismatches — this was the only one.
+
+
 ## 2026-09-04
 
 ### Feature

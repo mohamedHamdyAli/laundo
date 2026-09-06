@@ -3,5 +3,5 @@
 !public/
 !.gitignore
 !mobileFile.php
-!PanelFile.php
+!panelFile.php
 !webFile.php

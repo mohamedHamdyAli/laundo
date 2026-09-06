@@ -1,0 +1,161 @@
+# Laundo — root .htaccess
+#
+# This file is ONLY needed when the hosting cannot point the document root at
+# `public/` (cPanel/Plesk shared hosting, most commonly). If you can set the
+# docroot to `<app>/public`, do that instead and delete this file: serving the
+# repository root means the whole application tree sits under the web root,
+# and every protection below exists only to undo that.
+#
+# `public/.htaccess` is the real Laravel front-controller config and is NOT
+# replaced by this one. Both are needed on shared hosting.
+
+# ---------------------------------------------------------------------------
+# 1. Deny the sensitive tree — deliberately OUTSIDE any <IfModule mod_rewrite>
+# ---------------------------------------------------------------------------
+# The worst case is precisely when mod_rewrite is absent or gets disabled: with
+# no rewrite, Apache serves the repository root raw and `.env` — database
+# credentials, APP_KEY, the SMS provider keys — is a plain GET away. So these
+# blocks must never be nested inside a rewrite guard.
+
+<FilesMatch "^\.(env|env\..*|git.*|htaccess|htpasswd|user\.ini)$">
+    <IfModule mod_authz_core.c>
+        Require all denied
+    </IfModule>
+    <IfModule !mod_authz_core.c>
+        Order allow,deny
+        Deny from all
+    </IfModule>
+</FilesMatch>
+
+<FilesMatch "^(composer\.(json|lock)|package(-lock)?\.json|artisan|phpunit\.xml|playwright\.config\.js|vite\.config\.js|rector\.php|.*\.md|.*\.sql|.*\.log|.*\.bak|.*\.sh)$">
+    <IfModule mod_authz_core.c>
+        Require all denied
+    </IfModule>
+    <IfModule !mod_authz_core.c>
+        Order allow,deny
+        Deny from all
+    </IfModule>
+</FilesMatch>
+
+# Directories that must never answer a URL. RedirectMatch rather than a rewrite
+# rule so this still holds with mod_rewrite off; 404 rather than 403 so the
+# layout is not confirmed to whoever is probing.
+RedirectMatch 404 ^/(\.git|app|bootstrap|config|database|docs|node_modules|resources|routes|tasks|tests|vendor)(/|$)
+
+# `storage` is deliberately NOT in the list above: `/storage/...` is a real
+# public URL. Uploads are addressed as asset("storage/$path"), which resolves
+# through the public/storage symlink — blocking the whole prefix would 404
+# every uploaded image in the panel and both apps. Block the parts of the real
+# storage/ tree that must never be readable instead, and leave the rest.
+RedirectMatch 404 ^/storage/(app|framework|logs|playwright-report)(/|$)
+
+Options -Indexes -MultiViews
+
+# ---------------------------------------------------------------------------
+# 2. Route everything into public/
+# ---------------------------------------------------------------------------
+
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+
+    # The Authorization header has to be re-attached here as well as in
+    # public/.htaccess. Under CGI/FastCGI Apache strips it before PHP sees it,
+    # and it is not carried across this internal rewrite — every /api/v1
+    # endpoint is a Sanctum bearer token, so losing it means both apps get 401
+    # on every authenticated call while the panel keeps working, which reads
+    # like a token bug rather than a server one.
+    RewriteCond %{HTTP:Authorization} .
+    RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
+
+    # Force HTTPS. Commented out because it makes a plain-HTTP staging box
+    # unreachable; switch it on once the certificate is installed.
+    # RewriteCond %{HTTPS} !=on
+    # RewriteCond %{HTTP:X-Forwarded-Proto} !https
+    # RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+
+    # Send the request into public/. The guard stops the rewrite re-entering
+    # itself; once inside, public/.htaccess takes over and hands index.php the
+    # path. Leave this rule last — anything after it never runs.
+    RewriteCond %{REQUEST_URI} !^/public/
+    RewriteRule ^(.*)$ public/$1 [L]
+</IfModule>
+
+# ---------------------------------------------------------------------------
+# 3. Uploads
+# ---------------------------------------------------------------------------
+# `uploadOrUpdateImage()` rejects anything over 5 MB with a message the user
+# can read. PHP's own default is 2 MB, and a file over that is dropped by the
+# server before Laravel is reached — the form comes back with an empty $_FILES
+# and no error at all. Raising the PHP limits past the app's own means the
+# app's message is always what the user sees.
+#
+# php_value only works under mod_php. Under FastCGI or LiteSpeed it is a fatal
+# config error, hence the guards — set these in the host's PHP settings panel
+# or .user.ini instead if this section has no effect.
+<IfModule mod_php8.c>
+    php_value upload_max_filesize 8M
+    php_value post_max_size 12M
+</IfModule>
+<IfModule mod_php7.c>
+    php_value upload_max_filesize 8M
+    php_value post_max_size 12M
+</IfModule>
+
+# ---------------------------------------------------------------------------
+# 4. Charset, compression and caching
+# ---------------------------------------------------------------------------
+# The panel and both apps are Arabic-first. A server whose default charset is
+# ISO-8859-1 renders every Arabic string as mojibake even though the database
+# holds it correctly, so pin UTF-8 rather than relying on the host's default.
+AddDefaultCharset UTF-8
+
+<IfModule mod_deflate.c>
+    AddOutputFilterByType DEFLATE text/html text/plain text/css text/javascript
+    AddOutputFilterByType DEFLATE application/javascript application/json
+    AddOutputFilterByType DEFLATE application/xml image/svg+xml
+</IfModule>
+
+# The panel's CSS/JS are a static vendor template served straight from
+# public/assets — no build hash, no Vite. They are worth caching hard, but for
+# the same reason a changed file keeps its name, so bump the ?v= on the
+# asset() call in layouts/include.blade.php when you edit one, or returning
+# users keep the old copy for a year.
+<IfModule mod_expires.c>
+    ExpiresActive On
+    ExpiresByType text/css                  "access plus 1 year"
+    ExpiresByType application/javascript    "access plus 1 year"
+    ExpiresByType image/png                 "access plus 1 year"
+    ExpiresByType image/jpeg                "access plus 1 year"
+    ExpiresByType image/svg+xml             "access plus 1 year"
+    ExpiresByType image/webp                "access plus 1 year"
+    ExpiresByType font/woff2                "access plus 1 year"
+    ExpiresByType application/json          "access plus 0 seconds"
+    ExpiresDefault                          "access plus 1 day"
+</IfModule>
+
+# ---------------------------------------------------------------------------
+# 5. Response headers
+# ---------------------------------------------------------------------------
+<IfModule mod_headers.c>
+    Header always set X-Content-Type-Options "nosniff"
+    Header always set X-Frame-Options "SAMEORIGIN"
+    Header always set Referrer-Policy "strict-origin-when-cross-origin"
+
+    # Hide that this is PHP and which version.
+    Header always unset X-Powered-By
+    Header unset X-Powered-By
+
+    # HSTS — only switch this on together with the HTTPS redirect above, and
+    # only once you are certain the certificate renews. A browser that has seen
+    # this header refuses plain HTTP for the full year with no way to override.
+    # Header always set Strict-Transport-Security "max-age=31536000; includeSubDomains"
+</IfModule>
+
+# ---------------------------------------------------------------------------
+# Note on uploads at runtime
+# ---------------------------------------------------------------------------
+# `public/storage` must be the symlink `php artisan storage:link` creates, not
+# a real directory. Some shared hosts disable symlink creation over SSH or
+# strip them on deploy; when that happens every uploaded image 404s and signed
+# routes 403 while the rest of the site looks healthy. Check it after each
+# deploy, and if it is a directory: remove it, then re-run storage:link.
