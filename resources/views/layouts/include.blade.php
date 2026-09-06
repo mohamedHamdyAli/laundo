@@ -79,7 +79,7 @@
         if (image.getAttribute('data-custom-image') != null) {
             image.src = image.getAttribute('data-custom-image');
         } else {
-            image.src = "{{ asset('/assets/images/no_image_available.png') }}";
+            image.src = "{{ brandPlaceholder() }}";
         }
         // console.log('Image failed to load: ' + image.src);
     }
@@ -107,8 +107,11 @@
     });
 
     const onErrorImage = (e) => {
-        if (!e.target.src.includes('no_image_available.png')) {
-            e.target.src = "{{ asset('/assets/images/no_image_available.png') }}";
+        // Guarded on the placeholder's own filename: without it, a placeholder
+        // that itself fails to load retriggers `error` on every assignment and
+        // spins.
+        if (!e.target.src.includes('laundo-mark.png')) {
+            e.target.src = "{{ brandPlaceholder() }}";
         }
     };
 

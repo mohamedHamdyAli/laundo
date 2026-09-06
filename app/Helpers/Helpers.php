@@ -65,10 +65,10 @@ if (! function_exists('getImageDashboardUrl')) {
         // The fallback used to be `storage/default.png` — a path on the
         // *uploads* disk that nothing ever writes, so the placeholder for a
         // missing image was itself a missing image (403 on every row without
-        // one). `no_image_available.png` ships with the template.
+        // one). It is the brand mark now; see `brandPlaceholder()`.
         $imageUrl = (! empty($url) && Storage::disk('public')->exists($url))
             ? asset("storage/$url")
-            : asset('assets/images/no_image_available.png');
+            : brandPlaceholder();
 
         return "<a href='{$imageUrl}' target='_blank'>
                     <img class='rounded-circle' style='height:80px;width:80px;border-radius:10%;' src='{$imageUrl}'>
@@ -90,7 +90,7 @@ if (! function_exists('getImageassetUrl')) {
                 return asset($url);
             }
 
-            return asset('assets/images/no_image_available.png');
+            return brandPlaceholder();
         };
 
         return is_array($urls) ? array_map($getUrl, $urls) : $getUrl($urls);
@@ -515,6 +515,33 @@ if (! function_exists('brandLogo')) {
 // ===================================================
 // =============== Utility Helpers ===================
 // ===================================================
+
+if (! function_exists('brandPlaceholder')) {
+    /**
+     * What stands in for a row with no image.
+     *
+     * The **square mark**, not `brandLogo()`. The logo is a 560x98 wordmark and
+     * every slot this fills is a small square — an 80x80 table thumbnail, a
+     * form preview — where a wordmark scales down to an illegible smudge. The
+     * mark is the brand at thumbnail size, and it is already the favicon.
+     *
+     * Not the uploaded `App_Logo` either, for the same reason plus a worse one:
+     * this install's setting still says `logo1.png`, a template filename with no
+     * file behind it, so honouring it would put a broken image in every empty
+     * row — which is the exact bug the old `storage/default.png` fallback had.
+     *
+     * Falls back to the template's own placeholder if the mark is ever missing,
+     * because a placeholder that 404s is worse than a generic one.
+     */
+    function brandPlaceholder(): string
+    {
+        $mark = 'assets/images/brand/laundo-mark.png';
+
+        return file_exists(public_path($mark))
+            ? asset($mark)
+            : asset('assets/images/no_image_available.png');
+    }
+}
 
 if (! function_exists('clearCacheHelpers')) {
     /**

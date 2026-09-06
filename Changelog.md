@@ -2,6 +2,15 @@
 
 ## 2026-09-06
 
+### Improvement
+
+- **A row with no image shows the brand mark, not `no_image_available.png`.** One helper, `brandPlaceholder()`, behind all five call sites — the table thumbnails, the form previews, and the two JavaScript `onerror` handlers in `layouts/include.blade.php`, which had the asset path written out by hand (Blade / Helper).
+- **The square mark, not `brandLogo()`.** The logo is a 560×98 wordmark and every slot this fills is a small square — an 80×80 thumbnail, a form preview — where a wordmark scales down to an illegible smudge. The mark is 512×512 and is already the favicon (Helper).
+- **And not the uploaded `App_Logo` either**, for that reason plus a worse one: this install's setting still holds the template's `logo1.png` with no file behind it, so honouring it would have put a *broken* image in every empty row — which is the exact bug the old `storage/default.png` fallback had, a path on the uploads disk that nothing ever writes (Helper).
+- The JS guard now tests for the placeholder's own filename. It checked for `no_image_available.png`, so once the fallback changed, a placeholder that itself failed to load would have retriggered `error` on every assignment and spun (Blade).
+- `BrandAssetTest` — four tests, and they assert the properties rather than the filenames: the placeholder resolves to a file that **exists**, is **square**, and never points at the uploads disk; and both `brandLogo()` variants resolve to files that exist. Both resolvers have shipped a missing-file bug once already, and a broken image in every row reads as a permissions fault and costs an afternoon (Tests).
+- Verified on a list where **every** row is imageless: five thumbnails, all `laundo-mark.png`, `naturalWidth` 512, and zero failed image requests (Verification).
+
 ### Feature
 
 - **`status` on every API response: `success` or `error`.** Sits beside `key`, on all 102 endpoints, from the one place every response already passed through (`apiEnvelope()`). Additive — no existing field moved or changed, so nothing a client reads today is affected (API).
