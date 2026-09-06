@@ -20,6 +20,10 @@
     <meta name="csrf-token" content="{{ csrf_token() }}"/>
     @include('layouts.include')
     @yield('css')
+    {{-- Components push here. `@yield('css')` can only be filled once per view,
+         so a component rendered inside a form had no way to ship its own styles
+         without the page knowing about them. --}}
+    @stack('styles')
 </head>
 <body>
 <div id="app">

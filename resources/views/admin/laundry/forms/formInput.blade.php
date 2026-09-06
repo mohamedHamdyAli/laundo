@@ -38,7 +38,13 @@
             <select name="city_id" id="laundry-city" class="form-select" {{ Route::is('*.show') ? 'disabled' : '' }}>
                 <option value="">{{ __('Select City') }}</option>
                 @foreach ($cities ?? [] as $city)
+                    {{-- The coordinates ride on the option so the map can
+                         re-centre without a round trip. A city with none yet
+                         emits nothing and the map stays where it is. --}}
                     <option value="{{ $city->id }}"
+                        @if ($city->lat !== null && $city->lng !== null)
+                            data-lat="{{ $city->lat }}" data-lng="{{ $city->lng }}"
+                        @endif
                         {{ old('city_id', $row->city_id ?? '') == $city->id ? 'selected' : '' }}>
                         {{ getLocalizedValueDashboard($city, 'name') }}
                     </option>
@@ -75,6 +81,23 @@
                 placeholder="{{ __('e.g. 31.2357') }}"
                 value="{{ old('lng', $row->lng ?? '') }}" {{ Route::is('*.show') ? 'readonly' : '' }}>
             <small class="text-muted">{{ __('Used to calculate delivery fees') }}</small>
+        </div>
+    </div>
+
+    {{-- Full width: the two number boxes above are the stored value, this is how
+         somebody arrives at it. Bound to the city select, so choosing a
+         governorate moves the view there instead of leaving the pin to be
+         dragged across the country. --}}
+    <div class="col-12">
+        <div class="mb-3">
+            {{-- `inputs="readonly"` locks the two boxes: the numbers stay
+                 visible because they are what gets stored, but the map is the
+                 only thing that writes them, so a mistyped digit cannot put a
+                 laundry in the sea. Swap to `inputs="hidden"` to drop the
+                 boxes from the form entirely. --}}
+            <x-map-picker lat-input="laundry-lat" lng-input="laundry-lng" city-select="laundry-city"
+                inputs="readonly" :readonly="Route::is('*.show')"
+                :label="__('Location on the map')" />
         </div>
     </div>
 

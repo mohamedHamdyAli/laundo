@@ -1,0 +1,1700 @@
+<title>دليل اختبار لوحة Laundo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Readex+Pro:wght@400;500;600&display=swap">
+
+<style>
+/* ------------------------------------------------------------------
+   دليل اختبار لوحة Laundo
+   لوحة التحكم نفسها كحلة بحرية داكنة، فالمستند مبني على نفس العائلة:
+   أزرق بحري عميق كلون أساسي، ورمادي مائل للأزرق كحياد (مش رمادي محايد
+   افتراضي)، وثلاثة ألوان دلالية منفصلة تماماً عن لون الهوية.
+   ------------------------------------------------------------------ */
+
+:root {
+  /* الأرضيات والحبر */
+  --ground:      #F4F6F9;
+  --surface:     #FFFFFF;
+  --surface-2:   #EDF1F6;
+  --ink:         #101A26;
+  --ink-2:       #35455A;
+  --muted:       #667A93;
+  --line:        #DBE3ED;
+  --line-strong: #C2CFDE;
+
+  /* الهوية — أزرق بحري */
+  --brand:       #0E4C75;
+  --brand-soft:  #E4EEF6;
+  --brand-ink:   #0A3855;
+
+  /* دلالية — منفصلة عن الهوية */
+  --good:        #146B47;
+  --good-soft:   #E1F1E9;
+  --warn:        #8A5A00;
+  --warn-soft:   #FAEEDA;
+  --crit:        #A32218;
+  --crit-soft:   #FBE6E4;
+
+  --radius:      10px;
+  --shadow:      0 1px 2px rgba(16,26,38,.06), 0 8px 24px -18px rgba(16,26,38,.35);
+
+  --f-body: "IBM Plex Sans Arabic", "Segoe UI", Tahoma, sans-serif;
+  --f-disp: "Readex Pro", "IBM Plex Sans Arabic", "Segoe UI", sans-serif;
+  --f-mono: "IBM Plex Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --ground:      #0B121B;
+    --surface:     #121C28;
+    --surface-2:   #182533;
+    --ink:         #E8EEF5;
+    --ink-2:       #BCCBDB;
+    --muted:       #8699AF;
+    --line:        #24344757;
+    --line-strong: #2E4257;
+
+    --brand:       #6FB3DE;
+    --brand-soft:  #16293A;
+    --brand-ink:   #A8D2ED;
+
+    --good:        #63C296;
+    --good-soft:   #12261D;
+    --warn:        #DFAE5E;
+    --warn-soft:   #2A2113;
+    --crit:        #F08279;
+    --crit-soft:   #2B1614;
+
+    --shadow: 0 1px 2px rgba(0,0,0,.4), 0 10px 30px -20px rgba(0,0,0,.9);
+  }
+}
+
+:root[data-theme="dark"] {
+  --ground:      #0B121B;
+  --surface:     #121C28;
+  --surface-2:   #182533;
+  --ink:         #E8EEF5;
+  --ink-2:       #BCCBDB;
+  --muted:       #8699AF;
+  --line:        #24344757;
+  --line-strong: #2E4257;
+
+  --brand:       #6FB3DE;
+  --brand-soft:  #16293A;
+  --brand-ink:   #A8D2ED;
+
+  --good:        #63C296;
+  --good-soft:   #12261D;
+  --warn:        #DFAE5E;
+  --warn-soft:   #2A2113;
+  --crit:        #F08279;
+  --crit-soft:   #2B1614;
+
+  --shadow: 0 1px 2px rgba(0,0,0,.4), 0 10px 30px -20px rgba(0,0,0,.9);
+}
+
+* { box-sizing: border-box; }
+
+/* الاتجاه في CSS كمان مش في الـ JS بس: Chrome بيرندر الملف ده بـ
+   --print-to-pdf، وما ينفعش اتجاه الصفحة كله يعتمد على سكربت يلحق يشتغل. */
+html { direction: rtl; }
+
+body {
+  margin: 0;
+  direction: rtl;
+  background: var(--ground);
+  color: var(--ink);
+  font-family: var(--f-body);
+  font-size: 15px;
+  line-height: 1.75;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ---------- الهيكل ---------- */
+
+.shell {
+  max-width: 1240px;
+  margin: 0 auto;
+  padding: 0 20px 96px;
+  display: grid;
+  grid-template-columns: 244px minmax(0, 1fr);
+  gap: 48px;
+  align-items: start;
+}
+@media (max-width: 940px) {
+  .shell { grid-template-columns: minmax(0, 1fr); gap: 0; }
+  .toc { position: static; margin-bottom: 32px; }
+}
+
+/* ---------- الترويسة ---------- */
+
+.masthead {
+  border-bottom: 1px solid var(--line-strong);
+  background: var(--surface);
+  margin-bottom: 40px;
+}
+.masthead-in {
+  max-width: 1240px;
+  margin: 0 auto;
+  padding: 40px 20px 32px;
+}
+.eyebrow {
+  font-family: var(--f-mono);
+  font-size: 11.5px;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--brand);
+  margin: 0 0 12px;
+}
+h1 {
+  font-family: var(--f-disp);
+  font-weight: 600;
+  font-size: clamp(30px, 4.6vw, 44px);
+  line-height: 1.25;
+  letter-spacing: -.01em;
+  margin: 0 0 14px;
+  text-wrap: balance;
+}
+.lede {
+  font-size: 17px;
+  color: var(--ink-2);
+  max-width: 62ch;
+  margin: 0;
+}
+.stamp {
+  margin-top: 26px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 28px;
+  font-family: var(--f-mono);
+  font-size: 12px;
+  color: var(--muted);
+}
+.stamp b { color: var(--ink-2); font-weight: 600; }
+
+/* ---------- الفهرس ---------- */
+
+.toc {
+  position: sticky;
+  top: 20px;
+  font-size: 13.5px;
+}
+.toc h2 {
+  font-family: var(--f-mono);
+  font-size: 11px;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin: 0 0 12px;
+  font-weight: 500;
+}
+.toc ol { list-style: none; margin: 0; padding: 0; }
+.toc li { margin-bottom: 2px; }
+.toc a {
+  display: block;
+  padding: 5px 10px;
+  border-radius: 6px;
+  color: var(--ink-2);
+  text-decoration: none;
+  border-right: 2px solid transparent;
+}
+.toc a:hover { background: var(--surface-2); color: var(--ink); border-right-color: var(--brand); }
+.toc a:focus-visible { outline: 2px solid var(--brand); outline-offset: 1px; }
+.toc .sub { padding-right: 22px; font-size: 12.5px; color: var(--muted); }
+
+/* ---------- الأقسام ---------- */
+
+section { scroll-margin-top: 20px; margin-bottom: 64px; }
+
+.sec-head { margin-bottom: 22px; }
+.sec-num {
+  font-family: var(--f-mono);
+  font-size: 12px;
+  color: var(--brand);
+  letter-spacing: .1em;
+  display: block;
+  margin-bottom: 4px;
+}
+h2.sec-title {
+  font-family: var(--f-disp);
+  font-weight: 600;
+  font-size: 26px;
+  line-height: 1.35;
+  margin: 0 0 8px;
+  padding-bottom: 12px;
+  border-bottom: 2px solid var(--ink);
+  text-wrap: balance;
+}
+h3 {
+  font-family: var(--f-disp);
+  font-weight: 500;
+  font-size: 18px;
+  margin: 32px 0 10px;
+  color: var(--ink);
+}
+h4 {
+  font-size: 15px;
+  font-weight: 600;
+  margin: 22px 0 8px;
+}
+p { margin: 0 0 14px; max-width: 70ch; }
+ul, ol { margin: 0 0 14px; padding-right: 20px; max-width: 72ch; }
+li { margin-bottom: 6px; }
+strong { font-weight: 600; color: var(--ink); }
+
+/* ---------- كود ومعرّفات ---------- */
+
+code, .mono {
+  font-family: var(--f-mono);
+  font-size: .88em;
+  direction: ltr;
+  unicode-bidi: isolate;
+  display: inline-block;
+}
+code {
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: .5px 5px;
+  color: var(--brand-ink);
+}
+/* ---------- الجداول ---------- */
+
+.scroll { overflow-x: auto; margin: 0 0 18px; border-radius: var(--radius); border: 1px solid var(--line); }
+table { border-collapse: collapse; width: 100%; font-size: 13.5px; background: var(--surface); }
+th, td { text-align: right; padding: 9px 13px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th {
+  background: var(--surface-2);
+  font-weight: 600;
+  font-size: 11.5px;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--muted);
+  white-space: nowrap;
+}
+tbody tr:last-child td { border-bottom: 0; }
+td.num { font-variant-numeric: tabular-nums; }
+
+/* ---------- بطاقة شاشة ---------- */
+
+.screen {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 18px 20px 8px;
+  margin-bottom: 14px;
+  box-shadow: var(--shadow);
+}
+.screen > header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px 12px;
+  margin-bottom: 12px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--line);
+}
+.screen h4 { margin: 0; font-family: var(--f-disp); font-size: 17px; font-weight: 500; }
+.screen header .path {
+  font-family: var(--f-mono);
+  font-size: 12px;
+  color: var(--muted);
+  direction: ltr;
+  unicode-bidi: isolate;
+}
+
+/* شبكة الحقائق داخل البطاقة */
+.facts { display: grid; grid-template-columns: 92px minmax(0, 1fr); gap: 2px 14px; font-size: 14px; }
+@media (max-width: 620px) { .facts { grid-template-columns: minmax(0,1fr); gap: 0 0; } }
+.facts dt {
+  font-family: var(--f-mono);
+  font-size: 11px;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+  color: var(--muted);
+  padding-top: 5px;
+}
+.facts dd { margin: 0 0 10px; }
+.facts dd p { margin: 0 0 6px; }
+.facts dd ul { margin: 0; padding-right: 18px; }
+
+/* ---------- شارات ---------- */
+
+.tag {
+  display: inline-block;
+  font-family: var(--f-mono);
+  font-size: 11px;
+  line-height: 1.7;
+  padding: 0 7px;
+  border-radius: 4px;
+  border: 1px solid transparent;
+  direction: ltr;
+  unicode-bidi: isolate;
+  white-space: nowrap;
+}
+.t-brand { background: var(--brand-soft); color: var(--brand-ink); border-color: var(--brand); }
+.t-good  { background: var(--good-soft); color: var(--good); border-color: var(--good); }
+.t-warn  { background: var(--warn-soft); color: var(--warn); border-color: var(--warn); }
+.t-crit  { background: var(--crit-soft); color: var(--crit); border-color: var(--crit); }
+.t-mute  { background: var(--surface-2); color: var(--muted); border-color: var(--line-strong); }
+
+/* ---------- شريط المستوى ---------- */
+
+.level {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin: 34px 0 14px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--line-strong);
+}
+.level .n {
+  font-family: var(--f-mono);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--surface);
+  background: var(--brand);
+  border-radius: 4px;
+  padding: 1px 8px;
+  flex: none;
+}
+.level h3 { margin: 0; font-size: 19px; }
+.level .why { font-size: 13px; color: var(--muted); margin-right: auto; }
+
+/* ---------- تنبيهات ---------- */
+
+.note {
+  border-radius: var(--radius);
+  padding: 13px 16px;
+  margin: 0 0 18px;
+  font-size: 14px;
+  border: 1px solid;
+  border-right-width: 3px;
+}
+.note p:last-child { margin-bottom: 0; }
+.note-t { font-weight: 600; display: block; margin-bottom: 3px; }
+.n-warn { background: var(--warn-soft); border-color: var(--warn); color: var(--ink); }
+.n-crit { background: var(--crit-soft); border-color: var(--crit); color: var(--ink); }
+.n-info { background: var(--brand-soft); border-color: var(--brand); color: var(--ink); }
+
+/* ---------- خط الأنابيب (دورة حياة الطلب) ---------- */
+
+.pipe { display: flex; flex-wrap: wrap; gap: 7px; align-items: center; margin: 0 0 8px; }
+.stage {
+  font-family: var(--f-mono);
+  font-size: 11.5px;
+  padding: 4px 9px;
+  border-radius: 5px;
+  background: var(--surface);
+  border: 1px solid var(--line-strong);
+  direction: ltr;
+  unicode-bidi: isolate;
+  white-space: nowrap;
+}
+.stage b { display: block; font-family: var(--f-body); font-size: 12px; font-weight: 500; direction: rtl; color: var(--muted); }
+.stage.s-live { border-color: var(--brand); background: var(--brand-soft); color: var(--brand-ink); }
+.stage.s-end  { border-color: var(--good); background: var(--good-soft); color: var(--good); }
+.stage.s-stop { border-color: var(--crit); background: var(--crit-soft); color: var(--crit); }
+.stage.s-wait { border-color: var(--warn); background: var(--warn-soft); color: var(--warn); }
+.arrow { color: var(--muted); font-family: var(--f-mono); flex: none; }
+
+/* ---------- شبكة الأرقام ---------- */
+
+.figures {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(148px, 1fr));
+  gap: 1px;
+  background: var(--line);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  overflow: hidden;
+  margin-bottom: 22px;
+}
+.fig { background: var(--surface); padding: 14px 16px; }
+.fig .v {
+  font-family: var(--f-mono);
+  font-size: 25px;
+  font-weight: 600;
+  line-height: 1.2;
+  color: var(--brand);
+  font-variant-numeric: tabular-nums;
+}
+.fig .k { font-size: 12.5px; color: var(--muted); margin-top: 2px; }
+
+/* ---------- متنوع ---------- */
+
+hr { border: 0; border-top: 1px solid var(--line); margin: 34px 0; }
+a { color: var(--brand); }
+a:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; border-radius: 3px; }
+.foot {
+  border-top: 1px solid var(--line-strong);
+  padding-top: 18px;
+  font-size: 13px;
+  color: var(--muted);
+  max-width: 72ch;
+}
+@media (prefers-reduced-motion: reduce) {
+  * { animation: none !important; transition: none !important; }
+}
+
+/* ------------------------------------------------------------------
+   الطباعة / PDF
+   نفس الملف بيخدم الصفحة والـ PDF — Chrome بيرندره بـ --print-to-pdf،
+   فالطباعة متعاد تعريفها هنا بمقاس الورق بدل نسخة تانية تفضل تفرق.
+   ------------------------------------------------------------------ */
+
+@page { size: A4; margin: 14mm 12mm 16mm; }
+
+@media print {
+  /* التلاتة مع بعض: بلوك الوضع الداكن بتاع الشاشة نوعيته (0,2,0) قدام
+     :root المجردة (0,1,0)، فكان هيكسب على الورق مهما كان ترتيب المصدر.
+     مساواة وزنه هنا هي اللي بتفرض الحبر الفاتح فعلاً. */
+  :root,
+  :root:not([data-theme="light"]),
+  :root[data-theme="dark"] {
+    --ground:      #FFFFFF;
+    --surface:     #FFFFFF;
+    --surface-2:   #F1F4F8;
+    --ink:         #0C1622;
+    --ink-2:       #333F52;
+    --muted:       #5E6E85;
+    --line:        #D3DCE7;
+    --line-strong: #B4C2D2;
+
+    --brand:       #0B3F63;
+    --brand-soft:  #EAF1F7;
+    --brand-ink:   #08334F;
+
+    --good:        #0F5636;
+    --good-soft:   #E7F3EC;
+    --warn:        #6F4700;
+    --warn-soft:   #FBF1DE;
+    --crit:        #8C1B12;
+    --crit-soft:   #FCE9E7;
+
+    --shadow: none;
+  }
+
+  * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+
+  body { font-size: 9.4pt; line-height: 1.62; background: #fff; }
+
+  /* الفهرس الجانبي ملهوش معنى على الورق — الـ PDF ليه فهرسه. */
+  .toc { display: none; }
+  .shell { display: block; max-width: none; padding: 0; }
+
+  .masthead { border-bottom-width: 2px; margin-bottom: 10mm; break-after: avoid; }
+  .masthead-in { padding: 0 0 6mm; max-width: none; }
+  h1 { font-size: 23pt; }
+  .lede { font-size: 11pt; max-width: none; }
+  .stamp { margin-top: 5mm; font-size: 8.4pt; }
+
+  p, ul, ol, .facts { max-width: none; }
+
+  /* عناوين ما تتيتّمش في آخر صفحة. */
+  section { break-inside: auto; margin-bottom: 9mm; }
+  .sec-head { break-after: avoid; break-inside: avoid; }
+  h2.sec-title { font-size: 16.5pt; }
+  h3, h4 { break-after: avoid; }
+  .level { break-after: avoid; break-inside: avoid; margin-top: 8mm; }
+
+  /* بطاقة الشاشة وحدة واحدة — ما تتقسمش على صفحتين. */
+  .screen {
+    break-inside: avoid;
+    box-shadow: none;
+    border-color: var(--line-strong);
+    padding: 4mm 5mm 1mm;
+    margin-bottom: 3.5mm;
+  }
+  .screen h4 { font-size: 12pt; }
+
+  .note { break-inside: avoid; }
+  .figures { break-inside: avoid; }
+  .pipe { break-inside: avoid; }
+
+  /* الجداول بتتقسم بس مع تكرار الترويسة. */
+  .scroll { overflow: visible; break-inside: auto; }
+  table { font-size: 8.5pt; }
+  thead { display: table-header-group; }
+  tr { break-inside: avoid; }
+  th, td { padding: 2.2mm 2.6mm; }
+
+  a { color: var(--brand-ink); text-decoration: none; }
+  code { background: var(--surface-2); border-color: var(--line); }
+}
+</style>
+
+<script>
+  document.documentElement.setAttribute('dir', 'rtl');
+  document.documentElement.setAttribute('lang', 'ar');
+</script>
+
+<header class="masthead">
+  <div class="masthead-in">
+    <p class="eyebrow">QA Reference · Laundo Admin</p>
+    <h1>دليل اختبار لوحة Laundo</h1>
+    <p class="lede">
+      كل شاشة في لوحة التحكم: بتعمل إيه، بتعتمد على إيه، بتغذّي إيه في تطبيق العميل
+      وتطبيق المندوب، ومين مسموح له يشوفها. مرتّبة بترتيب البناء — عشان تقدر تمشي
+      عليها من فوق لتحت وتقف منصة شغّالة من الصفر.
+    </p>
+    <div class="stamp">
+      <span><b>242</b> راوت أدمن</span>
+      <span><b>102</b> نقطة API</span>
+      <span><b>170</b> صلاحية</span>
+      <span><b>6</b> أدوار</span>
+      <span><b>34</b> شاشة/موديل</span>
+      <span><b>767</b> اختبار آلي</span>
+    </div>
+  </div>
+</header>
+
+<div class="shell">
+
+  <nav class="toc" aria-label="فهرس المستند">
+    <h2>المحتويات</h2>
+    <ol>
+      <li><a href="#s1">١ · النظام في سطور</a></li>
+      <li><a href="#s2">٢ · تجهيز بيئة الاختبار</a></li>
+      <li><a href="#s3">٣ · الأدوار والصلاحيات</a></li>
+      <li><a href="#s4">٤ · خريطة الاعتماد</a></li>
+      <li><a href="#s5">٥ · الشاشات، مستوى مستوى</a></li>
+      <li class="sub"><a href="#L1">المواقع</a></li>
+      <li class="sub"><a href="#L2">الكتالوج</a></li>
+      <li class="sub"><a href="#L3">المغاسل</a></li>
+      <li class="sub"><a href="#L4">التوصيل</a></li>
+      <li class="sub"><a href="#L5">العملاء</a></li>
+      <li class="sub"><a href="#L6">التسويق</a></li>
+      <li class="sub"><a href="#L7">الطلبات</a></li>
+      <li class="sub"><a href="#L8">العمليات</a></li>
+      <li class="sub"><a href="#L9">المالية</a></li>
+      <li class="sub"><a href="#L10">التقارير</a></li>
+      <li class="sub"><a href="#L99">النظام</a></li>
+      <li><a href="#s6">٦ · دورة حياة الطلب</a></li>
+      <li><a href="#s7">٧ · الفلوس</a></li>
+      <li><a href="#s8">٨ · فخاخ لازم تعرفها</a></li>
+      <li><a href="#s9">٩ · ملحق: الـ API</a></li>
+    </ol>
+  </nav>
+
+  <main>
+
+  <!-- ================= 1 ================= -->
+  <section id="s1">
+    <div class="sec-head">
+      <span class="sec-num">القسم ٠١</span>
+      <h2 class="sec-title">النظام في سطور</h2>
+    </div>
+
+    <p>
+      Laundo منصة غسيل ملابس. <strong>كود واحد بيخدم ثلاث واجهات</strong>: لوحة تحكم
+      بـ Blade تحت <code>/admin</code>، و API واحد تحت <code>/api/v1</code> بيخدم
+      تطبيق العميل وتطبيق المندوب. الواجهات بتتشارك الموديلات والـ repositories،
+      لكن <em>مش</em> بتتشارك الكونترولرز ولا شكل الاستجابة — فاختبار الشاشة
+      مش بيغطّي الـ endpoint المقابل، ولازم تتاختبر الاتنين.
+    </p>
+
+    <p>الدورة الطبيعية لطلب واحد بتلمس أربع أطراف:</p>
+    <ol>
+      <li><strong>العميل</strong> يطلب من التطبيق (يختار خدمة وقطع وعنوان وميعاد).</li>
+      <li><strong>النظام</strong> يختار مغسلة تلقائياً — أو يسيب الطلب بدون مغسلة لو محدش يغطّي المنطقة.</li>
+      <li><strong>المندوب</strong> ينفّذ أربع رحلات فيزيائية بين العميل والمغسلة.</li>
+      <li><strong>اللوحة</strong> هي اللي بتشوف كل ده وبتتدخّل لما حاجة تقف.</li>
+    </ol>
+
+    <div class="note n-info">
+      <span class="note-t">أهم مفهوم في النظام كله</span>
+      <p>
+        النظام <strong>ما بيرفضش</strong> لما بيلاقي فجوة في بياناتك. طلب مالوش مغسلة
+        تغطّيه بيتقبل ويقعد بدون تعيين. رحلة مالهاش مندوب مؤهّل بتفضل
+        <code>pending</code> في طابور التوزيع. ده تصميم مقصود — لكنه معناه إن
+        <strong>البيانات الناقصة بتبان كأنها باج</strong>. أول سؤال قبل ما تفتح تذكرة:
+        هل الداتا الأساسية موجودة؟
+      </p>
+    </div>
+  </section>
+
+  <!-- ================= 2 ================= -->
+  <section id="s2">
+    <div class="sec-head">
+      <span class="sec-num">القسم ٠٢</span>
+      <h2 class="sec-title">تجهيز بيئة الاختبار</h2>
+    </div>
+
+    <h3>حسابات الدخول</h3>
+    <p>
+      كلها بتتزرع من <code>DevFixturesSeeder</code>، واللي <strong>بيرفض يشتغل خارج
+      local/testing</strong> — يعني الحسابات دي عمرها ما هتوجد على سيرفر حقيقي.
+      كلمة السر لكلهم <code>password</code>.
+    </p>
+
+    <div class="scroll">
+      <table>
+        <thead>
+          <tr><th>الحساب</th><th>الدور</th><th>بيشوف إيه</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><code>admin@admin.com</code></td><td>super_admin</td><td>كل حاجة — بيتخطّى فحص الصلاحيات بالكامل</td></tr>
+          <tr><td><code>ownera@test.local</code></td><td>laundry_owner</td><td>مغسلة A وبس: موظفينها، خدماتها، مناطقها، طلباتها</td></tr>
+          <tr><td><code>ownerb@test.local</code></td><td>laundry_owner</td><td>مغسلة B — استخدمه لاختبار عزل البيانات ضد A</td></tr>
+          <tr><td><code>staffa@test.local</code></td><td>laundry_staff</td><td>قراءة فقط تقريباً داخل مغسلة A</td></tr>
+          <tr><td><code>customer@test.local</code></td><td>user</td><td><strong>ممنوع من <code>/admin</code> تماماً</strong> — ده اختبار في حد ذاته</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>أوامر التجهيز</h3>
+    <div class="scroll">
+      <table>
+        <thead><tr><th>الأمر</th><th>بيعمل إيه</th></tr></thead>
+        <tbody>
+          <tr><td><code>php artisan migrate</code></td><td>بناء الجداول</td></tr>
+          <tr><td><code>php artisan db:seed</code></td><td>الأدوار، الصلاحيات، الأدمن، الإعدادات، اللغات</td></tr>
+          <tr><td><code>php artisan db:seed --class=DevFixturesSeeder</code></td><td>مغسلتين + مالك وموظف لكل واحدة + عميل + عناوين + طلبات</td></tr>
+          <tr><td><code>php artisan db:seed --class=GeoSeeder</code></td><td>الدول والمدن والمناطق</td></tr>
+          <tr><td><code>php artisan db:seed --class=CatalogSeeder</code></td><td>الخدمات والأقسام والقطع والأسعار</td></tr>
+          <tr><td><code>php artisan db:seed --class=TimeSlotSeeder</code></td><td>مواعيد الاستلام والتسليم</td></tr>
+          <tr><td><code>php artisan storage:link</code></td><td>ضروري — اقرأ التحذير تحت</td></tr>
+          <tr><td><code>npm run build</code></td><td>ضروري قبل أي نشر — اقرأ التحذير تحت</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="note n-crit">
+      <span class="note-t">حاجتين بيكسروا البيئة وشكلهم مش واضح</span>
+      <p>
+        <strong>١ — <code>public/storage</code> لازم يكون symlink مش فولدر حقيقي.</strong>
+        لو بقى فولدر، كل ملف مرفوع في النظام هيرجع 404 والروابط الموقّعة هترجع 403 —
+        صور المغاسل، التوقيعات، مستندات المناديب، البانرات، كله. الحل:
+        <code>rmdir public/storage</code> وبعدين <code>php artisan storage:link</code>.
+      </p>
+      <p>
+        <strong>٢ — <code>npm run build</code> مطلوب قبل النشر.</strong> صفحة
+        <code>/password/reset</code> بتستخدم Vite، ومن غير build بترجع 500 بسبب
+        manifest ناقص. بتشتغل على جهازك المحلي بس لأن <code>npm run dev</code>
+        سايب ملف <code>public/hot</code>.
+      </p>
+    </div>
+
+    <h3>حالة الداتا الحالية على بيئة التطوير</h3>
+    <p>
+      الجداول دي <strong>فاضية دلوقتي</strong> — فالشاشة بتاعتها هتبان فاضية وده مش باج:
+      البانرات، الشاشات التعريفية، الأسئلة الشائعة، الشكاوى، التقييمات، سجل الإشعارات.
+      لو محتاج تختبرهم، لازم تنشئ الصفوف بإيدك من اللوحة.
+    </p>
+  </section>
+
+  <!-- ================= 3 ================= -->
+  <section id="s3">
+    <div class="sec-head">
+      <span class="sec-num">القسم ٠٣</span>
+      <h2 class="sec-title">الأدوار والصلاحيات</h2>
+    </div>
+
+    <h3>الأدوار الستة</h3>
+    <div class="scroll">
+      <table>
+        <thead><tr><th>الدور</th><th>النوع</th><th>صلاحيات</th><th>يدخل /admin؟</th><th>ملاحظة</th></tr></thead>
+        <tbody>
+          <tr><td><code>super_admin</code></td><td>dashboard</td><td class="num">كلها</td><td><span class="tag t-good">نعم</span></td><td>بيتخطّى كل الفحوص بالكود</td></tr>
+          <tr><td><code>admin</code></td><td>dashboard</td><td class="num">حسب المعطى</td><td><span class="tag t-good">نعم</span></td><td>الدور اللي بتديله صلاحيات من شاشة الأدوار</td></tr>
+          <tr><td><code>laundry_owner</code></td><td>laundry</td><td class="num">15</td><td><span class="tag t-good">نعم</span></td><td>مقيّد بمغسلته وحدها</td></tr>
+          <tr><td><code>laundry_staff</code></td><td>laundry</td><td class="num">4</td><td><span class="tag t-good">نعم</span></td><td>قراءة أغلبها</td></tr>
+          <tr><td><code>user</code></td><td>app</td><td class="num">0</td><td><span class="tag t-crit">لأ</span></td><td>عميل التطبيق</td></tr>
+          <tr><td><code>driver</code></td><td>app</td><td class="num">0</td><td><span class="tag t-crit">لأ</span></td><td>مندوب التطبيق</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p>
+      البوابة الأولى اسمها <code>EnsureDashboardRole</code> وبتشتغل على
+      <strong>نوع</strong> الدور مش صلاحياته: أي دور نوعه <code>app</code> بيتمنع من
+      <code>/admin</code> كله. عشان كده حساب العميل بيترفض حتى لو ديته صلاحيات.
+    </p>
+
+    <h3>شكل الصلاحية</h3>
+    <p>
+      كل صلاحية اسمها <code>{model}.{action}</code>، والأفعال خمسة ثابتة:
+      <code>view</code>، <code>create</code>، <code>update</code>،
+      <code>delete</code>، <code>toggle</code>. يعني <code>coupon.delete</code>
+      و <code>order.view</code> وهكذا. الصلاحيات <strong>مش مكتوبة بإيد حد</strong> —
+      بتتولّد آلياً من قايمة الموديلات في <code>config/dashboard.php</code>.
+    </p>
+
+    <h3>ثلاث نقاط تطبيق</h3>
+    <div class="scroll">
+      <table>
+        <thead><tr><th>المكان</th><th>الشكل</th><th>لو الصلاحية ناقصة</th></tr></thead>
+        <tbody>
+          <tr><td>الراوت</td><td><code>middleware('permission:coupon.view')</code></td><td>403</td></tr>
+          <tr><td>داخل الصفحة</td><td><code>canDo('coupon.create')</code></td><td>الزرار مش بيتعرض</td></tr>
+          <tr><td>القائمة الجانبية</td><td><code>MenuBuilder</code> بيقرا <code>*.view</code></td><td>الصف مش بيتعرض</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="note n-warn">
+      <span class="note-t">سيناريو اختبار مهم</span>
+      <p>
+        الطبقات الثلاثة منفصلة، فممكن تختلف. اختبر دايماً بالطريقتين: <strong>إخفاء
+        الزرار مش حماية</strong> — جرّب تنده على الراوت مباشرة بـ URL وأنت بدور
+        مالوش الصلاحية، ولازم ترجع 403 مش الصفحة.
+      </p>
+      <p>
+        وكمان: <code>PermissionGenerator</code> <strong>بيضيف ولا بيحذف أبداً</strong>.
+        موديل اتشال من النظام بتفضل صلاحياته الخمسة موجودة في الجدول — فوجود صلاحية
+        في شاشة الأدوار مش دليل إن الشاشة بتاعتها لسه موجودة.
+      </p>
+    </div>
+  </section>
+
+  <!-- ================= 4 ================= -->
+  <section id="s4">
+    <div class="sec-head">
+      <span class="sec-num">القسم ٠٤</span>
+      <h2 class="sec-title">خريطة الاعتماد</h2>
+    </div>
+
+    <p>
+      القائمة الجانبية مترتّبة بترتيب البناء: اللي الباقي بيقف عليه فوق. الترتيب ده
+      هو <strong>نفسه ترتيب الاختبار</strong> — ما ينفعش تختبر مستوى قبل ما اللي
+      تحته يكون موجود.
+    </p>
+
+    <div class="scroll">
+      <table>
+        <thead><tr><th>المستوى</th><th>الشاشات</th><th>لو فاضي، بيكسر إيه</th></tr></thead>
+        <tbody>
+          <tr><td><span class="tag t-brand">1 المواقع</span></td><td>الدول ← المدن ← المناطق</td><td>مفيش عناوين، ومفيش رسوم توصيل — الرسوم بتتحسب من سعر الكيلو بتاع المنطقة</td></tr>
+          <tr><td><span class="tag t-brand">2 الكتالوج</span></td><td>الخدمات ← الأقسام ← القطع ← الأسعار</td><td>مفيش حاجة تتطلب، ومفيش سعر يتحسب</td></tr>
+          <tr><td><span class="tag t-brand">3 المغاسل</span></td><td>المغاسل ← الموظفين، خدماتي، مناطقي</td><td>كل طلب هيقع بدون تعيين</td></tr>
+          <tr><td><span class="tag t-brand">4 التوصيل</span></td><td>المناديب ← الأرباح</td><td>كل رحلة هتفضل في طابور التوزيع</td></tr>
+          <tr><td><span class="tag t-brand">5 العملاء</span></td><td>العملاء</td><td>مفيش حد يطلب</td></tr>
+          <tr><td><span class="tag t-brand">6 التسويق</span></td><td>العروض، الأكواد، البانرات، التعريفية، خطوات الرحلة، الأسئلة</td><td>التطبيق بيشتغل بس شاشاته بتبان فاضية</td></tr>
+          <tr><td><span class="tag t-mute">7 الطلبات</span></td><td>الطلبات</td><td>—</td></tr>
+          <tr><td><span class="tag t-mute">8 العمليات</span></td><td>الشكاوى، التقييمات، الاشتراكات، المواعيد</td><td>من غير مواعيد مفيش حد يقدر يحدد وقت استلام</td></tr>
+          <tr><td><span class="tag t-mute">9 المالية</span></td><td>المدفوعات، الاستردادات، المحافظ</td><td>—</td></tr>
+          <tr><td><span class="tag t-mute">10 التقارير</span></td><td>خمس تقارير</td><td>—</td></tr>
+          <tr><td><span class="tag t-mute">99 النظام</span></td><td>المشرفين، الأدوار، اللغات، سجل الإشعارات، الإعدادات</td><td>—</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p>
+      المواعيد (<span class="tag t-mute">مستوى 8</span>) استثناء يستاهل الانتباه:
+      مكانها في القائمة تحت، لكنها في الحقيقة <strong>شرط مسبق للطلب</strong>. لازم
+      تزرعها بدري.
+    </p>
+  </section>
+
+  <!-- ================= 5 ================= -->
+  <section id="s5">
+    <div class="sec-head">
+      <span class="sec-num">القسم ٠٥</span>
+      <h2 class="sec-title">الشاشات، مستوى مستوى</h2>
+    </div>
+
+    <p>
+      كل شاشة موصوفة بست خانات ثابتة. <span class="tag t-mute">API</span> معناها
+      البيانات دي بتوصل للتطبيق فعلاً — أي تعديل هنا لازم يتأكد من التطبيق كمان.
+    </p>
+
+    <!-- ---------- L1 ---------- -->
+    <div class="level" id="L1">
+      <span class="n">1</span>
+      <h3>المواقع</h3>
+      <span class="why">الأرض اللي كل حاجة واقفة عليها</span>
+    </div>
+
+    <article class="screen">
+      <header><h4>الدول</h4><span class="path">/admin/country</span></header>
+      <dl class="facts">
+        <dt>الغرض</dt><dd>الدولة اللي بتشتغل فيها المنصة، وكود الهاتف والتوقيت بتاعها.</dd>
+        <dt>الحقول</dt><dd><code>name</code> (مترجم، مطلوب)، <code>code</code> (فريد، ٥ حروف، مطلوب)، <code>phone_code</code>، <code>timezone</code>، <code>status</code>.</dd>
+        <dt>يعتمد على</dt><dd>لا شيء. دي أول شاشة في النظام.</dd>
+        <dt>يغذّي</dt><dd>المدن (<code>cities.country_id</code>)، وإعداد <code>Country_Id</code> في الإعدادات العامة.</dd>
+        <dt>الصلاحية</dt><dd><code>country.view / create / update / delete / toggle</code></dd>
+        <dt>فخاخ</dt><dd><code>code</code> فريد — إعادة استخدام كود موجود بترفض بالكامل ومش بتقول فين المشكلة بوضوح.</dd>
+      </dl>
+    </article>
+
+    <article class="screen">
+      <header><h4>المدن</h4><span class="path">/admin/city</span></header>
+      <dl class="facts">
+        <dt>الغرض</dt><dd>مدن الدولة. المندوب بيتربط بمدينة، والمنطقة بتتبع مدينة.</dd>
+        <dt>الحقول</dt><dd><code>name</code> (مترجم، مطلوب)، <code>country_id</code> (مطلوب)، <code>status</code>.</dd>
+        <dt>يعتمد على</dt><dd><strong>دولة واحدة على الأقل</strong> — القائمة المنسدلة بتتملى من <code>countries</code>.</dd>
+        <dt>يغذّي</dt><dd>المناطق، المغاسل (<code>laundries.city_id</code>)، المناديب (<code>city_id</code>). <span class="tag t-mute">API</span> <code>GET /cities</code></dd>
+        <dt>الصلاحية</dt><dd><code>city.*</code></dd>
+        <dt>فخاخ</dt><dd>مدينة <code>inactive</code> بتختفي من التطبيق لكن الصفوف المربوطة بيها بتفضل. غيّر الحالة وشوف <code>GET /cities</code> اتغيّر.</dd>
+      </dl>
+    </article>
+
+    <article class="screen">
+      <header><h4>المناطق</h4><span class="path">/admin/zone</span></header>
+      <dl class="facts">
+        <dt>الغرض</dt><dd>تقسيم المدينة لمناطق تغطية، وتسعير التوصيل فيها.</dd>
+        <dt>الحقول</dt><dd><code>name</code> (مترجم، مطلوب)، <code>city_id</code> (مطلوب)، <code>price_per_km</code>، <code>min_delivery_fee</code>، <code>sort_order</code>، <code>status</code>.</dd>
+        <dt>يعتمد على</dt><dd><strong>مدينة</strong>.</dd>
+        <dt>يغذّي</dt><dd>تغطية المغاسل (<code>laundry_zones</code>)، مناطق المناديب، و<strong>حساب رسوم التوصيل كله</strong>.</dd>
+        <dt>الصلاحية</dt><dd><code>zone.*</code></dd>
+        <dt>فخاخ</dt><dd class="n-warn"><strong>منطقة من غير <code>price_per_km</code> بتخلّي رسوم التوصيل ترجع «غير معروفة» مش صفر.</strong> ده أشهر سبب لطلب سعره ناقص، وشكله باج وهو داتا ناقصة.</dd>
+      </dl>
+    </article>
+
+    <!-- ---------- L2 ---------- -->
+    <div class="level" id="L2">
+      <span class="n">2</span>
+      <h3>الكتالوج</h3>
+      <span class="why">اللي العميل بيطلبه وبكام</span>
+    </div>
+
+    <article class="screen">
+      <header><h4>الخدمات</h4><span class="path">/admin/service</span></header>
+      <dl class="facts">
+        <dt>الغرض</dt><dd>أنواع الغسيل (غسيل عادي، كوي، دراي كلين...) ومدة كل واحدة.</dd>
+        <dt>الحقول</dt><dd><code>name</code> و <code>description</code> (مترجمين)، <code>image</code>، <code>pricing_mode</code> (<code>per_item</code> أو <code>quote</code>)، <code>duration_min</code>/<code>duration_max</code>/<code>duration_unit</code>، <code>sort_order</code>، <code>status</code>.</dd>
+        <dt>يعتمد على</dt><dd>لا شيء.</dd>
+        <dt>يغذّي</dt><dd>الأسعار (<code>item_prices.service_id</code>)، «خدماتي» بتاعة المغاسل، والطلب نفسه. <span class="tag t-mute">API</span> <code>GET /services</code>، <code>GET /catalog</code></dd>
+        <dt>الصلاحية</dt><dd><code>service.*</code></dd>
+        <dt>فخاخ</dt><dd><code>duration_max</code> لازم <code>&gt;=</code> <code>duration_min</code>. و <code>pricing_mode = quote</code> معناها الخدمة مش بتتسعّر بالقطعة — اختبر إن الطلب بيتصرف صح في الحالتين.</dd>
+      </dl>
+    </article>
+
+    <article class="screen">
+      <header><h4>أقسام القطع</h4><span class="path">/admin/item-category</span></header>
+      <dl class="facts">
+        <dt>الغرض</dt><dd>تجميع القطع (ملابس رجالي، بيت، أحذية...) عشان شاشة الاختيار في التطبيق تبقى مرتّبة.</dd>
+        <dt>الحقول</dt><dd><code>name</code> (مترجم، مطلوب)، <code>image</code>، <code>sort_order</code>، <code>status</code>.</dd>
+        <dt>يعتمد على</dt><dd>لا شيء.</dd>
+        <dt>يغذّي</dt><dd>القطع (<code>items.item_category_id</code>). <span class="tag t-mute">API</span> <code>GET /catalog</code></dd>
+        <dt>الصلاحية</dt><dd><code>item_category.*</code></dd>
+        <dt>فخاخ</dt><dd>القسم مالوش سعر — السعر على القطعة. قسم بدون قطع بيبان فاضي في التطبيق.</dd>
+      </dl>
+    </article>
+
+    <article class="screen">
+      <header><h4>القطع</h4><span class="path">/admin/item</span></header>
+      <dl class="facts">
+        <dt>الغرض</dt><dd>القطعة نفسها (قميص، بنطلون، بطانية) — الوحدة اللي بتتسعّر وبتتعدّ.</dd>
+        <dt>الحقول</dt><dd><code>name</code> (مترجم، مطلوب)، <code>item_category_id</code> (مطلوب)، <code>image</code>، <code>sort_order</code>، <code>status</code>.</dd>
+        <dt>يعتمد على</dt><dd><strong>قسم</strong>.</dd>
+        <dt>يغذّي</dt><dd>الأسعار، بنود الطلب (<code>order_items</code>)، ومراجعة العدّ في المغسلة. <span class="tag t-mute">API</span> <code>GET /catalog</code></dd>
+        <dt>الصلاحية</dt><dd><code>item.*</code></dd>
+        <dt>فخاخ</dt><dd>قطعة موجودة بس من غير صف سعر بتظهر في <code>unpriced</code> في عرض السعر ومش بتتحسب. لازم تتأكد من شاشة الأسعار بعد أي قطعة جديدة.</dd>
+      </dl>
+    </article>
+
+    <article class="screen">
+      <header><h4>الأسعار</h4><span class="path">/admin/pricing</span></header>
+      <dl class="facts">
+        <dt>الغرض</dt><dd>شبكة سعر واحد لكل (خدمة × قطعة). <strong>الأسعار عامة — المغسلة عمرها ما بتحددها.</strong></dd>
+        <dt>الحقول</dt><dd>خلية سعر لكل تقاطع. شاشة واحدة بتتحفظ دفعة واحدة عبر <code>PUT /admin/pricing/update</code>.</dd>
+        <dt>يعتمد على</dt><dd><strong>خدمات + قطع</strong> — الشبكة بتتبني من الاتنين.</dd>
+        <dt>يغذّي</dt><dd>حساب سعر أي طلب. <span class="tag t-mute">API</span> <code>POST /orders/quote</code>، <code>POST /orders</code></dd>
+        <dt>الصلاحية</dt><dd><code>item_price.view</code> للعرض، <code>item_price.update</code> للحفظ. <strong>مالك المغسلة مالوش أي صلاحية هنا إطلاقاً.</strong></dd>
+        <dt>فخاخ</dt><dd class="n-crit"><strong>السعر بيتنسخ على الطلب وقت إنشائه، ومحدش بيقراه تاني.</strong> لو غيّرت سعر القميص من ١٧ لـ ١٩ النهاردة، الطلبات القديمة بتفضل بـ ١٧ — وده صح مش باج. اختبرها كده بالظبط.</dd>
+      </dl>
+    </article>
+
+    <!-- ---------- L3 ---------- -->
+    <div class="level" id="L3">
+      <span class="n">3</span>
+      <h3>المغاسل</h3>
+      <span class="why">المستأجرين — وأهم منطقة عزل بيانات في النظام</span>
+    </div>
+
+    <div class="note n-info">
+      <span class="note-t">العزل متعدد المستأجرين</span>
+      <p>
+        مالك المغسلة بيدخل نفس اللوحة، لكن <code>BelongsToLaundry</code> بيضيّق كل
+        استعلام على مغسلته. <strong>ده أخطر شيء ممكن ينكسر في النظام</strong> —
+        سيناريو الاختبار الأساسي: سجّل بـ <code>ownera</code>، هات <code>id</code>
+        صف بتاع مغسلة B، وحاول تفتحه بالـ URL مباشرة. لازم يرجع 404 مش الصفحة.
+        وكمان جرّب تبعت <code>laundry_id</code> بتاع B في فورم إنشاء وأنت A — النظام
+        المفروض يستبدله بمغسلتك مش يقبله.
+      </p>
+    </div>
+
+    <article class="screen">
+      <header><h4>المغاسل</h4><span class="path">/admin/laundry</span></header>
+      <dl class="facts">
+        <dt>الغرض</dt><dd>إنشاء مغسلة مع حساب مالكها في نفس الفورم.</dd>
+        <dt>الحقول</dt><dd><code>name</code> (مترجم)، <code>phone</code> (بصيغة E.164)، <code>email</code>، <code>address</code>، <code>city_id</code>، <code>lat</code>/<code>lng</code>، <code>logo</code>، <code>status</code> — <strong>وبيانات المالك</strong>: <code>owner_name</code>، <code>owner_email</code> (فريد)، <code>owner_phone</code> (فريد)، <code>owner_password</code>.</dd>
+        <dt>يعتمد على</dt><dd><strong>مدينة</strong>.</dd>
+        <dt>يغذّي</dt><dd>اختيار المغسلة للطلب، وحساب رسوم التوصيل (المسافة بتتقاس من إحداثيات المغسلة).</dd>
+        <dt>الصلاحية</dt><dd><code>laundry.*</code> — المالك عنده <code>view</code> و <code>update</code> بس، على صفّه هو.</dd>
+        <dt>فخاخ</dt><dd class="n-warn"><strong>مغسلة من غير <code>lat</code>/<code>lng</code> مبتعرفش تحسب رسوم توصيل.</strong> الإحداثيات شكلها اختياري في الفورم لكنها شرط عملي.</dd>
+      </dl>
+    </article>
+
+    <article class="screen">
+      <header><h4>موظفو المغسلة</h4><span class="path">/admin/laundry-staff</span></header>
+      <dl class="facts">
+        <dt>الغرض</dt><dd>حسابات الموظفين اللي بيشتغلوا جوه المغسلة.</dd>
+        <dt>الحقول</dt><dd><code>name</code>، <code>email</code>، <code>phone</code> (E.164)، <code>role_id</code>، <code>laundry_id</code>، <code>image_profile</code>، <code>password</code> (٨ حروف + تأكيد)، <code>status</code>.</dd>
+        <dt>يعتمد على</dt><dd><strong>مغسلة</strong> + <strong>دور نوعه <code>laundry</code></strong>.</dd>
+        <dt>يغذّي</dt><dd>دخول اللوحة للموظف.</dd>
+        <dt>الصلاحية</dt><dd><code>laundry_staff.*</code> — المالك عنده الخمسة كاملة على موظفينه هو.</dd>
+        <dt>فخاخ</dt><dd>الموظف بيشوف الطلبات بس ما بيقدرش يعيّن مندوب — ده قرار المالك. اختبر إن أزرار التعيين مش ظاهرة <em>وإن</em> الراوت بيرفض.</dd>
+      </dl>
+    </article>
+
+    <article class="screen">
+      <header><h4>خدماتي</h4><span class="path">/admin/laundry-service</span></header>
+      <dl class="facts">
+        <dt>الغرض</dt><dd>المغسلة بتعلن الخدمات اللي بتقدّمها — <strong>من قايمة عامة، ومن غير ما تحدد أسعارها.</strong></dd>
+        <dt>الحقول</dt><dd>شاشة واحدة بصناديق اختيار، بتتحفظ بـ <code>PUT /admin/laundry-service/update</code>.</dd>
+        <dt>يعتمد على</dt><dd><strong>خدمات + مغسلة</strong>.</dd>
+        <dt>يغذّي</dt><dd><strong>اختيار المغسلة للطلب</strong> — مغسلة ما تقدّمش الخدمة المطلوبة بتتشال من المرشحين.</dd>
+        <dt>الصلاحية</dt><dd><code>laundry_service.view</code> / <code>update</code>. لاحظ غياب أي <code>service.*</code> عند المالك — مقصود.</dd>
+        <dt>فخاخ</dt><dd>مغسلة مش معلنة أي خدمة عمرها ما هتتختار لأي طلب. لو كل الطلبات بتيجي بدون تعيين، ابدأ من هنا.</dd>
+      </dl>
+    </article>
+
+    <article class="screen">
+      <header><h4>مناطقي</h4><span class="path">/admin/laundry-zone</span></header>
+      <dl class="facts">
+        <dt>الغرض</dt><dd>المغسلة بتعلن المناطق اللي بتغطّيها — بتختار من قايمة المناطق العامة ومش بتنشئ منطقة.</dd>
+        <dt>الحقول</dt><dd>صناديق اختيار، <code>PUT /admin/laundry-zone/update</code>.</dd>
+        <dt>يعتمد على</dt><dd><strong>مناطق + مغسلة</strong>.</dd>
+        <dt>يغذّي</dt><dd><strong>اختيار المغسلة</strong> — الشرط التاني من ثلاثة.</dd>
+        <dt>الصلاحية</dt><dd><code>laundry_zone.view</code> / <code>update</code>.</dd>
+        <dt>فخاخ</dt><dd>التغطية بتتقاس بمنطقة <em>عنوان الاستلام</em>. عميل في منطقة مفيش مغسلة معلناها = طلب بدون تعيين.</dd>
+      </dl>
+    </article>
+
+    <div class="note n-info">
+      <span class="note-t">قاعدة اختيار المغسلة — احفظها</span>
+      <p>
+        المرشح لازم يحقق <strong>ثلاث شروط معاً</strong>: (١) حالته <code>active</code>،
+        (٢) معلن منطقة عنوان الاستلام، (٣) بيقدّم الخدمة المطلوبة. من اللي فضلوا،
+        <strong>الأقرب بيكسب</strong>. ولو محدش أهّل، الطلب <strong>بيتقبل وبيقعد
+        بدون مغسلة</strong> — مش خطأ، ده تصميم.
+      </p>
+    </div>
+
+    <!-- ---------- L4 ---------- -->
+    <div class="level" id="L4">
+      <span class="n">4</span>
+      <h3>التوصيل</h3>
+      <span class="why">اللي بينقل الشنطة</span>
+    </div>
+
+    <article class="screen">
+      <header><h4>المناديب</h4><span class="path">/admin/driver</span></header>
+      <dl class="facts">
+        <dt>الغرض</dt><dd>حساب المندوب + مركبته + مستنداته + ورديته + مناطقه.</dd>
+        <dt>الحقول</dt><dd>
+          <strong>حساب:</strong> <code>name</code>، <code>phone</code> (E.164)، <code>email</code>، <code>password</code>، <code>image_profile</code>، <code>status</code>.<br>
+          <strong>مركبة:</strong> <code>vehicle_type</code>، <code>plate_number</code>، <code>vehicle_registration_image</code>، <code>vehicle_registration_expiry</code>.<br>
+          <strong>رخصة:</strong> <code>license_number</code>، <code>license_expiry</code>، <code>license_image</code>، <code>national_id_image</code>.<br>
+          <strong>تشغيل:</strong> <code>city_id</code>، <code>zones[]</code>، <code>shift_start</code>/<code>shift_end</code> (<code>H:i</code>)، <code>max_concurrent_orders</code> (١–٥٠)، <code>is_available</code>، <code>notes</code>.
+        </dd>
+        <dt>يعتمد على</dt><dd><strong>مدينة + مناطق</strong>.</dd>
+        <dt>يغذّي</dt><dd>توزيع الرحلات. <span class="tag t-mute">API</span> ٢٠ نقطة تحت <code>/driver/*</code> منها <code>GET /driver/tasks</code>، <code>POST /driver/tasks/{id}/start|complete|fail|verify</code>، <code>PUT /driver/availability</code>.</dd>
+        <dt>الصلاحية</dt><dd><code>driver.*</code> — <strong>مالك المغسلة مالوش أي صلاحية هنا</strong>، لأن المناديب بيشتغلوا عبر مغاسل كتير.</dd>
+        <dt>فخاخ</dt><dd>
+          <ul>
+            <li>موديل <code>Driver</code> بيمتد <code>User</code> وجدوله <code>users</code>، والتفاصيل في <code>driver_profiles</code>. مفيش جدول <code>drivers</code>.</li>
+            <li><strong>السعة بتتعدّ بالطلبات مش الرحلات.</strong> أربع رحلات لطلب واحد = شغلانة واحدة.</li>
+            <li>مستند منتهي بيتعلّم في القائمة لكنه <strong>ما بيمنعش</strong> التعيين — قرار مقصود.</li>
+          </ul>
+        </dd>
+      </dl>
+    </article>
+
+    <article class="screen">
+      <header><h4>أرباح المناديب</h4><span class="path">/admin/earning</span></header>
+      <dl class="facts">
+        <dt>الغرض</dt><dd>سجل مستحقات كل مندوب على كل رحلة، وحالة صرفها.</dd>
+        <dt>الحقول</dt><dd>قراءة فقط. الأعمدة: <code>driver_id</code>، <code>order_id</code>، <code>order_task_id</code>، <code>amount</code>، <code>basis</code>، <code>rate</code>، <code>status</code>، <code>released_at</code>.</dd>
+        <dt>يعتمد على</dt><dd><strong>مندوب + رحلة مكتملة</strong>.</dd>
+        <dt>يغذّي</dt><dd><span class="tag t-mute">API</span> <code>GET /driver/earnings</code> — شاشة «أرباحي» في تطبيق المندوب.</dd>
+        <dt>الصلاحية</dt><dd><code>driver_earning.view</code></dd>
+        <dt>فخاخ</dt><dd>النسبة جاية من إعداد <code>Driver_Earning_Rate</code>. <strong>الصف ده مش موجود دلوقتي في جدول الإعدادات</strong> — املاه من الإعدادات العامة قبل ما تختبر الأرباح.</dd>
+      </dl>
+    </article>
+
+    <div class="note n-info">
+      <span class="note-t">قاعدة توزيع الرحلة — احفظها</span>
+      <p>
+        المندوب بيأهّل بـ <strong>خمس شروط</strong>: نشط، متاح، بيخدم منطقة الرحلة،
+        في المدينة الصح، وتحت سقف الطلبات المتزامنة. لو محدش أهّل، الرحلة بتفضل
+        <code>pending</code> — وده طابور التوزيع مش خطأ.
+      </p>
+    </div>
+
+    <!-- ---------- L5 ---------- -->
+    <div class="level" id="L5">
+      <span class="n">5</span>
+      <h3>العملاء</h3>
+      <span class="why">اللي بيطلب</span>
+    </div>
+
+    <article class="screen">
+      <header><h4>العملاء</h4><span class="path">/admin/user</span></header>
+      <dl class="facts">
+        <dt>الغرض</dt><dd>حسابات عملاء التطبيق — عرض وتعديل، مش إنشاء من التطبيق.</dd>
+        <dt>الحقول</dt><dd><code>name</code>، <code>email</code> (فريد)، <code>phone</code> (فريد)، <code>role_id</code>، <code>image_profile</code>، <code>status</code>. الصورة <strong>مطلوبة عند الإنشاء</strong> واختيارية عند التعديل.</dd>
+        <dt>يعتمد على</dt><dd><strong>دور</strong>.</dd>
+        <dt>يغذّي</dt><dd>الطلبات، المحافظ، العناوين، الشكاوى، برنامج الدعوات. <span class="tag t-mute">API</span> <code>GET /profile</code>، <code>GET /me</code></dd>
+        <dt>الصلاحية</dt><dd><code>user.*</code></dd>
+        <dt>فخاخ</dt><dd>كل عميل عنده <code>referral_code</code> بيتولّد تلقائياً بصيغة <code>LAUNDO-XXXXXX</code>. تعطيل عميل (<code>inactive</code>) مش بيمسح طلباته ولا محفظته.</dd>
+      </dl>
+    </article>
+
+    <!-- ---------- L6 ---------- -->
+    <div class="level" id="L6">
+      <span class="n">6</span>
+      <h3>التسويق</h3>
+      <span class="why">اللي العميل بيشوفه وبيتعرض عليه</span>
+    </div>
+
+    <article class="screen">
+      <header><h4>العروض</h4><span class="path">/admin/offer</span></header>
+      <dl class="facts">
+        <dt>الغرض</dt><dd>عرض ترويجي بصورة، ممكن يكون مربوط بكوبون أو خدمة.</dd>
+        <dt>الحقول</dt><dd><code>title</code> و <code>description</code> (مترجمين)، <code>image</code>، <code>coupon_id</code>، <code>target_type</code> (<code>none</code>/<code>service</code>/<code>coupon</code>)، <code>target_value</code>، <code>starts_at</code>، <code>ends_at</code> (لازم بعد البداية)، <code>sort_order</code>، <code>status</code>.</dd>
+        <dt>يعتمد على</dt><dd>كوبون (اختياري)، خدمة (اختياري).</dd>
+        <dt>يغذّي</dt><dd><span class="tag t-mute">API</span> <code>GET /offers</code></dd>
+        <dt>الصلاحية</dt><dd><code>offer.*</code></dd>
+        <dt>فخاخ</dt><dd>العروض النشطة بس هي اللي بتتبعت للتطبيق. اختبر <code>ends_at</code> في الماضي — المفروض يختفي.</dd>
+      </dl>
+    </article>
+
+    <article class="screen">
+      <header><h4>أكواد الخصم</h4><span class="path">/admin/coupon</span></header>
+      <dl class="facts">
+        <dt>الغرض</dt><dd>كود خصم يكتبه العميل عند الطلب.</dd>
+        <dt>الحقول</dt><dd><code>code</code> (فريد)، <code>name</code> (مترجم)، <code>type</code> (<code>percentage</code> أو <code>fixed</code>)، <code>value</code> (أكبر من صفر)، <code>max_discount</code>، <code>min_order_total</code>، <code>applies_to_delivery</code>، <code>max_redemptions</code>، <code>max_per_user</code>، <code>starts_at</code>، <code>ends_at</code>، <code>status</code>.</dd>
+        <dt>يعتمد على</dt><dd>لا شيء.</dd>
+        <dt>يغذّي</dt><dd><span class="tag t-mute">API</span> <code>POST /coupons/check</code>، وحساب الخصم في <code>POST /orders/quote</code> و <code>POST /orders</code>.</dd>
+        <dt>الصلاحية</dt><dd><code>coupon.*</code></dd>
+        <dt>فخاخ</dt><dd>
+          <ul>
+            <li><code>value</code> معناه يختلف حسب <code>type</code> — ٥٠ يا إما ٥٠٪ يا إما ٥٠ جنيه.</li>
+            <li>الكوبون بيقبل بس لو: نشط، بدأ، ما انتهاش، ما استنفدش <code>max_redemptions</code>.</li>
+            <li><strong>كوبون ليه <code>user_id</code> = كوبون شخصي.</strong> أي حد تاني بيجرّبه بيتقاله «الكود غير موجود» مش «مش بتاعك» — عشان ما يفضلش يخمّن.</li>
+            <li><code>redemptions_count</code> محمي من الحفظ الجماعي — لو بتجهّز حالة اختبار بكود مستنفد، لازم تعدّله مباشرة في الداتابيز.</li>
+          </ul>
+        </dd>
+      </dl>
+    </article>
+
+    <div class="note n-warn">
+      <span class="note-t">قاعدة الخصم الواحد</span>
+      <p>
+        <code>coupon_code</code> و <code>offer_id</code> <strong>متنافيين</strong> على
+        الطلب الواحد. لو العميل بعت الاتنين، <strong>العرض بيكسب</strong> والكود
+        <strong>بيترفض برسالة</strong> — مش بيتجاهل بصمت. القاعدة مطبّقة في عرض السعر
+        <em>و</em> في تأكيد الطلب، فاختبر الاتنين.
+      </p>
+    </div>
+
+    <article class="screen">
+      <header><h4>البانرات</h4><span class="path">/admin/banner</span></header>
+      <dl class="facts">
+        <dt>الغرض</dt><dd>شرائح الصور في الشاشة الرئيسية للتطبيق.</dd>
+        <dt>الحقول</dt><dd><code>image</code> (مطلوبة عند الإنشاء، ٢ ميجا)، <code>name</code>/<code>description</code> (مترجمين)، <code>target_type</code>، <code>target_value</code>، <code>sort_order</code>، <code>status</code>.</dd>
+        <dt>يعتمد على</dt><dd>لا شيء.</dd>
+        <dt>يغذّي</dt><dd><span class="tag t-mute">API</span> <code>GET /banners</code></dd>
+        <dt>الصلاحية</dt><dd><code>banner.*</code></dd>
+        <dt>فخاخ</dt><dd><span class="tag t-warn">الجدول فاضي دلوقتي</span> الترتيب بـ <code>sort_order</code> بعدين <code>id</code> — مش بالأحدث.</dd>
+      </dl>
+    </article>
+
+    <article class="screen">
+      <header><h4>الشاشات التعريفية</h4><span class="path">/admin/intro</span></header>
+      <dl class="facts">
+        <dt>الغرض</dt><dd>شرائح الترحيب اللي بتظهر لأول مرة في التطبيق.</dd>
+        <dt>الحقول</dt><dd><code>image</code> (مطلوبة عند الإنشاء)، <code>title</code>/<code>description</code> (مترجمين)، <code>order</code>، <code>status</code>.</dd>
+        <dt>يعتمد على</dt><dd>لا شيء.</dd>
+        <dt>يغذّي</dt><dd><span class="tag t-mute">API</span> <code>GET /intros</code></dd>
+        <dt>الصلاحية</dt><dd><code>intro.*</code></dd>
+        <dt>فخاخ</dt><dd><span class="tag t-warn">الجدول فاضي دلوقتي</span> الوصف <code>textarea</code> مش سطر واحد.</dd>
+      </dl>
+    </article>
+
+    <article class="screen">
+      <header><h4>خطوات الرحلة</h4><span class="path">/admin/journey-step</span></header>
+      <dl class="facts">
+        <dt>الغرض</dt><dd>شرح «إزاي بيشتغل» اللي بيتعرض للعميل — أيقونة وعنوان ووصف لكل خطوة.</dd>
+        <dt>الحقول</dt><dd><code>image</code>، <code>title</code>/<code>description</code> (مترجمين)، <code>sort_order</code>، <code>status</code>.</dd>
+        <dt>يعتمد على</dt><dd>لا شيء.</dd>
+        <dt>يغذّي</dt><dd><span class="tag t-mute">API</span> <code>GET /journey-steps</code></dd>
+        <dt>الصلاحية</dt><dd><code>journey_step.*</code></dd>
+        <dt>فخاخ</dt><dd>محتوى تسويقي بحت — مالوش أي علاقة بحالات الطلب الفعلية رغم الاسم.</dd>
+      </dl>
+    </article>
+
+    <article class="screen">
+      <header><h4>الأسئلة الشائعة</h4><span class="path">/admin/faq</span></header>
+      <dl class="facts">
+        <dt>الغرض</dt><dd>سؤال وجواب، موجّهين للعميل أو للمندوب أو للاتنين.</dd>
+        <dt>الحقول</dt><dd><code>question</code> (مترجم، ٥٠٠ حرف)، <code>answer</code> (مترجم، ٥٠٠٠ حرف)، <code>audience</code> (<code>both</code>/<code>customer</code>/<code>driver</code>)، <code>order</code>، <code>status</code>.</dd>
+        <dt>يعتمد على</dt><dd>لا شيء.</dd>
+        <dt>يغذّي</dt><dd><span class="tag t-mute">API</span> <code>GET /faqs</code></dd>
+        <dt>الصلاحية</dt><dd><code>faq.*</code></dd>
+        <dt>فخاخ</dt><dd><span class="tag t-warn">الجدول فاضي دلوقتي</span> اختبر <code>audience</code> — سؤال للمندوب المفروض ما يظهرش لعميل.</dd>
+      </dl>
+    </article>
+
+    <!-- ---------- L7 ---------- -->
+    <div class="level" id="L7">
+      <span class="n">7</span>
+      <h3>الطلبات</h3>
+      <span class="why">الشاشة اللي اللوحة موجودة عشانها</span>
+    </div>
+
+    <article class="screen">
+      <header><h4>الطلبات</h4><span class="path">/admin/order · /order/show/{id} · /order/invoice/{id}</span></header>
+      <dl class="facts">
+        <dt>الغرض</dt><dd>متابعة كل الطلبات، والتدخّل لما حاجة تقف. الطلب <strong>ما بيتنشأش من اللوحة أبداً</strong> — العميل هو اللي بيطلب.</dd>
+        <dt>الأزرار</dt><dd>
+          <ul>
+            <li><code>PUT /admin/order/assign/{id}</code> — تعيين مغسلة يدوياً <span class="tag t-brand">order.update</span></li>
+            <li><code>POST /admin/order/review/{id}</code> — تسجيل مراجعة العدّ والسعر</li>
+            <li><code>POST /admin/order/query/{id}</code> — الرد على استفسار العميل عن السعر</li>
+            <li><code>POST /admin/order/task/assign/{id}</code> — تعيين مندوب لرحلة</li>
+            <li><code>POST /admin/order/task/release/{id}</code> — سحب الرحلة ورجوعها للطابور</li>
+            <li><code>POST /admin/order/task/generate/{id}</code> — توليد الرحلات الأربعة</li>
+            <li><code>GET /admin/order/invoice/{id}</code> — الفاتورة للطباعة</li>
+          </ul>
+        </dd>
+        <dt>يعتمد على</dt><dd><strong>عميل + عنوان + خدمة + قطع + أسعار + ميعاد</strong>، والمغسلة والمندوب بيتحددوا بعدين.</dd>
+        <dt>يغذّي</dt><dd><span class="tag t-mute">API</span> ٢٠ نقطة تحت <code>/orders/*</code>: <code>quote</code>، <code>store</code>، <code>show</code>، <code>track</code>، <code>cancel</code>، <code>reschedule</code>، <code>reorder</code>، <code>confirm</code>، <code>dispute</code>، <code>pay</code>، <code>rating</code>، <code>refunds</code>.</dd>
+        <dt>الصلاحية</dt><dd><code>order.view</code> / <code>order.update</code>. <strong>مفيش <code>order.create</code> لأي دور مغسلة</strong> — مقصود.</dd>
+        <dt>فخاخ</dt><dd>راجع قسم <a href="#s6">دورة حياة الطلب</a> بالكامل — الانتقالات محكومة بجدول ثابت وما ينفعش تقفز.</dd>
+      </dl>
+    </article>
+
+    <!-- ---------- L8 ---------- -->
+    <div class="level" id="L8">
+      <span class="n">8</span>
+      <h3>العمليات</h3>
+      <span class="why">اللي بيتعلّق بالطلب بعد ما يتم</span>
+    </div>
+
+    <article class="screen">
+      <header><h4>الشكاوى</h4><span class="path">/admin/complaint</span></header>
+      <dl class="facts">
+        <dt>الغرض</dt><dd>شكوى العميل على طلب، بمرفقات صور، وحالة بتتنقّل.</dd>
+        <dt>الأزرار</dt><dd><code>POST /admin/complaint/transition/{id}</code> لنقل الحالة، <code>POST /admin/complaint/note/{id}</code> لملاحظة داخلية.</dd>
+        <dt>الحالات</dt><dd><code>new</code> ← <code>in_progress</code> ← <code>resolved</code> ← <code>closed</code></dd>
+        <dt>التصنيفات</dt><dd><code>damaged_item</code>، <code>missing_item</code>، <code>not_clean</code>، <code>late</code>، <code>driver_conduct</code>، <code>payment</code>، <code>app_problem</code>، <code>other</code></dd>
+        <dt>يعتمد على</dt><dd><strong>عميل + طلب</strong>. بتحمل <code>laundry_id</code> للتقارير.</dd>
+        <dt>يغذّي</dt><dd><span class="tag t-mute">API</span> <code>GET/POST /complaints</code>، <code>GET /complaint-categories</code></dd>
+        <dt>الصلاحية</dt><dd><code>complaint.view</code> / <code>update</code></dd>
+        <dt>فخاخ</dt><dd><span class="tag t-warn">الجدول فاضي دلوقتي</span> المرفقات لحد ٥ صور. الشكاوى المفتوحة بتظهر كعدّاد على الصفحة الرئيسية.</dd>
+      </dl>
+    </article>
+
+    <article class="screen">
+      <header><h4>التقييمات</h4><span class="path">/admin/rating</span></header>
+      <dl class="facts">
+        <dt>الغرض</dt><dd>قراءة تقييمات العملاء. قراءة فقط — مفيش تعديل ولا حذف.</dd>
+        <dt>الحقول</dt><dd>التقييم متعدد الأوجه: <code>delivery</code> و <code>service_quality</code> منفصلين <strong>عن قصد</strong> — عشان المندوب ما يتحاسبش على قميص متكوي غلط. + وسوم من <code>RatingTag</code>.</dd>
+        <dt>يعتمد على</dt><dd><strong>طلب مسلّم</strong>.</dd>
+        <dt>يغذّي</dt><dd>نجمة المندوب في شاشة تتبّع الطلب (متوسط <code>delivery</code> وحده)، وتقرير أداء المغاسل. <span class="tag t-mute">API</span> <code>GET/POST /orders/{id}/rating</code></dd>
+        <dt>الصلاحية</dt><dd><code>order_rating.view</code> — <strong>آمنة للمستأجر</strong>، المالك بيشوف تقييمات مغسلته بس.</dd>
+        <dt>فخاخ</dt><dd><span class="tag t-warn">الجدول فاضي دلوقتي</span> النجمة بترجع <code>null</code> مش صفر لمندوب لسه محدش قيّمه — صفر بيتقري كأنه مندوب سيء.</dd>
+      </dl>
+    </article>
+
+    <article class="screen">
+      <header><h4>الاشتراكات</h4><span class="path">/admin/recurrence</span></header>
+      <dl class="facts">
+        <dt>الغرض</dt><dd>جدول غسيل متكرر للعميل (أسبوعي/شهري) — بيفكّره يطلب، ما بيطلبش عنه.</dd>
+        <dt>الأزرار</dt><dd><code>POST /admin/recurrence/pause/{id}</code>، <code>resume/{id}</code>، <code>cancel/{id}</code></dd>
+        <dt>الحقول</dt><dd><code>user_id</code>، <code>service_id</code>، <code>pickup_address_id</code>، <code>time_slot_id</code>، <code>frequency</code>، <code>day_of_week</code>، <code>items</code>، <code>next_prompt_on</code>، <code>status</code>.</dd>
+        <dt>يعتمد على</dt><dd><strong>عميل + خدمة + عنوان + ميعاد</strong>.</dd>
+        <dt>يغذّي</dt><dd><span class="tag t-mute">API</span> ٨ نقاط تحت <code>/recurrences/*</code> منها <code>GET /recurrences/prompts</code> و <code>confirm</code>/<code>decline</code>.</dd>
+        <dt>الصلاحية</dt><dd><code>order_recurrence.*</code></dd>
+        <dt>فخاخ</dt><dd>الاستئناف بيشتغل <strong>على الموقوف بس</strong>، والإيقاف على النشط بس. جرّب الحالتين الغلط ولازم ترجع رسالة واضحة.</dd>
+      </dl>
+    </article>
+
+    <article class="screen">
+      <header><h4>المواعيد</h4><span class="path">/admin/time-slot</span></header>
+      <dl class="facts">
+        <dt>الغرض</dt><dd>فترات الاستلام والتسليم المتاحة، وسعة كل فترة.</dd>
+        <dt>الحقول</dt><dd><code>start_time</code>/<code>end_time</code> بصيغة <code>H:i</code> (النهاية بعد البداية)، <code>applies_to</code> (<code>pickup</code>/<code>delivery</code>/<code>both</code>)، <code>capacity</code>، <code>sort_order</code>، <code>status</code>.</dd>
+        <dt>يعتمد على</dt><dd>لا شيء.</dd>
+        <dt>يغذّي</dt><dd><strong>كل طلب</strong>، والاشتراكات. <span class="tag t-mute">API</span> <code>GET /time-slots</code></dd>
+        <dt>الصلاحية</dt><dd><code>time_slot.*</code></dd>
+        <dt>فخاخ</dt><dd class="n-warn"><strong>دي فعلياً شاشة تأسيس مش عمليات.</strong> من غير مواعيد نشطة، العميل مش هيقدر يكمّل طلب أصلاً. ازرعها بدري.</dd>
+      </dl>
+    </article>
+
+    <!-- ---------- L9 ---------- -->
+    <div class="level" id="L9">
+      <span class="n">9</span>
+      <h3>المالية</h3>
+      <span class="why">الفلوس اللي اتحركت والأرصدة اللي راحتلها</span>
+    </div>
+
+    <article class="screen">
+      <header><h4>المدفوعات</h4><span class="path">/admin/payment</span></header>
+      <dl class="facts">
+        <dt>الغرض</dt><dd>سجل كل محاولة دفع. قراءة فقط.</dd>
+        <dt>الحالات</dt><dd><code>pending</code>، <code>authorised</code>، <code>captured</code>، <code>failed</code>، <code>refunded</code></dd>
+        <dt>الطرق</dt><dd><code>card</code>، <code>wallet</code>، <code>instapay</code>، <code>cash</code></dd>
+        <dt>يعتمد على</dt><dd><strong>طلب</strong> (<code>payments.order_id</code>).</dd>
+        <dt>يغذّي</dt><dd><span class="tag t-mute">API</span> <code>POST /orders/{id}/pay</code>، <code>GET /orders/{id}/payments</code>، <code>GET /payment-methods</code>، و webhook عام <code>POST /payments/webhook/{provider}</code>.</dd>
+        <dt>الصلاحية</dt><dd><code>payment.view</code></dd>
+        <dt>فخاخ</dt><dd class="n-warn">حالة الدفع <strong>منفصلة تماماً</strong> عن حالة الطلب، عشان الدفع عند الاستلام: العميل بيدفع عند التسليم بعد الغسيل بوقت طويل. ما تتوقعش إن الاتنين يمشوا سوا.</dd>
+      </dl>
+    </article>
+
+    <article class="screen">
+      <header><h4>الاستردادات</h4><span class="path">/admin/refund</span></header>
+      <dl class="facts">
+        <dt>الغرض</dt><dd>طلبات استرداد الفلوس ومراجعتها وصرفها.</dd>
+        <dt>الأزرار</dt><dd><code>POST /admin/refund/approve/{id}</code>، <code>reject/{id}</code>، <code>settle/{id}</code> — كلها <code>refund.update</code>.</dd>
+        <dt>الحقول</dt><dd><code>order_id</code>، <code>user_id</code>، <code>payment_id</code>، <code>amount</code>، <code>reason</code>، <code>note</code>، <code>status</code>، <code>destination</code>، <code>reviewed_by</code>، <code>reviewed_at</code>، <code>review_note</code>، <code>settled_at</code>.</dd>
+        <dt>يعتمد على</dt><dd><strong>طلب + دفعة</strong>.</dd>
+        <dt>يغذّي</dt><dd><span class="tag t-mute">API</span> <code>GET/POST /orders/{id}/refunds</code></dd>
+        <dt>الصلاحية</dt><dd><code>refund.view</code> / <code>update</code></dd>
+        <dt>فخاخ</dt><dd class="n-crit"><strong>الاسترداد الموافق عليه بس هو اللي بيتصرف.</strong> جرّب <code>settle</code> على طلب مرفوض أو لسه جديد — لازم يترفض. ده أهم اختبار في الشاشة.</dd>
+      </dl>
+    </article>
+
+    <article class="screen">
+      <header><h4>المحافظ</h4><span class="path">/admin/wallet · /wallet/show/{id}</span></header>
+      <dl class="facts">
+        <dt>الغرض</dt><dd>رصيد العميل داخل المنصة، وسجل حركاته.</dd>
+        <dt>الأزرار</dt><dd><code>POST /admin/wallet/adjust/{id}</code> — تسوية <strong>بتطلب سبب إجباري</strong>؛ <code>POST /admin/wallet/freeze/{id}</code> — تجميد.</dd>
+        <dt>الحقول</dt><dd><code>user_id</code>، <code>balance</code>، <code>pending_balance</code>، <code>currency</code>، <code>is_frozen</code>.</dd>
+        <dt>أسباب الحركة</dt><dd><code>top_up</code>، <code>order_payment</code>، <code>refund</code>، <code>withdrawal</code>، <code>earning</code>، <code>adjustment</code></dd>
+        <dt>يعتمد على</dt><dd><strong>عميل</strong>.</dd>
+        <dt>يغذّي</dt><dd><span class="tag t-mute">API</span> <code>GET /wallet</code>، <code>POST /wallet/top-up</code>، <code>POST /wallet/withdraw</code>، <code>GET /wallet/transactions</code></dd>
+        <dt>الصلاحية</dt><dd><code>wallet.view</code> / <code>update</code>. <strong>مالك المغسلة والعميل بيترفضوا</strong> — وفيه اختبارات متصفح بتتأكد من ده.</dd>
+        <dt>فخاخ</dt><dd class="n-crit"><strong>الرصيد ما بيتعدّلش مباشرة أبداً — كل تغيير معاملة مسجّلة.</strong> لو لقيت أي مسار بيسمح بتحديد رصيد رقم مباشرة، دي تذكرة أمان مش تحسين.</dd>
+      </dl>
+    </article>
+
+    <!-- ---------- L10 ---------- -->
+    <div class="level" id="L10">
+      <span class="n">10</span>
+      <h3>التقارير</h3>
+      <span class="why">خمس شاشات، ومستويين وصول مختلفين</span>
+    </div>
+
+    <div class="scroll">
+      <table>
+        <thead><tr><th>التقرير</th><th>بيقيس إيه</th><th>الوصول</th><th>مدى تاريخي؟</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><code>/report/revenue</code><br>الإيرادات</td>
+            <td>الإجمالي والمقارنة بالفترة السابقة، يومي، وتفصيل حسب المغسلة والخدمة وطريقة الدفع</td>
+            <td><span class="tag t-good">report.view</span> آمن للمستأجر</td>
+            <td>نعم</td>
+          </tr>
+          <tr>
+            <td><code>/report/orders</code><br>الطلبات</td>
+            <td>العدد اليومي، التوزيع حسب الحالة، حسب المنطقة، وحركة الأسعار</td>
+            <td><span class="tag t-good">report.view</span> آمن للمستأجر</td>
+            <td>نعم</td>
+          </tr>
+          <tr>
+            <td><code>/report/laundries</code><br>أداء المغاسل</td>
+            <td>أداء كل مغسلة داخل الفترة</td>
+            <td><span class="tag t-good">report.view</span> آمن للمستأجر</td>
+            <td>نعم</td>
+          </tr>
+          <tr>
+            <td><code>/report/drivers</code><br>أداء المناديب</td>
+            <td>أداء كل مندوب + أسباب فشل الرحلات</td>
+            <td><span class="tag t-crit">report.update</span> سوبر أدمن فقط</td>
+            <td>نعم</td>
+          </tr>
+          <tr>
+            <td><code>/report/operations</code><br>صحة العمليات</td>
+            <td>حالة الشغل <strong>دلوقتي</strong>: طلبات بدون مغسلة، رحلات بدون مندوب، طلبات مستنية العميل</td>
+            <td><span class="tag t-crit">report.update</span> سوبر أدمن فقط</td>
+            <td><strong>لأ — عن قصد</strong></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p>
+      الفرق في الوصول مقصود: <strong>المناديب بيشتغلوا عبر مغاسل كتير</strong>، فعرض
+      أدائهم لمالك مغسلة بيسرّب بيانات مغاسل تانية. عشان كده <code>report.update</code>
+      اتستخدم كبوابة سوبر أدمن مش كصلاحية تعديل.
+    </p>
+    <p>
+      تقرير العمليات <strong>مالوش مدى تاريخي عن قصد</strong> — طلب واقف من الشهر
+      اللي فات أهم من واحد واقف من الصبح، مش أقل. والتصدير على
+      <code>GET /admin/report/export/{report}</code> بيرجع CSV مبثوث سطر سطر
+      مش مبني في الذاكرة، فجرّبه على مدى سنة كاملة.
+    </p>
+
+    <!-- ---------- L99 ---------- -->
+    <div class="level" id="L99">
+      <span class="n">99</span>
+      <h3>النظام</h3>
+      <span class="why">مش بيتفتح في يوم شغل عادي</span>
+    </div>
+
+    <article class="screen">
+      <header><h4>المشرفون</h4><span class="path">/admin/moderator</span></header>
+      <dl class="facts">
+        <dt>الغرض</dt><dd>حسابات موظفي الإدارة اللي بيدخلوا اللوحة.</dd>
+        <dt>الحقول</dt><dd><code>name</code>، <code>email</code>، <code>phone</code> (E.164)، <code>role_id</code> (مطلوب)، <code>image_profile</code> (مطلوبة عند الإنشاء)، <code>password</code>، <code>status</code>.</dd>
+        <dt>يعتمد على</dt><dd><strong>دور نوعه <code>dashboard</code></strong> — القايمة بتفلتر على النوع ده، فأدوار المغاسل مش بتظهر فيها.</dd>
+        <dt>الصلاحية</dt><dd><code>moderator.*</code></dd>
+        <dt>فخاخ</dt><dd><span class="tag t-warn">الجدول فاضي دلوقتي</span> مشرف بدور مالوش صلاحيات بيدخل اللوحة ويشوف الصفحة الرئيسية بس — مش خطأ.</dd>
+      </dl>
+    </article>
+
+    <article class="screen">
+      <header><h4>الأدوار والصلاحيات</h4><span class="path">/admin/roles</span></header>
+      <dl class="facts">
+        <dt>الغرض</dt><dd>مصفوفة صناديق اختيار: ١٧٠ صلاحية × الأدوار. الحفظ بـ <code>POST /admin/roles/{role}/permissions</code>.</dd>
+        <dt>يعتمد على</dt><dd>الصلاحيات المتولّدة من <code>PermissionSeeder</code>.</dd>
+        <dt>الصلاحية</dt><dd><code>role.*</code> — لاحظ إن اسم الراوت <strong>جمع</strong>: <code>admin.roles.index</code> مش <code>admin.role.index</code>.</dd>
+        <dt>فخاخ</dt><dd>
+          <ul>
+            <li>الأدوار المعلّمة <code>is_system</code> <strong>ما تتحذفش</strong>.</li>
+            <li>سحب صلاحية من دور بيقفل الراوت والزرار والقائمة الجانبية في نفس اللحظة — اختبر التلاتة.</li>
+            <li>تغيير صلاحيات <code>super_admin</code> ما بيعملش حاجة، لأنه بيتخطّى الفحص أصلاً.</li>
+          </ul>
+        </dd>
+      </dl>
+    </article>
+
+    <article class="screen">
+      <header><h4>اللغات</h4><span class="path">/admin/language · /panel/{id} · /mobile/{id} · /web/{id}</span></header>
+      <dl class="facts">
+        <dt>الغرض</dt><dd>إضافة لغة، وتحرير نصوصها في ثلاث مجموعات منفصلة: نصوص اللوحة، نصوص التطبيق، نصوص الويب.</dd>
+        <dt>الأزرار</dt><dd>تحرير لكل نوع + <code>GET /admin/language/download/{type}/{code}</code> لتنزيل ملف JSON + <code>GET /admin/set-language/{lang}</code> لتبديل لغة الجلسة.</dd>
+        <dt>يغذّي</dt><dd><span class="tag t-mute">API</span> <code>GET /languages</code>، <code>GET /translations/{type}</code></dd>
+        <dt>الصلاحية</dt><dd><code>language.*</code>. تبديل لغة الجلسة <strong>بدون بادئة <code>admin.</code></strong>: <code>language.set-current</code>.</dd>
+        <dt>فخاخ</dt><dd class="n-crit">
+          <ul>
+            <li><strong><code>default</code> و <code>is_rtl</code> نص مش boolean</strong> — قيمتهم حرفياً <code>'true'</code> / <code>'false'</code>.</li>
+            <li><strong>فيه كاشين متداخلين.</strong> مسح كاش اللغة بيمسح واحد بس — يعني <strong>مبدّل اللغة في الشريط العلوي ممكن يفضل قديم لحد ساعة</strong> بعد تعديل لغة. لو شفت السلوك ده، مش باج جديد.</li>
+            <li>لغة RTL بتبدّل ملف CSS كامل — اختبر تخطيط الصفحات بعد التبديل مش النص بس.</li>
+          </ul>
+        </dd>
+      </dl>
+    </article>
+
+    <article class="screen">
+      <header><h4>سجل الإشعارات</h4><span class="path">/admin/notification</span></header>
+      <dl class="facts">
+        <dt>الغرض</dt><dd>سجل كل إشعار النظام حاول يبعته. قراءة فقط.</dd>
+        <dt>يعتمد على</dt><dd>أجهزة مسجّلة عبر <code>POST /devices</code>.</dd>
+        <dt>يغذّي</dt><dd><span class="tag t-mute">API</span> <code>GET /notifications</code>، <code>POST /notifications/read-all</code>، <code>GET /notification-preferences</code></dd>
+        <dt>الصلاحية</dt><dd><code>notification_log.view</code></dd>
+        <dt>فخاخ</dt><dd><span class="tag t-warn">الجدول فاضي دلوقتي</span> «مكتوم، أو لا يوجد جهاز مسجَّل» حالة صحيحة مش فشل إرسال.</dd>
+      </dl>
+    </article>
+
+    <article class="screen">
+      <header><h4>الإعدادات العامة</h4><span class="path">/admin/generalSetting · /admin/PrivacyAndTerms</span></header>
+      <dl class="facts">
+        <dt>الغرض</dt><dd>صفوف مفتاح/قيمة بتتحكم في سلوك المنصة كلها.</dd>
+        <dt>الصلاحية</dt><dd><code>setting.*</code>. أسماء الراوتس شاذة: <code>admin.generalSetting.viewGeneralSetting</code> / <code>updateGeneralSetting</code> / <code>viewPrivacyAndTerms</code> / <code>updatePrivacyAndTerms</code>.</dd>
+        <dt>المفاتيح</dt><dd>راجع الجدول تحت.</dd>
+      </dl>
+    </article>
+
+    <div class="scroll">
+      <table>
+        <thead><tr><th>المفتاح</th><th>بيتحكم في إيه</th><th>الحالة دلوقتي</th></tr></thead>
+        <tbody>
+          <tr><td><code>App_Name</code></td><td>الاسم اللي التطبيق والفاتورة وشاشة الدخول بتقراه</td><td><span class="tag t-warn">BaseCode</span></td></tr>
+          <tr><td><code>Currency</code></td><td>العملة — <code>EGP/SAR/AED/KWD/QAR/USD</code></td><td><code>EGP</code></td></tr>
+          <tr><td><code>Tax</code></td><td>نسبة الضريبة</td><td><code>10</code></td></tr>
+          <tr><td><code>Cash_Surcharge</code></td><td>رسوم ثابتة تُضاف <strong>للدفع النقدي فقط</strong></td><td><span class="tag t-warn">الصف غير موجود ← صفر</span></td></tr>
+          <tr><td><code>Driver_Earning_Rate</code></td><td>نسبة أرباح المندوب</td><td><span class="tag t-warn">الصف غير موجود</span></td></tr>
+          <tr><td><code>Referral_Reward_Type</code></td><td><code>percentage</code> أو <code>fixed</code></td><td><code>percentage</code></td></tr>
+          <tr><td><code>Referral_Reward_Value</code></td><td>قيمة مكافأة الدعوة</td><td><span class="tag t-warn">فاضي ← البرنامج متوقف</span></td></tr>
+          <tr><td><code>Country_Id</code></td><td>الدولة الافتراضية</td><td><code>1</code></td></tr>
+          <tr><td><code>About</code> · <code>Privacy_Policy</code> · <code>Terms</code></td><td>نصوص مترجمة بتوصل للتطبيق عبر <code>GET /pages/{page}</code></td><td>مسوّدات تحت مراجعة قانونية</td></tr>
+          <tr><td><code>App_Logo</code> · <code>Login_Cover</code></td><td>صور الهوية</td><td>موجودة</td></tr>
+          <tr><td>روابط التواصل + <code>Hotline</code> · <code>Call</code> · <code>Email</code></td><td>بيانات التواصل في التطبيق</td><td>موجودة</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h4>الصفحة الرئيسية · <span class="mono">/admin/home</span></h4>
+    <p>ثلاث مجموعات أرقام، وكلها بتتفلتر حسب دور الداخل:</p>
+    <ul>
+      <li><strong>النهاردة:</strong> طلبات جديدة، فلوس محصّلة (<strong>مؤرّخة بـ <code>paid_at</code></strong> — نفس قاعدة تقرير الإيرادات، عشان الرقمين ما يختلفوش)، مسلّمة، ملغية.</li>
+      <li><strong>شغل جاري:</strong> بانتظار الاستلام، مع المندوب، في المغسلة، جاهز للتسليم، مسلّم وغير مدفوع.</li>
+      <li><strong>محتاج تدخّل بشري:</strong> طلبات بدون مغسلة <span class="tag t-crit">حرج</span>، رحلات بدون مندوب <span class="tag t-crit">حرج</span>، طلبات مستنية العميل يأكد السعر <span class="tag t-warn">تحذير</span>، شكاوى مفتوحة.</li>
+    </ul>
+    <p>
+      «مستنية العميل» <strong>مالهاش مهلة زمنية</strong> — بتفضل مستنية للأبد لحد ما
+      حد يكلّم العميل. عشان كده هي على الصفحة الرئيسية.
+    </p>
+  </section>
+
+  <!-- ================= 6 ================= -->
+  <section id="s6">
+    <div class="sec-head">
+      <span class="sec-num">القسم ٠٦</span>
+      <h2 class="sec-title">دورة حياة الطلب</h2>
+    </div>
+
+    <p>
+      اثنتا عشرة حالة، والانتقالات محكومة بجدول ثابت. <strong>ما ينفعش تقفز خطوة</strong> —
+      محاولة انتقال غير مسموح المفروض تترفض، وده اختبار أساسي.
+    </p>
+
+    <h3>المسار الطبيعي</h3>
+    <div class="pipe">
+      <span class="stage s-live">awaiting_pickup<b>بانتظار الاستلام</b></span>
+      <span class="arrow">←</span>
+      <span class="stage s-live">driver_on_way<b>المندوب في الطريق</b></span>
+      <span class="arrow">←</span>
+      <span class="stage s-live">picked_up<b>تم الاستلام</b></span>
+      <span class="arrow">←</span>
+      <span class="stage s-wait">reviewed<b>تمت المراجعة</b></span>
+      <span class="arrow">←</span>
+      <span class="stage s-live">confirmed<b>مؤكد</b></span>
+      <span class="arrow">←</span>
+      <span class="stage s-live">cleaning<b>جاري الغسيل</b></span>
+      <span class="arrow">←</span>
+      <span class="stage s-live">ready_for_delivery<b>جاهز للتسليم</b></span>
+      <span class="arrow">←</span>
+      <span class="stage s-live">delivered<b>تم التسليم</b></span>
+      <span class="arrow">←</span>
+      <span class="stage s-end">completed<b>مكتمل</b></span>
+    </div>
+
+    <h3>التفرّعات</h3>
+    <div class="scroll">
+      <table>
+        <thead><tr><th>من</th><th>ممكن يروح لـ</th><th>مين بيحرّكه</th></tr></thead>
+        <tbody>
+          <tr><td><code>awaiting_pickup</code></td><td><code>driver_on_way</code> · <code>cancelled</code></td><td>المندوب · العميل</td></tr>
+          <tr><td><code>driver_on_way</code></td><td><code>picked_up</code> · <code>cancelled</code></td><td>المندوب · <strong>آخر فرصة للعميل يلغي</strong></td></tr>
+          <tr><td><code>picked_up</code></td><td><code>reviewed</code></td><td>المغسلة (بتعدّ وتسعّر)</td></tr>
+          <tr><td><code>reviewed</code></td><td><code>confirmed</code> · <code>review_disputed</code> · <code>returned</code></td><td>العميل يوافق أو يعترض · <strong>الموظف فقط</strong> يرجّع</td></tr>
+          <tr><td><code>review_disputed</code></td><td><code>reviewed</code> · <code>returned</code></td><td>المغسلة تعيد العدّ بسعر جديد</td></tr>
+          <tr><td><code>confirmed</code> → <code>delivered</code></td><td>خطوة واحدة كل مرة</td><td>المغسلة ثم المندوب</td></tr>
+          <tr><td><code>completed</code> · <code>cancelled</code> · <code>returned</code></td><td><span class="tag t-mute">نهائية — مفيش خروج</span></td><td>—</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="note n-info">
+      <span class="note-t">فرق مهم: «مرتجع» مش «ملغي»</span>
+      <p>
+        <code>returned</code> مخرج للموظف بس، لما الخلاف على العدّ ما يتحلّش. القطع
+        بترجع للعميل <strong>ورسوم التوصيل لسه مستحقة</strong> — عشان كده مش
+        <code>cancelled</code>. مفيش زرار رفض للعميل هنا.
+      </p>
+    </div>
+
+    <h3>الأربع رحلات</h3>
+    <p>
+      كل طلب بيتولّد له أربع رحلات فيزيائية <strong>مرة واحدة سوا</strong>، مش واحدة
+      ورا التانية. الترتيب محمي بـ <code>sequence</code> وفحص «السابقة اكتملت؟» وقت
+      ما المندوب يحاول يتحرك — يعني الأربعة موجودين في الداتا لكن تلاتة منهم مش
+      قابلين للتنفيذ.
+    </p>
+    <div class="pipe">
+      <span class="stage">pickup_from_customer<b>١ · من العميل</b></span>
+      <span class="arrow">←</span>
+      <span class="stage">deliver_to_laundry<b>٢ · للمغسلة</b></span>
+      <span class="arrow">←</span>
+      <span class="stage">collect_from_laundry<b>٣ · من المغسلة</b></span>
+      <span class="arrow">←</span>
+      <span class="stage">deliver_to_customer<b>٤ · للعميل</b></span>
+    </div>
+    <p>
+      حالات الرحلة: <code>pending</code> ← <code>assigned</code> ←
+      <code>started</code> ← <code>completed</code> أو <code>failed</code>.
+      أسباب الفشل المتاحة للمندوب: <code>customer_unavailable</code>،
+      <code>wrong_address</code>، <code>customer_postponed</code>،
+      <code>piece_count_mismatch</code>، <code>other</code>.
+    </p>
+
+    <div class="note n-warn">
+      <span class="note-t">سيناريوهات اختبار لازم تتعمل</span>
+      <ul>
+        <li>حاول تنقل طلب من <code>awaiting_pickup</code> لـ <code>cleaning</code> مباشرة — لازم يترفض.</li>
+        <li>ألغِ طلب وهو <code>driver_on_way</code> — لازم ينفع. جرّب بعدها وهو <code>picked_up</code> — لازم يترفض.</li>
+        <li>علّم رحلة كـ <code>failed</code> وشوف الطلب راح فين وطابور التوزيع اتصرف إزاي.</li>
+        <li>اسحب مندوب من رحلة (<code>task/release</code>) وتأكد إنها رجعت <code>pending</code> مش ضاعت.</li>
+        <li>اعمل مسار الاعتراض كامل: <code>reviewed</code> ← <code>review_disputed</code> ← <code>reviewed</code> بسعر جديد ← <code>confirmed</code>.</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- ================= 7 ================= -->
+  <section id="s7">
+    <div class="sec-head">
+      <span class="sec-num">القسم ٠٧</span>
+      <h2 class="sec-title">الفلوس</h2>
+    </div>
+
+    <h3>إزاي بيتحسب إجمالي الطلب</h3>
+    <div class="scroll">
+      <table>
+        <thead><tr><th>المكوّن</th><th>جاي منين</th><th>ملاحظة حرجة</th></tr></thead>
+        <tbody>
+          <tr><td>المجموع الفرعي</td><td>سعر القطعة × الكمية، من شبكة الأسعار</td><td><strong>بيتنسخ على الطلب وقت إنشائه ومحدش بيقراه تاني</strong></td></tr>
+          <tr><td>رسوم التوصيل</td><td>المسافة من المغسلة للعنوان × سعر الكيلو بتاع منطقة الاستلام</td><td>بحد أدنى من <code>min_delivery_fee</code>، و<strong>×١.٥</strong> لو الاستلام والتسليم عنوانين مختلفين</td></tr>
+          <tr><td>الخصم</td><td>كوبون <strong>أو</strong> عرض — مش الاتنين</td><td>العرض بيكسب، والكود بيترفض برسالة</td></tr>
+          <tr><td>رسوم النقدي</td><td>إعداد <code>Cash_Surcharge</code></td><td>مبلغ ثابت، <strong>بيتضاف بس لو طريقة الدفع نقدي</strong></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="note n-crit">
+      <span class="note-t">أهم فخ في التسعير</span>
+      <p>
+        رسوم التوصيل ممكن ترجع <strong>«غير معروفة» — مش صفر</strong>، في حالتين:
+        مغسلة لسه ما اتعيّنتش (مفيش نقطة تقيس منها)، أو منطقة ما اتسعّرتش. رجوع
+        <code>0.00</code> كان معناه إننا بنقول للعميل التوصيل مجاني، وده كذب. لو
+        شفت «غير معروفة» في الاختبار، اسأل: المغسلة اتعيّنت؟ المنطقة ليها سعر كيلو؟
+      </p>
+    </div>
+
+    <h3>عرض العملة</h3>
+    <p>
+      العملة بتتقرا من إعداد <code>Currency</code> وبترجع لـ <code>EGP</code> لو
+      غايبة. <strong>الأرقام بتتعرض بالأرقام الغربية حتى في الواجهة العربية</strong> —
+      لو شفت أرقام هندية (٠١٢٣) في سعر، دي تذكرة باج مش تفضيل لغة.
+    </p>
+
+    <h3>برنامج الدعوات</h3>
+    <p>
+      كل عميل عنده كود <code>LAUNDO-XXXXXX</code>. الداعي والمدعو <strong>الاتنين</strong>
+      بياخدوا كوبون — <strong>بعد أول طلب مدفوع للمدعو</strong>، مش عند التسجيل.
+      التوقيت ده هو التصميم نفسه: مكافأة عند التسجيل حد بخمس أرقام تليفون يقدر يزوّرها.
+    </p>
+    <div class="note n-warn">
+      <span class="note-t">حالته دلوقتي</span>
+      <p>
+        <code>Referral_Reward_Value</code> <strong>فاضي</strong>، يعني البرنامج
+        <strong>متوقف</strong>: الربط بين الداعي والمدعو بيتسجّل، لكن مفيش كوبون
+        بيتصرف. لو ملّيت القيمة بعدين، <strong>مش هيتصرف بأثر رجعي</strong> لحد
+        اتدعى وطلب قبل كده — وده مقصود. عشان تختبره: املا القيمة <strong>الأول</strong>،
+        وبعدين اعمل تسجيل بكود دعوة، وبعدين خلّي المدعو يدفع أول طلب.
+      </p>
+    </div>
+  </section>
+
+  <!-- ================= 8 ================= -->
+  <section id="s8">
+    <div class="sec-head">
+      <span class="sec-num">القسم ٠٨</span>
+      <h2 class="sec-title">فخاخ لازم تعرفها</h2>
+    </div>
+
+    <p>حاجات بتبان كأنها باجات وهي سلوك مقصود، وحاجات باجات فعلاً بس شكلها عادي.</p>
+
+    <div class="scroll">
+      <table>
+        <thead><tr><th>الملاحظة</th><th>التفسير</th><th>باج؟</th></tr></thead>
+        <tbody>
+          <tr>
+            <td>حالة الصف بتتخزن <code>'active'</code> / <code>'inactive'</code></td>
+            <td>نص مش boolean. مفيش <code>1</code>/<code>0</code>.</td>
+            <td><span class="tag t-mute">تصميم</span></td>
+          </tr>
+          <tr>
+            <td>حفظ صف بلغة واحدة بس بينجح</td>
+            <td>القاعدة «لغة واحدة على الأقل» مش «كل اللغات». عميل بيكتب عربي بس ده وضع طبيعي.</td>
+            <td><span class="tag t-mute">تصميم</span></td>
+          </tr>
+          <tr>
+            <td>البحث في القوائم مش بيشتغل لما تلزق نص</td>
+            <td>البحث مربوط بحدث <code>keyup</code>. لصق بالماوس مش بيشغّله.</td>
+            <td><span class="tag t-warn">قيد معروف</span></td>
+          </tr>
+          <tr>
+            <td>اسم التطبيق ظاهر <code>BaseCode</code></td>
+            <td>إعداد <code>App_Name</code> لسه ما اتغيّرش. متروك عن قصد — الفاتورة ممكن تحتاج اسم قانوني مسجّل، وده قرار المالك.</td>
+            <td><span class="tag t-warn">مؤجّل</span></td>
+          </tr>
+          <tr>
+            <td>مبدّل اللغة في الشريط العلوي قديم بعد تعديل لغة</td>
+            <td>كاشين متداخلين، ومسح الكاش بيمسح واحد بس. بيتصلّح لوحده خلال ساعة.</td>
+            <td><span class="tag t-crit">باج معروف</span></td>
+          </tr>
+          <tr>
+            <td>كل الصور 404 والروابط الموقّعة 403</td>
+            <td><code>public/storage</code> بقى فولدر بدل symlink.</td>
+            <td><span class="tag t-crit">بيئة</span></td>
+          </tr>
+          <tr>
+            <td><code>/password/reset</code> بترجع 500</td>
+            <td><code>npm run build</code> ما اتعملش.</td>
+            <td><span class="tag t-crit">بيئة</span></td>
+          </tr>
+          <tr>
+            <td>صلاحية موجودة في شاشة الأدوار لشاشة مش موجودة</td>
+            <td>مولّد الصلاحيات بيضيف ولا بيحذف أبداً.</td>
+            <td><span class="tag t-warn">قيد معروف</span></td>
+          </tr>
+          <tr>
+            <td>سبع صور لسه placeholder</td>
+            <td>٣ شاشات تعريفية + ٣ أيقونات خطوات رحلة + صورة عرض، مستنية تصدير من Figma.</td>
+            <td><span class="tag t-mute">معروف</span></td>
+          </tr>
+          <tr>
+            <td>نصوص الشروط والخصوصية مش نهائية</td>
+            <td>مسوّدات تحت مراجعة قانونية.</td>
+            <td><span class="tag t-mute">معروف</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>قواعد عامة عند كتابة تذكرة</h3>
+    <ul>
+      <li><strong>اذكر الدور اللي كنت داخل بيه.</strong> نص الباجات المتوقعة هنا فروق صلاحيات.</li>
+      <li><strong>لو الشاشة فاضية، قول الجدول فاضي ولا فيه فلتر.</strong> ستة جداول فاضية حالياً بالفعل.</li>
+      <li><strong>لو حاجة «مش بتتحسب»، ارجع للمستوى اللي تحتها في خريطة الاعتماد.</strong> سعر ناقص غالباً منطقة بدون سعر كيلو، أو قطعة بدون صف سعر.</li>
+      <li><strong>جرّب الراوت مباشرة مش الزرار بس.</strong> إخفاء الزرار مش حماية.</li>
+    </ul>
+  </section>
+
+  <!-- ================= 9 ================= -->
+  <section id="s9">
+    <div class="sec-head">
+      <span class="sec-num">القسم ٠٩</span>
+      <h2 class="sec-title">ملحق: الـ API</h2>
+    </div>
+
+    <div class="figures">
+      <div class="fig"><div class="v">102</div><div class="k">إجمالي النقاط</div></div>
+      <div class="fig"><div class="v">28</div><div class="k">عامة بدون توكن</div></div>
+      <div class="fig"><div class="v">74</div><div class="k">بتطلب توكن</div></div>
+      <div class="fig"><div class="v">20</div><div class="k">خاصة بالمندوب</div></div>
+      <div class="fig"><div class="v">20</div><div class="k">خاصة بالطلبات</div></div>
+    </div>
+
+    <p>
+      التوثيق الكامل موجود في المشروع: مجموعة Postman على
+      <code>docs/postman/</code> وصفحة مرجع عربية على <code>docs/api-reference.html</code>.
+    </p>
+
+    <h3>حاجات لازم تعرفها عن الـ API</h3>
+    <ul>
+      <li><strong>جدول مستخدمين واحد للتطبيقين.</strong> توكن العميل اسمه <code>mobile</code> وتوكن المندوب <code>driver-app</code>.</li>
+      <li><strong>نقاط المندوب مش محمية بـ middleware.</strong> كل كونترولر بيتأكد بنفسه إن المستخدم مندوب ويرجع 403. لو ضفت نقطة مندوب جديدة، الفحص ده لازم يتكرر.</li>
+      <li><strong>محدّدات معدل مسمّاة:</strong> <code>otp</code>، <code>otp-verify</code>، <code>login</code>، <code>location</code> — زيادة عن الحد العام. اختبر إنها بترجع 429 فعلاً.</li>
+      <li><strong>إعادة تعيين كلمة السر خطوتين</strong> في اللوحة والتطبيقين: <code>verify-reset-code</code> بيصرف الكود ويصدر تذكرة، و<code>reset-password</code> بياخد التذكرة. <strong>عمره ما بيقبل الكود وكلمة السر الجديدة في نداء واحد</strong> — لو لقيت مسار كده، دي تذكرة أمان.</li>
+      <li><strong>الهواتف بصيغة E.164</strong> (<code>+</code> ثم ٨–١٥ رقم). الصيغة المحلية بتترفض.</li>
+    </ul>
+
+    <p class="foot">
+      المستند ده مبني بالكامل من قراءة الكود والراوتس والتحقق من قاعدة بيانات
+      التطوير، مش من الذاكرة. كل صفحة مذكورة هنا اتفتحت فعلاً وردّت
+      <code>200</code>. لو لقيت اختلاف بين المكتوب هنا واللي على الشاشة، المكتوب
+      هنا هو اللي محتاج تحديث — قول.
+    </p>
+  </section>
+
+  </main>
+</div>

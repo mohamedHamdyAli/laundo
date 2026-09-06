@@ -55,6 +55,37 @@
             </select>
         </div>
     </div>
+
+    {{-- The city's centre. Not used to price anything — it is where the map
+         opens when somebody positions a laundry in this city, so a city left
+         without one makes that map start on the whole country. --}}
+    <div class="col-lg-3">
+        <div class="mb-3">
+            <label for="city-lat" class="form-label">{{ __('Latitude') }}</label>
+            <input type="number" step="0.0000001" name="lat" id="city-lat" class="form-control"
+                placeholder="{{ __('e.g. 30.0444') }}"
+                value="{{ old('lat', $row->lat ?? '') }}" {{ Route::is('*.show') ? 'readonly' : '' }}>
+        </div>
+    </div>
+
+    <div class="col-lg-3">
+        <div class="mb-3">
+            <label for="city-lng" class="form-label">{{ __('Longitude') }}</label>
+            <input type="number" step="0.0000001" name="lng" id="city-lng" class="form-control"
+                placeholder="{{ __('e.g. 31.2357') }}"
+                value="{{ old('lng', $row->lng ?? '') }}" {{ Route::is('*.show') ? 'readonly' : '' }}>
+            <small class="text-muted">{{ __('Where the map opens for this city') }}</small>
+        </div>
+    </div>
+
+    <div class="col-12">
+        <div class="mb-3">
+            {{-- No city select to follow here: this form *is* the city. --}}
+            <x-map-picker lat-input="city-lat" lng-input="city-lng"
+                inputs="readonly" :readonly="Route::is('*.show')"
+                :label="__('City centre on the map')" />
+        </div>
+    </div>
 </div>
 
 {{-- Translation Optional --}}

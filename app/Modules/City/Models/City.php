@@ -37,7 +37,7 @@ class City extends Model
     use DashboardModel;
     use Searchable;
 
-    protected $fillable = ['name', 'country_id', 'status'];
+    protected $fillable = ['name', 'country_id', 'lat', 'lng', 'status'];
 
     protected function asJson($value, $flags = 0)
     {

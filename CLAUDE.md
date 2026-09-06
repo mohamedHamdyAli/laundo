@@ -168,6 +168,16 @@ Two overlapping caches exist:
 - `docs/postman/Laundo API v1.postman_collection.json` — 102 requests, one per endpoint, with substantive per-request descriptions. An endpoint diff will not catch a **stale request body**; check the bodies when you add a field.
 - `docs/postman/generate-reference.py` → `docs/api-reference.html`. **The endpoint list is hand-written Python inside that script**, not derived from the collection or from `route:list`. Run it from the repo root (it writes a relative path).
 - `docs/laundo-screen-actions.html` + `.pdf` — every Figma screen against the route its button calls and the panel page staff act from. The HTML is the source; the PDF is rendered from it with headless Chrome `--print-to-pdf`.
+- `docs/laundo-qa-guide.html` + `.pdf` — the QA guide, in Arabic: every panel screen, what must exist before it works, what it feeds in the apps, its permission, and the traps a tester would otherwise file as bugs. Ordered by build order, the same order `config/menu.php` uses. Same HTML-is-the-source rule as above; regenerate the PDF with:
+
+  ```bash
+  "/c/Program Files/Google/Chrome/Application/chrome.exe" --headless=new --disable-gpu \
+    --virtual-time-budget=20000 --run-all-compositor-stages-before-draw --print-to-pdf-no-header \
+    --print-to-pdf="D:\nahr\in-house\laundo\docs\laundo-qa-guide.pdf" \
+    "file:///D:/nahr/in-house/laundo/docs/laundo-qa-guide.html"
+  ```
+
+  It states **live facts about this install** (which tables are empty, which settings rows are missing), so re-check those numbers when the seed data changes.
 
 ## Known rough edges
 

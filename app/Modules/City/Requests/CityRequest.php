@@ -27,6 +27,10 @@ class CityRequest extends FormRequest
                 'name' => 'nullable|array',
                 'name.*' => 'nullable|string|max:191',
                 'country_id' => 'nullable|exists:countries,id',
+                // Optional on both branches: a city is usable without a
+                // centre, the map just opens on the country instead.
+                'lat' => 'nullable|numeric|between:-90,90',
+                'lng' => 'nullable|numeric|between:-180,180',
                 'status' => 'nullable|in:active,inactive',
             ];
         } else {
@@ -34,6 +38,10 @@ class CityRequest extends FormRequest
                 'name' => ['required', 'array', $this->atLeastOneLanguage()],
                 'name.*' => 'nullable|string|max:191',
                 'country_id' => 'required|exists:countries,id',
+                // Optional on both branches: a city is usable without a
+                // centre, the map just opens on the country instead.
+                'lat' => 'nullable|numeric|between:-90,90',
+                'lng' => 'nullable|numeric|between:-180,180',
                 'status' => 'required|in:active,inactive',
             ];
         }

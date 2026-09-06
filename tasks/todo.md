@@ -2548,3 +2548,47 @@ lists. Asked; the owner chose **build order**: what everything rests on first.
       failures** unrelated to this work — the driver list was migrated from
       `<table>` to the stack-row pattern and those specs still select
       `#driver-table-body tr`, which matches nothing. Left alone; not this task.
+
+## Workstream — Coordinate map picker (DONE 2026-09-06)
+
+Ask: «محتاج Latitude / Longitude يظهرلي خريطة، والخريطة تعتمد على City، ده في
+أي صفحة فيها Latitude Longitude».
+
+Blocker found first: **`cities` had no coordinates** (`id, name, country_id,
+status`), so "the map depends on the city" had nothing to depend on. Only
+`laundries` carried lat/lng, so there was exactly one such screen.
+
+- [x] Audit which admin screens actually hold lat/lng (one: the laundry form)
+- [x] Confirm Leaflet 1.9.4 is already bundled and loaded on every admin page —
+      `assets/js/leaflet.js` + `assets/css/leaflet.css`, used by nothing
+- [x] Migration: `cities.lat` / `cities.lng` as `decimal(10,7)` nullable
+- [x] Backfill the 27 governorate capitals in the same migration, by primary key
+- [x] `City` `$fillable` + `CityRequest` rules on both branches
+- [x] `x-map-picker` component — click/drag to set, type to move, city to recentre
+- [x] `@stack('styles')` in `layouts/main.blade.php` so components can ship CSS
+- [x] Laundry form: city options carry `data-lat`/`data-lng`; picker below the boxes
+- [x] City form: its own lat/lng + picker, with no city select to follow
+- [x] 5 Arabic strings
+
+### Verification
+- [x] Rendered all six affected screens server-side: 200, no error text, canvas
+      present, correct input ids wired, `readonly: true` only on the show pages,
+      27 city options carrying coordinates, script + styles emitted exactly once
+- [x] Drove it in a real browser (Playwright, logged in as the super admin):
+      12 tiles painted; clicking the map filled both boxes and dropped one pin;
+      switching city to Aswan fired 8 new tile requests **and left the
+      coordinates untouched**; typing coordinates kept a single pin; the city
+      form opened pre-pinned on Cairo. Zero JS errors.
+- [x] `MapPickerTest` — 9 tests
+- [x] `php artisan test` — **776 passed**, 2366 assertions (was 767)
+- [x] Pint clean, PHPStan level 5 clean, TranslationCoverageTest green
+
+### Gotcha worth keeping
+Assertions on stored decimals must compare **numerically**. MySQL pads
+`decimal(10,7)` to `29.9668000`; the SQLite these tests run on returns
+`29.9668`. A string assertion on the padded form passes in CI and says nothing
+about the database the app actually uses.
+
+`resources/lang/ar.json` is sorted **case-insensitively** ("about", "active",
+"Add a note only"). Re-serialising it with Python's default sort silently
+reshuffled 104 lines; `key=str.lower()` restores it.

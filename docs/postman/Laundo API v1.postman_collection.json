@@ -4176,7 +4176,7 @@
                 "read-all"
               ]
             },
-            "description": ""
+            "description": "Clears the badge in one call — marks every unread notification for the signed-in user as read. Empty body.\n\nReturns a message, not a count: the number that mattered was the one on the badge before the call, and `GET /notifications/unread-count` answers that. Safe to repeat; a second call has nothing left to mark."
           },
           "response": []
         },
