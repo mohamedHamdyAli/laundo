@@ -187,7 +187,7 @@ Views are Blade under `resources/views/admin/{module}/` (with `partials/`, `form
 
 **Styling is a static vendor admin template, not a build pipeline.** CSS/JS come from `public/assets/**` via `asset()` calls in `layouts/include.blade.php` and `layouts/footer_script.blade.php` — Bootstrap 5, jQuery, Font Awesome, bootstrap-icons, select2, sweetalert2, toastify, filepond, bootstrap-table, leaflet. RTL swaps to `assets/css/main/rtl.css` based on the session language. Project overrides go in `public/assets/css/theme.css` and `custom.css`; the vendor `main/app.css` often out-specifies them, so **match its selector specificity instead of relying on load order** — and before changing a property, grep for *every* rule that sets it, in both override files and the vendor CSS. More than one "fix" here has been a no-op because a second `!important` rule was still winning.
 
-Vite/Tailwind are configured but effectively unused: `@vite` appears only in `layouts/app.blade.php`, which **no view extends**. Don't route new styles through Vite unless you're deliberately migrating.
+Vite/Tailwind are near-unused but **not dead**: `@vite` appears only in `layouts/app.blade.php` — and seven views do extend it (`auth/passwords/*`, `auth/register`, `auth/verify`, `home`, `welcome`). `Auth::routes(['register' => false])` in `routes/web.php` makes `/password/reset` reachable, so **`npm run build` is required before deploying** or that page 500s with a missing Vite manifest. It appears to work locally only because `npm run dev` leaves a gitignored `public/hot` behind. Don't route new styles through Vite unless you're deliberately migrating.
 
 ## Naming Conventions
 
