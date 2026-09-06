@@ -201,7 +201,9 @@ class FcmPushDriverTest extends TestCase
      */
     public static function permanentStatuses(): array
     {
-        return ['404 gone' => [404], '400 bad token' => [400], '403 forbidden' => [403]];
+        // 400 is deliberately absent: whether it is the device's fault depends
+        // on what FCM says, and the two cases have their own tests below.
+        return ['404 gone' => [404], '403 forbidden' => [403]];
     }
 
     /**
@@ -251,5 +253,99 @@ class FcmPushDriverTest extends TestCase
         $this->assertFalse($driver->lastFailureWasPermanent());
 
         Http::assertNothingSent();
+    }
+
+    #[Test]
+    public function a_400_about_the_registration_token_is_the_devices_fault(): void
+    {
+        Http::fake([
+            'oauth2.googleapis.com/*' => Http::response(['access_token' => 'ya29.fake', 'expires_in' => 3600]),
+            'fcm.googleapis.com/*' => Http::response([
+                'error' => [
+                    'code' => 400,
+                    'message' => 'The registration token is not a valid FCM registration token',
+                    'status' => 'INVALID_ARGUMENT',
+                ],
+            ], 400),
+        ]);
+
+        $driver = new FcmPushDriver;
+
+        $this->assertFalse($driver->send('tok-bad', 'a', 'b'));
+        $this->assertTrue($driver->lastFailureWasPermanent());
+    }
+
+    #[Test]
+    public function a_400_about_our_own_payload_is_not_the_devices_fault(): void
+    {
+        // The bug this test exists for: a malformed request is a 400, the driver
+        // read every 400 as «this device is gone», and the dispatcher deletes
+        // the registration on a permanent failure. A shape mistake on our side
+        // would have unsubscribed every recipient it was sent to.
+        Http::fake([
+            'oauth2.googleapis.com/*' => Http::response(['access_token' => 'ya29.fake', 'expires_in' => 3600]),
+            'fcm.googleapis.com/*' => Http::response([
+                'error' => [
+                    'code' => 400,
+                    'message' => "Invalid value at 'message' (Map), Cannot bind a list to map for field 'data'.",
+                    'status' => 'INVALID_ARGUMENT',
+                ],
+            ], 400),
+        ]);
+
+        $driver = new FcmPushDriver;
+
+        $this->assertFalse($driver->send('tok-fine', 'a', 'b'));
+        $this->assertFalse(
+            $driver->lastFailureWasPermanent(),
+            'a payload mistake must never cost the recipient their registration'
+        );
+    }
+
+    #[Test]
+    public function a_send_with_no_data_omits_the_field_rather_than_sending_an_empty_list(): void
+    {
+        // `data` is a map in the v1 schema. PHP's empty array encodes as `[]`,
+        // a list, and FCM rejects the whole message. Every existing payload
+        // assertion passed non-empty data, so nothing caught it until a real
+        // call to Google did.
+        Http::fake([
+            'oauth2.googleapis.com/*' => Http::response(['access_token' => 'ya29.fake', 'expires_in' => 3600]),
+            'fcm.googleapis.com/*' => Http::response(['name' => 'projects/p/messages/1']),
+        ]);
+
+        $this->assertTrue((new FcmPushDriver)->send('tok-1', 'title', 'body'));
+
+        Http::assertSent(function ($request) {
+            if (! str_contains($request->url(), 'fcm.googleapis.com')) {
+                return true;
+            }
+            $message = $request->data()['message'];
+
+            // Absent entirely — not present-and-empty, which is the bug.
+            return ! array_key_exists('data', $message);
+        });
+    }
+
+    #[Test]
+    public function a_send_with_data_still_carries_it_as_a_map_of_strings(): void
+    {
+        Http::fake([
+            'oauth2.googleapis.com/*' => Http::response(['access_token' => 'ya29.fake', 'expires_in' => 3600]),
+            'fcm.googleapis.com/*' => Http::response(['name' => 'projects/p/messages/1']),
+        ]);
+
+        $this->assertTrue((new FcmPushDriver)->send('tok-1', 'title', 'body', ['order_id' => 42]));
+
+        Http::assertSent(function ($request) {
+            if (! str_contains($request->url(), 'fcm.googleapis.com')) {
+                return true;
+            }
+            $data = $request->data()['message']['data'] ?? null;
+
+            return is_array($data)
+                && $data['order_id'] === '42'
+                && json_encode($data)[0] === '{';   // a map, not a list
+        });
     }
 }

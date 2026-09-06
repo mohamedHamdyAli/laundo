@@ -2,6 +2,18 @@
 
 ## 2026-09-06
 
+### Fix
+
+- **Push would have deleted every device it notified.** Found by pointing the real service account at the real FCM endpoint rather than at a stub. `data` is a **map** in the v1 schema, and PHP's empty array encodes as `[]` — a list — so FCM refused the whole message with «Cannot bind a list to map for field 'data'». Since `send()` carries no data payload by default, that was **every notification** (Service).
+- The second half is what made it destructive. That refusal is an HTTP 400, and the driver read `in_array($status, [400, 403, 404])` as «this device is gone», which `NotificationDispatcher` acts on by **deleting the device registration**. So the first live notification round would have unsubscribed every registered handset, silently, looking exactly like users turning notifications off. `data` is now omitted when empty, and a 400 is the device's fault **only when FCM says the token is what it could not accept** — the class's own docblock already said 404/403, and the code contradicted it (Service).
+- **Why the existing tests passed:** the only test asserting on the payload sent `['order_id' => 42]`, so an empty `data` was never serialised, and every test used `Http::fake()`, so Google's schema validation never ran. A mocked test could not have caught this by construction. Four tests added — `data` absent rather than empty, `data` still a map of strings when present, and the two 400s told apart — and `400` removed from the bare-status permanence provider, because whether a 400 is permanent now depends on what it says (Tests).
+
+### Infrastructure
+
+- **Deployed `65425ad` to laundo.nahrdev.net** — pull, `composer install --no-dev`, migrate, `npm run build`, caches rebuilt to the state they were in. All 27 governorates got their coordinates. **`/password/reset` went 500 → 200**, which is the Vite-manifest edge CLAUDE.md has warned about since P9 finally closed on the server (Infrastructure).
+- Two deploy notes worth keeping. `mysqldump` produced a 20-byte empty gzip because the password broke across two levels of shell quoting; a 0600 `--defaults-file` fixes it and keeps the password out of `ps` on a shared box. And `npm ci` fails with `EMFILE` because the host caps file descriptors at **150, soft and hard** — `--maxsockets 3` gets it through in two seconds, and without it every future build dies (Infrastructure).
+- The FCM service account is installed at `storage/app/firebase.json`, 0600. `storage/app/.gitignore` is `*`, so it cannot be committed by accident. `PUSH_DRIVER` is still unset — deliberately, until this fix ships (Infrastructure).
+
 ### Feature
 
 - **A map on every screen that stores coordinates, and it follows the city.** `x-map-picker` (`resources/views/components/map-picker.blade.php`) draws a Leaflet map bound to a pair of lat/lng inputs: clicking the map or dragging the pin writes the boxes, typing in the boxes moves the pin, and choosing a city re-centres the view on it. On the laundry form and the city form today; the component takes the input ids as props, so the next screen that grows coordinates is one tag (Blade / Component).

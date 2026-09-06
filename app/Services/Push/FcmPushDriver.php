@@ -2,6 +2,7 @@
 
 namespace App\Services\Push;
 
+use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -57,26 +58,36 @@ class FcmPushDriver implements PushSender
             return false;
         }
 
+        $message = [
+            'token' => $token,
+            'notification' => ['title' => $title, 'body' => $body],
+            'android' => ['priority' => 'high'],
+            'apns' => ['headers' => ['apns-priority' => '10']],
+        ];
+
+        // Only when there is something to carry. `data` is a *map* in the v1
+        // schema, and PHP's empty array encodes as `[]` — a list — which FCM
+        // rejects with «Cannot bind a list to map for field 'data'». That is a
+        // 400, which this method used to read as «the device is gone», so the
+        // dispatcher deleted the registration. Every notification without a
+        // data payload would have unsubscribed its own recipient.
+        if ($data !== []) {
+            // FCM requires every data value to be a string; an int here is
+            // rejected by the API with an unhelpful message.
+            $message['data'] = array_map(fn ($v) => (string) $v, $data);
+        }
+
         $response = Http::withToken($accessToken)
             ->timeout(config('push.timeout'))
             ->post("https://fcm.googleapis.com/v1/projects/{$projectId}/messages:send", [
-                'message' => [
-                    'token' => $token,
-                    'notification' => ['title' => $title, 'body' => $body],
-                    // FCM requires every data value to be a string; an int here
-                    // is rejected by the API with an unhelpful message.
-                    'data' => array_map(fn ($v) => (string) $v, $data),
-                    'android' => ['priority' => 'high'],
-                    'apns' => ['headers' => ['apns-priority' => '10']],
-                ],
+                'message' => $message,
             ]);
 
         if ($response->successful()) {
             return true;
         }
 
-        // UNREGISTERED / INVALID_ARGUMENT on the token mean this device is gone.
-        $this->permanentFailure = in_array($response->status(), [400, 403, 404], true);
+        $this->permanentFailure = $this->failureBlamesTheDevice($response);
 
         Log::warning('[FCM] send failed', [
             'status' => $response->status(),
@@ -85,6 +96,45 @@ class FcmPushDriver implements PushSender
         ]);
 
         return false;
+    }
+
+    /**
+     * Is this failure the handset's fault, or ours?
+     *
+     * It matters because the caller *deletes the device registration* on a
+     * permanent failure, so a misread here silently unsubscribes a working
+     * phone and looks like the user turning notifications off.
+     *
+     * The old rule was «400, 403 or 404 means the token is dead», which
+     * contradicted this class's own docblock and swept up every malformed
+     * request we might send. A 400 is only the device's fault when FCM says the
+     * *token* is what it could not accept — anything else at 400 is a request
+     * this code got wrong, and the handset must survive it.
+     */
+    private function failureBlamesTheDevice(Response $response): bool
+    {
+        // UNREGISTERED — the app was uninstalled or the token was rotated.
+        if ($response->status() === 404) {
+            return true;
+        }
+
+        // SENDER_ID_MISMATCH — the token belongs to a different Firebase project.
+        if ($response->status() === 403) {
+            return true;
+        }
+
+        if ($response->status() !== 400) {
+            return false;
+        }
+
+        $error = $response->json('error') ?? [];
+        $haystack = strtolower(json_encode($error, JSON_UNESCAPED_UNICODE) ?: '');
+
+        // Both shapes FCM uses for a bad token: a fieldViolation naming
+        // `message.token`, and a plain message about the registration token.
+        // The first is a substring of the encoded JSON, so one check covers it.
+        return str_contains($haystack, 'registration token')
+            || str_contains($haystack, 'message.token');
     }
 
     public function lastFailureWasPermanent(): bool
