@@ -1,5 +1,5 @@
 @php
-    $currentLangCode = Session::get('language')?->code ?? 'en';
+    $currentLangCode = panelLanguageCode();
     $loginCover = getSettingValue('Login_Cover')
         ? asset('storage/' . getSettingValue('Login_Cover'))
         : null;

@@ -1,8 +1,10 @@
 @php
-    $current_language = Session::get('language');
+    // From the `is_rtl` column, not from `code == 'ar'`: a Hebrew or Urdu
+    // language added tomorrow loaded the left-to-right stylesheet under the
+    // old test, and a fresh session ignored the default language entirely.
 @endphp
 
-@if (isset($current_language) && $current_language->code == 'ar')
+@if (panelIsRtl())
     <link rel="stylesheet" href="{{ asset('assets/css/main/rtl.css') }}">
     <link rel="stylesheet" href="{{ asset('assets/css/pages/otherpages_rtl.css') }}" />
     <link rel="stylesheet" href="{{ asset('assets/css/custom.css') }}" />

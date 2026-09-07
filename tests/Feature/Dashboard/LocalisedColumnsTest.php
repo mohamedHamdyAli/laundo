@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Dashboard;
 
+use App\Models\Language;
 use App\Modules\Laundry\Models\Laundry;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use PHPUnit\Framework\Attributes\Test;
@@ -123,7 +124,12 @@ class LocalisedColumnsTest extends TestCase
     {
         $this->laundry(['en' => 'Bright Wash', 'ar' => 'الغسيل اللامع']);
 
-        app()->setLocale('ar');
+        // Was `app()->setLocale('ar')` before the request, which only worked
+        // because `SetLocale` did nothing when the session was empty. The
+        // middleware establishes the locale per request now — as it should —
+        // so the panel is made Arabic the way the topbar switcher makes it
+        // Arabic, by putting the language in the session.
+        session(['language' => Language::where('code', 'ar')->firstOrFail()]);
 
         $this->actingAs($this->superAdmin())
             ->get('/admin/laundry')

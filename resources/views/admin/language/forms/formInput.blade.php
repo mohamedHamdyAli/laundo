@@ -111,9 +111,34 @@
                     <label class="form-label">{{ __($label) }}</label>
                     <div class="upload-field">
                         <div class="text-center">
-                            @if (isset($row) && $row->$field)
-                                <a href="{{ getImageassetUrl($row->$field) }}" target="_blank"
-                                    class="d-block text-primary mb-2">{{ __('View Current File') }}</a>
+                            @php
+                                // The link goes to the download route, not to an
+                                // image helper. `getImageassetUrl()` looks on the
+                                // uploads disk and falls back to the brand
+                                // placeholder when it finds nothing — and these
+                                // columns hold names like `app_en.json` that were
+                                // never on that disk, so «View Current File»
+                                // opened the logo every single time.
+                                $downloadType = isset($row)
+                                    ? \App\Helpers\LanguageHelper::downloadTypeFor($field)
+                                    : null;
+                                $filePath = $downloadType && isset($row->code)
+                                    ? \App\Helpers\LanguageHelper::filePath($row->code, $downloadType)
+                                    : null;
+                                $fileExists = $filePath !== null && file_exists($filePath);
+                            @endphp
+
+                            {{-- Only when the file is really there. A link that
+                                 always 404s says a file exists when it does
+                                 not, which is the same lie in a quieter voice. --}}
+                            @if ($fileExists)
+                                <a href="{{ route('admin.language.download', [$downloadType, $row->code]) }}"
+                                    class="d-block text-primary mb-2">
+                                    {{ __('Download current file') }}
+                                    <small class="text-muted d-block">{{ basename($filePath) }}</small>
+                                </a>
+                            @elseif (isset($row) && $row->$field)
+                                <span class="d-block text-muted small mb-2">{{ __('No file generated yet.') }}</span>
                             @endif
 
                             @if (!Route::is('*.show'))

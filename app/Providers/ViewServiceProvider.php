@@ -3,7 +3,6 @@
 namespace App\Providers;
 
 use App\Services\CachingService;
-use Illuminate\Support\Facades\Session;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
 
@@ -16,13 +15,16 @@ class ViewServiceProvider extends ServiceProvider
     {
         View::composer('layouts.topbar', static function (\Illuminate\View\View $view) {
             $languages = CachingService::getLanguages();
-            $defaultLanguage = CachingService::getDefaultLanguage();
 
-            // Get current language from session or set to default if not set
-            $currentLanguage = Session::get('language', $defaultLanguage);
+            // `Session::get('language', CachingService::getDefaultLanguage())`
+            // — and that default was hardcoded to `en`, so the switcher showed
+            // `EN` until somebody clicked it, whatever the configured default
+            // was. `panelLanguage()` is the one resolver the middleware and the
+            // layout use, so the topbar now agrees with the page around it
+            // instead of answering the same question its own way.
             $view->with([
                 'languages' => $languages,
-                'currentLanguage' => $currentLanguage,
+                'currentLanguage' => panelLanguage(),
             ]);
             // $view->with('languages', CachingService::getLanguages() );
         });

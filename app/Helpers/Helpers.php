@@ -9,6 +9,7 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Session;
 use Illuminate\Support\Facades\Storage;
 
 // ===================================================
@@ -383,6 +384,94 @@ if (! function_exists('getDefaultLanguage')) {
         }
 
         return $col_name ? $language->{$col_name} : $language;
+    }
+}
+
+if (! function_exists('getLanguageByCode')) {
+    /**
+     * One language row by its code, cached.
+     *
+     * Uses the `language_{code}` key that `clearLanguageCache()` has always
+     * forgotten — nothing ever wrote it, so that line was clearing a key that
+     * did not exist. It does now.
+     */
+    function getLanguageByCode(string $code): ?Language
+    {
+        return cache()->rememberForever(
+            "language_{$code}",
+            fn () => Language::where('code', $code)->first()
+        );
+    }
+}
+
+if (! function_exists('panelLanguage')) {
+    /**
+     * The language the panel is showing right now.
+     *
+     * Four places used to answer this independently and all four hardcoded
+     * `en` as the fallback: `SetLocale` did nothing without a session,
+     * `layouts/main` and `auth/login` both wrote `?? 'en'`, and
+     * `layouts/include` decided RTL from `code == 'ar'` and so ignored the
+     * `is_rtl` column outright. The consequence was that **making a language
+     * the default changed nothing about the panel** — the one thing the word
+     * "default" promises.
+     *
+     * Resolution order, and each step is a decision:
+     *
+     *  1. **The session**, when it holds a language that is still a real row.
+     *     Somebody who picked a language from the topbar has chosen, and an
+     *     owner changing the platform default must not silently overrule them
+     *     mid-session. Re-read from the database rather than trusted as
+     *     serialised: the session may be days old and carrying a stale
+     *     `is_rtl`, or a row that has since been deleted.
+     *  2. **The default language row.** This is what was missing.
+     *  3. `config('app.locale')` as a last resort, if there is no default row
+     *     at all — a half-seeded install must render, not throw.
+     */
+    function panelLanguage(): ?Language
+    {
+        $chosen = Session::get('language');
+        $code = is_object($chosen) ? ($chosen->code ?? null) : (is_string($chosen) ? $chosen : null);
+
+        if (filled($code)) {
+            $language = getLanguageByCode($code);
+
+            if ($language) {
+                return $language;
+            }
+        }
+
+        try {
+            return getDefaultLanguage();
+        } catch (Throwable) {
+            // `getDefaultLanguage()` throws when no row is flagged. A missing
+            // default is a seeding problem, not a reason for every page to 500.
+            return Language::where('code', config('app.locale'))->first();
+        }
+    }
+}
+
+if (! function_exists('panelLanguageCode')) {
+    /**
+     * Its code, for `<html lang>` and `app()->setLocale()`.
+     */
+    function panelLanguageCode(): string
+    {
+        return panelLanguage()->code ?? (string) config('app.locale');
+    }
+}
+
+if (! function_exists('panelIsRtl')) {
+    /**
+     * Whether the panel should lay out right-to-left.
+     *
+     * From the `is_rtl` column — an **enum string** `'true'`/`'false'`, not a
+     * boolean — rather than from `code == 'ar'`. Hebrew, Farsi or Urdu added
+     * tomorrow would have rendered left-to-right under the old test.
+     */
+    function panelIsRtl(): bool
+    {
+        return (string) (panelLanguage()->is_rtl ?? 'false') === 'true';
     }
 }
 

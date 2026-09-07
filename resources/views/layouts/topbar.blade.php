@@ -35,7 +35,12 @@
                 {{-- Language --}}
                 <div class="dropdown">
                     @php
-                        $shownLanguage = $currentLanguage ?: $defaultLanguage;
+                        // Was `$currentLanguage ?: $defaultLanguage`, and the
+                        // composer never passed `$defaultLanguage` — so the
+                        // fallback was an undefined variable resolving to null.
+                        // `panelLanguage()` always answers, so there is nothing
+                        // left to fall back to.
+                        $shownLanguage = $currentLanguage;
 
                         // `asset('storage/' . $icon)` with an empty icon
                         // resolves to the bare `/storage` directory, and with a

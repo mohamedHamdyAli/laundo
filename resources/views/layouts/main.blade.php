@@ -1,8 +1,11 @@
 @php
-    $currentLangCode = Session::get('language')?->code ?? 'en';
+    // `Session::get('language')?->code ?? 'en'` ignored the default language
+    // row, and `=== 'ar'` made Arabic the only language that could ever be
+    // right-to-left. Both now come from the `languages` table.
+    $currentLangCode = panelLanguageCode();
 @endphp
 <!DOCTYPE html>
-<html lang="{{ $currentLangCode }}" dir="{{ $currentLangCode === 'ar' ? 'rtl' : 'ltr' }}">
+<html lang="{{ $currentLangCode }}" dir="{{ panelIsRtl() ? 'rtl' : 'ltr' }}">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">

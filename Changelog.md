@@ -1,5 +1,24 @@
 # Changelog
 
+## 2026-09-07
+
+### Fix
+
+- **Making a language the default changed nothing about the panel.** Reported as «خليت العربي ديفولت والداش بورد متغيرتش». The row was written correctly — the bug is that **nothing read it**. Four places decided the panel's language independently and every one of them hardcoded English: `SetLocale` did nothing at all when the session was empty, so the locale stayed `config('app.locale')`; `layouts/main` and `auth/login` both wrote `?? 'en'`; `layouts/include` chose the right-to-left stylesheet from `code == 'ar'`; and the topbar's `CachingService::getDefaultLanguage()` was literally `Language::where('code', 'en')`. All four now go through one resolver (Service / Middleware / Blade).
+- `panelLanguage()` resolves **session → default row → `config('app.locale')`**, and each step is a decision. A language picked from the topbar wins, because somebody who chose has chosen and an owner changing the platform default must not overrule them mid-session — but it is re-read from the database rather than trusted as serialised, so a session carrying a deleted row or a stale `is_rtl` falls back instead of stranding the panel. `panelLanguageCode()` and `panelIsRtl()` sit on top of it (Helper).
+- **Right-to-left comes from the `is_rtl` column now, not from `code == 'ar'`.** Hebrew or Urdu added tomorrow would have loaded the left-to-right stylesheet and rendered `dir="ltr"` under the old test (Blade).
+- **Nothing demoted the previous default.** `default` is fillable, the form sends it and the request validates it — and marking a second language default left **two** rows saying `'true'`. `getDefaultLanguage()` is a `where(...)->first()`, so which one won was decided by id order. `makeSoleDefault()` runs inside the same transaction as the write (Service).
+- **Nor could the last default be kept.** Un-defaulting the only one leaves zero, and `getDefaultLanguage()` throws — from the locale helpers, on every request. That does not degrade the panel, it takes it down. Refused as a validation error on the field that caused it (Service).
+- **Editing a language now drops the topbar cache too.** Two caches exist and `clearLanguageCache()` only ever cleared the `Helpers.php` set, so the switcher kept the old list and old flags for up to an hour — a rough edge CLAUDE.md has carried since it was found. `CachingService::forgetLanguages()` closes it (Service).
+- `topbar.blade.php` read `$currentLanguage ?: $defaultLanguage` and the view composer **never passed `$defaultLanguage`** — the fallback was an undefined variable resolving to null. `panelLanguage()` always answers, so there is nothing left to fall back to (Blade).
+- **«View Current File» on the language form opened the brand logo.** It went through `getImageassetUrl()` — an *image* helper that looks on the uploads disk and falls back to the placeholder — while those columns hold names like `app_en.json` that were never on that disk. So it hit the fallback every single time, on every language, since the field was added; the recent placeholder change only made it visible. It links to `admin.language.download` now, the route that already existed to do this, and only when the file is really there — a link that always 404s says a file exists when it does not (Blade).
+- The type→path mapping behind that route moved to `LanguageHelper::filePath()`, one place instead of a `switch` in the controller and a second guess in the form. `panel` stays `{code}.json` deliberately: that is the file `showPanel`/`updatePanel` edits, so the download has to hand back the same one (Helper / Controller).
+
+### Tests
+
+- `PanelLanguageTest` — 12 tests over the whole of the above: the default drives the panel with no session, promotion demotes every other row, flipping back and forth never leaves two defaults, a non-Arabic RTL language still lays out RTL, a session choice outranks the default, a session holding a deleted language falls back, the last default cannot be removed, the topbar reads the flagged row, an edit drops the topbar cache, and two that render `/admin/home` and assert `lang`, `dir` and the stylesheet actually follow (Tests).
+- `LocalisedColumnsTest`'s Arabic-list test set `app()->setLocale('ar')` before the request, which only ever worked **because** the middleware did nothing. Its setup now makes the panel Arabic the way the topbar does — through the session — with the assertion unchanged (Tests).
+
 ## 2026-09-06
 
 ### Improvement

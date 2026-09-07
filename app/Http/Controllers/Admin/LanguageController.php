@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Helpers\LanguageHelper;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\LanguageRequest;
 use App\Models\Language;
@@ -228,24 +229,10 @@ class LanguageController extends Controller
 
     public function downloadJson($type, $code)
     {
-        $langPath = resource_path('lang');
+        $filePath = LanguageHelper::filePath($code, $type);
 
-        switch ($type) {
-            case 'main':
-            case 'panel':
-                $filePath = "{$langPath}/{$code}.json";
-                break;
-
-            case 'mobile':
-                $filePath = "{$langPath}/{$code}_mobile.json";
-                break;
-
-            case 'web':
-                $filePath = "{$langPath}/{$code}_web.json";
-                break;
-
-            default:
-                abort(404, 'Invalid language type');
+        if ($filePath === null) {
+            abort(404, 'Invalid language type');
         }
 
         if (! file_exists($filePath)) {

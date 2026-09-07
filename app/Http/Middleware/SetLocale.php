@@ -4,7 +4,6 @@ namespace App\Http\Middleware;
 
 use Closure;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Session;
 use Symfony\Component\HttpFoundation\Response;
 
 class SetLocale
@@ -16,9 +15,11 @@ class SetLocale
      */
     public function handle(Request $request, Closure $next)
     {
-        if (Session::has('language')) {
-            app()->setLocale(Session::get('language')->code);
-        }
+        // Was `if (Session::has('language'))` and nothing otherwise, so a
+        // request with no session kept `config('app.locale')` and the
+        // configured default language was never consulted — the panel ignored
+        // the setting whose whole job is to be the default.
+        app()->setLocale(panelLanguageCode());
 
         return $next($request);
     }

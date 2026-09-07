@@ -7,6 +7,49 @@ use Illuminate\Support\Facades\File;
 class LanguageHelper
 {
     /**
+     * Where a language's file of a given type lives on disk.
+     *
+     * The one place this mapping exists. It used to be a `switch` inside
+     * `downloadJson()` while the edit form worked out the same paths its own
+     * way — through an *image* helper, which is how «View Current File» came to
+     * open the brand placeholder.
+     *
+     * `panel` is `{code}.json`, not `{code}_panel.json`, and deliberately: the
+     * panel editor screen (`showPanel`/`updatePanel`) reads and writes the main
+     * file, so the download has to hand back the file that screen edits.
+     * `{code}_panel.json` is generated too and is not what the panel reads.
+     *
+     * Returns null for a type nobody defines rather than guessing a filename.
+     */
+    public static function filePath(string $code, string $type): ?string
+    {
+        $name = match ($type) {
+            'main', 'panel' => "{$code}.json",
+            'mobile' => "{$code}_mobile.json",
+            'web' => "{$code}_web.json",
+            default => null,
+        };
+
+        return $name === null ? null : lang_path($name);
+    }
+
+    /**
+     * The download type behind each of the three columns on the language form.
+     *
+     * The columns are named for the app they serve (`app_file`), the routes for
+     * the file they fetch (`mobile`); this is the join.
+     */
+    public static function downloadTypeFor(string $column): ?string
+    {
+        return match ($column) {
+            'app_file' => 'mobile',
+            'panel_file' => 'panel',
+            'web_file' => 'web',
+            default => null,
+        };
+    }
+
+    /**
      * Template defaults, with anything already translated left alone.
      *
      * @param  array<string, string>  $defaults

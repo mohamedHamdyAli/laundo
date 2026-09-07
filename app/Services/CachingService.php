@@ -67,8 +67,28 @@ class CachingService
         return self::cacheRemember(config('constants.CACHE.LANGUAGE'), static fn () => Language::all());
     }
 
+    /**
+     * Drop the languages cache.
+     *
+     * This is the *other* cache — 1-hour TTL, keyed from
+     * `config('constants.CACHE.LANGUAGE')` — and `clearLanguageCache()` in
+     * `Helpers.php` has never touched it. Editing a language therefore left the
+     * topbar switcher showing the old list and the old flags for up to an hour.
+     */
+    public static function forgetLanguages(): void
+    {
+        self::removeCache(config('constants.CACHE.LANGUAGE'));
+    }
+
+    /**
+     * The language flagged `default`, not whichever one is called `en`.
+     *
+     * This was `where('code', 'en')->first()` — hardcoded, so it answered
+     * "English" to a question about the default. The topbar reads it, which is
+     * why the switcher still showed `EN` after Arabic was made the default.
+     */
     public static function getDefaultLanguage()
     {
-        return Language::where('code', 'en')->first();
+        return Language::where('default', 'true')->first();
     }
 }
