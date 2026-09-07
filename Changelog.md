@@ -19,6 +19,25 @@
 - `PanelLanguageTest` — 12 tests over the whole of the above: the default drives the panel with no session, promotion demotes every other row, flipping back and forth never leaves two defaults, a non-Arabic RTL language still lays out RTL, a session choice outranks the default, a session holding a deleted language falls back, the last default cannot be removed, the topbar reads the flagged row, an edit drops the topbar cache, and two that render `/admin/home` and assert `lang`, `dir` and the stylesheet actually follow (Tests).
 - `LocalisedColumnsTest`'s Arabic-list test set `app()->setLocale('ar')` before the request, which only ever worked **because** the middleware did nothing. Its setup now makes the panel Arabic the way the topbar does — through the session — with the assertion unchanged (Tests).
 
+### Improvement
+
+- **The verification code is a fixed `123456` until SMS delivery is integrated.** Asked for so the apps can be driven end to end: no provider is implemented — `log` is still the only driver, and it writes the code to `storage/logs` instead of sending it — so a random code made registration, verification and password reset untestable from a handset. One config value, `sms.otp.static_code` / `OTP_STATIC_CODE` (Config / Service).
+- **Only the value is predictable.** The code is still hashed at rest, still expires after two minutes, still single-use, and still burns after five wrong guesses; `issue()` picks between the static code and `random_int` and nothing else in the flow changed. Switching it off when a provider lands is `OTP_STATIC_CODE=` and no code edit (Service).
+- A static code that is **not exactly `sms.otp.length` digits is ignored** rather than honoured, falling back to a random one. A typo'd env would otherwise mint codes the `digits:6` request rules refuse — accounts that could never be verified (Service).
+- Each issue logs a warning naming the state, in the same spirit as `LogSmsDriver`'s: an install handing out one code for every account should be visible in the log rather than silent (Service).
+- **Registration already sent the code and still does** — `CustomerAuthService::register()` issues it inside the same transaction as the account, and the fixed value now makes that observable. Verified against the running app: register → `verify-otp` with `123456` → verified account and a working token, with nothing re-issuing a code in between. The code is **not** returned in the register response, on any environment (Verification).
+
+### Tests
+
+- `OtpServiceTest` — the configured static code is the one issued and it verifies; a malformed one (`''`, `12345`, `abcdef`, `1234567`) falls back to a random code of the right length. The existing security tests run against the fixed value unchanged (Tests).
+- `CustomerAuthTest::test_register_sends_a_code_that_verifies_on_its_own` — registration leaves a live code on the account and the OTP endpoint accepts it with nothing else issuing one first. Its neighbour asks `OtpService` for a fresh code after registering, so it would pass even if register sent nothing at all (Tests).
+
+### Documentation
+
+- Postman: the fixed code, and what still holds despite it, on all seven requests that send or take a code — customer register, verify-otp, resend-otp, forgot-password, verify-reset-code, and both driver code endpoints. Same note added to `/auth/verify-otp` in `generate-reference.py` and `docs/api-reference.html` regenerated (Docs).
+- Postman: **the register description's phone rule was stale** — it stated the Egyptian format `01[0125]XXXXXXXX` with `+20` optional, while the rule has been E.164 for some time and a bare `01012345678` is refused with 422, which `CustomerAuthTest` asserts. Corrected while annotating the same request (Docs).
+- QA guide: the fixed code added to «حاجات لازم تعرفها عن الـ API» as a trap — it is intended, not a bug, and the two-minute expiry still applies, so «الكود انتهى» after leaving the screen open is the TTL rather than a defect. PDF regenerated (Docs).
+
 ## 2026-09-06
 
 ### Improvement

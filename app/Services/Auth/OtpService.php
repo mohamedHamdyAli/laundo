@@ -5,6 +5,7 @@ namespace App\Services\Auth;
 use App\Modules\User\Models\User;
 use App\Services\Sms\SmsSender;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 
 /**
  * Issues and verifies one-time codes.
@@ -35,9 +36,7 @@ class OtpService
         $length = (int) config('sms.otp.length', 6);
         $ttl = (int) config('sms.otp.ttl_seconds', 120);
 
-        // random_int is cryptographically secure; rand()/mt_rand() are not, and an
-        // OTP is a credential.
-        $code = str_pad((string) random_int(0, (10 ** $length) - 1), $length, '0', STR_PAD_LEFT);
+        $code = $this->staticCode($length) ?? $this->randomCode($length);
 
         $user->forceFill([
             'otp' => Hash::make($code),
@@ -93,6 +92,40 @@ class OtpService
         $this->burn($user);
 
         return ['ok' => true];
+    }
+
+    /**
+     * The fixed code stood up while SMS delivery is not integrated.
+     *
+     * Returns null — and the caller falls back to a random code — unless the
+     * configured value is exactly `length` digits, so a typo'd env cannot
+     * produce a code the `digits:6` request rules would refuse.
+     *
+     * @see config('sms.otp.static_code')
+     */
+    private function staticCode(int $length): ?string
+    {
+        $code = trim((string) config('sms.otp.static_code', ''));
+
+        if (! preg_match('/^\d{'.$length.'}$/', $code)) {
+            return null;
+        }
+
+        // Loud on purpose, in the same spirit as the log SMS driver: an install
+        // handing out one predictable code for every account is a temporary
+        // state, and it should be visible in the log rather than silent.
+        Log::warning('[OTP:STATIC-CODE — NOT RANDOM] SMS delivery is not integrated; every code issued is the same fixed value. Set OTP_STATIC_CODE= to restore random codes.');
+
+        return $code;
+    }
+
+    /**
+     * random_int is cryptographically secure; rand()/mt_rand() are not, and an
+     * OTP is a credential.
+     */
+    private function randomCode(int $length): string
+    {
+        return str_pad((string) random_int(0, (10 ** $length) - 1), $length, '0', STR_PAD_LEFT);
     }
 
     /**

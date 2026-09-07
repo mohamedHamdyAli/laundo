@@ -1686,6 +1686,7 @@ a:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; border-r
       <li><strong>محدّدات معدل مسمّاة:</strong> <code>otp</code>، <code>otp-verify</code>، <code>login</code>، <code>location</code> — زيادة عن الحد العام. اختبر إنها بترجع 429 فعلاً.</li>
       <li><strong>إعادة تعيين كلمة السر خطوتين</strong> في اللوحة والتطبيقين: <code>verify-reset-code</code> بيصرف الكود ويصدر تذكرة، و<code>reset-password</code> بياخد التذكرة. <strong>عمره ما بيقبل الكود وكلمة السر الجديدة في نداء واحد</strong> — لو لقيت مسار كده، دي تذكرة أمان.</li>
       <li><strong>الهواتف بصيغة E.164</strong> (<code>+</code> ثم ٨–١٥ رقم). الصيغة المحلية بتترفض.</li>
+      <li><strong>كود التحقق (OTP) دايماً <code dir="ltr">123456</code></strong> لحد ما إرسال الرسائل يتعمله انتجريشن — مفيش مزوّد SMS متركّب لسه، ودرايفر <code>log</code> بيكتب الكود في <code>storage/logs</code> بدل ما يبعته. ده مقصود ومش باج: بيخلي التسجيل والتحقق وإعادة تعيين كلمة السر قابلة للاختبار من غير حساب مزوّد. الكود لسه بينتهي بعد دقيقتين وبيستخدم مرة واحدة وبيتحرق بعد خمس محاولات غلط، فلو لقيت «الكود ده انتهى» بعد ما سبته على الشاشة، ده الـTTL مش عيب. المفتاح <code dir="ltr">OTP_STATIC_CODE</code> في <code>.env</code> — فضّيه ويرجع الكود عشوائي.</li>
     </ul>
 
     <p class="foot">

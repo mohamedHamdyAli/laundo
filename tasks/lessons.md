@@ -1088,3 +1088,18 @@ Three tracking mocks in the same Figma file disagree about whether «تم تأك
 right move was to surface the contradiction and the reasoning and let the owner
 decide — not to quietly match whichever screenshot arrived last.
 
+## Kill the process you started, by its PID — never by a name pattern
+
+Stopping a dev server I had started on port 8123, I killed by
+`CommandLine -like '*artisan serve*'`. It matched four processes, not two: the
+project already had `php artisan serve` running on **8899**, and its wrapper
+went down with mine. The built-in server children survived as orphans and the
+site still answered, so nothing looked broken — which is exactly why it would
+have gone unreported.
+
+The same rule the Data Safety section states for rows applies to processes:
+act on the identifier the thing you created handed back. Capture the PID at
+launch and stop that PID; if a pattern kill is unavoidable, list the matches
+first and say what is about to die. A kill that reports more victims than you
+started is the warning — the same signal as a delete removing more rows than you
+inserted.

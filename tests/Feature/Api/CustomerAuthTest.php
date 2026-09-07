@@ -189,6 +189,36 @@ class CustomerAuthTest extends TestCase
         $this->assertSame($wrongPassword->json('msg'), $unknownNumber->json('msg'));
     }
 
+    /**
+     * Register sends the code itself — the OTP screen works on what registration
+     * put on the account, with nothing else re-issuing one first.
+     *
+     * Worth its own test because the one below asks OtpService for a fresh code
+     * after registering, so it would still pass if register sent nothing at all.
+     * The value is pinned here rather than read from the environment: while SMS
+     * delivery is not integrated the code is the fixed `sms.otp.static_code`.
+     */
+    public function test_register_sends_a_code_that_verifies_on_its_own(): void
+    {
+        config(['sms.otp.static_code' => '123456']);
+
+        $this->withHeaders($this->apiHeaders())
+            ->postJson('/api/v1/auth/register', $this->registrationPayload())
+            ->assertStatus(201);
+
+        $user = User::where('phone', '+201011223344')->first();
+
+        $this->assertNotNull($user->otp, 'registration must leave a live code on the account');
+        $this->assertTrue(now()->lessThan($user->otp_expires_at));
+
+        $this->withHeaders($this->apiHeaders())
+            ->postJson('/api/v1/auth/verify-otp', ['phone' => '+201011223344', 'code' => '123456'])
+            ->assertOk()
+            ->assertJsonPath('data.user.phone_verified', true);
+
+        $this->assertNotNull($user->fresh()->phone_verified_at);
+    }
+
     public function test_verify_then_login_issues_a_working_token(): void
     {
         $this->withHeaders($this->apiHeaders())

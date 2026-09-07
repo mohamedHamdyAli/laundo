@@ -839,7 +839,7 @@
                     "register"
                   ]
                 },
-                "description": "Creates the account and sends the first code. The account cannot sign in until the code is confirmed.\n\nThrottle: `otp`. A phone already registered is refused, verified or not. Phone must match the Egyptian format `01[0125]XXXXXXXX` (a leading `+20` is accepted).\n\n`referral_code` is optional and **never validated against the users table**: a mistyped code must not stop somebody registering, and confirming whether a code exists is a way to enumerate them. An unknown code is silently ignored. A valid one records the link - the coupons are issued later, when this customer pays for their first order.",
+                "description": "Creates the account and sends the first code. The account cannot sign in until the code is confirmed.\n\nThrottle: `otp`. A phone already registered is refused, verified or not. Phone must be E.164 with its country code, e.g. `+201012345678`; a bare `01012345678` is refused with 422.\n\n`referral_code` is optional and **never validated against the users table**: a mistyped code must not stop somebody registering, and confirming whether a code exists is a way to enumerate them. An unknown code is silently ignored. A valid one records the link - the coupons are issued later, when this customer pays for their first order.\n\n**Until SMS delivery is integrated the code is always `123456`** (`OTP_STATIC_CODE`, read by `config('sms.otp.static_code')`). Everything else about it still holds: it expires after two minutes, it is single-use, and it burns after five wrong guesses — only the value is predictable. Codes are never returned in a response on any environment; the `log` SMS driver writes them to `storage/logs`.",
                 "body": {
                   "mode": "raw",
                   "raw": "{\n    \"name\": \"Test Customer\",\n    \"phone\": \"{{phone}}\",\n    \"email\": \"customer@example.com\",\n    \"zone_id\": 1,\n    \"password\": \"{{password}}\",\n    \"password_confirmation\": \"{{password}}\",\n    \"accepted_terms\": true,\n    \"referral_code\": null\n}",
@@ -908,7 +908,7 @@
                     "verify-otp"
                   ]
                 },
-                "description": "Confirms the phone and returns the first token. Throttle: `otp-verify`.\n\nA malformed code (wrong length, non-digits) is rejected before it costs an attempt.\n\n**Saves `data.token` into the `token` collection variable.**",
+                "description": "Confirms the phone and returns the first token. Throttle: `otp-verify`.\n\nA malformed code (wrong length, non-digits) is rejected before it costs an attempt.\n\n**Saves `data.token` into the `token` collection variable.**\n\n**Until SMS delivery is integrated the code is always `123456`** (`OTP_STATIC_CODE`, read by `config('sms.otp.static_code')`). Everything else about it still holds: it expires after two minutes, it is single-use, and it burns after five wrong guesses — only the value is predictable. Codes are never returned in a response on any environment; the `log` SMS driver writes them to `storage/logs`.",
                 "body": {
                   "mode": "raw",
                   "raw": "{\n    \"phone\": \"{{phone}}\",\n    \"code\": \"{{otp_code}}\"\n}",
@@ -970,7 +970,7 @@
                     "resend-otp"
                   ]
                 },
-                "description": "Issues a fresh code. Answered identically whether or not the number exists, so it cannot be used to discover which numbers are registered. Throttle: `otp`.",
+                "description": "Issues a fresh code. Answered identically whether or not the number exists, so it cannot be used to discover which numbers are registered. Throttle: `otp`.\n\n**Until SMS delivery is integrated the code is always `123456`** (`OTP_STATIC_CODE`, read by `config('sms.otp.static_code')`). Everything else about it still holds: it expires after two minutes, it is single-use, and it burns after five wrong guesses — only the value is predictable. Codes are never returned in a response on any environment; the `log` SMS driver writes them to `storage/logs`.",
                 "body": {
                   "mode": "raw",
                   "raw": "{\n    \"phone\": \"{{phone}}\"\n}",
@@ -1101,7 +1101,7 @@
                     "forgot-password"
                   ]
                 },
-                "description": "Starts the reset. Answered the same either way. Throttle: `otp`.",
+                "description": "Starts the reset. Answered the same either way. Throttle: `otp`.\n\n**Until SMS delivery is integrated the code is always `123456`** (`OTP_STATIC_CODE`, read by `config('sms.otp.static_code')`). Everything else about it still holds: it expires after two minutes, it is single-use, and it burns after five wrong guesses — only the value is predictable. Codes are never returned in a response on any environment; the `log` SMS driver writes them to `storage/logs`.",
                 "body": {
                   "mode": "raw",
                   "raw": "{\n    \"phone\": \"{{phone}}\"\n}",
@@ -1162,7 +1162,7 @@
                     "verify-reset-code"
                   ]
                 },
-                "description": "Second step of a password reset. Spends the code and returns a single-use `reset_token` (64 hex chars) plus `expires_in` seconds.\n\nThe code is consumed here, so it cannot be replayed on the password step. The token is not an access token — it authorises the password change only.",
+                "description": "Second step of a password reset. Spends the code and returns a single-use `reset_token` (64 hex chars) plus `expires_in` seconds.\n\nThe code is consumed here, so it cannot be replayed on the password step. The token is not an access token — it authorises the password change only.\n\n**Until SMS delivery is integrated the code is always `123456`** (`OTP_STATIC_CODE`, read by `config('sms.otp.static_code')`). Everything else about it still holds: it expires after two minutes, it is single-use, and it burns after five wrong guesses — only the value is predictable. Codes are never returned in a response on any environment; the `log` SMS driver writes them to `storage/logs`.",
                 "body": {
                   "mode": "raw",
                   "raw": "{\n    \"phone\": \"{{phone}}\",\n    \"code\": \"{{otp_code}}\"\n}",
@@ -4647,7 +4647,7 @@
                     "forgot-password"
                   ]
                 },
-                "description": "The same OTP path customers use, so a driver locked out mid-shift is not waiting on a supervisor. Answered the same either way. Throttle: `otp`.",
+                "description": "The same OTP path customers use, so a driver locked out mid-shift is not waiting on a supervisor. Answered the same either way. Throttle: `otp`.\n\n**Until SMS delivery is integrated the code is always `123456`** (`OTP_STATIC_CODE`, read by `config('sms.otp.static_code')`). Everything else about it still holds: it expires after two minutes, it is single-use, and it burns after five wrong guesses — only the value is predictable. Codes are never returned in a response on any environment; the `log` SMS driver writes them to `storage/logs`.",
                 "body": {
                   "mode": "raw",
                   "raw": "{\n    \"phone\": \"{{driver_phone}}\"\n}",
@@ -4708,7 +4708,7 @@
                     "verify-reset-code"
                   ]
                 },
-                "description": "Second step of a driver password reset — the same shape as the customer flow, so both apps implement one contract.\n\nSpends the code and returns a single-use `reset_token`. A customer's ticket will not reset a driver's password, or the other way round: the ticket mechanics are shared, the audience check is not.",
+                "description": "Second step of a driver password reset — the same shape as the customer flow, so both apps implement one contract.\n\nSpends the code and returns a single-use `reset_token`. A customer's ticket will not reset a driver's password, or the other way round: the ticket mechanics are shared, the audience check is not.\n\n**Until SMS delivery is integrated the code is always `123456`** (`OTP_STATIC_CODE`, read by `config('sms.otp.static_code')`). Everything else about it still holds: it expires after two minutes, it is single-use, and it burns after five wrong guesses — only the value is predictable. Codes are never returned in a response on any environment; the `log` SMS driver writes them to `storage/logs`.",
                 "body": {
                   "mode": "raw",
                   "raw": "{\n    \"phone\": \"{{driver_phone}}\",\n    \"code\": \"{{otp_code}}\"\n}",

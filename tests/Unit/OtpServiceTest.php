@@ -94,6 +94,42 @@ class OtpServiceTest extends TestCase
         $this->assertMatchesRegularExpression('/^\d+$/', $code);
     }
 
+    /**
+     * While SMS delivery is not integrated the code is deliberately fixed, so
+     * the apps can be driven end to end without a provider account. Everything
+     * else about it still holds — the tests above run against this same value.
+     */
+    public function test_the_configured_static_code_is_the_one_issued(): void
+    {
+        config(['sms.otp.static_code' => '123456']);
+
+        $this->assertSame('123456', $this->otp->issue($this->user));
+        $this->assertTrue($this->otp->verify($this->user->fresh(), '123456')['ok']);
+    }
+
+    /**
+     * A static code that is not exactly `length` digits is ignored rather than
+     * honoured: it would be a code the `digits:6` request rules refuse, which
+     * would leave accounts that could never be verified.
+     */
+    public function test_a_malformed_static_code_falls_back_to_a_random_one(): void
+    {
+        foreach (['', '12345', 'abcdef', '1234567'] as $bad) {
+            config(['sms.otp.static_code' => $bad]);
+
+            // A fresh instance per pass, the way a request always has one: the
+            // forceFill in issue() compares against what its instance last read,
+            // so re-issuing on an object whose code has since been burned
+            // elsewhere would leave the new expiry unwritten.
+            $user = $this->user->fresh();
+            $code = $this->otp->issue($user);
+
+            $this->assertNotSame($bad, $code);
+            $this->assertSame((int) config('sms.otp.length'), strlen($code));
+            $this->assertTrue($this->otp->verify($user->fresh(), $code)['ok'], "static_code=[{$bad}]");
+        }
+    }
+
     public function test_verifying_with_no_code_issued_is_refused(): void
     {
         $this->assertSame('no_code', $this->otp->verify($this->user, '123456')['reason']);
