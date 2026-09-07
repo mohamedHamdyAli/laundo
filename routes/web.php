@@ -4,9 +4,9 @@ use App\Http\Controllers\Admin\LanguageController;
 use App\Http\Controllers\Admin\NotificationController;
 use App\Http\Controllers\Admin\RoleController;
 use App\Http\Controllers\HomeController;
+use App\Http\Controllers\LandingController;
+use App\Http\Controllers\LocaleController;
 use App\Modules\Banner\Controllers\BannerController;
-use App\Modules\JourneyStep\Controllers\JourneyStepController;
-use App\Modules\Offer\Controllers\OfferController;
 use App\Modules\City\Controllers\CityController;
 use App\Modules\Complaint\Controllers\ComplaintController;
 use App\Modules\Country\Controllers\CountryController;
@@ -16,12 +16,14 @@ use App\Modules\Faq\Controllers\FaqController;
 use App\Modules\Intro\Controllers\IntroController;
 use App\Modules\Item\Controllers\ItemController;
 use App\Modules\ItemCategory\Controllers\ItemCategoryController;
+use App\Modules\JourneyStep\Controllers\JourneyStepController;
 use App\Modules\Laundry\Controllers\LaundryController;
 use App\Modules\LaundryService\Controllers\LaundryServiceController;
 use App\Modules\LaundryStaff\Controllers\LaundryStaffController;
 use App\Modules\LaundryZone\Controllers\LaundryZoneController;
 use App\Modules\Moderator\Controllers\ModeratorController;
 use App\Modules\Notification\Controllers\NotificationLogController;
+use App\Modules\Offer\Controllers\OfferController;
 use App\Modules\Order\Controllers\OrderController;
 use App\Modules\Order\Controllers\OrderReviewController as DashboardOrderReviewController;
 use App\Modules\Order\Controllers\OrderTaskController;
@@ -43,17 +45,38 @@ use Illuminate\Support\Facades\Route;
 
 /*
 |--------------------------------------------------------------------------
-| Auth & Landing
+| The public site
 |--------------------------------------------------------------------------
+|
+| `/` was a closure returning the login view, which made the login screen the
+| product's front door. It is the marketing page now; the login form kept its
+| own address at `/login`, which `Auth::routes()` has always registered.
+|
+| The signed-in redirect is unchanged and deliberate: somebody with a session
+| wants their panel, not the sales pitch. `ExampleTest` pins both halves.
+|
+| `/locale/{code}` is the guest language switch. It is a second door rather
+| than a relocation of `admin.language.set-current`, which sits behind
+| `['auth','dashboard.only']` and whose URI is hand-written in 14 places across
+| five Playwright specs — moving it would have reddened the browser suite to
+| tidy a route.
+|
+| The localised addresses `/{ar,en}` are registered at the **bottom** of this
+| file so a two-letter parameter can never shadow a real route above it.
+|
 */
 
-Route::get('/', static function () {
-    if (Auth::check()) {
-        return redirect('/admin/home');
-    }
+Route::get('/', [LandingController::class, 'index'])->name('landing');
 
-    return view('auth.login');
-});
+Route::get('/terms', [LandingController::class, 'legal'])
+    ->defaults('page', 'terms')
+    ->name('landing.terms');
+
+Route::get('/privacy', [LandingController::class, 'legal'])
+    ->defaults('page', 'privacy')
+    ->name('landing.privacy');
+
+Route::get('/locale/{code}', [LocaleController::class, 'set'])->name('locale.set');
 
 Auth::routes(['register' => false]);
 
@@ -123,6 +146,13 @@ Route::middleware(['auth', 'dashboard.only'])->prefix('/admin')->group(function 
 
         Route::get('/language/web/{id}', 'showWeb')->middleware('permission:language.update')->name('admin.language.web');
         Route::post('/language/web/update/{id}', 'updateWeb')->middleware('permission:language.update')->name('admin.language.web.update');
+
+        // The same `{code}_web.json`, shown the way somebody writing marketing
+        // copy needs it: grouped by section, in page order, with the shipped
+        // default as the placeholder. `language.update` because it edits a
+        // language file — no new permission, no seeder run.
+        Route::get('/language/landing/{id}', 'showLanding')->middleware('permission:language.update')->name('admin.language.landing');
+        Route::post('/language/landing/update/{id}', 'updateLanding')->middleware('permission:language.update')->name('admin.language.landing.update');
 
         Route::get('/language/download/{type}/{code}', 'downloadJson')
             ->middleware('permission:language.view')
@@ -217,7 +247,6 @@ Route::middleware(['auth', 'dashboard.only'])->prefix('/admin')->group(function 
         Route::delete('/banner/delete/{id}', 'destroy')->middleware('permission:banner.delete')->name('admin.banner.delete');
         Route::post('/banner/status/{id}', 'toggleStatus')->middleware('permission:banner.toggle')->name('admin.banner.toggleStatus');
     });
-
 
     /*
     |--------------------------------------------------------------------------
@@ -779,3 +808,36 @@ Route::middleware(['auth', 'dashboard.only'])->prefix('/admin')->group(function 
             ->name('admin.generalSetting.updatePrivacyAndTerms');
     });
 });
+
+/*
+|--------------------------------------------------------------------------
+| Localised addresses for the public site
+|--------------------------------------------------------------------------
+|
+| `hreflang` needs one URL per language, which a session-based switch on a
+| single `/` cannot express — a crawler would only ever index whichever
+| language it happened to be served. So `/ar` and `/en` are the canonical
+| addresses and `/` is `x-default`.
+|
+| **Registered last, on purpose.** `{locale}` matches any two lowercase
+| letters, so anything it could shadow has to be declared above it. It is
+| constrained rather than enumerated so that adding a language gives it a URL
+| without a code change; `LandingController` answers 404 for a two-letter code
+| that is not a real language row, which keeps `/zz` from quietly serving
+| duplicate content under a different address.
+|
+*/
+
+Route::get('/{locale}', [LandingController::class, 'index'])
+    ->where('locale', '[a-z]{2}')
+    ->name('landing.localised');
+
+Route::get('/{locale}/terms', [LandingController::class, 'legal'])
+    ->defaults('page', 'terms')
+    ->where('locale', '[a-z]{2}')
+    ->name('landing.localised.terms');
+
+Route::get('/{locale}/privacy', [LandingController::class, 'legal'])
+    ->defaults('page', 'privacy')
+    ->where('locale', '[a-z]{2}')
+    ->name('landing.localised.privacy');

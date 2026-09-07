@@ -2592,3 +2592,151 @@ about the database the app actually uses.
 `resources/lang/ar.json` is sorted **case-insensitively** ("about", "active",
 "Add a note only"). Re-serialising it with Python's default sort silently
 reshuffled 104 lines; `key=str.lower()` restores it.
+
+# Landing Page — «الحساب قبل الغسيل» / The Counted Basket
+
+Public marketing page at `/`, `/ar`, `/en`. Approved concept: Concept 1, plus the
+tracking timeline from Concept 2 and compact partner/driver bands from Concept 3.
+
+The message the whole page is built around: **the laundry counts the pieces,
+sends the price, and nothing is washed until the customer approves it.** That is
+not a marketing claim — it is `OrderStatus::Reviewed → Confirmed | ReviewDisputed`,
+enforced in the state machine and covered by tests.
+
+## Plan
+
+### 1. Web File / content infrastructure
+
+- [x] `storage/app/webFile.php` — landing keys appended, existing 10 preserved
+- [x] `webText()` in `Helpers.php` — locale → default → template → key
+- [x] `isPlaceholderSetting()` / `realSetting()` — refuse seeded placeholder values
+- [x] `landingCtaTarget()` — the approved CTA fallback chain
+- [x] `laundo:sync-web-lang` command — writes `{code}_web.json` **only**
+- [x] `en_web.json` + `ar_web.json` authored
+
+### 2. Landing backend
+
+- [x] `LandingContentService` — one assembled array, real data only
+- [x] `LandingController`
+- [x] `LocaleController` (public guest language switch)
+
+### 3. Routes / localization
+
+- [x] `/`, `/ar`, `/en`, `/locale/{code}`
+- [x] `Accept-Language` honoured once, landing-only, guest-only
+- [x] `/admin/set-language/{lang}` untouched (14 Playwright refs depend on it)
+
+### 4-9. Presentation
+
+- [x] `layouts/landing.blade.php` — lean; no admin CSS/JS
+- [x] 16 section partials + 3 landing components
+- [x] `public/assets/css/landing.css` — standalone, tokens re-declared
+- [x] `public/assets/js/landing.js` — no dependencies
+- [x] IBM Plex Sans Arabic self-hosted; OG card 1200x630
+- [x] SEO: title, description, canonical, hreflang, OG, Organization + FAQPage
+- [x] a11y: one H1, skip link, focus, keyboard, reduced motion
+
+### 10-11. Tests / validation
+
+- [x] `LandingPageTest`, `WebTranslationTest`, `LandingTokenParityTest`
+- [x] `tests/Browser/landing.spec.js`
+- [x] Full PHPUnit suite green; Pint + PHPStan clean
+- [x] Browser-verified in both languages at desktop and 375px
+
+## Hard rules carried from `lessons.md` and CLAUDE.md
+
+- **Never merge the web template into `{code}.json`.**
+  `LanguageHelper::generateJsonLanguageFiles()` merges panel+mobile+web into
+  `{code}.json`. Running it on `ar` would drop English marketing strings into
+  `ar.json`, and `TranslationCoverageTest::no_arabic_value_is_left_in_english`
+  fails the build on any `ar.json` value with no Arabic in it. The new command
+  writes the scoped file and nothing else.
+- **No test data on a public page.** `Laundry A`/`Laundry B`, `SMOKE10`,
+  `PWTEST*`, `BaseCode`, the lorem-ipsum `About`, `nahrPhpTeam@…` and the bare
+  `http://facebook.com/` social defaults are all in the live database. Every one
+  of them is filtered, and a test asserts the rendered page contains none.
+- **No offers section.** The only offer row links to coupon `SMOKE10`, and
+  `Offer::badge()` renders the linked coupon's discount — publishing a smoke-test
+  coupon's value.
+- **No journey-step images.** All three uploads are the same 1,132-byte file
+  (identical MD5). Titles and descriptions are real and are used; the visuals are
+  inline SVG.
+- **No card/wallet/InstaPay marketing.** The only gateway is `FakeGateway`. Cash
+  on delivery is real and is what the page says.
+- **Do not claim a partner-laundry count.** Two rows exist and both are fixtures.
+- Translatable accessors return `stdClass` — `$row->name->en`, never `['en']`.
+- `status` is the string `'active'`; `languages.default`/`is_rtl` are `'true'`/`'false'`.
+- Money through `moneyFormat()` so Arabic renders Western digits.
+
+## Round 2 — dashboard-driven content (owner request)
+
+- [x] `journey_steps` rendered (3 real rows, a CRUD screen nothing was reading)
+- [x] Live `offers` rendered, badge withheld for test-looking coupon codes
+- [x] «تعديل محتوى الصفحة التعريفية» — a grouped, page-ordered editor for the
+      `landing.*` keys, in the languages row's dropdown. Same Web File store.
+- [x] All four language-file editors linked from `controlBut` — they hung off
+      `x-action-button-lang`, which nothing renders, so three of them had been
+      URL-only since they were written
+- [x] Cache key stamped with `filemtime()` of the assembler
+- [x] `{code}_web.json` written with LF, not `PHP_EOL`
+
+## Review
+
+See `Changelog.md` for the shipped summary. Notes worth keeping:
+
+- The landing page loads **neither** `app.css` (399 KB) **nor** `theme.css`
+  (93 KB) **nor** `bootstrap-icons.woff2` (110 KB). `landing.css` re-declares the
+  tokens and `LandingTokenParityTest` fails the build if a value drifts from
+  `theme.css`, which is what makes the duplication safe rather than a slow leak.
+- `html.landing { font-size: 100% }` undoes the panel's `87.5%` density zoom.
+  Landing CSS is authored against a 16px root; only tokens are shared, not layout
+  classes, so nothing inherits a broken scale.
+- The hero's price-review figures are computed from real `item_prices` rows, so
+  the arithmetic is correct and moves with the price list instead of being typed
+  in as a plausible-looking example.
+
+
+---
+
+# Fixed OTP `123456` until SMS integration
+
+- [x] `sms.otp.static_code` / `OTP_STATIC_CODE`, defaulting to `123456`, with the
+      reasoning and the switch-off instruction written where the value lives.
+- [x] `OtpService::issue()` picks between the static code and `random_int`;
+      hashing, TTL, single use and the attempt counter untouched.
+- [x] A static code that is not exactly `sms.otp.length` digits falls back to a
+      random one — a typo'd env would otherwise mint codes `digits:6` refuses.
+- [x] Each issue logs a warning naming the state, like `LogSmsDriver` does.
+- [x] `.env` carries the knob next to `SMS_DRIVER` so turning it off is one line
+      in the place a developer looks.
+- [x] Register: already issues the code inside the account's transaction —
+      proven, not assumed, by a test that uses *only* the code register sent.
+- [x] Tests: two unit (static code issued and verifies; malformed falls back),
+      one feature (register → verify-otp with `123456` → verified + token).
+- [x] Full suite green — 805 passed, 2479 assertions.
+- [x] Drove the live endpoints on a probe account: register → `123456` →
+      verified with a working token. Probe row deleted by primary key (1 user,
+      1 token — exactly what was created).
+- [x] Docs: Postman (7 requests), `generate-reference.py` + regenerated
+      `api-reference.html`, QA guide + regenerated PDF, `Changelog.md`.
+
+## Review
+
+- The register response still does not carry the code —
+  `test_registration_never_returns_the_code` asserts that, and a fixed value is
+  no reason to start leaking one. `123456` is knowledge the team has out of band;
+  the response contract is unchanged, so nothing has to be undone at integration
+  time beyond emptying one env var.
+- Found while testing: `issue()` assumes the `User` instance it is handed is in
+  sync with its row. Issue → burn-elsewhere → re-issue on the *same* stale
+  instance within the same second leaves `otp_expires_at` unwritten, because
+  `forceFill`'s dirty check compares against what that instance last read, and
+  the code then reads as `no_code`. No request path does this — every caller
+  hands over a freshly loaded user — so production code was left alone and the
+  test takes a fresh instance per pass, with a comment saying why.
+- `composer test` cannot finish this suite: Composer's 300s process timeout cuts
+  it off at ~356s, largely the landing-page test's 22s. `php artisan test` runs
+  it whole.
+- Pre-existing PHPStan errors, none in the files touched here: four in
+  `app/Services/Landing/LandingContentService.php` (lines 289, 290, 397), which
+  is the in-progress landing work on this branch.

@@ -1,6 +1,7 @@
 <?php
 
 use App\Console\Commands\PruneOldRecords;
+use App\Console\Commands\SyncWebTranslations;
 use App\Http\Middleware\ApiLocale;
 use App\Http\Middleware\Authenticate;
 use App\Http\Middleware\CheckPermission;
@@ -47,6 +48,10 @@ return Application::configure(basePath: dirname(__DIR__))
         // command registered somewhere else is the kind of thing that breaks
         // silently when somebody tidies this list.
         PruneOldRecords::class,
+        // Same: it lives in app/Console/Commands and is discovered anyway.
+        // Listed so this block stays the one place to read for "what
+        // commands does this app have".
+        SyncWebTranslations::class,
     ])
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->web(append: [

@@ -14,6 +14,7 @@ composer stan         # phpstan analyse app --level=5 (via larastan)
 vendor/bin/php-cs-fixer fix          # second formatter, config .php-cs-fixer.dist.php
 vendor/bin/rector process --dry-run  # config rector.php
 php artisan ide-helper:models -W     # refresh model @property docblocks
+php artisan laundo:sync-web-lang     # push new webFile.php keys into each {code}_web.json
 npm run build / npm run dev
 ```
 
@@ -74,6 +75,49 @@ Adding a translatable field means touching four places: migration, `$fillable`, 
 
 `languages.default` and `languages.is_rtl` are **enum string `'true'`/`'false'`**, not booleans — `where('default', 'true')`.
 
+**The Web File — where the public site's copy lives.** Four JSON files per
+language: `{code}.json` (the panel's own, 1,249 hand-authored entries),
+`{code}_panel.json`, `{code}_mobile.json` and `{code}_web.json`.
+
+```
+storage/app/webFile.php         the key list + English defaults (173 keys)
+   -> php artisan laundo:sync-web-lang    merges new keys into every language
+resources/lang/{code}_web.json  edited from the languages row's dropdown
+   -> webText('landing.hero.title')       locale -> default -> template -> key
+```
+
+`webText()` is the reader. Its last-but-one rung is the template, which is what
+makes adding a key safe: it renders its English default everywhere immediately
+and each language overrides it when somebody translates it. The dashboard's
+`updateWeb()` runs `array_filter()`, so blanking a value there *deletes* the key
+and the template default takes over — which is the behaviour you want from a
+"reset this string" box.
+
+**Never run `LanguageHelper::generateJsonLanguageFiles()` to add web keys to an
+existing language.** It merges panel + mobile + web into `{code}.json` too, and
+`TranslationCoverageTest::no_arabic_value_is_left_in_english` fails the build on
+any `ar.json` value holding no Arabic — so it would tip a hundred English
+marketing strings into the panel's translation and redden the suite. That is why
+`laundo:sync-web-lang` exists and writes `{code}_web.json` **only**; a test
+asserts the six other files are byte-identical after a sync.
+
+`GET /api/v1/translations/web` serves the same file to the apps. The landing
+page is its second consumer, not a replacement.
+
+**Two editors, one file.** «تعديل محتوى الصفحة التعريفية»
+(`admin.language.landing`) groups the `landing.*` keys by section in page order
+with readable headings and the shipped default as each placeholder — that is the
+one to use for marketing copy. «Edit Web Json» is the flat key/value list, still
+right for the app-override keys it was built for. Both write
+`{code}_web.json`; the landing screen can only write the `landing.` namespace,
+so it cannot touch the ten keys the apps read.
+
+All four editors hang off `admin/language/shared/controlBut`. They used to hang
+off `x-action-button-lang`, **which nothing renders** — so `admin.language.panel`,
+`.mobile` and `.web` were reachable only by typing the URL. Do not "tidy" that
+partial back to the component: its action trio is ungated and the language
+list's actions go through `canDo()`.
+
 ### Permissions
 
 Slugs are `{model}.{action}` with actions fixed at **view, create, update, delete, toggle** (`PermissionGenerator::$actions`).
@@ -114,6 +158,81 @@ Admin routes in `routes/web.php`, prefixed `/admin`, mostly `admin.{module}.{act
 ```
 
 `permission` takes a **literal string — no leading `:`**. Writing `:permission="category.toggle"` makes Blade evaluate it as PHP and 500s the whole page as soon as the table has one row (this has already been fixed once across five modules).
+
+### The public site
+
+A third surface, added after the panel and the API: a marketing page at `/`,
+`/ar` and `/en`, plus `/{locale}/terms` and `/{locale}/privacy`. `/` used to
+return `view('auth.login')`; the login form is at `/login`, which
+`Auth::routes()` has always registered. A signed-in user hitting bare `/` still
+redirects to `/admin/home` — `/ar` does not, because that is an explicit request
+for a language.
+
+**It does not extend `layouts.main`.** That chain loads ~22 stylesheets and ~30
+scripts (`app.css` 399 KB, `theme.css` 93 KB, `bootstrap-icons.woff2` 110 KB,
+ApexCharts, TinyMCE, select2, FilePond, jsTree, jQuery UI). `layouts/landing`
+loads `landing.css` and a deferred `landing.js` and nothing else; icons are
+inline SVG. `LandingPageTest` and `landing.spec.js` both assert none of the
+admin assets is requested — **do not add one to this layout.**
+
+- `landing.css` **re-declares the design tokens** rather than importing
+  `theme.css`. `theme.css` stays canonical, and `tests/Unit/LandingTokenParityTest.php`
+  fails the build if a shared token's value drifts. Change a brand colour there
+  and this file has to follow.
+- `html.landing { font-size: 100% }` undoes the panel's `87.5%` density zoom, so
+  landing CSS is authored against a 16px root. Only tokens are shared, never
+  layout classes.
+- Logical properties throughout (`margin-inline`, `inset-inline-start`), so one
+  stylesheet serves both directions. `rtl.css` is **not** loaded.
+- **Arabic type**: IBM Plex Sans Arabic, self-hosted, two weights, Arabic subset
+  only. Latin stays Nunito and `unicode-range` routes each glyph. Before this
+  the project shipped **no Arabic webfont at all** — `--bs-body-font-family:
+  Nunito` with no fallback stack.
+- `landing.css` / `landing.js` are fingerprinted with `filemtime()` via
+  `landingAssetVersion()`. They have no build step, so nothing else busts a
+  visitor's cache after a deploy.
+
+**All marketing copy is Web File-driven** — see the localization section below.
+Nothing user-facing is hardcoded in a landing Blade file.
+
+`LandingContentService::pageData()` is cached for an hour, and its **cache key
+carries `filemtime()` of the service**. That is not decoration: adding a key to
+the payload without it leaves the previous array in place and the view dies on
+an undefined variable — a 500 on the front page for up to an hour after the
+deploy, looking like a bad release rather than a stale cache. Keep the stamp if
+you change the assembler.
+
+`journey_steps` and live `offers` render from their own dashboard screens. An
+offer's badge is withheld when the linked coupon `looksLikeTestCode()`, because
+`Offer::badge()` publishes the coupon's discount and this install's only offer
+links to `SMOKE10`.
+
+`LandingContentService` supplies the facts (services, prices, coverage, windows,
+the timeline) and enforces two rules that are easy to undo by accident:
+
+- **No development data on a public page.** Every settings read goes through
+  `realSetting()` / `isPlaceholderSetting()`, which refuse the values
+  `SettingsSeeder` leaves behind — `App_Name = BaseCode`, `nahrPhpTeam@…`, the
+  seven social URLs pointing at their networks' front pages, the lorem-ipsum
+  `About`. Laundries are never listed (two rows, both fixtures) and **offers are
+  not rendered at all**, because the only one links to coupon `SMOKE10` and
+  `Offer::badge()` publishes the linked coupon's discount.
+- **An empty table is a missing section, not a broken one.** `faqs`, `intros`,
+  `banners` and `order_ratings` hold zero rows; the FAQ falls back to Web File
+  copy and takes over from it when rows appear.
+
+Also deliberate, and worth knowing before "fixing" it: the page markets **cash
+on delivery only**. Card, wallet and InstaPay are `PaymentMethod` cases the app
+draws and the only gateway in the codebase is `FakeGateway`.
+
+`LandingController` reads route parameters off the request rather than as
+arguments — Laravel binds them **positionally**, and `->defaults()` plus a
+`{locale}` segment swaps them. See `tasks/lessons.md`.
+
+Guest language switching is `GET /locale/{code}` (`LocaleController`). This is a
+second door on purpose: `admin.language.set-current` sits behind
+`['auth','dashboard.only']`, and its URI is hand-written in **14 places across
+five Playwright specs** — leave it alone.
 
 ### The API layer
 
@@ -186,6 +305,7 @@ Don't "fix" these blind, but know they're there:
 - `Banner` and `Intro` model **classes are lowercase** (`class banner`, `class intro`) — match existing usage rather than renaming casually.
 - `CachingService::getSystemSettings()` plucks by a `name` column; the `settings` table has `key`. It is currently unreferenced — dead code.
 - Settings are key/value rows with **PascalCase keys** (`App_Name`, `App_Logo`, `About`, `Privacy_Policy`, `Terms`, `Country_Id`, `Currency`, `Cash_Surcharge`); `About`/`Privacy_Policy`/`Terms` hold translatable JSON.
+- **No Arabic webfont in the panel.** `--bs-body-font-family: Nunito` has no fallback stack, and the shipped Nunito subsets are latin, latin-ext, cyrillic, cyrillic-ext and vietnamese — so every Arabic *panel* screen renders in whatever font the browser picks. The landing page self-hosts IBM Plex Sans Arabic; the panel has not been migrated.
 - The **`App_Name` setting row still says `BaseCode`** while `.env` says `Laundo` — and the setting is the one the apps, the invoice and the login alt text read, via `getSettingValue('App_Name')`. `config('app.name')` is only the browser tab title. Left alone deliberately: an invoice may need a registered legal name, so it is the owner's call.
 - Terms and privacy hold **draft copy awaiting legal review**.
 - Seven images are still placeholders pending export from Figma (3 onboarding illustrations, 3 journey-step icons, 1 offer image).

@@ -304,6 +304,32 @@
     </div>
 </div>
 
+{{-- App listings --}}
+<div class="row g-3 border rounded p-3 mb-3">
+    <h5 class="mb-3">{{ __('App listings') }}</h5>
+    <p class="text-muted small mb-2">
+        {{ __('Where the main button on the landing page sends people. Leave empty until the apps are published — the button falls back to the price list rather than promising a download that does not exist.') }}
+    </p>
+    <div class="col-md-6">
+        <div class="form-group">
+            <label class="form-label">{{ __('App Store URL') }}</label>
+            <div class="controls">
+                <input type="url" name="App_Store_Url" class="form-control"
+                    placeholder="https://apps.apple.com/..." value="{{ getSettingValue('App_Store_Url') }}">
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="form-group">
+            <label class="form-label">{{ __('Google Play URL') }}</label>
+            <div class="controls">
+                <input type="url" name="Play_Store_Url" class="form-control"
+                    placeholder="https://play.google.com/..." value="{{ getSettingValue('Play_Store_Url') }}">
+            </div>
+        </div>
+    </div>
+</div>
+
 {{-- Region / Timezone --}}
 <div class="row g-3 border rounded p-3 mb-3">
     <h5 class="mb-3">{{ __('Region') }}</h5>

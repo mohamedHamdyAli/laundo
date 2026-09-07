@@ -1103,3 +1103,157 @@ launch and stop that PID; if a pattern kill is unavoidable, list the matches
 first and say what is about to die. A kill that reports more victims than you
 started is the warning — the same signal as a delete removing more rows than you
 inserted.
+
+## Route parameters bind to controller arguments by position, not by name
+
+`legal(Request $request, string $page, ?string $locale = null)` with
+`->defaults('page', 'terms')` on `/{locale}/terms` received them the wrong way
+round: `$page` became `'en'`. `RouteDependencyResolverTrait` walks the method's
+parameters and takes route values **positionally** — `array_values($parameters)`
+— and `->defaults()` appends its entries *after* the ones parsed from the URI.
+So the array is `[locale, page]` while the signature reads `[page, locale]`.
+
+What made it nasty is that it only broke half the routes. `/terms` has no URI
+parameter, so its array is just `[page]`, the positional index lines up, and the
+page works perfectly. Reordering the signature to fix `/{locale}/terms` then
+broke `/terms` in exactly the same way, from the other side.
+
+**Rule:** when two routes share a controller method and one of them has more
+parameters than the other, read them off the request — `$request->route('page')`
+— rather than declaring them as arguments. It is order-independent and cannot be
+reintroduced by somebody tidying the signature. And never trust a parameter name
+to do the matching; PHP scalars are not resolved by name.
+
+## An absolutely positioned pseudo-element paints above its in-flow siblings
+
+The timeline's progress rail is `.timeline::after`, `position: absolute`, and it
+drew straight through the step numbers even though each marker has an opaque
+background matching the band. Giving an element a background does not lift it:
+positioned descendants paint in a later layer than in-flow content, and `::after`
+comes after every child in DOM order.
+
+**Rule:** to sit *above* a parent's `::before`/`::after`, a child needs its own
+`position` **and** a `z-index`. `position: relative` alone is not enough —
+`z-index: auto` leaves it in the in-flow layer.
+
+## Pint and php-cs-fixer disagree about promoted constructors here
+
+`public function __construct(private readonly Foo $foo) {}` is what Pint wants
+and what every existing controller in this project is written as. php-cs-fixer,
+running from `.php-cs-fixer.dist.php`, wants the body expanded onto three lines
+and reports every one of those files as fixable.
+
+This is pre-existing: `Admin/LanguageController` and `Api/V1/CatalogController`
+are both "flagged" today. Running `php-cs-fixer fix` over a controller would make
+it the odd one out and produce a diff nobody asked for.
+
+**Rule:** Pint is the formatter that matches the codebase. Run php-cs-fixer to
+*read* its opinion, not to apply it, and check whether an existing file is
+flagged the same way before treating a report as your own mistake.
+
+## Reword around an apostrophe; do not escape it
+
+Third time this shape has bitten. `{{ __('the landing page\'s main button') }}`
+went into a Blade template and the compiled view failed to parse — the same
+class of bug as the `user/forms/formInput` string that sat broken for weeks,
+because a compiled view is only rebuilt when the source mtime changes.
+
+Escaping is not the fix, because the escape is what keeps getting lost: a
+scripted edit, a formatter or a copy-paste drops the backslash and the error
+comes back somewhere nobody is looking.
+
+**Rule:** write the copy without the apostrophe — "the main button on the
+landing page". And after any Blade change, `php artisan view:cache` followed by
+`php -l` over `storage/framework/views/*.php` compiles and lints all of them in
+one pass; it is how this one surfaced within a minute of being written.
+
+## A cached page hides a CSS fix and wastes the debugging
+
+Fixing the timeline's stacking took three rounds, and two of them were the
+browser serving a cached page and a cached stylesheet. The computed `z-index`
+read `auto` while the file on disk plainly said `1`.
+
+**Rule:** when a CSS change "does not take", read the value back with
+`getComputedStyle` **and** print the stylesheet's URL. If the href has no
+version query on it, you are not looking at your file. Assets served straight
+out of `public/` with no build step need a `filemtime()` query string — for the
+same reason in production, where a returning visitor keeps last week's
+stylesheet after a deploy.
+
+## Read the end of `tasks/todo.md` before touching a shared file
+
+Two mistakes in one, both avoidable by reading the file I was about to append to.
+
+`tasks/todo.md` is an **append-only execution log** — 2,594 lines covering P0 to
+P12 — and CLAUDE.md's "write plan to `tasks/todo.md`" reads like an instruction
+to replace it. I overwrote the lot. `git checkout HEAD -- tasks/todo.md` got it
+back because nothing had been committed, which was luck rather than care.
+
+And its own last paragraph records the second one: **`resources/lang/ar.json` is
+sorted case-insensitively** ("about", "active", "Add a note only"), so
+re-serialising it with Python's default `sorted()` reshuffles about a hundred
+lines. I added four keys and produced a 212-line diff. `key=lambda kv:
+kv[0].lower()` restores it, and the fix turned the diff into the four lines it
+should always have been.
+
+**Rule:** append to a log, never rewrite it — and when a diff is an order of
+magnitude larger than the change you made, that is the signal to stop and read
+it, not to commit it. A reformatting diff hides the real change inside it and
+makes the next `git blame` useless.
+
+## A cached payload and the code that shapes it must invalidate together
+
+`LandingContentService::pageData()` caches an assembled array for an hour. Adding
+two keys to it left the previous hour's array in place, and the view died on
+`Undefined variable $orderSteps`. On a laptop that is one `cache:clear`. On the
+live site it is **the front page returning 500 for up to an hour after the
+deploy**, and it looks like a bad release rather than a stale cache — so the
+instinct would be to roll back a deploy that was fine.
+
+**Rule:** when a cache holds a structure rather than a value, put something in
+the key that changes when the structure's definition does. `filemtime(__FILE__)`
+on the assembler costs a stat and needs nobody to remember anything. The same
+applies to any asset served straight out of `public/` with no build step.
+
+## A component nothing renders is a feature nobody can reach
+
+`x-action-button-lang` exists, is well built, carries the links to the three
+language-file editors — and is rendered by no template. Its only reference in the
+whole repository is the PHP class that returns its view. So
+`admin.language.panel`, `.mobile` and `.web` have been reachable **only by typing
+the URL** since they were written, and I spent a round adding a dropdown item to
+a file that renders nowhere before noticing.
+
+**Rule:** before editing a Blade component, grep for `<x-its-name` and confirm
+something actually uses it. `app/View/Components/*.php` returning the view does
+not count — that is the definition, not a usage. And when a route has a screen
+but no link, treat it as the navigation-side version of "a column with no form
+field": the feature is complete and dead.
+
+## Guard against fixtures leaking, then prove the guard still passes real data
+
+`Offer::badge()` renders the linked coupon's discount, and this install's only
+offer links to `SMOKE10` — a smoke-test coupon that would have been advertised on
+the public front page as a code a customer could try.
+
+The guard is the easy half. The half worth writing down is the second test: a
+real code (`WELCOME20`) still gets its badge. A filter that refuses everything is
+indistinguishable from a feature that never worked, and it will be "fixed" by
+someone deleting the guard.
+
+**Rule:** every allow/deny guard needs two tests — the thing it must refuse and
+the thing it must let through. `isPlaceholderSetting()` has the same pair, and
+that is why a real email rendering is asserted alongside the seeded one being
+hidden.
+
+## Python heredocs, again: check that the edit actually applied
+
+Three separate edits in this session silently did nothing because `\U`, `\M` and
+`\S` in a PHP namespace are invalid Python escapes — `"use App\Modules\User\..."`
+raises `SyntaxError`, the script dies before writing, and the next command
+happily reports success on the unchanged file. One of them only surfaced when
+Pint stripped the imports I thought I had used.
+
+**Rule:** raw strings (`r"..."`) for anything containing a PHP namespace, and
+after a scripted edit **assert the result**, not the exit code — `grep` for the
+new text before moving on. `chr(92)` where a raw string will not do.

@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Session;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 // ===================================================
 // =============== Upload & Image Helpers ============
@@ -786,5 +787,317 @@ if (! function_exists('canDo')) {
         return $user->role
             ->permissions
             ->contains('slug', $permission);
+    }
+}
+
+// ===================================================
+// =============== Web (public) Content ==============
+// ===================================================
+
+if (! function_exists('webTemplateDefaults')) {
+    /**
+     * The shipped web translation template, as a key => string map.
+     *
+     * The last link in `webText()`'s fallback chain. Held in a static rather
+     * than the cache deliberately: caching it forever means an edit to
+     * `webFile.php` needs a cache clear to show up, and the file is small
+     * enough that `include` under opcache costs nothing. `clearLanguageCache()`
+     * has never known about it and now does not need to.
+     *
+     * @return array<string, string>
+     */
+    function webTemplateDefaults(): array
+    {
+        static $defaults = null;
+
+        if ($defaults !== null) {
+            return $defaults;
+        }
+
+        $path = storage_path('app/webFile.php');
+
+        if (! file_exists($path)) {
+            return $defaults = [];
+        }
+
+        $loaded = include $path;
+
+        return $defaults = is_array($loaded) ? $loaded : [];
+    }
+}
+
+if (! function_exists('webText')) {
+    /**
+     * One string of public web copy, in the best language available.
+     *
+     * The reader for the Web File — the mechanism that has existed since the
+     * languages screen was built and, until the landing page, had exactly one
+     * consumer (`GET /api/v1/translations/web`) and no consumer inside Blade.
+     *
+     * The fallback chain is `pickTranslation()`'s, for the same reason: a key
+     * translated in Arabic only must still render on the English page rather
+     * than showing a raw `landing.hero.title` to a visitor. In order:
+     *
+     *   1. the current locale's `{code}_web.json`
+     *   2. the default language's `{code}_web.json`
+     *   3. the shipped `webFile.php` template
+     *   4. `$default`, or the key itself
+     *
+     * Step 3 is what makes adding a key safe without a deploy dance: a key
+     * added to the template renders its English default everywhere at once, and
+     * each language overrides it when somebody translates it. And note the
+     * dashboard's own `updateWeb()` runs `array_filter()`, so blanking a value
+     * there *removes* the key and the template default takes over again — which
+     * is the behaviour you want from a "reset this string" box.
+     *
+     * `$replace` is applied `:placeholder` style, matching `__()`, because the
+     * counts and prices on the page come from the database while the sentence
+     * around them comes from here.
+     *
+     * @param  array<string, string|int|float>  $replace
+     */
+    function webText(string $key, array $replace = [], ?string $default = null): string
+    {
+        $candidates = [(string) app()->getLocale()];
+
+        try {
+            $candidates[] = (string) getDefaultLanguage('code');
+        } catch (Throwable) {
+            // A half-seeded install has no default row. The template still answers.
+        }
+
+        $value = null;
+
+        foreach (array_unique($candidates) as $code) {
+            $strings = getTranslationFile('web', $code);
+
+            if (filled($strings[$key] ?? null)) {
+                $value = (string) $strings[$key];
+
+                break;
+            }
+        }
+
+        $value ??= webTemplateDefaults()[$key] ?? $default ?? $key;
+
+        if ($replace === []) {
+            return $value;
+        }
+
+        // The same three casings Laravel's own replacer handles, so `:count`,
+        // `:Count` and `:COUNT` all work and a translator can open a sentence
+        // with a placeholder.
+        foreach ($replace as $search => $replacement) {
+            $value = str_replace(
+                [':'.$search, ':'.Str::ucfirst((string) $search), ':'.Str::upper((string) $search)],
+                [(string) $replacement, Str::ucfirst((string) $replacement), Str::upper((string) $replacement)],
+                $value
+            );
+        }
+
+        return $value;
+    }
+}
+
+if (! function_exists('isPlaceholderSetting')) {
+    /**
+     * Whether a settings value is seed data wearing a real value's clothes.
+     *
+     * `SettingsSeeder` fills the table with stand-ins so the dashboard has
+     * something to render: `App_Name` is `BaseCode`, every social URL points at
+     * the network's own front page, `Email` is the dev team's address, and
+     * `About` is Latin filler. All of it is still in the live database.
+     *
+     * On an admin screen that is harmless. On a public page it is a footer
+     * linking to facebook.com under a brand called BaseCode, so every public
+     * read goes through `realSetting()` and lands here.
+     *
+     * Two tests, because neither alone is enough:
+     *
+     *   - **The exact seeded values.** Cheap, certain, and the only thing that
+     *     catches `http://snapchat.com/en-GB`, which is structurally an
+     *     unremarkable URL.
+     *   - **A URL with no meaningful path.** `http://facebook.com/` addresses a
+     *     network, not an account — nobody's profile is the bare domain. That
+     *     generalises to the placeholder somebody adds next, which a fixed list
+     *     cannot.
+     */
+    function isPlaceholderSetting(?string $value): bool
+    {
+        if (blank($value)) {
+            return true;
+        }
+
+        $trimmed = trim((string) $value);
+        $needle = rtrim(mb_strtolower($trimmed), '/');
+
+        // Verbatim from SettingsSeeder.
+        $seeded = [
+            'basecode',
+            'logo1.png',
+            'cover.png',
+            'nahrphpteam@nahrphpteam.com',
+            'http://whatsapp.com',
+            'http://facebook.com',
+            'http://twitter.com',
+            'http://instagram.com',
+            'http://linkedin.com',
+            'http://youtube.com',
+            'http://snapchat.com/en-gb',
+            'http://gmail.com',
+        ];
+
+        if (in_array($needle, $seeded, true)) {
+            return true;
+        }
+
+        // Latin filler, seeded into About / Privacy_Policy / Terms.
+        if (str_contains($trimmed, 'Latin gibberish') || str_contains($trimmed, 'lateinische W')) {
+            return true;
+        }
+
+        // A link whose path and query are both empty addresses a front page.
+        if (preg_match('#^https?://#i', $trimmed) === 1) {
+            $path = trim((string) parse_url($trimmed, PHP_URL_PATH), '/');
+            $query = (string) parse_url($trimmed, PHP_URL_QUERY);
+
+            if ($path === '' && $query === '') {
+                return true;
+            }
+        }
+
+        return false;
+    }
+}
+
+if (! function_exists('looksLikeTestCode')) {
+    /**
+     * Whether a coupon code is a test artifact rather than a campaign.
+     *
+     * This database holds `SMOKE10` from a smoke test and `PWTEST25532` /
+     * `PWTEST18414` from Playwright runs, and the one published offer links to
+     * the first of them. `Offer::badge()` renders the linked coupon's discount,
+     * so publishing that offer unguarded puts a smoke-test coupon's value on
+     * the front page — and, worse, advertises a code a customer could try.
+     *
+     * A deny-list rather than a convention, because the codes were not written
+     * to be recognisable: `PW` is Playwright's prefix by habit, not by rule. It
+     * is deliberately loose — a real campaign would not be called `TESTDROP`,
+     * and refusing to badge one is a smaller failure than publishing a fixture.
+     *
+     * Applied to the badge only. The offer's own copy («باقة غسيل البطاطين») is
+     * real marketing text an operator wrote, and it still renders.
+     */
+    function looksLikeTestCode(?string $code): bool
+    {
+        if (blank($code)) {
+            return true;
+        }
+
+        $needle = strtoupper(trim((string) $code));
+
+        foreach (['TEST', 'SMOKE', 'DUMMY', 'SAMPLE', 'FIXTURE', 'DEBUG'] as $marker) {
+            if (str_contains($needle, $marker)) {
+                return true;
+            }
+        }
+
+        // Playwright's specs mint codes prefixed `PW`.
+        return (bool) preg_match('/^PW[A-Z0-9]*\d{3,}$/', $needle);
+    }
+}
+
+if (! function_exists('realSetting')) {
+    /**
+     * A settings value, or null when it is blank or still seed data.
+     *
+     * The one read the public pages use. Returning null rather than the string
+     * lets a template simply not render the row — which is the difference
+     * between a footer with two contact methods and a footer with two contact
+     * methods and a dead link to gmail.com.
+     */
+    function realSetting(string $key): ?string
+    {
+        $value = getSettingValue($key);
+
+        return isPlaceholderSetting(is_string($value) ? $value : null)
+            ? null
+            : trim((string) $value);
+    }
+}
+
+if (! function_exists('landingCtaTarget')) {
+    /**
+     * Where the landing page's primary button actually goes.
+     *
+     * There is no public sign-up (`Auth::routes(['register' => false])`) and no
+     * store listing yet, so this cannot be a hardcoded href. It resolves down a
+     * chain and reports which rung it landed on, so the template can render a
+     * store pair, a chat link, a phone number or an in-page jump — and never a
+     * button that goes nowhere.
+     *
+     * The last rung is the prices section rather than `#`, because a visitor who
+     * came to find out what it costs is better served by the price list than by
+     * a dead click.
+     *
+     * @return array{kind: string, href: string, stores: array<string, string>}
+     */
+    function landingCtaTarget(): array
+    {
+        $appStore = realSetting('App_Store_Url');
+        $playStore = realSetting('Play_Store_Url');
+
+        if ($appStore !== null || $playStore !== null) {
+            return [
+                'kind' => 'store',
+                'href' => (string) ($appStore ?? $playStore),
+                'stores' => array_filter([
+                    'ios' => $appStore,
+                    'android' => $playStore,
+                ]),
+            ];
+        }
+
+        if (($whatsapp = realSetting('Whats_App')) !== null) {
+            return ['kind' => 'whatsapp', 'href' => $whatsapp, 'stores' => []];
+        }
+
+        foreach (['Hotline', 'Call'] as $key) {
+            if (($phone = realSetting($key)) !== null) {
+                // Spaces and dashes are for reading, not for dialling.
+                return [
+                    'kind' => 'phone',
+                    'href' => 'tel:'.preg_replace('/[^\d+]/', '', $phone),
+                    'stores' => [],
+                ];
+            }
+        }
+
+        return ['kind' => 'anchor', 'href' => '#prices', 'stores' => []];
+    }
+}
+
+if (! function_exists('landingAssetVersion')) {
+    /**
+     * A cache-busting token for a file under `public/assets`.
+     *
+     * The landing page's CSS and JS are served straight out of `public/` — this
+     * project has no build step for them, and `npm run build` covers only the
+     * seven views that extend `layouts.app`. So there is no content hash in the
+     * filename to invalidate a cache, and a deploy that changes a stylesheet
+     * leaves returning visitors on the one they already have.
+     *
+     * `filemtime()` changes exactly when the file does and costs a stat. Falls
+     * back to the app version rather than throwing, so a missing file renders a
+     * broken link instead of a 500 — the wrong asset is a visible bug, an
+     * exception on the front page is an outage.
+     */
+    function landingAssetVersion(string $relativePath): string
+    {
+        $absolute = public_path('assets/'.ltrim($relativePath, '/'));
+
+        return file_exists($absolute)
+            ? (string) filemtime($absolute)
+            : (string) app()->version();
     }
 }

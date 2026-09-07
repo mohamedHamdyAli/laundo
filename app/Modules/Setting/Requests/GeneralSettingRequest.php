@@ -61,6 +61,12 @@ class GeneralSettingRequest extends FormRequest
                 'Referral_Reward_Type' => 'nullable|in:percentage,fixed',
                 'Referral_Reward_Value' => 'nullable|numeric|min:0|max:1000',
                 'Country_Id' => 'nullable|exists:countries,id',
+                // Read by `landingCtaTarget()`, which is what the public
+                // page's main button points at. Unset until the apps are
+                // published, and the button falls back to the price list
+                // rather than promising a download that does not exist.
+                'App_Store_Url' => 'nullable|url|max:191',
+                'Play_Store_Url' => 'nullable|url|max:191',
             ];
         } elseif (Route::is('admin.generalSetting.updatePrivacyAndTerms')) {
             $rules = [
