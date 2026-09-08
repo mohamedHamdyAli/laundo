@@ -1358,3 +1358,70 @@ right and left `$request->isSecure()` false — so cookie `secure` flags,
 redirects and `getSchemeAndHttpHost()` would all still be wrong, waiting to be
 found separately. Normalising the header at the front of the middleware stack
 fixes every consumer at once.
+
+## A static audit is not a test — drive the thing
+
+Asked to check search on every screen, I grepped every index view, compared the
+`setupAjaxSearch` selectors against the ids declared in the same file, found two
+mismatches, fixed them and reported it done.
+
+The owner replied with a screenshot of a screen I had just "checked", search box
+full, list unfiltered: «انا طلبت منك تراجع كل الصفح وتجرب السيرش وانت معملتش
+كدا». They were right. The static pass could see a selector that pointed at
+nothing; it could not see that the Drivers screen shows a Vehicle column its
+search never looked at, or that seven screens threw the filter away on keyup.
+
+Writing a sweep that logged in, opened all 34 screens, and typed **each visible
+column's own value into the box** found **21** unsearchable columns — an order of
+magnitude more than reading the code had. It also took about fifteen minutes.
+
+**Rule:** "check every screen" means operate every screen. A static check is a
+good *guard* once you know what to assert — `SearchWiringTest` earns its place —
+but it is not a substitute for using the feature, and it must never be reported
+as one. When the ask is behavioural, the evidence has to be behavioural.
+
+## `orWhere` inside `whereHas` matches the entire table
+
+Adding relation support to the search scope, I wrote the closure with
+`orWhereRaw` and reasoned in the docblock that "inside a whereHas closure it is
+the only condition, so the boolean does not matter."
+
+It is not the only condition. `whereHas` puts the relation's own join constraint
+in that same subquery, so the `OR` escapes it:
+
+    EXISTS (SELECT * FROM cities WHERE cities.id = zones.city_id
+                                    OR LOWER(name) LIKE '%cairo%')
+
+Any city named Cairo makes that true for **every** zone. Searching zones by city
+"cairo" returned all 25 instead of Cairo's 15, and items by category "shirts"
+all 10 instead of 6.
+
+What caught it was checking the counts against a second SQL query rather than
+accepting "no error, returns rows". The same fault, hand-written, was already
+live in `RefundController` and `NotificationLogController` — an un-grouped OR
+beside an appended `AND filter`, so a matching term silently ignored the filter.
+
+**Rule:** `OR` belongs *between* the columns you are searching, never inside a
+relation constraint. And a query change is not verified by "it ran" — compute
+the expected count independently and compare. A clause that matches everything
+passes every "does it find the row" assertion there is.
+
+## When a standard fix does not work, re-examine the infrastructure, not the fix
+
+`trustProxies(at: '*')` is the textbook answer to a TLS-terminating proxy, and
+deploying it changed nothing. The instinct was to doubt the syntax, the cache,
+the middleware order.
+
+The actual reason: Cloudflare was in **Flexible SSL** mode, so browser→edge was
+https and edge→origin was genuinely plain http. `X-Forwarded-Proto: http` was
+not a misconfiguration — it was an accurate description of the hop Laravel was
+being told about. Trusting it harder made Laravel believe a correct, useless
+value. The visitor's real scheme was in `CF-Visitor` all along.
+
+One temporary probe dumping the `HTTP_X_FORWARDED_*` and `HTTP_CF_*` keys
+settled in a single request what two deploys of reasoning had not.
+
+**Rule:** before configuring a proxy header, read what the proxy actually sends.
+And fix the *request*, not the symptom — `URL::forceScheme('https')` would have
+corrected the URLs and left `isSecure()`, cookie flags and redirects still
+wrong, each waiting to be discovered separately.
