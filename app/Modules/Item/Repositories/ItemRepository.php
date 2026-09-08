@@ -13,7 +13,7 @@ class ItemRepository
 
     public function search($query, $perPage = 10)
     {
-        return Item::with('category')->search($query, ['name'])->orderBy('sort_order')->paginate($perPage);
+        return Item::with('category')->search($query, ['name', 'category.name', 'sort_order'])->orderBy('sort_order')->paginate($perPage);
     }
 
     public function findById($id)

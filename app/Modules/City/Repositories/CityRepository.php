@@ -13,7 +13,7 @@ class CityRepository
 
     public function search($query, $perPage = 10)
     {
-        return City::search($query, ['name'])->paginate($perPage);
+        return City::search($query, ['name', 'country.name'])->paginate($perPage);
     }
 
     public function findById($id)

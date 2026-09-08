@@ -2,6 +2,16 @@
 
 ## 2026-09-08
 
+### Feature
+
+- **Anything a list screen displays can now be searched for.** Owner's requirement: «أي داتا ف الجدول اعمل بيها سيرش النتيجه تظهر معايا». A sweep that drives the real search box on all 34 sidebar screens and tests **every visible column of the first row against its own value** found 21 displayed columns their own search could not match. That sweep now reports 34 searchable against 22, and most of the remainder are enum labels, aggregates or dates that are deliberately out of scope (see below) (Trait / Repositories).
+- **`Searchable` understands relation paths.** `search($term, ['name', 'profile.vehicle_type', 'zones.name'])` — everything before the last dot is the relation, resolved with `whereHas`, so Laravel's own nesting works too (`laundry.city.name`). Most screens show at least one column from another table, and a scope limited to the model's own table could never reach them (Trait).
+- Columns added, by screen: **driver** `profile.vehicle_type`, `profile.plate_number`, `zones.name` — the VEHICLE and AREAS columns the report was filed about; **laundry** and **zone** `city.name`; **city** `country.name`; **item** `category.name`; **laundry_staff** `laundry.name` + `role.name`; **moderator** `role.name` + `email`; **order** `service.name` + `laundry.name`; **offer** `coupon.code`; **coupon** `name` — the human label under the code, and the widest one-line gap in the panel; **country** `code` + `phone_code`; **faq** `audience`; **service** `pricing_mode`, `duration_unit`; **language** `country_code`; plus `sort_order`/`order` on the six screens that display it (Repositories).
+
+### Fix
+
+- **A relation clause could match every row in the table.** Found by checking counts against SQL rather than trusting "no error": zones matching city "cairo" came back as all **25** instead of Cairo's 15, and items matching category "shirts" as all **10** instead of 6. `whereHas` puts the relation's own join condition in the same subquery, so `orWhere` inside the closure escapes it and `EXISTS` becomes true for every parent row. The `OR` belongs between columns, never inside a relation constraint. Four tests pin it, including one with a second country so a term that matches the relation table but belongs to a *different* parent is the shape under test — the only shape that catches it (Trait / Tests).
+
 ### Fix
 
 - **Two list screens ignored their search box entirely.** `item_category` and `laundry_staff` passed `setupAjaxSearch()` a `tableBodySelector` that matched no element in their own view — `#itemcategory-table-body` against a container called `#item_category-table-body`, and `#staff-table-body` against `#laundry_staff-table-body`. jQuery resolves a bad selector to an empty set, so the response was written to nowhere and the unfiltered list stayed on screen: typing a term appeared to do nothing at all (Blade).

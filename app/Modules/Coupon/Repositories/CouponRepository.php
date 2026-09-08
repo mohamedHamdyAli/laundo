@@ -18,7 +18,9 @@ class CouponRepository
     public function search(?string $query, int $perPage = 15): LengthAwarePaginator
     {
         return Coupon::withCount('redemptions')
-            ->search($query, ['code'])
+            // `name` is the human label shown under the code on the list screen;
+            // it is a translatable json column, so one term hits both languages.
+            ->search($query, ['code', 'name'])
             ->latest('id')
             ->paginate($perPage);
     }

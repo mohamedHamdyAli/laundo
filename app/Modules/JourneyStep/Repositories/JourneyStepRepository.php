@@ -18,7 +18,7 @@ class JourneyStepRepository
 
     public function search($query, $perPage = 10)
     {
-        return JourneyStep::search($query, ['title', 'description'])
+        return JourneyStep::search($query, ['title', 'description', 'sort_order'])
             ->orderBy('sort_order')
             ->orderBy('id')
             ->paginate($perPage);

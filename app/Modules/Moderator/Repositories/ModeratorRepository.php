@@ -13,7 +13,7 @@ class ModeratorRepository
 
     public function search($query, $perPage = 10)
     {
-        return Moderator::search($query, ['name', 'phone'])->latest()->paginate($perPage);
+        return Moderator::search($query, ['name', 'phone', 'email', 'role.name'])->latest()->paginate($perPage);
     }
 
     public function findById($id)

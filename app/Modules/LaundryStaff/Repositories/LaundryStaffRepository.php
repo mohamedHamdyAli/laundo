@@ -14,7 +14,7 @@ class LaundryStaffRepository
     public function search($query, $perPage = 10)
     {
         return LaundryStaff::with(['role', 'laundry'])
-            ->search($query, ['name', 'phone', 'email'])
+            ->search($query, ['name', 'phone', 'email', 'laundry.name', 'role.name'])
             ->latest()
             ->paginate($perPage);
     }

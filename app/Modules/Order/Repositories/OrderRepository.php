@@ -36,7 +36,17 @@ class OrderRepository
                 $q->where(function (Builder $inner) use ($query) {
                     $inner->where('code', 'like', "%{$query}%")
                         ->orWhereHas('customer', fn (Builder $c) => $c->where('name', 'like', "%{$query}%")
-                            ->orWhere('phone', 'like', "%{$query}%"));
+                            ->orWhere('phone', 'like', "%{$query}%"))
+                        // The SERVICE column on the list screen, and the laundry
+                        // shown beneath it. Both are translatable json columns —
+                        // hence the fold, which a bare `like` cannot do against a
+                        // binary collation. See Searchable's docblock.
+                        ->orWhereHas('service', fn (Builder $s) => $s->whereRaw(
+                            'LOWER(CAST(`name` AS CHAR)) LIKE ?', ['%'.mb_strtolower($query).'%']
+                        ))
+                        ->orWhereHas('laundry', fn (Builder $l) => $l->whereRaw(
+                            'LOWER(CAST(`name` AS CHAR)) LIKE ?', ['%'.mb_strtolower($query).'%']
+                        ));
                 });
             })
             ->when($status, fn (Builder $q) => $q->where('status', $status))

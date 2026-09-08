@@ -14,7 +14,7 @@ class FaqRepository
 
     public function search($query, $perPage = 15)
     {
-        return Faq::search($query, ['question', 'answer'])
+        return Faq::search($query, ['question', 'answer', 'audience', 'order'])
             ->orderBy('order')
             ->orderBy('id')
             ->paginate($perPage);

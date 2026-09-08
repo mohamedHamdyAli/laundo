@@ -13,7 +13,7 @@ class ServiceRepository
 
     public function search($query, $perPage = 10)
     {
-        return Service::search($query, ['name'])->orderBy('sort_order')->paginate($perPage);
+        return Service::search($query, ['name', 'description', 'pricing_mode', 'duration_unit', 'sort_order'])->orderBy('sort_order')->paginate($perPage);
     }
 
     public function findById($id)

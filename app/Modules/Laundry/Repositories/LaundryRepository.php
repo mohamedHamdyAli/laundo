@@ -18,7 +18,7 @@ class LaundryRepository
 
     public function search($query, $perPage = 10)
     {
-        return Laundry::with('city')->search($query, ['name', 'phone', 'email'])->latest()->paginate($perPage);
+        return Laundry::with('city')->search($query, ['name', 'phone', 'email', 'city.name'])->latest()->paginate($perPage);
     }
 
     public function findById($id)

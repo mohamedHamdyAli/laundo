@@ -13,7 +13,7 @@ class ZoneRepository
 
     public function search($query, $perPage = 15)
     {
-        return Zone::with('city')->search($query, ['name'])->orderBy('sort_order')->paginate($perPage);
+        return Zone::with('city')->search($query, ['name', 'city.name', 'sort_order'])->orderBy('sort_order')->paginate($perPage);
     }
 
     public function findById($id)

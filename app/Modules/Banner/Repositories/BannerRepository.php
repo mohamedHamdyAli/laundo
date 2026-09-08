@@ -13,7 +13,7 @@ class BannerRepository
 
     public function search($query, $perPage = 10)
     {
-        return banner::search($query, ['name', 'description'])->paginate($perPage);
+        return banner::search($query, ['name', 'description', 'sort_order'])->paginate($perPage);
     }
 
     public function find($id)

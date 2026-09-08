@@ -19,7 +19,13 @@ class DriverRepository
     public function search($query, $perPage = 15)
     {
         return Driver::with(['profile', 'zones'])
-            ->search($query, ['name', 'phone', 'email'])
+            ->search($query, [
+                'name', 'phone', 'email',
+                // The VEHICLE column on the list screen.
+                'profile.vehicle_type', 'profile.plate_number',
+                // The AREAS column, through driver_zones.
+                'zones.name',
+            ])
             ->latest()
             ->paginate($perPage);
     }

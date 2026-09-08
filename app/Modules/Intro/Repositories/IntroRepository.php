@@ -13,7 +13,7 @@ class IntroRepository
 
     public function search($query, $perPage = 10)
     {
-        return intro::search($query, ['title', 'description'])->paginate($perPage);
+        return intro::search($query, ['title', 'description', 'order'])->paginate($perPage);
     }
 
     public function find($id)

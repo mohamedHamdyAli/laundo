@@ -14,7 +14,7 @@ class CountryRepository
 
     public function search($query, $perPage = 10)
     {
-        return Country::search($query, ['name'])->paginate($perPage);
+        return Country::search($query, ['name', 'code', 'phone_code'])->paginate($perPage);
     }
 
     public function findById($id)

@@ -138,6 +138,69 @@ class ListSearchTest extends TestCase
     }
 
     #[Test]
+    public function it_searches_across_a_relation(): void
+    {
+        // The owner's requirement: anything a list screen shows must be
+        // searchable, and most screens show at least one column from another
+        // table — a driver's vehicle, a laundry's city, a staff member's role.
+        // Neither city's own name contains "egypt" — only their country's does.
+        $this->assertSame(2, City::search('egypt', ['name', 'country.name'])->count());
+        $this->assertSame(0, City::search('egypt', ['name'])->count());
+    }
+
+    #[Test]
+    public function a_relation_search_does_not_match_every_row(): void
+    {
+        // The regression that made this worth a test. `whereHas` puts the
+        // relation's own join condition in the same subquery, so an `OR` inside
+        // the closure escapes it and `EXISTS` becomes true for **every** parent
+        // row. Measured on real data: zones matching city "cairo" came back as
+        // all 25 instead of Cairo's 15, and items matching category "shirts" as
+        // all 10 instead of 6.
+        //
+        // A term that exists in the relation table but belongs to a *different*
+        // parent is the only shape that catches it — which is why there is a
+        // second country here with a city of its own.
+        $other = Country::create([
+            'name' => json_encode(['en' => 'Jordan', 'ar' => 'الأردن'], JSON_UNESCAPED_UNICODE),
+            'code' => 'JO',
+            'phone_code' => '+962',
+            'status' => 'active',
+        ]);
+
+        City::create([
+            'name' => json_encode(['en' => 'Amman', 'ar' => 'عمّان'], JSON_UNESCAPED_UNICODE),
+            'country_id' => $other->id,
+            'status' => 'active',
+        ]);
+
+        // Three cities now; only the two Egyptian ones may match.
+        $this->assertSame(3, City::count());
+        $this->assertSame(2, City::search('egypt', ['name', 'country.name'])->count());
+        $this->assertSame(1, City::search('jordan', ['name', 'country.name'])->count());
+    }
+
+    #[Test]
+    public function a_relation_term_matching_nothing_returns_nothing(): void
+    {
+        // The counterpart: a relation clause that matched everything would pass
+        // the assertions above as easily as a correct one.
+        $this->assertSame(0, City::search('atlantis', ['name', 'country.name'])->count());
+    }
+
+    #[Test]
+    public function a_relation_search_is_case_insensitive_too(): void
+    {
+        foreach (['egypt', 'Egypt', 'EGYPT', 'egY'] as $term) {
+            $this->assertSame(
+                2,
+                City::search($term, ['name', 'country.name'])->count(),
+                "searching the country name as '{$term}' should find both Egyptian cities"
+            );
+        }
+    }
+
+    #[Test]
     public function the_city_search_endpoint_finds_a_lowercase_term(): void
     {
         // End to end, because the scope being right is not the same as the

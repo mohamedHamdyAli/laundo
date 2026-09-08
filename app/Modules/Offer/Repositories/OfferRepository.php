@@ -23,7 +23,7 @@ class OfferRepository
     public function search($query, $perPage = 10)
     {
         return Offer::with('coupon')
-            ->search($query, ['title', 'description'])
+            ->search($query, ['title', 'description', 'coupon.code'])
             ->orderBy('sort_order')
             ->orderBy('id')
             ->paginate($perPage);

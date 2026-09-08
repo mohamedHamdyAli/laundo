@@ -26,7 +26,7 @@ class LanguageController extends Controller
     {
         if ($request->ajax()) {
             $searchQuery = $request->get('query');
-            $language = Language::search($searchQuery, ['name', 'name_en', 'code'])->paginate(10);
+            $language = Language::search($searchQuery, ['name', 'name_en', 'code', 'country_code'])->paginate(10);
             $table = view('admin.language.partials._language_table_body', ['languages' => $language])->render();
 
             return response()->json([
