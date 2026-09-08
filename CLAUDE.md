@@ -302,6 +302,21 @@ Two overlapping caches exist:
 
 Don't "fix" these blind, but know they're there:
 
+- **Seven translatable columns are `json`, not `text`.** `cities.name`,
+  `zones.name`, `services.name`, `items.name`, `item_categories.name`,
+  `laundries.name` and `coupons.name` — while `banners.name`, `faqs.question`,
+  `intros.title`, `journey_steps.title` and `offers.title` are `text` with
+  `utf8mb4_unicode_ci` as documented above. A MySQL `json` column has **no
+  charset and no collation** and compares as binary, which made `LIKE` on those
+  seven case-sensitive and broke lowercase search on their list screens.
+  `Searchable::scopeSearch()` now folds case in SQL, so the query layer is
+  correct either way — **do not "simplify" it back to a bare `orWhere(...,
+  'LIKE', ...)`**. `ListSearchTest` asserts the generated SQL, because the
+  behaviour cannot fail on SQLite. Converting the columns would need an `ALTER`
+  on seven tables holding live data; the query fix reaches the same end.
+- Every module's `search()` action is wrapped in `if ($request->ajax())` and
+  returns **null** otherwise, so a bare GET to `/admin/{module}/search` is an
+  empty 200. Tests hitting it need `X-Requested-With: XMLHttpRequest`.
 - `Banner` and `Intro` model **classes are lowercase** (`class banner`, `class intro`) — match existing usage rather than renaming casually.
 - `CachingService::getSystemSettings()` plucks by a `name` column; the `settings` table has `key`. It is currently unreferenced — dead code.
 - Settings are key/value rows with **PascalCase keys** (`App_Name`, `App_Logo`, `About`, `Privacy_Policy`, `Terms`, `Country_Id`, `Currency`, `Cash_Surcharge`); `About`/`Privacy_Policy`/`Terms` hold translatable JSON.

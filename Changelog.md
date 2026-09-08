@@ -1,5 +1,23 @@
 # Changelog
 
+## 2026-09-08
+
+### Fix
+
+- **List search found nothing unless you matched the stored case.** Reported as «السيرش بايظ في كل الصفح». Searching `c` on Cities returned no rows; `C` returned Cairo. Seven screens were affected — Cities, Zones, Services, Items, Categories, Laundries and Discount Codes (Trait).
+- **The cause is in the schema, not the query.** Translatable columns are supposed to be `text`, and most are: `banners.name`, `faqs.question`, `intros.title`, `journey_steps.title` and `offers.title` are `text` with `utf8mb4_unicode_ci` — a case-insensitive collation — and always worked. But seven were created as **`json`**, and a MySQL `json` column has no character set and no collation, so it is compared as **binary**: `LIKE` against it is case-sensitive (Database / Trait).
+- **Fixed in the scope, not in seven migrations.** `Searchable::scopeSearch()` now folds both sides — `LOWER(CAST(col AS CHAR)) LIKE ?` against a lowercased term — so it is correct on `json`, on `text`, and on the next translatable column somebody declares as `json`. The alternative was an `ALTER` on seven tables holding live data to fix something the query can express directly. Neither form uses an index; a leading-wildcard `LIKE` never could (Trait).
+- The identifier goes through the query grammar's own `wrap()` rather than string interpolation. Call sites pass hardcoded column lists today, and a raw fragment built by concatenation is one refactor away from taking a request value (Trait).
+- `mb_strtolower`, not `strtolower`, so an Arabic term is not mangled byte-wise on the way to the binding. Arabic has no case, and searching «القاهرة» still matches (Trait).
+
+### Tests
+
+- **`ListSearchTest` — 8 tests, and one of them is the only honest guard.** The bug **cannot fail on this suite's database**: PHPUnit runs on in-memory SQLite, where `json` is just `text` and `LIKE` is case-insensitive for ASCII, so the original broken scope passes every behavioural assertion. That is exactly the trap CLAUDE.md warns about, and it is why 878 existing tests never caught it. `the_scope_folds_case_in_sql` asserts the **generated SQL** instead, which a SQLite run can hold honest (Tests).
+- The rest pin the contract: the term is lowercased before binding, a lowercase term matches a capitalised name, Arabic still matches, every named column is searched, a blank term does not filter, a term matching nothing still returns nothing — the counterpart that catches a fold matching everything — and the City endpoint end to end (Tests).
+- That last one had to send `X-Requested-With`. Every `search()` action is wrapped in `if ($request->ajax())` and returns **null** otherwise, so a bare GET to the endpoint is an empty 200 rather than an error; jQuery sets the header for free, which is why nothing had noticed (Tests).
+- **886 tests, 2,782 assertions, green.** PHPStan level 5 clean, Pint clean. Verified in a browser by driving the real widget — `keyup`, not `fill()` — where lowercase `cairo` now returns Cairo (Verification).
+
+
 ## 2026-09-07
 
 ### Fix

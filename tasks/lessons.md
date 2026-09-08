@@ -1257,3 +1257,50 @@ Pint stripped the imports I thought I had used.
 **Rule:** raw strings (`r"..."`) for anything containing a PHP namespace, and
 after a scripted edit **assert the result**, not the exit code — `grep` for the
 new text before moving on. `chr(92)` where a raw string will not do.
+
+## A `json` column has no collation, so `LIKE` on it is case-sensitive
+
+Search returned nothing on seven list screens unless you typed the stored case:
+`c` found no city, `C` found Cairo. The scope was a plain
+`orWhere($column, 'LIKE', "%$search%")` and looked entirely correct.
+
+The fault was in the schema. Translatable columns are meant to be `text`, and
+most are — `banners.name`, `faqs.question`, `offers.title` are `text` with
+`utf8mb4_unicode_ci`, a case-**insensitive** collation, and always worked. Seven
+were created as `json`: `cities`, `zones`, `services`, `items`,
+`item_categories`, `laundries`, `coupons`. A MySQL `json` column carries no
+character set and no collation and is compared as binary.
+
+Two things worth keeping:
+
+- **878 tests could not have caught it.** PHPUnit runs on in-memory SQLite,
+  where `json` is `text` and `LIKE` is case-insensitive for ASCII, so the broken
+  scope passes every behavioural assertion. CLAUDE.md's warning — "anything
+  relying on MySQL-only SQL will pass in tests and fail in the app" — is not
+  hypothetical, and this is what it looks like.
+- The regression guard therefore has to assert the **generated SQL**, not the
+  result. That inverts the usual rule ("test the rendered value, not the class
+  name"), and it is the right inversion when the test driver cannot express the
+  bug. Say so in the test, or somebody will delete the odd-looking assertion.
+
+**Rule:** when a query behaves differently in the app than in the suite, check
+the column's `COLLATION_NAME` in `information_schema.COLUMNS` — not the table's.
+A `json` column shows an empty collation, and that empty cell is the bug. And
+prefer fixing the shared scope over N migrations: it reaches the columns that
+exist and the ones added next.
+
+## Verify the report before believing your first theory about it
+
+The screenshot said "Error during search" and my first three hypotheses were all
+about what *I* had changed the day before — route caching, config caching, the
+new catch-all route. All three were wrong, and I spent four tool calls on them.
+
+What settled it was one number: the screenshot said **28 results**, the local
+database had **27 rows**. So the report was from production, not local — and
+knowing that immediately, rather than after theorising, would have pointed
+straight at "what differs between the two" instead of "what did I touch".
+
+**Rule:** find one fact in the report that identifies *which environment* it
+came from before forming any theory about the cause. A row count, a timestamp, a
+hostname in the URL bar. And when a report arrives during unrelated work, resist
+the pull to assume it is your work — check it, then look wider.
