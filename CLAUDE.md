@@ -302,6 +302,15 @@ Two overlapping caches exist:
 
 Don't "fix" these blind, but know they're there:
 
+- **The site runs behind Cloudflare, and `trustProxies()` is load-bearing.**
+  Cloudflare terminates TLS and forwards to the origin over plain HTTP, so
+  without it Laravel generates `http://` absolute URLs for an `https://` page —
+  which browsers block as mixed content, taking out **every AJAX call in the
+  panel** (search on all list screens, the notification bell) while leaving the
+  log clean and `curl` working. It also makes `$request->ip()` Cloudflare's
+  address for every visitor, which silently collapses the `otp`, `otp-verify`,
+  `login` and `location` rate limiters into one shared bucket. Configured in
+  `bootstrap/app.php` with `at: '*'`; `TrustedProxyTest` guards both halves.
 - **Seven translatable columns are `json`, not `text`.** `cities.name`,
   `zones.name`, `services.name`, `items.name`, `item_categories.name`,
   `laundries.name` and `coupons.name` — while `banners.name`, `faqs.question`,

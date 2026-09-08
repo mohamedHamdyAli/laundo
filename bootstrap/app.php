@@ -54,6 +54,43 @@ return Application::configure(basePath: dirname(__DIR__))
         SyncWebTranslations::class,
     ])
     ->withMiddleware(function (Middleware $middleware): void {
+        /*
+         * The site is served through Cloudflare, which terminates TLS at the
+         * edge and forwards to this origin over plain HTTP. Without this,
+         * Laravel never learns the request was secure: `$request->isSecure()`
+         * is false, and every absolute URL `url()` and `route()` generate comes
+         * out as `http://`.
+         *
+         * That is what broke search on **every** list screen. Each index view
+         * wires its search box with `url: "{{ route('admin.x.search') }}"`, so
+         * the page — loaded over https — was asking the browser for an http
+         * sub-resource. Browsers block that as mixed content, jQuery's `error`
+         * branch fired, and the table showed «Error during search». Nothing ever
+         * reached the server, which is why `laravel.log` was clean and a `curl`
+         * of the same endpoint returned a perfectly good 200: curl has no
+         * mixed-content policy.
+         *
+         * `X-Forwarded-Proto` is the header that matters here, but the client IP
+         * matters just as much: without `X-Forwarded-For`, `$request->ip()` is
+         * Cloudflare's address for every visitor, so the `otp`, `otp-verify`,
+         * `login` and `location` rate limiters in `AppServiceProvider` were
+         * keying every user in the world to one bucket — one person hitting the
+         * OTP limit would lock out everybody.
+         *
+         * `at: '*'` rather than a list of Cloudflare ranges: those ranges change
+         * and a stale list fails closed in exactly this silent way. The trade is
+         * that anything able to reach the origin directly can claim a forwarded
+         * scheme and IP, so the origin should only be reachable through
+         * Cloudflare — which is how it is deployed.
+         */
+        $middleware->trustProxies(
+            at: '*',
+            headers: Request::HEADER_X_FORWARDED_FOR
+                | Request::HEADER_X_FORWARDED_HOST
+                | Request::HEADER_X_FORWARDED_PORT
+                | Request::HEADER_X_FORWARDED_PROTO,
+        );
+
         $middleware->web(append: [
             SetLocale::class,
             SetTimezone::class,

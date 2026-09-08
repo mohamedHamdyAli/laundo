@@ -1304,3 +1304,33 @@ straight at "what differs between the two" instead of "what did I touch".
 came from before forming any theory about the cause. A row count, a timestamp, a
 hostname in the URL bar. And when a report arrives during unrelated work, resist
 the pull to assume it is your work — check it, then look wider.
+
+## "0 kB transferred" means the request never happened
+
+Search failed on every list screen and the table read «Error during search». I
+looked for a server-side fault: the log, the SQL, the collations, the route
+cache. All of it was healthy, and `curl` of the same endpoint returned a perfect
+200 with correct JSON.
+
+The answer was in the Network panel the whole time: **0.0 kB transferred**, and
+"Failed to load response data — no data found for resource". A request with no
+response data and no bytes did not fail, it was **never sent**. The browser
+blocked it as mixed content, because Cloudflare terminates TLS and Laravel —
+with no `trustProxies()` — generated `http://` absolute URLs for a page served
+over `https://`.
+
+`curl` was the misleading witness: it has no mixed-content policy, so it
+happily fetched the URL the browser refused to.
+
+**Rule:** when a client-side request fails, read the transferred size before
+reading the response. Zero bytes and no response body is a *browser* refusal —
+mixed content, CORS, CSP, an extension — and no amount of server-side digging
+will find it. And a `curl` that succeeds where the browser fails is evidence
+about curl, not about the server.
+
+**Corollary, and the bigger prize:** the same missing config meant
+`$request->ip()` was Cloudflare's address for every visitor, so four
+IP-keyed rate limiters were sharing one bucket across the entire internet. The
+visible bug was cosmetic; the invisible one next to it was not. When a proxy
+header turns out to be untrusted, enumerate everything that reads the request —
+scheme, host, port, IP — not just the thing that was reported.
