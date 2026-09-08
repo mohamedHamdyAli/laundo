@@ -883,10 +883,18 @@ body.theme-dark .text-receivable {
     color: #fbbf24 !important;
 }
 
-/* Footer: #919bae on white is 2.80:1. Small print is still print. */
+/* Footer: #919bae on white was 2.80:1. Small print is still print.
+   #6b7687 was the first correction, and it was measured against white — but the
+   footer sits on the page ground, not on a card, so its real backdrop is
+   #f4f6f9 and the ratio came out at 4.25:1, still short of 4.5. Darkening it
+   cannot fix both themes at once: every step that helps on the light ground
+   costs the same step on the dark one (#5c6470 reaches 5.52:1 light and falls
+   to 3.05:1 dark). `--text-muted` is the token for exactly this — quieter than
+   body text, still print — and it is defined per theme, so it clears in both
+   and cannot drift out again. */
 .foot_text,
 .foot_text * {
-    color: #6b7687;
+    color: var(--text-muted);
 }
 
 /* The roles screen painted white on #84b5ec — 2.14:1 on the buttons, the
@@ -2592,6 +2600,26 @@ textarea.form-control {
 .btn-outline-danger {
     font-size: .9rem;
     padding: .55rem 1.1rem;
+}
+
+/* Bootstrap's secondary is #6c757d for both the label and the edge, which on
+   the page ground is 4.33:1 — and these buttons render at 12.6px, so 4.5 is the
+   bar that applies. The label takes `--text-muted` (8.66:1 light, 7.34:1 dark);
+   the border is left alone, because an edge is a non-text component and clears
+   its own 3:1 bar as it is.
+
+   The hover is restated because Bootstrap's `:hover` rule has the same
+   specificity as the base rule above: it fills the button with #6c757d and puts
+   white on it, and a muted label on that fill would be the worse of the two. */
+.btn-outline-secondary {
+    color: var(--text-muted);
+}
+
+.btn-outline-secondary:hover,
+.btn-outline-secondary:focus,
+.btn-outline-secondary:active,
+.btn-outline-secondary.active {
+    color: #fff;
 }
 
 .form-check-input:focus {

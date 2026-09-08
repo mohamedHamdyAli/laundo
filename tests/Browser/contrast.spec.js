@@ -34,29 +34,67 @@ function contrast(fg, bg) {
 }
 
 /**
- * Every badge on the page, with the colours the browser settled on.
+ * Every status label on the page, with the colours the browser settled on.
  *
  * Walks up for the background because a badge whose own background is
  * transparent is drawn on whatever is behind it, and that is what the eye reads.
+ *
+ * **`.status-pill` as well as `.badge`.** When the list screens became stack
+ * rows they stopped rendering Bootstrap badges: a wallet's state is now
+ * `.status-pill tone-ok`, an order's is `tone-live`. Only the topbar's
+ * notification counter was left matching `.badge` on those pages, and it ships
+ * `hidden`, so this helper returned an empty array and four tests failed on
+ * "should render at least one badge" while the screens were full of pills. The
+ * two classes are the same component to a reader, so they are the same
+ * component here.
  */
 async function badges(page) {
   return page.evaluate(() => {
-    const opaque = (c) => c && c !== 'transparent' && !c.startsWith('rgba(0, 0, 0, 0)');
+    const parse = (c) => {
+      const n = c.match(/[\d.]+/g).map(Number);
+      return { r: n[0], g: n[1], b: n[2], a: n.length > 3 ? n[3] : 1 };
+    };
+    const over = (fg, bg) => ({
+      r: bg.r + (fg.r - bg.r) * fg.a,
+      g: bg.g + (fg.g - bg.g) * fg.a,
+      b: bg.b + (fg.b - bg.b) * fg.a,
+      a: 1,
+    });
+    const css = (c) => `rgb(${Math.round(c.r)}, ${Math.round(c.g)}, ${Math.round(c.b)})`;
 
-    return [...document.querySelectorAll('.badge')]
+    /**
+     * The colour behind the label, composited.
+     *
+     * This used to stop at the first background that was not fully transparent
+     * and use it at full strength. A `.status-pill tone-ok` is
+     * `rgba(91, 208, 138, .14)` — a 14% tint — behind text of that same hue, so
+     * the two came out identical and the pill measured **1.00:1** while being
+     * perfectly readable. Alpha is not optional in a contrast sum.
+     */
+    const ground = (el) => {
+      const layers = [];
+      for (let node = el; node; node = node.parentElement) {
+        const c = parse(getComputedStyle(node).backgroundColor);
+        if (c.a === 0) continue;
+        layers.push(c);
+        if (c.a >= 0.999) break;
+      }
+      return layers
+        .reverse()
+        .reduce((acc, c) => over(c, acc), { r: 255, g: 255, b: 255, a: 1 });
+    };
+
+    return [...document.querySelectorAll('.badge, .status-pill')]
       .filter((el) => el.offsetParent !== null && el.textContent.trim() !== '')
       .map((el) => {
-        let bg = getComputedStyle(el).backgroundColor;
-
-        for (let node = el.parentElement; node && !opaque(bg); node = node.parentElement) {
-          bg = getComputedStyle(node).backgroundColor;
-        }
+        const bg = ground(el);
 
         return {
           text: el.textContent.trim().slice(0, 40),
           classes: el.className,
-          color: getComputedStyle(el).color,
-          background: opaque(bg) ? bg : 'rgb(255, 255, 255)',
+          // Composited too: a `color` carrying an alpha is drawn over its pill.
+          color: css(over(parse(getComputedStyle(el).color), bg)),
+          background: css(bg),
         };
       });
   });
@@ -64,20 +102,40 @@ async function badges(page) {
 
 /**
  * Screens whose badges were among the thirteen, plus the wallet screen the report
- * came from and the order list where the `bg-info` case lives.
+ * came from.
  *
  * `populated` marks the ones the dev fixtures guarantee rows for. Refunds and
  * notification logs can legitimately be empty, so demanding a badge there fails
  * on a clean database — but a file that passes because every page was blank
  * proves nothing either, which is what the total below guards.
+ *
+ * The `bg-info` case this file was written for is **not on the order list any
+ * more** — it is a task's status on an order's detail page, along
+ * `bg-light text-dark` and `bg-secondary`. So the detail page is measured too,
+ * and its URL is resolved from the list rather than hard-coded: ids move with
+ * the fixtures.
  */
 const SCREENS = [
   { url: '/admin/wallet', populated: true },
   { url: '/admin/order', populated: true },
-  { url: '/admin/coupon', populated: false },
+  { url: '/admin/coupon', populated: true },
   { url: '/admin/refund', populated: false },
   { url: '/admin/notification', populated: false },
 ];
+
+/** The first order's detail page, or null when the fixtures have no orders. */
+async function firstOrderDetail(page) {
+  await page.goto('/admin/order');
+
+  const href = await page.evaluate(() => {
+    const link = [...document.querySelectorAll('a')]
+      .map((a) => a.getAttribute('href'))
+      .find((h) => h && /\/admin\/order\/show\/\d+$/.test(h));
+    return link ?? null;
+  });
+
+  return href;
+}
 
 test.describe('Badge contrast', () => {
   test.beforeEach(async ({ page }) => {
@@ -110,24 +168,33 @@ test.describe('Badge contrast', () => {
   test('the sweep actually saw a representative spread of badge colours', async ({ page }) => {
     // Without this, an empty database would make every check above vacuous.
     const seen = new Set();
+    const detail = await firstOrderDetail(page);
 
-    for (const { url } of SCREENS) {
+    for (const { url } of [...SCREENS, ...(detail ? [{ url: detail }] : [])]) {
       await page.goto(url);
 
       for (const badge of await badges(page)) {
-        const colour = badge.classes.match(/bg-[a-z]+/);
+        // Both vocabularies: Bootstrap's `bg-*` on the detail screens and this
+        // project's `tone-*` on the stack lists.
+        const colour = badge.classes.match(/bg-[a-z]+|tone-[a-z]+/);
         if (colour) seen.add(colour[0]);
       }
     }
 
-    // The three that needed fixing plus at least one that did not, so the sweep
-    // is proven to reach both the changed and the unchanged cases.
-    expect([...seen].sort().join(' ')).toContain('bg-info');
+    // `bg-light` is the one this file was written for — near-white text on a
+    // near-white pill — and it renders on an order's detail page. Asserting
+    // `bg-info` here is what went stale: it now appears only on an *unfinished*
+    // task, which no fixture guarantees, so the whole-page sweep covers it.
+    expect([...seen].sort().join(' '), `only saw: ${[...seen].join(', ')}`).toContain('bg-light');
     expect(seen.size, `only saw: ${[...seen].join(', ')}`).toBeGreaterThanOrEqual(3);
   });
 
   test('the neutral badge is still visible as a badge, not loose text', async ({ page }) => {
-    await page.goto('/admin/wallet');
+    // On an order's detail page now, not the wallet list — the lists render
+    // `.status-pill`, which carries its own tinted fill.
+    const detail = await firstOrderDetail(page);
+    expect(detail, 'the fixtures should contain at least one order').not.toBeNull();
+    await page.goto(detail);
 
     // Readable text on a pill indistinguishable from the card behind it is only
     // half the fix — the shape has to survive too.
@@ -143,7 +210,7 @@ test.describe('Badge contrast', () => {
       };
     });
 
-    expect(pill, 'a bg-light badge should exist on the wallet list').not.toBeNull();
+    expect(pill, "a bg-light badge should exist on an order's detail page").not.toBeNull();
 
     const againstCard = contrast(pill.background, pill.card);
     const hasEdge = parseFloat(pill.borderWidth) > 0;
@@ -155,21 +222,37 @@ test.describe('Badge contrast', () => {
 test.describe('Badge contrast in dark mode', () => {
   test('badges stay legible with the dark theme on', async ({ page }) => {
     await login(page, ACCOUNTS.superAdmin);
-    await page.goto('/admin/wallet');
 
-    // bg-light and bg-warning are NOT restyled for the dark theme, so a
+    // The theme goes in before the first paint, not by adding the class at
+    // runtime. `.status-pill` reads `--tone-ok-bg` and friends, which
+    // `body.theme-dark` remaps — and a custom property read in the same task
+    // that changed the class defining it can still hold the old theme's value.
+    // Toggling at runtime made this test measure light-mode colours while
+    // reporting on dark mode, i.e. it passed without checking anything.
+    await page.addInitScript(() => localStorage.setItem('theme', 'theme-dark'));
+
+    // The list, for the pills, and an order's detail page, where `bg-light` and
+    // `bg-secondary` live — neither is restyled for the dark theme, so a
     // theme-following text colour would go pale and vanish all over again.
-    // This is the test that catches that specific regression.
-    await page.evaluate(() => document.body.classList.add('theme-dark'));
+    const detail = await firstOrderDetail(page);
 
-    const failures = (await badges(page))
-      .map((b) => ({ ...b, ratio: contrast(b.color, b.background) }))
-      .filter((b) => b.ratio < 4.5);
+    for (const url of ['/admin/wallet', ...(detail ? [detail] : [])]) {
+      await page.goto(url);
 
-    expect(
-      failures.map((f) => `"${f.text}" [${f.classes}] ${f.ratio.toFixed(2)}:1`),
-      'badges below 4.5:1 in dark mode',
-    ).toEqual([]);
+      expect(
+        await page.evaluate(() => document.body.classList.contains('theme-dark')),
+        'the dark theme should be on at first paint',
+      ).toBe(true);
+
+      const failures = (await badges(page))
+        .map((b) => ({ ...b, ratio: contrast(b.color, b.background) }))
+        .filter((b) => b.ratio < 4.5);
+
+      expect(
+        failures.map((f) => `"${f.text}" [${f.classes}] ${f.ratio.toFixed(2)}:1`),
+        `badges below 4.5:1 in dark mode on ${url}`,
+      ).toEqual([]);
+    }
   });
 });
 
@@ -272,31 +355,68 @@ test.describe('Text contrast across the dashboard', () => {
       await settled(page);
 
       const failures = await page.evaluate(() => {
+        const parse = (c) => {
+          const n = c.match(/[\d.]+/g).map(Number);
+          return { r: n[0], g: n[1], b: n[2], a: n.length > 3 ? n[3] : 1 };
+        };
         const lum = (c) => {
-          const [r, g, b] = c.match(/[\d.]+/g).slice(0, 3).map(Number);
           const ch = (v) => {
             const x = v / 255;
             return x <= 0.03928 ? x / 12.92 : Math.pow((x + 0.055) / 1.055, 2.4);
           };
-          return 0.2126 * ch(r) + 0.7152 * ch(g) + 0.0722 * ch(b);
+          return 0.2126 * ch(c.r) + 0.7152 * ch(c.g) + 0.0722 * ch(c.b);
         };
         const ratio = (f, b) => {
           const a = lum(f);
           const c = lum(b);
           return (Math.max(a, c) + 0.05) / (Math.min(a, c) + 0.05);
         };
+        /** `over` composites a translucent colour onto an opaque one. */
+        const over = (fg, bg) => ({
+          r: bg.r + (fg.r - bg.r) * fg.a,
+          g: bg.g + (fg.g - bg.g) * fg.a,
+          b: bg.b + (fg.b - bg.b) * fg.a,
+          a: 1,
+        });
 
         // Resolves a gradient to its first stop rather than skipping the element.
         const paint = (el) => {
           const s = getComputedStyle(el);
-          const bc = s.backgroundColor;
-          if (bc && bc !== 'transparent' && !bc.startsWith('rgba(0, 0, 0, 0)')) return bc;
+          const bc = parse(s.backgroundColor);
+          if (bc.a > 0) return bc;
           const img = s.backgroundImage;
           if (img && img !== 'none') {
             const m = img.match(/rgba?\([^)]+\)/);
-            if (m) return m[0];
+            if (m) return parse(m[0]);
           }
           return null;
+        };
+
+        /**
+         * The colour actually behind the text, composited.
+         *
+         * The third trap, and it made every one of these sixteen tests fail
+         * while nothing was wrong: this used to take the first background it
+         * found that was not fully transparent and hand it over as-is, alpha
+         * discarded. The topbar's language chip is `rgba(0, 0, 0, .05)` — a 5%
+         * tint over white — and it was read as **solid black**, which reported
+         * the `EN` label at 1.27:1 when it is 14.76:1. The chip is on every
+         * screen, so every screen failed on it.
+         *
+         * A translucent layer has to be blended onto what is under it, and the
+         * walk continues until something opaque is reached.
+         */
+        const ground = (el) => {
+          const layers = [];
+          for (let n = el; n; n = n.parentElement) {
+            const c = paint(n);
+            if (!c) continue;
+            layers.push(c);
+            if (c.a >= 0.999) break;
+          }
+          return layers
+            .reverse()
+            .reduce((acc, c) => over(c, acc), { r: 255, g: 255, b: 255, a: 1 });
         };
 
         const out = [];
@@ -314,15 +434,15 @@ test.describe('Text contrast across the dashboard', () => {
           );
           if (!owns) continue;
 
-          let bg = null;
-          for (let n = el; n && !bg; n = n.parentElement) bg = paint(n);
-          if (!bg) bg = 'rgb(255,255,255)';
+          const bg = ground(el);
 
           const size = parseFloat(st.fontSize);
           const bold = parseInt(st.fontWeight, 10) >= 700;
           // WCAG AA: large text clears at 3:1, everything else at 4.5:1.
           const need = size >= 24 || (bold && size >= 18.66) ? 3 : 4.5;
-          const got = ratio(st.color, bg);
+          // The text colour is composited too — a `color` with an alpha is
+          // drawn over its own background, not over nothing.
+          const got = ratio(over(parse(st.color), bg), bg);
 
           if (got < need) {
             const text = el.textContent.trim().replace(/\s+/g, ' ').slice(0, 34);
