@@ -2740,3 +2740,40 @@ See `Changelog.md` for the shipped summary. Notes worth keeping:
 - Pre-existing PHPStan errors, none in the files touched here: four in
   `app/Services/Landing/LandingContentService.php` (lines 289, 290, 397), which
   is the in-progress landing work on this branch.
+
+## Round 3 — search across every list screen (owner report)
+
+Reported as «السيرش بايظ في كل الصفح» and «أي داتا ف الجدول اعمل بيها سيرش
+النتيجه تظهر معايا». Four distinct faults behind one symptom.
+
+- [x] **Mixed content.** Cloudflare is Flexible SSL, so `X-Forwarded-Proto` is
+      truthfully `http` and the visitor's scheme lives only in `CF-Visitor`.
+      Every `route()` produced `http://`, so the browser blocked every AJAX call
+      in the panel — search on all screens and the notification poller — at
+      **0 bytes transferred**. `ResolveCloudflareScheme` + `trustProxies`.
+- [x] **Case-sensitive search.** Seven translatable columns are `json`, which on
+      MariaDB is `longtext utf8mb4_bin` — a binary collation. Fixed in the scope
+      with `LOWER(CAST(... AS CHAR))`, not in seven migrations.
+- [x] **Two screens wrote results into nothing** — `setupAjaxSearch` selectors
+      matching no element (`item_category`, `laundry_staff`).
+- [x] **Filter discarded on keyup** on seven screens; `extraParams` hook added.
+- [x] **Un-grouped OR** in `RefundController` and `NotificationLogController` —
+      a matching term bypassed the filter entirely.
+- [x] **Wallet index/search disagreed** on the row set; earnings list would 500
+      on a deleted payee.
+- [x] Relation paths in `Searchable` (`profile.vehicle_type`, `zones.name`) and
+      columns widened across 21 screens.
+- [x] Sweep: **21 unsearchable columns -> 10**, and all 10 verified to be the
+      sweep's own token picker grabbing UI labels ("areas", "Turnaround") or
+      date fragments rather than data.
+
+**Closed by the owner at this point.** Deliberately not done: the five screens
+with no search box at all — `pricing`, `laundry_service`, `laundry_zone`,
+`roles`, `time_slot`. None is a record list; each is a single `<form>` posting a
+whole grid, so a server-side filtered re-render would blank the un-rendered
+cells on save. They want a client-side row filter, which is separate work.
+
+Also out of scope by decision: `created_at`. `humanDate()` renders in the display
+timezone while the column stores UTC, so matching the text on screen needs a
+timezone conversion in SQL — that is a date filter, not a substring search, and
+half-implementing it would be worse than leaving it.
