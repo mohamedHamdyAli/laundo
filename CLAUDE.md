@@ -311,6 +311,14 @@ Don't "fix" these blind, but know they're there:
   address for every visitor, which silently collapses the `otp`, `otp-verify`,
   `login` and `location` rate limiters into one shared bucket. Configured in
   `bootstrap/app.php` with `at: '*'`; `TrustedProxyTest` guards both halves.
+  **`trustProxies()` is not sufficient on its own here**: Cloudflare runs in
+  Flexible SSL mode, so `X-Forwarded-Proto` truthfully reports `http` for the
+  edge-to-origin hop and the visitor's real scheme arrives only in `CF-Visitor`.
+  `ResolveCloudflareScheme` is **prepended** to the global stack to normalise one
+  into the other before `TrustProxies` reads it. Do not replace it with
+  `URL::forceScheme('https')` — that fixes URL generation and leaves
+  `$request->isSecure()`, cookie flags and redirects still believing the request
+  is insecure.
 - **Seven translatable columns are `json`, not `text`.** `cities.name`,
   `zones.name`, `services.name`, `items.name`, `item_categories.name`,
   `laundries.name` and `coupons.name` — while `banners.name`, `faqs.question`,

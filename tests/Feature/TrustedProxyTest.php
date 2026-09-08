@@ -94,6 +94,71 @@ class TrustedProxyTest extends TestCase
     }
 
     #[Test]
+    public function cloudflares_own_header_is_what_actually_marks_the_request_secure(): void
+    {
+        // The real production shape, measured on the live origin: Cloudflare is
+        // in Flexible SSL mode, so `X-Forwarded-Proto` truthfully says `http`
+        // for the CF->origin hop, and the visitor's scheme survives only in
+        // `CF-Visitor`. Trusting proxies alone reads "http" and changes nothing,
+        // which is why the first attempt at this fix did not work.
+        $html = (string) $this->get('/', [
+            'CF-Visitor' => '{"scheme":"https"}',
+            'X-Forwarded-Proto' => 'http',
+            'X-Forwarded-Host' => 'laundo.nahrdev.net',
+        ])->assertOk()->getContent();
+
+        $this->assertStringContainsString('href="https://', $html);
+        $this->assertStringNotContainsString('rel="canonical" href="http://', $html);
+    }
+
+    #[Test]
+    public function a_list_screens_search_url_is_https_behind_cloudflare(): void
+    {
+        // The reported bug, in the exact header conditions that caused it.
+        $html = (string) $this->actingAs($this->superAdmin())
+            ->get('/admin/service', [
+                'CF-Visitor' => '{"scheme":"https"}',
+                'X-Forwarded-Proto' => 'http',
+            ])
+            ->assertOk()
+            ->getContent();
+
+        $this->assertStringContainsString('https://localhost/admin/service/search', $html);
+        $this->assertStringNotContainsString('http://localhost/admin/service/search', $html);
+    }
+
+    #[Test]
+    public function it_never_upgrades_a_request_cloudflare_says_was_plain(): void
+    {
+        // Only ever upward. A visitor genuinely on http must not be told they
+        // are on https, or every generated link breaks in the other direction.
+        $html = (string) $this->get('/', ['CF-Visitor' => '{"scheme":"http"}'])
+            ->assertOk()
+            ->getContent();
+
+        $this->assertStringContainsString('rel="canonical" href="http://', $html);
+    }
+
+    #[Test]
+    public function a_malformed_cloudflare_header_is_ignored(): void
+    {
+        // Decoded, not string-matched: a substring test would fire on anything
+        // that merely mentioned https, and this decides whether the whole
+        // application treats the connection as secure.
+        foreach (['not json', '{"scheme":"HTTPS"}', '{}', '', 'https'] as $value) {
+            $html = (string) $this->get('/', ['CF-Visitor' => $value])
+                ->assertOk()
+                ->getContent();
+
+            $this->assertStringContainsString(
+                'rel="canonical" href="http://',
+                $html,
+                "CF-Visitor: {$value} should not have been read as https"
+            );
+        }
+    }
+
+    #[Test]
     public function the_client_ip_comes_from_the_forwarded_header(): void
     {
         // Not cosmetic. `AppServiceProvider`'s `otp`, `otp-verify`, `login` and

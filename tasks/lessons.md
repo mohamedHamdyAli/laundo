@@ -1334,3 +1334,27 @@ IP-keyed rate limiters were sharing one bucket across the entire internet. The
 visible bug was cosmetic; the invisible one next to it was not. When a proxy
 header turns out to be untrusted, enumerate everything that reads the request —
 scheme, host, port, IP — not just the thing that was reported.
+
+## `X-Forwarded-Proto` can be truthful and still not the answer
+
+The first fix for the mixed-content bug was `trustProxies(at: '*')`, which is
+the textbook answer and changed nothing. Deployed it, re-tested, still `http://`.
+
+Cloudflare was in **Flexible SSL** mode: browser→edge is https, edge→origin is
+plain http. So `X-Forwarded-Proto: http` was not a misconfiguration, it was an
+accurate description of the hop Laravel was being told about. Trusting it harder
+just made Laravel believe the correct-but-useless value. The visitor's actual
+scheme was in `CF-Visitor: {"scheme":"https"}` the whole time.
+
+**Rule:** before configuring a proxy header, **read what the proxy actually
+sends**. One temporary probe dumping the `HTTP_X_FORWARDED_*` and `HTTP_CF_*`
+keys settled in one request what two deploys of guessing did not. And when a
+standard fix does not work, suspect your model of the infrastructure rather than
+the fix.
+
+**Second rule, on the shape of the fix:** rewrite the *request* rather than
+patching the *symptom*. `URL::forceScheme('https')` would have made the URLs
+right and left `$request->isSecure()` false — so cookie `secure` flags,
+redirects and `getSchemeAndHttpHost()` would all still be wrong, waiting to be
+found separately. Normalising the header at the front of the middleware stack
+fixes every consumer at once.

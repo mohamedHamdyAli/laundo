@@ -6,6 +6,7 @@ use App\Http\Middleware\ApiLocale;
 use App\Http\Middleware\Authenticate;
 use App\Http\Middleware\CheckPermission;
 use App\Http\Middleware\EnsureDashboardRole;
+use App\Http\Middleware\ResolveCloudflareScheme;
 use App\Http\Middleware\SetLocale;
 use App\Http\Middleware\SetTimezone;
 use App\Modules\Notification\Console\AlertSilentPriceConfirmations;
@@ -83,6 +84,15 @@ return Application::configure(basePath: dirname(__DIR__))
          * scheme and IP, so the origin should only be reachable through
          * Cloudflare — which is how it is deployed.
          */
+        /*
+         * Prepended so it runs **before** TrustProxies, which is what reads
+         * `X-Forwarded-Proto`. Cloudflare is in Flexible SSL mode here, so that
+         * header honestly says `http` — the visitor's real scheme arrives only
+         * in `CF-Visitor`, and this normalises one into the other. Trusting
+         * proxies alone would faithfully read "http" and change nothing.
+         */
+        $middleware->prepend(ResolveCloudflareScheme::class);
+
         $middleware->trustProxies(
             at: '*',
             headers: Request::HEADER_X_FORWARDED_FOR
