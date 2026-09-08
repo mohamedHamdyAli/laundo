@@ -58,7 +58,7 @@
         $(document).ready(function () {
             setupAjaxSearch({
                 inputSelector: '#itemcategorySearchInput',
-                tableBodySelector: '#itemcategory-table-body',
+                tableBodySelector: '#item_category-table-body',
                 paginationWrapperSelector: '#pagination-wrapper',
                 url: "{{ route('admin.item_category.search') }}",
                 // Card rows, not a table: the helper's default

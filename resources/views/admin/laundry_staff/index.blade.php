@@ -60,7 +60,7 @@
         $(document).ready(function () {
             setupAjaxSearch({
                 inputSelector: '#staffSearchInput',
-                tableBodySelector: '#staff-table-body',
+                tableBodySelector: '#laundry_staff-table-body',
                 paginationWrapperSelector: '#pagination-wrapper',
                 url: "{{ route('admin.laundry_staff.search') }}",
                 // Card rows, not a table: the helper's default
