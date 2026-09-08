@@ -52,11 +52,29 @@ class RefundController extends Controller
             $term = $request->get('query');
 
             $refunds = Refund::with(['customer:id,name,phone', 'order:id,code', 'reviewer:id,name'])
-                ->when($term, function ($q) use ($term) {
-                    $q->whereHas('order', fn ($o) => $o->where('code', 'like', "%{$term}%"))
-                        ->orWhereHas('customer', fn ($c) => $c->where('name', 'like', "%{$term}%")
-                            ->orWhere('phone', 'like', "%{$term}%"));
-                })
+                /*
+                 * Through the `Searchable` scope, which fixes three things this
+                 * hand-rolled clause got wrong.
+                 *
+                 * **It was un-grouped.** `whereHas(order)` and
+                 * `orWhereHas(customer)` sat at the top level and the `when($status)`
+                 * below appends an AND, so precedence gave
+                 * `exists(order) OR (exists(customer) AND status = X)` — a term
+                 * matching an order code returned rows of **every** status,
+                 * silently ignoring the filter. The scope always wraps its ORs in
+                 * a `where(function …)` group, so that cannot recur.
+                 *
+                 * `reason` and `note` are the whole of the Reason column and were
+                 * not searchable at all; `reviewer.name` is shown in the Status
+                 * cell. And the scope folds case, which a bare `like` cannot do
+                 * against a binary collation.
+                 */
+                ->when($term, fn ($q) => $q->search($term, [
+                    'reason', 'note',
+                    'order.code',
+                    'customer.name', 'customer.phone',
+                    'reviewer.name',
+                ]))
                 ->when($request->get('status') && $request->get('status') !== 'all',
                     fn ($q) => $q->where('status', $request->get('status')))
                 ->latest('id')

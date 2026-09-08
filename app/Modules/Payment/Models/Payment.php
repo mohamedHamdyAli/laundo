@@ -7,6 +7,7 @@ use App\Modules\Payment\Enums\PaymentMethod;
 use App\Modules\Payment\Enums\PaymentStatus;
 use App\Modules\User\Models\User;
 use App\Trait\DashboardModel;
+use App\Trait\Scopes\Searchable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -35,6 +36,7 @@ class Payment extends Model
     // For PermissionGenerator. Without it the ledger routes would be gated on
     // permissions that do not exist — a 403 nobody can grant their way out of.
     use DashboardModel;
+    use Searchable;
 
     protected $fillable = [
         'order_id', 'user_id', 'provider', 'method', 'provider_reference',

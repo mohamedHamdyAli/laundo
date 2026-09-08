@@ -54,14 +54,14 @@ class PaymentLedgerController extends Controller
         $term = (string) $request->get('query');
 
         $payments = $this->paymentQuery((string) $request->get('status', 'all'))
-            ->when($term !== '', function (Builder $q) use ($term) {
-                $q->where(function (Builder $inner) use ($term) {
-                    $inner->where('provider_reference', 'like', "%{$term}%")
-                        ->orWhereHas('order', fn ($o) => $o->where('code', 'like', "%{$term}%"))
-                        ->orWhereHas('customer', fn ($c) => $c->where('name', 'like', "%{$term}%")
-                            ->orWhere('phone', 'like', "%{$term}%"));
-                });
-            })
+            // `provider` sits under the order code and `failure_reason` in the
+            // status cell; neither was searchable, and a decline reason is
+            // exactly what an operator pastes in when chasing a failed payment.
+            ->when($term !== '', fn (Builder $q) => $q->search($term, [
+                'provider_reference', 'provider', 'failure_reason',
+                'order.code',
+                'customer.name', 'customer.phone',
+            ]))
             ->paginate(20);
 
         return response()->json([
@@ -142,10 +142,14 @@ class PaymentLedgerController extends Controller
         $term = (string) $request->get('query');
 
         $earnings = $this->earningQuery((string) $request->get('status', 'pending'))
-            ->when($term !== '', fn (Builder $q) => $q->whereHas(
-                'payee',
-                fn ($d) => $d->where('name', 'like', "%{$term}%")->orWhere('phone', 'like', "%{$term}%")
-            ))
+            // `order.code` is displayed and was not searchable. `payee`, not
+            // `driver`: the driver relation is role-scoped, so a person moved off
+            // driving would drop out of their own earnings history — see
+            // `tasks/lessons.md`.
+            ->when($term !== '', fn (Builder $q) => $q->search($term, [
+                'payee.name', 'payee.phone',
+                'order.code',
+            ]))
             ->paginate(20);
 
         return response()->json([

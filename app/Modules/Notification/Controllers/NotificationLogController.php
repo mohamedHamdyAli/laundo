@@ -54,10 +54,25 @@ class NotificationLogController extends Controller
         $term = $request->get('query');
 
         return NotificationLog::with('recipient:id,name,phone')
-            ->when($term, fn ($q) => $q->where('title', 'like', "%{$term}%")
-                ->orWhere('body', 'like', "%{$term}%")
-                ->orWhereHas('recipient', fn ($r) => $r->where('name', 'like', "%{$term}%")
-                    ->orWhere('phone', 'like', "%{$term}%")))
+            /*
+             * Same un-grouped-OR fault Refund had, and this one fired in normal
+             * use: the index view does post `event` and `status`, and both were
+             * appended as ANDs after a top-level chain of ORs. So
+             * `title LIKE … OR body LIKE … OR (exists(recipient) AND event = X
+             * AND status = Y)` — a term matching a title or body ignored both
+             * filters. The scope groups its ORs, so the filters below compose.
+             *
+             * `destination`, `channel` and `failure_reason` are all displayed and
+             * none was searchable. `destination` is the token or number the
+             * notification was aimed at and `failure_reason` is why it did not
+             * arrive — between them the two questions this screen exists to
+             * answer.
+             */
+            ->when($term, fn ($q) => $q->search($term, [
+                'title', 'body',
+                'destination', 'channel', 'failure_reason',
+                'recipient.name', 'recipient.phone',
+            ]))
             ->when($request->get('event'), fn ($q) => $q->where('event', $request->get('event')))
             ->when($request->get('status'), fn ($q) => $q->where('status', $request->get('status')));
     }

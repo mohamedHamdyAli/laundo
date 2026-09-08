@@ -106,6 +106,14 @@
                 tableBodySelector: '#notification-table-body',
                 paginationWrapperSelector: '#pagination-wrapper',
                 url: "{{ route('admin.notification.search') }}",
+                // Keeps the filter when somebody types. The controller reads it from
+                // the same request, and without this it silently reverted to the
+                // default. A function, so the value is read per request rather than
+                // once at page load.
+                extraParams: () => ({
+                    event: $('#notificationEventFilter').val(),
+                    status: $('#notificationStatusFilter').val(),
+                }),
                 // Card rows, not a table: the helper's default
                 // <tr><td colspan> failure message would be stray
                 // markup here.

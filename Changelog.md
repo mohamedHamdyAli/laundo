@@ -2,6 +2,19 @@
 
 ## 2026-09-08
 
+### Fix
+
+- **Search silently threw away the screen's filter.** Seven list screens carry a filter beside the search box, and every one of their controllers reads it from the same request the term arrives on — but `setupAjaxSearch` sent only `query` and `page`. So typing reverted the filter to the controller's default: filtering complaints to «Resolved» and then typing put you back on the open ones, and on Refunds the filter vanished entirely. The code was written to compose; the JS was what prevented it. New `extraParams` hook, passed as a **function** so the value is read per request rather than captured at page load, and wired into all eight screens (Blade).
+- **Two controllers built an un-grouped OR, so a matching term bypassed the filter outright.** `RefundController@search` and `NotificationLogController@filtered` chained `where(...)->orWhere(...)` at the top level and then appended the filter as an `AND`; precedence gives `a OR b OR (c AND filter)`. A term matching a title, a body or an order code ignored the filter completely. **The notification one fired in normal use**, because that screen does post its filters. Both now go through the `Searchable` scope, which always groups its ORs — so the shape cannot recur (Controllers).
+- **Wallet search and the wallet list disagreed about which rows exist.** `index()` shows only wallets holding money; `search()` omitted that restriction, so a zero-balance wallet appeared while you typed and vanished when you cleared the box — which reads as data loss rather than as a filter (Controller).
+- **The earnings list would 500 on a deleted payee.** `$row->payee->name` with no null-safe, alone among every cell on that screen (Blade).
+- **Eight more screens now search what they display.** The remaining list screens built their own query instead of using the scope, so none of them folded case or could reach a relation. Converted, and widened: **payment** `provider` + `failure_reason` — a decline reason is what an operator pastes in when chasing a failed charge; **refund** `reason` + `note` + `reviewer.name` — `reason` was the whole of a visible column and unsearchable; **notification_log** `destination` + `channel` + `failure_reason` — the token aimed at and why it did not arrive; **complaint** `laundry.name` + `handler.name` + `category`; **rating** `laundry.name`; **recurrence** `frequency` + `service.name` — it had been customer name and phone only; **earning** `order.code` (Controllers).
+
+### Tests
+
+- `SearchFilterCompositionTest` — 6 tests. Three prove a notification term matching the title still respects the `status` and `event` filters and that the three new columns are reachable; one proves wallet search hides the same empty wallets the list does; two static checks prove all eight screens forward their filter and that the helper reads it per request. **Verified by reintroducing each bug rather than assumed** — the three notification tests and the wallet test each fail with their fix removed (Tests).
+- **909 tests, 2,857 assertions, green.** PHPStan level 5 clean (Verification).
+
 ### Feature
 
 - **Anything a list screen displays can now be searched for.** Owner's requirement: «أي داتا ف الجدول اعمل بيها سيرش النتيجه تظهر معايا». A sweep that drives the real search box on all 34 sidebar screens and tests **every visible column of the first row against its own value** found 21 displayed columns their own search could not match. That sweep now reports 34 searchable against 22, and most of the remainder are enum labels, aggregates or dates that are deliberately out of scope (see below) (Trait / Repositories).

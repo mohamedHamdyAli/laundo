@@ -5,6 +5,7 @@ namespace App\Modules\Payment\Models;
 use App\Modules\Order\Models\Order;
 use App\Modules\User\Models\User;
 use App\Trait\DashboardModel;
+use App\Trait\Scopes\Searchable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -27,6 +28,7 @@ use Illuminate\Support\Carbon;
 class Refund extends Model
 {
     use DashboardModel;
+    use Searchable;
 
     public const PENDING = 'pending';
 

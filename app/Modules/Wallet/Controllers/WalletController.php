@@ -53,9 +53,15 @@ class WalletController extends Controller
             $term = $request->get('query');
 
             $wallets = Wallet::with('owner:id,name,phone,email')
-                ->when($term, fn ($q) => $q->whereHas('owner', fn ($o) => $o->where('name', 'like', "%{$term}%")
-                    ->orWhere('phone', 'like', "%{$term}%")
-                    ->orWhere('email', 'like', "%{$term}%")))
+                // The same restriction `index()` applies. Without it, searching
+                // surfaced zero-balance wallets the unsearched list deliberately
+                // hides — so a row would appear while you typed and vanish when
+                // you cleared the box, which reads as data loss rather than as a
+                // filter.
+                ->where(fn ($q) => $q->where('balance', '>', 0)->orWhere('pending_balance', '>', 0))
+                ->when($term, fn ($q) => $q->search($term, [
+                    'owner.name', 'owner.phone', 'owner.email',
+                ]))
                 ->orderByDesc('balance')
                 ->paginate(15);
 

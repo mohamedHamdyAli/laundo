@@ -108,6 +108,13 @@
                 tableBodySelector: '#order-table-body',
                 paginationWrapperSelector: '#pagination-wrapper',
                 url: "{{ route('admin.order.search') }}",
+                // Keeps the filter when somebody types. The controller reads it from
+                // the same request, and without this it silently reverted to the
+                // default. A function, so the value is read per request rather than
+                // once at page load.
+                extraParams: () => ({
+                    status: $('#orderStatusFilter').val(),
+                }),
                 // This list is card rows, not a table, so the helper's default
                 // `<tr><td colspan>` failure message would be stray markup here.
                 errorHtml: '<div class="stack-empty text-danger">{{ __('Error during search') }}</div>'

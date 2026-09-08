@@ -7,6 +7,7 @@ use App\Modules\Service\Models\Service;
 use App\Modules\TimeSlot\Models\TimeSlot;
 use App\Modules\User\Models\User;
 use App\Trait\DashboardModel;
+use App\Trait\Scopes\Searchable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -41,6 +42,7 @@ class OrderRecurrence extends Model
     // dashboard routes would be gated on permissions that do not exist, which is
     // a 403 nobody can grant their way out of.
     use DashboardModel;
+    use Searchable;
 
     protected $fillable = [
         'user_id', 'service_id', 'pickup_address_id', 'time_slot_id',

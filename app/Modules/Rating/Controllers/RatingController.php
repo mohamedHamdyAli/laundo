@@ -46,14 +46,14 @@ class RatingController extends Controller
         $term = (string) $request->get('query');
 
         $ratings = $this->listing((string) $request->get('band', 'all'))
-            ->when($term !== '', function (Builder $q) use ($term) {
-                $q->where(function (Builder $inner) use ($term) {
-                    $inner->where('comment', 'like', "%{$term}%")
-                        ->orWhereHas('order', fn ($o) => $o->where('code', 'like', "%{$term}%"))
-                        ->orWhereHas('customer', fn ($c) => $c->where('name', 'like', "%{$term}%")
-                            ->orWhere('phone', 'like', "%{$term}%"));
-                });
-            })
+            // `laundry.name` is shown under the order code and was not
+            // searchable.
+            ->when($term !== '', fn (Builder $q) => $q->search($term, [
+                'comment',
+                'order.code',
+                'customer.name', 'customer.phone',
+                'laundry.name',
+            ]))
             ->paginate(15);
 
         return response()->json([

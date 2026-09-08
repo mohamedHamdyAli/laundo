@@ -291,6 +291,22 @@
     });
 </script>
 <script type="text/javascript">
+    /**
+     * Wire a list screen's search box to its `search` endpoint.
+     *
+     * `config.extraParams` is optional and is how a screen that also has a
+     * filter keeps it. Pass a **function** so the value is read when the request
+     * is made rather than when the page loaded:
+     *
+     *     extraParams: () => ({ status: $('#orderStatusFilter').val() })
+     *
+     * Without it this sent only `query` and `page`, while seven controllers read
+     * a second filter from the same request — so typing silently reset the
+     * filter to the controller's default. Filtering complaints to «Resolved» and
+     * then typing snapped you back to the open ones, and on Refunds the filter
+     * vanished entirely. The code was written to compose; the JS was what
+     * prevented it.
+     */
     function setupAjaxSearch(config) {
         let debounceTimeout;
 
@@ -302,7 +318,7 @@
             $.ajax({
                 url: config.url,
                 type: 'GET',
-                data: {
+                data: Object.assign({
                     // `query` is the established parameter name — every search()
                     // action reads it with $request->get('query'). Note it must be
                     // read that way and never as $request->query: Symfony's
@@ -310,7 +326,7 @@
                     // so the property access returns that object, not the term.
                     query: query,
                     page: page
-                },
+                }, typeof config.extraParams === 'function' ? config.extraParams() : (config.extraParams || {})),
                 success: function(response) {
                     tableBody.html(response.table);
                     paginationWrapper.html(response.pagination);

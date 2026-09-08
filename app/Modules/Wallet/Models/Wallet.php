@@ -4,6 +4,7 @@ namespace App\Modules\Wallet\Models;
 
 use App\Modules\User\Models\User;
 use App\Trait\DashboardModel;
+use App\Trait\Scopes\Searchable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -24,6 +25,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class Wallet extends Model
 {
     use DashboardModel;
+    use Searchable;
 
     protected $fillable = ['user_id', 'balance', 'pending_balance', 'currency', 'is_frozen'];
 

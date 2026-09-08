@@ -7,6 +7,7 @@ use App\Modules\Order\Models\Order;
 use App\Modules\Order\Models\OrderTask;
 use App\Modules\User\Models\User;
 use App\Trait\DashboardModel;
+use App\Trait\Scopes\Searchable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -32,6 +33,7 @@ class DriverEarning extends Model
     // For PermissionGenerator. Without it the ledger routes would be gated on
     // permissions that do not exist — a 403 nobody can grant their way out of.
     use DashboardModel;
+    use Searchable;
 
     public const PENDING = 'pending';
 

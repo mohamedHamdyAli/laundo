@@ -62,15 +62,17 @@ class ComplaintController extends Controller
         $term = (string) $request->get('query');
 
         $complaints = $this->listing((string) $request->get('status', 'open'))
-            ->when($term !== '', function (Builder $q) use ($term) {
-                $q->where(function (Builder $inner) use ($term) {
-                    $inner->where('reference', 'like', "%{$term}%")
-                        ->orWhere('body', 'like', "%{$term}%")
-                        ->orWhereHas('complainant', fn ($c) => $c->where('name', 'like', "%{$term}%")
-                            ->orWhere('phone', 'like', "%{$term}%"))
-                        ->orWhereHas('order', fn ($o) => $o->where('code', 'like', "%{$term}%"));
-                });
-            })
+            // `laundry.name` and `handler.name` are the two halves of the
+            // Laundry column and neither was searchable; `category` is what the
+            // Reference cell falls back to when a complaint has no order. The
+            // scope also folds case, which matters because `laundries.name` is a
+            // json column with a binary collation.
+            ->when($term !== '', fn (Builder $q) => $q->search($term, [
+                'reference', 'body', 'category',
+                'complainant.name', 'complainant.phone',
+                'order.code',
+                'laundry.name', 'handler.name',
+            ]))
             ->paginate(15);
 
         return response()->json([

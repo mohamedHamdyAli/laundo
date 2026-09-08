@@ -51,10 +51,15 @@ class RecurrenceController extends Controller
         $status = (string) $request->get('status', 'all');
 
         $recurrences = $this->listing($status)
-            ->when($term !== '', fn ($q) => $q->whereHas(
-                'customer',
-                fn ($c) => $c->where('name', 'like', "%{$term}%")->orWhere('phone', 'like', "%{$term}%")
-            ))
+            // Was customer name and phone only. `service.name` and `frequency`
+            // are both in the Schedule column — the second-most-visible text on
+            // the row. `day_of_week` stays out: it is an integer rendered as a
+            // translated weekday name, so "Monday" maps to no stored text.
+            ->when($term !== '', fn ($q) => $q->search($term, [
+                'frequency',
+                'customer.name', 'customer.phone',
+                'service.name',
+            ]))
             ->paginate(15);
 
         return response()->json([

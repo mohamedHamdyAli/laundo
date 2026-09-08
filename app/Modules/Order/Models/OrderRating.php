@@ -6,6 +6,7 @@ use App\Modules\Order\Enums\RatingTag;
 use App\Modules\User\Models\User;
 use App\Trait\BelongsToLaundry;
 use App\Trait\DashboardModel;
+use App\Trait\Scopes\Searchable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -45,6 +46,7 @@ class OrderRating extends Model
 
     // For PermissionGenerator, so `order_rating.*` exists to gate the screen on.
     use DashboardModel;
+    use Searchable;
 
     /** The score below which a rating is treated as a complaint. */
     public const POOR_AT_OR_BELOW = 2;

@@ -8,6 +8,7 @@ use App\Modules\Laundry\Models\Laundry;
 use App\Modules\Order\Models\Order;
 use App\Modules\User\Models\User;
 use App\Trait\DashboardModel;
+use App\Trait\Scopes\Searchable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -48,6 +49,7 @@ class Complaint extends Model
 {
     // For PermissionGenerator, so `complaint.*` exists to gate the screen on.
     use DashboardModel;
+    use Searchable;
 
     protected $fillable = [
         'reference', 'user_id', 'order_id', 'laundry_id',

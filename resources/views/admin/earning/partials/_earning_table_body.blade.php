@@ -5,8 +5,8 @@
     @endphp
     <div class="stack-row {{ $cancelled ? 'tone-bad' : '' }}">
         <div>
-            <span class="row-lead">{{ $row->payee->name }}</span>
-            <span class="row-sub">{{ $row->payee->phone }}</span>
+            <span class="row-lead">{{ $row->payee?->name ?? '—' }}</span>
+            <span class="row-sub">{{ $row->payee?->phone ?? '—' }}</span>
         </div>
         <div>
             <span class="row-main">
