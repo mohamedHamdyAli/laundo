@@ -27,7 +27,12 @@ class GeneralSettingRequest extends FormRequest
         if (Route::is('admin.generalSetting.updateGeneralSetting')) {
             $rules = [
                 'App_Name' => 'nullable|max:191',
-                'About' => 'nullable|max:5000',
+                // An array keyed by language code, so the rule belongs on the
+                // members. `'About' => 'max:5000'` was counting *keys* — it
+                // would have passed a two-language payload of any size and
+                // failed only an install with 5,001 languages.
+                'About' => ['nullable', 'array'],
+                'About.*' => ['nullable', 'string', 'max:20000'],
                 'App_Logo' => 'nullable|image|mimes:jpg,png,jpeg,gif,svg|max:2048',
                 // A second file, because a single logo cannot serve both surfaces:
                 // the brand navy is 1.08:1 on the navy sidebar, which is invisible
@@ -70,8 +75,22 @@ class GeneralSettingRequest extends FormRequest
             ];
         } elseif (Route::is('admin.generalSetting.updatePrivacyAndTerms')) {
             $rules = [
-                'Privacy_Policy' => 'nullable|max:5000',
-                'Terms' => 'nullable|max:5000',
+                /*
+                 * Same shape as About, and the ceiling matters here.
+                 *
+                 * These hold documents: the shipped terms are 7,477 characters
+                 * of English and 10,106 of Arabic, and the privacy policy 5,800
+                 * and 7,865. A `max:5000` on each language — the obvious
+                 * "tidy-up" of the rule that was here — would have refused to
+                 * save the copy the application already ships, and the operator
+                 * would have seen a validation error on text they had not
+                 * touched. 20,000 leaves room to extend them; the column is
+                 * `longtext`, so the database is not the limit.
+                 */
+                'Privacy_Policy' => ['nullable', 'array'],
+                'Privacy_Policy.*' => ['nullable', 'string', 'max:20000'],
+                'Terms' => ['nullable', 'array'],
+                'Terms.*' => ['nullable', 'string', 'max:20000'],
             ];
         }
 

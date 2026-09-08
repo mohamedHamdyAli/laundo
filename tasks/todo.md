@@ -2827,3 +2827,59 @@ all 16 sweep screens and the badge tests go red:
   believing it cleared it.
 
 Not touched here to keep this commit scoped to what was asked. Next up.
+
+### Round 4b — the 20 pre-existing contrast failures
+
+Cleared, and only two of them were bugs in the panel:
+
+- [x] **16 sweep failures were the test's own maths.** It discarded alpha, so the
+      topbar's `rgba(0, 0, 0, .05)` chip was measured as solid black and the
+      `EN` label read 1.27:1 instead of 14.76:1. On every screen. Both helpers
+      composite now.
+- [x] **4 badge failures were stale markup + missing fixtures.** The lists render
+      `.status-pill`, not `.badge`; `bg-light`/`bg-info` moved to an order's
+      detail page. Retargeted, and `DevFixturesSeeder` run.
+- [x] The dark-mode badge test was a **false pass** — it toggled the theme at
+      runtime and read the light theme's tokens. Theme now set before paint,
+      with an assertion that it took.
+- [x] Footer 4.25:1 → 8.66:1 via `--text-muted` (no fixed hex clears both themes).
+- [x] `.btn-outline-secondary` label 4.33:1 → 8.66:1, seven screens.
+
+31/31 green.
+
+---
+
+## Round 5 — the About / Terms / Privacy editors
+
+The oldest item still open: «ممكن تظبط جزء ال about يبقا ckeditor وكمان تعملي
+انبوت يبقا فيها الشروط والخصوصية».
+
+- [x] **A rich-text editor on all three document settings.** TinyMCE, because it
+      is already vendored *and* already loaded on every panel page; CKEditor is
+      not on disk at all (only a stub expecting a `ClassicEditor` global that
+      nothing defines). `setupRichText()` in `footer_script`, driven by
+      `data-rich-text`.
+- [x] **Terms and Privacy inputs.** They already existed, per language, on a
+      screen nothing linked to. Linked from the general settings header, with a
+      way back.
+- [x] Direction per language, skin per theme, `disabled` carried as `readonly`.
+- [x] `formatselect`, not `blocks` — this is TinyMCE 5, where `blocks` silently
+      renders no button and the heading dropdown just is not there.
+- [x] Validation moved from the array to its members, ceiling raised to 20,000.
+      At 5,000 — the obvious "fix" — saving the shipped terms would have failed.
+- [x] `for="setting-About"` pointed at an id that did not exist.
+
+### Verification
+
+- 938 PHPUnit tests green (926 + 12).
+- Driven in the browser: 4 editors on the legal screen, 2 on the general one,
+  Arabic boxes RTL, heading dropdown present, **a real save round-tripped** —
+  marker text arrived, English untouched at 21 headings, Arabic readable in the
+  column — and the pre-test values were restored from a backup afterwards.
+- `/en/terms`, `/en/privacy`, `/ar/terms` all 200 with their headings intact,
+  and none of them loads TinyMCE.
+
+### Still with the owner
+
+Store URLs, hotline, WhatsApp and the social links — «دا لسه». And the legal
+copy wants a solicitor's eye; the seeder says so in its docblock.

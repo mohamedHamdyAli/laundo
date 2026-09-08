@@ -2,6 +2,32 @@
 
 ## 2026-09-08
 
+### Feature
+
+- **About, Terms and the Privacy Policy are edited in a rich-text editor.** All three settings hold documents rather than strings — the shipped terms run to 7,477 characters of English and 10,106 bytes of Arabic, structured with headings and lists — and the public legal page has always printed them unescaped, its own comment describing them as "written by the panel's rich-text editors". They were not: About was a three-row textarea, and the only way to give the terms a heading was to type `<h2>` into it by hand (Blade).
+- `setupRichText()` sits with the other client helpers in `layouts/footer_script` and picks up any `textarea[data-rich-text]`. **TinyMCE, not CKEditor**: TinyMCE 5.10.5 is already vendored *and already loaded on every panel page*, with both the oxide and oxide-dark skins and the plugins needed, while `assets/js/pages/ckeditor.js` expects a `ClassicEditor` global that no script defines — so CKEditor would have meant adding a vendor bundle to a project whose brief is to add none (Blade).
+- Each box is initialised individually so `directionality` can follow the language rather than the session: the Arabic document is authored right-to-left while the panel is still in English. The skin follows `body.theme-dark`, and the `*.show` routes' `disabled` is carried over as `readonly`, which TinyMCE drops otherwise (Blade).
+- **«Edit Privacy And Terms» is reachable.** The route, the controller, the view and a box per language had all been built and **nothing anywhere linked to it** — `config/menu.php` maps the `setting` key to a single route, so it hangs off the general settings header, the way the four language editors hang off the language row's actions. There is a link back, because the screen is not in the sidebar (Blade).
+
+### Fix
+
+- **The settings rules were applied to the wrong thing.** `'Terms' => 'nullable|max:5000'` puts `max` on an *array*: it was counting languages, so it passed a payload of any size and would have failed only an install with 5,001 of them. Same for `Privacy_Policy` and `About`. Moved to `Terms.*` etc. — and the ceiling is 20,000 rather than the 5,000 that was written there, because the obvious tidy-up would have **refused to save the copy the application already ships** and pointed the error at a field the operator had not touched (Request).
+- The About label's `for` pointed at `setting-About` while the textarea's id was `setting-title`, so clicking the label focused nothing (Blade).
+
+### Tests
+
+- `LegalSettingsTest` — 12 tests: the general screen links to the legal one, a box per language for both documents, every document field marked for the editor, the Arabic box authored RTL and the English LTR, both languages of both documents stored, markup surviving the round trip with Arabic readable in the column, **a document the size of the shipped terms accepted**, one past the ceiling refused, About saved with its markup, one language written without wiping the other, the public page rendering the saved markup as markup, and the public page **not** loading the editor — `layouts/landing` deliberately loads none of the panel's assets and TinyMCE is 7.4 MB of them (Tests).
+
+### Fix
+
+- **The browser contrast suite had 20 failures, and 16 of them were the test's own arithmetic.** `contrast.spec.js` took the first background it found that was not fully transparent and used it at full strength, alpha discarded. The topbar's language chip is `rgba(0, 0, 0, .05)` — a 5% tint over white — so the `EN` label was measured against **solid black** and reported at 1.27:1 when it is 14.76:1. That chip is on every screen, so all sixteen sweep screens failed on it. Both helpers in the file now composite each translucent layer onto what is under it and keep walking until something opaque is reached (Tests).
+- The same defect hid a second way round: `.status-pill tone-ok` is a 14% green tint behind text of that same green, which uncomposited reads **1.00:1** — a pill that is perfectly legible measured as invisible. The dark-mode badge test was passing only because it toggled `theme-dark` at runtime and read the light theme's custom properties; it sets the theme before first paint now, and asserts that it took (Tests).
+- **The badge tests asserted markup that had been replaced.** When the list screens became stack rows they stopped rendering Bootstrap badges — a wallet's state is `.status-pill tone-ok` now — leaving only the topbar's `hidden` counter to match `.badge`, so four tests failed on "should render at least one badge" while the screens were full of pills. The helper measures `.badge, .status-pill` (the same component to a reader), and the `bg-light` / `bg-info` cases moved with the markup to an order's detail page, whose URL is resolved from the list rather than hard-coded (Tests).
+- **The footer was 4.25:1**, not the 4.5 its own comment aimed at: `#6b7687` was measured against white, but the footer sits on the page ground (#f4f6f9). No fixed hex clears both themes — every step that helps the light ground costs the same on the dark one — so it takes `--text-muted`, which is defined per theme. 8.66:1 light, and it cannot drift out again (CSS).
+- **`.btn-outline-secondary` labels were 4.33:1** at 12.6px, across seven screens. Bootstrap's `#6c757d` for the label takes `--text-muted` instead; the border keeps it, an edge being a non-text component that clears its own 3:1 bar. The hover is restated so the filled state keeps white on it (CSS).
+
+`contrast.spec.js` is 31/31 green. Four of those twenty were a **data** gap rather than a defect — the badge screens need `php artisan db:seed --class=DevFixturesSeeder` before they have rows to measure.
+
 ### Fix
 
 - **The Services list could not be filtered by Duration.** The column shows `24–48 hours`, composed in Blade from three separate fields — `duration_min`, `duration_max`, `duration_unit` — so nothing in the table matched anything in the database and typing what was on screen returned nothing. `search()` now matches the composed expression: `CONCAT(duration_min, '-', duration_max)` plus the pluralised unit, and strips a unit word off a term that carries digits, so `24-48 hours` reaches the numbers while a bare `hours` still reaches `duration_unit`. The en-dash the view renders is folded to a hyphen, because that character is on neither an Arabic nor an English keyboard (Repository).

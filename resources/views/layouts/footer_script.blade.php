@@ -292,6 +292,77 @@
 </script>
 <script type="text/javascript">
     /**
+     * Turn every `textarea[data-rich-text]` into a rich-text editor.
+     *
+     * Three settings hold documents rather than strings — `About`, `Terms` and
+     * `Privacy_Policy` — and all three are already rendered as HTML: the public
+     * legal page prints them unescaped and its own comment says they are
+     * "written by the panel's rich-text editors". They were not. The editor is
+     * this, and until now the only way to add a heading to the terms was to
+     * type `<h2>` into a plain textarea.
+     *
+     * TinyMCE is used because it is **already on disk and already loaded** on
+     * every panel page (5.10.5, with the oxide and oxide-dark skins and the
+     * plugins below). CKEditor is not: `assets/js/pages/ckeditor.js` expects a
+     * `ClassicEditor` global that no script defines, so it draws nothing.
+     * Reaching for it would mean adding a vendor bundle to a project whose
+     * brief is to add none.
+     *
+     * Per-textarea init rather than one call with a shared selector, because
+     * `directionality` differs per box: the Arabic document has to be authored
+     * right-to-left even while the panel is in English.
+     */
+    function setupRichText(root) {
+        if (typeof tinymce === 'undefined') {
+            return;
+        }
+
+        const dark = document.body.classList.contains('theme-dark');
+        const boxes = (root || document).querySelectorAll('textarea[data-rich-text]');
+
+        boxes.forEach(function (box) {
+            // The `*.show` routes render these disabled. TinyMCE drops the
+            // attribute when it replaces the element, so it has to be told.
+            const readOnly = box.hasAttribute('disabled') || box.hasAttribute('readonly');
+
+            tinymce.init({
+                target: box,
+                // `dir` on the element, so the Arabic box is authored RTL
+                // regardless of which language the panel itself is in.
+                directionality: box.getAttribute('dir') === 'rtl' ? 'rtl' : 'ltr',
+                height: parseInt(box.getAttribute('data-rich-height'), 10) || 320,
+                menubar: false,
+                branding: false,
+                readonly: readOnly,
+                plugins: 'lists link code paste autolink searchreplace wordcount',
+                // `formatselect`, not `blocks`: this is TinyMCE 5.10, and the
+                // rename happened in 6. Under 5 the name `blocks` is simply not
+                // a registered button, so the toolbar renders without it and
+                // there is no error anywhere — the heading dropdown is just
+                // missing, which is the one control a document editor needs.
+                toolbar:
+                    'undo redo | formatselect | bold italic | bullist numlist | link | removeformat | code',
+                block_formats: 'Paragraph=p; Heading=h2; Subheading=h3',
+                // A legal document is prose and lists. Anything else pasted in
+                // from Word arrives as Word's own markup and is then a support
+                // question, so paste is cleaned.
+                paste_as_text: false,
+                paste_webkit_styles: 'none',
+                paste_remove_styles_if_webkit: true,
+                skin: dark ? 'oxide-dark' : 'oxide',
+                content_css: dark ? 'dark' : 'default',
+                // Relative to `public/`, which is where the vendored copy lives.
+                skin_url: '{{ asset('assets/extensions/tinymce/skins/ui') }}/' + (dark ? 'oxide-dark' : 'oxide'),
+                content_style: 'body { font-size: 15px; line-height: 1.7 }',
+            });
+        });
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
+        setupRichText(document);
+    });
+
+    /**
      * Filter what is already on the page, in the browser.
      *
      * Five screens in the sidebar have no search box: Prices, My Services, My

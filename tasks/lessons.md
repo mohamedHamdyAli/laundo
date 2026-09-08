@@ -1481,3 +1481,88 @@ tests/browser/contrast.spec.js` printed nothing at all while the file was
 modified, because git tracks it as `tests/Browser/...`. On Windows the
 filesystem accepts either and git does not — an empty diff is not proof of an
 unchanged file.
+
+## A red suite is a claim; check whether the claim is about the app or the test
+
+Twenty browser tests were failing before this round's work started. The
+temptation on seeing "every text element on /admin/home meets WCAG AA" fail is
+to go fix the colours. Two of the twenty were about the panel. The other
+eighteen were about the tests:
+
+- **Sixteen** came from one line of arithmetic. The sweep took the first
+  background that was not fully transparent and used it at full strength, so a
+  5%-black chip in the topbar was measured as **solid black** and the label on
+  it read 1.27:1 instead of 14.76:1. The chip is in the topbar, so every screen
+  inherited the failure.
+- **Four** asserted `.badge` on screens that had been converted to stack rows
+  and render `.status-pill` now. The tests were right when they were written and
+  nobody updated them when the markup changed.
+- And one test that *passed* was worse than the failures: the dark-mode badge
+  check toggled `theme-dark` at runtime, read custom properties that had not
+  re-resolved, and measured light-mode colours while reporting on dark mode.
+
+**Rule:** before changing the app to satisfy a failing measurement, verify the
+measurement. Ask what the number *should* be and compute it by hand once. And
+when a test fails on "should render at least one X", look at the page — the
+absent X is usually a renamed class or an unseeded database, not a regression.
+
+**Corollary:** four of the twenty were neither — `/admin/wallet` had no rows
+because `DevFixturesSeeder` had not been run in this database. `helpers.js`
+documents it; the failure message does not. Run the fixtures before reading a
+browser failure as a defect.
+
+## Blade compiles echoes inside JavaScript comments
+
+`setupRichText()` shipped with a JSDoc line explaining that the legal page
+prints its values with a raw echo — and I wrote the raw echo's own syntax into
+that sentence. Blade does not care that it is inside `/** */`: it compiled an
+echo with an empty expression and every panel page 500'd with
+`syntax error, unexpected token ";"`, blaming `footer_script.blade.php` with no
+line number.
+
+Only `{{-- --}}` comments are removed before echoes are compiled. A `//` or
+`/* */` comment is just text to Blade.
+
+**Rule:** in a `.blade.php` file, never write `{{`, `{!!` or `@` sequences inside
+a JavaScript comment, even while describing them. Reword, or put the note in a
+Blade comment. And load the page after editing a shared layout — this one broke
+*every* screen, so the check is cheap and the blast radius is not.
+
+## Stop reaching for Python heredocs to edit files
+
+Three times this session a `python - <<'PY'` edit died on
+`SyntaxWarning: invalid escape sequence` or `SyntaxError: truncated \uXXXX
+escape` — twice while writing a *test about* `\uXXXX` escapes. Once it failed
+after printing nothing useful, and the shell reported success for the command
+that followed.
+
+The rule already in this file is "use raw strings and verify the result". The
+stronger rule, learned again: for a single line, use the Edit tool. It takes the
+exact text, has no escaping layer between me and the file, and cannot half-apply.
+Python is for a multi-block edit where an exact-match assertion per block is
+worth having — and then every literal goes in an `r"""..."""`.
+
+## The same wrong assertion twice: assert the escape, not the letter
+
+`assertStringNotContainsString('ا', $raw)` in the FAQ test and
+`assertStringNotContainsString('م', $raw)` in the legal one. Both meant "the
+column holds no `\uXXXX` escapes" and both wrote the Arabic letter instead — an
+assertion that fails on precisely the value that proves the point, because
+readable Arabic is the thing being asserted.
+
+`assertStringNotContainsString('\u', $raw)` in single quotes is the check. Not a
+regex: PCRE2 rejects `\u` outright, so `/\u[0-9a-f]{4}/` errors the test with
+"Compilation failed" rather than failing it — and an errored test reads as a
+broken suite rather than a caught bug.
+
+## `tail` eats the exit code
+
+`npx playwright test --reporter=list 2>&1 | tail -40` reported **exit 0** on a
+run with **14 failures**: the pipeline's status is `tail`'s. I then wrote "the
+full browser suite passed" on the strength of it, and the 40 lines I kept had
+thrown away every failure detail, so the run had to be repeated in full — 16
+minutes.
+
+**Rule:** never read an exit code through a pipe. Redirect the whole run to a
+file, append the real `$?` to it, and grep the file. Piping a long test run
+through `tail` discards exactly the part worth keeping.

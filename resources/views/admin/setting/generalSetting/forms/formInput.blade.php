@@ -77,27 +77,40 @@
     <div class="col-12 form-divider">
         <div class="form-section-legend">{{ __('Translation') }}</div>
     </div>
+    {{-- `data-rich-text` hands these to `setupRichText()` in
+         `layouts/footer_script`. About is published on the public page as
+         HTML — its own view prints it with `{!! !!}` — so the person writing
+         it needs headings and a list, not a three-row box in which the only
+         way to get a heading is to type `<h2>`.
+
+         Full width rather than `col-md-6`: an editor with a toolbar in half a
+         column wraps the toolbar before it wraps the prose. --}}
     <div class="row">
-        <div class="col-md-6">
+        <div class="col-12">
             <div class="form-group">
                 <label for="setting-About" class="form-label">{{ __('App About') }}</label>
                 <div class="controls">
-                    <textarea name="About[{{ getDefaultLanguage('code') }}]" class="form-control" rows="3"
-                        {{ Route::is('*.show') ? 'disabled' : '' }} id="setting-title" placeholder="{{ __('Enter App About') }}"
+                    <textarea name="About[{{ getDefaultLanguage('code') }}]" class="form-control" rows="8"
+                        {{ Route::is('*.show') ? 'disabled' : '' }} id="setting-About"
+                        data-rich-text data-rich-height="260"
+                        dir="{{ getDefaultLanguage('is_rtl') === 'true' ? 'rtl' : 'ltr' }}"
+                        placeholder="{{ __('Enter App About') }}"
                         {{ Route::is('*.create') ? 'required' : '' }}>{{ $aboutTranslations[getDefaultLanguage('code')] ?? '' }}</textarea>
                 </div>
             </div>
         </div>
 
         @foreach (getAllLanguageWithoutDefault() as $language)
-            <div class="col-md-6">
+            <div class="col-12">
                 <div class="form-group">
                     <label for="setting-About-{{ $language->code }}" class="form-label">
-                        About ({{ $language->name }})
+                        {{ __('App About') }} ({{ $language->name }})
                     </label>
                     <textarea name="About[{{ $language->code }}]" class="form-control" id="setting-About-{{ $language->code }}"
-                        placeholder="Enter Setting About in {{ $language->name }}" {{ Route::is('*.show') ? 'disabled' : '' }}
-                        rows="3">{{ $aboutTranslations[$language->code] ?? '' }}</textarea>
+                        data-rich-text data-rich-height="260"
+                        dir="{{ $language->is_rtl === 'true' ? 'rtl' : 'ltr' }}"
+                        placeholder="{{ __('Enter App About') }} ({{ $language->name }})" {{ Route::is('*.show') ? 'disabled' : '' }}
+                        rows="8">{{ $aboutTranslations[$language->code] ?? '' }}</textarea>
                 </div>
             </div>
         @endforeach

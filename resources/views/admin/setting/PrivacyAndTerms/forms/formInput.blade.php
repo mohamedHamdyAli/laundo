@@ -5,7 +5,15 @@
 @endphp
 
 {{--
-    Two things were wrong with these fields, both invisible until somebody saved.
+    These are documents, not strings: the shipped terms run to 7,500 characters
+    of English and 10,100 of Arabic, structured with headings and lists, and the
+    public page prints them with `{!! !!}`. So they are rich-text editors —
+    `data-rich-text`, initialised by `setupRichText()` in
+    `layouts/footer_script` — rather than boxes in which a heading means typing
+    `<h2>` by hand.
+
+    Two things were wrong with these fields before that, both invisible until
+    somebody saved.
 
     Each `<textarea>` carried `value="{{ getSettingValue(...) }}"` — an attribute
     a textarea does not have, holding the raw JSON of *every* language, which
@@ -23,7 +31,8 @@
             <label for="setting-terms" class="form-label">{{ __('App Terms') }}</label>
             <div class="controls">
                 <textarea name="Terms[{{ $defaultCode }}]" id="setting-terms" class="form-control" rows="16"
-                    {{ Route::is('*.show') ? 'disabled' : '' }}
+                    {{ Route::is('*.show') ? 'disabled' : '' }} data-rich-text data-rich-height="460"
+                    dir="{{ getDefaultLanguage('is_rtl') === 'true' ? 'rtl' : 'ltr' }}"
                     placeholder="{{ __('App Terms') }}">{{ $termsTranslations[$defaultCode] ?? '' }}</textarea>
                 <div class="form-text">
                     {{ __('Shown in the app under «Terms and Conditions», and linked from the sign-up screen.') }}
@@ -37,7 +46,8 @@
             <label for="setting-privacy" class="form-label">{{ __('App Privacy Policy') }}</label>
             <div class="controls">
                 <textarea name="Privacy_Policy[{{ $defaultCode }}]" id="setting-privacy" class="form-control" rows="16"
-                    {{ Route::is('*.show') ? 'disabled' : '' }}
+                    {{ Route::is('*.show') ? 'disabled' : '' }} data-rich-text data-rich-height="460"
+                    dir="{{ getDefaultLanguage('is_rtl') === 'true' ? 'rtl' : 'ltr' }}"
                     placeholder="{{ __('App Privacy Policy') }}">{{ $privacyTranslations[$defaultCode] ?? '' }}</textarea>
                 <div class="form-text">
                     {{ __('Shown in the app under «Privacy Policy», and linked from the sign-up screen.') }}
@@ -63,6 +73,7 @@
                 <div class="controls">
                     <textarea name="Terms[{{ $language->code }}]" id="setting-terms-{{ $language->code }}"
                         class="form-control" rows="16" {{ Route::is('*.show') ? 'disabled' : '' }}
+                        data-rich-text data-rich-height="460" dir="{{ $language->is_rtl === 'true' ? 'rtl' : 'ltr' }}"
                         placeholder="{{ __('App Terms') }} ({{ $language->name }})">{{ $termsTranslations[$language->code] ?? '' }}</textarea>
                 </div>
             </div>
@@ -76,6 +87,7 @@
                 <div class="controls">
                     <textarea name="Privacy_Policy[{{ $language->code }}]" id="setting-privacy-{{ $language->code }}"
                         class="form-control" rows="16" {{ Route::is('*.show') ? 'disabled' : '' }}
+                        data-rich-text data-rich-height="460" dir="{{ $language->is_rtl === 'true' ? 'rtl' : 'ltr' }}"
                         placeholder="{{ __('App Privacy Policy') }} ({{ $language->name }})">{{ $privacyTranslations[$language->code] ?? '' }}</textarea>
                 </div>
             </div>

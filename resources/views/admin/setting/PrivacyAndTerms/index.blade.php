@@ -1,7 +1,13 @@
 @extends('layouts.main')
 @section('content')
-    <div class="card-header align-items-center d-flex">
+    <div class="card-header align-items-center d-flex flex-wrap gap-2">
         <h5 class="card-title mb-0 flex-grow-1"> {{ __('Edit Privacy And Terms') }}</h5>
+
+        {{-- The way back. This screen is not in the sidebar, so without it the
+             only exit is the browser's back button. --}}
+        <a href="{{ route('admin.generalSetting.viewGeneralSetting') }}" class="btn-quiet">
+            <i class="bi bi-arrow-left"></i>{{ __('Edit General Setting') }}
+        </a>
     </div>
     <div class="row">
         <div class="col-lg-12">
