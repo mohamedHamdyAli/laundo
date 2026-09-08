@@ -4,6 +4,8 @@ namespace Tests\Feature\Dashboard;
 
 use App\Modules\City\Models\City;
 use App\Modules\Country\Models\Country;
+use App\Modules\Service\Models\Service;
+use App\Modules\Service\Repositories\ServiceRepository;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 use PHPUnit\Framework\Attributes\Test;
@@ -198,6 +200,99 @@ class ListSearchTest extends TestCase
                 "searching the country name as '{$term}' should find both Egyptian cities"
             );
         }
+    }
+
+    #[Test]
+    public function a_composed_cell_can_be_pasted_into_the_search_box(): void
+    {
+        // Reported as «Duration مش بيفلتر بيه». The Services screen's DURATION
+        // column reads "24–48 hours", and no column holds that string:
+        // `durationLabel()` composes the range from two columns and the unit word
+        // comes from the Web File. So the cell is a sentence assembled from three
+        // sources, and pasting it found nothing.
+        $service = Service::create([
+            'name' => json_encode(['en' => 'Wash & Iron', 'ar' => 'غسيل وكي'], JSON_UNESCAPED_UNICODE),
+            'pricing_mode' => 'per_item',
+            'duration_min' => 24,
+            'duration_max' => 48,
+            'duration_unit' => 'hour',
+            'sort_order' => 1,
+            'status' => 'active',
+        ]);
+
+        $repository = app(ServiceRepository::class);
+
+        // The cell exactly as rendered, with the en dash `durationLabel()` uses.
+        $this->assertSame(1, $repository->search('24–48 hours', 20)->total());
+
+        // And the same thing typed by hand, with a plain hyphen — nobody has an
+        // en dash on their keyboard.
+        $this->assertSame(1, $repository->search('24-48 hours', 20)->total());
+
+        // The range on its own, either way round.
+        $this->assertSame(1, $repository->search('24–48', 20)->total());
+        $this->assertSame(1, $repository->search('24-48', 20)->total());
+
+        // Either bound alone.
+        $this->assertSame(1, $repository->search('48', 20)->total());
+
+        $this->assertSame($service->id, $repository->search('24–48 hours', 20)->first()->id);
+    }
+
+    #[Test]
+    public function the_unit_word_matches_in_the_form_the_table_shows_it(): void
+    {
+        Service::create([
+            'name' => json_encode(['en' => 'Iron Only', 'ar' => 'كي فقط'], JSON_UNESCAPED_UNICODE),
+            'pricing_mode' => 'per_item',
+            'duration_min' => 24, 'duration_max' => 24, 'duration_unit' => 'hour',
+            'sort_order' => 1, 'status' => 'active',
+        ]);
+        Service::create([
+            'name' => json_encode(['en' => 'Household', 'ar' => 'مفروشات'], JSON_UNESCAPED_UNICODE),
+            'pricing_mode' => 'quote',
+            'duration_min' => 2, 'duration_max' => 4, 'duration_unit' => 'day',
+            'sort_order' => 2, 'status' => 'active',
+        ]);
+
+        $repository = app(ServiceRepository::class);
+
+        // The column stores the singular; the table renders the plural. Searching
+        // the word somebody can actually see found nothing before.
+        $this->assertSame(1, $repository->search('hours', 20)->total());
+        $this->assertSame(1, $repository->search('hour', 20)->total());
+        $this->assertSame(1, $repository->search('days', 20)->total());
+        $this->assertSame(1, $repository->search('day', 20)->total());
+    }
+
+    #[Test]
+    public function a_bare_unit_word_is_not_stripped_into_an_empty_term(): void
+    {
+        // The condition that makes the stripping safe. "24-48 hours" is a range
+        // plus noise and the noise has to go; a bare "hours" is somebody
+        // searching the unit itself, and stripping it would leave an empty term —
+        // which matches every row. So only a term containing a digit is stripped.
+        Service::create([
+            'name' => json_encode(['en' => 'Iron Only', 'ar' => 'كي فقط'], JSON_UNESCAPED_UNICODE),
+            'pricing_mode' => 'per_item',
+            'duration_min' => 24, 'duration_max' => 24, 'duration_unit' => 'hour',
+            'sort_order' => 1, 'status' => 'active',
+        ]);
+        Service::create([
+            'name' => json_encode(['en' => 'Household', 'ar' => 'مفروشات'], JSON_UNESCAPED_UNICODE),
+            'pricing_mode' => 'quote',
+            'duration_min' => 2, 'duration_max' => 4, 'duration_unit' => 'day',
+            'sort_order' => 2, 'status' => 'active',
+        ]);
+
+        $repository = app(ServiceRepository::class);
+
+        // Two services exist; "hours" must find the one, not both.
+        $this->assertSame(2, Service::count());
+        $this->assertSame(1, $repository->search('hours', 20)->total());
+
+        // And nonsense still finds nothing, which a match-everything bug would not.
+        $this->assertSame(0, $repository->search('zzzznotathing', 20)->total());
     }
 
     #[Test]

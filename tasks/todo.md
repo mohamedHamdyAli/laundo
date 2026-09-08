@@ -2777,3 +2777,53 @@ Also out of scope by decision: `created_at`. `humanDate()` renders in the displa
 timezone while the column stores UTC, so matching the text on screen needs a
 timezone conversion in SQL — that is a date filter, not a substring search, and
 half-implementing it would be worse than leaving it.
+
+---
+
+## Round 4 — Duration filter, FAQ languages, the roles grid in dark mode
+
+Four follow-ups, in the order they arrived.
+
+- [x] **Services «Duration» is not filterable.** The cell is composed in Blade
+      from `duration_min`, `duration_max` and `duration_unit`, so the string on
+      screen exists nowhere in the database. `search()` now matches the composed
+      expression through `Searchable::searchConcat()`, folds the view's en-dash
+      to a hyphen, and strips a unit word from a term that carries digits so
+      `24-48 hours` reaches the numbers and a bare `hours` still reaches the
+      unit column. 14 expectation-checked cases, 15/15 `ListSearchTest` green.
+- [x] **FAQ needs multi-language «like the rest».** Form walks
+      `getAllLanguageWithoutDefault()`; `FaqRequest` moved from
+      `question.*|answer.* => required` (which demanded *every* language) to
+      `atLeastOneLanguage()`; client-side `required` removed with it.
+      `FaqTranslationTest`, 10 tests.
+- [x] **The Roles screen in dark mode.** One cause, not the several the first
+      probe reported: `.permissions-box` hard-coded `#f6f7fb`. Module labels
+      1.06:1 → 16.12:1. The rules now read the theme tokens instead of getting
+      a `body.theme-dark` override piled on top, so light mode is unchanged and
+      a future theme needs no third rule. Checkbox `color-scheme` added: an
+      unchecked box was drawing as a solid white square, i.e. as *on*.
+- [x] **The Save button's colour.** `.btn-primary` on the brand-blue band —
+      1:1 against its own background while its label passed at 5.17:1. This was
+      wrong in light mode too, which is why the sweep never caught it: contrast
+      alone cannot see an invisible button behind legible text.
+- [x] Stray `</div>` in the roles view; `<section>` was closing after the modal.
+
+### Verification
+
+- 926 PHPUnit tests green (up from 913).
+- `contrast.spec.js` + 6: the grid in both themes. **Reverting the CSS fails 4
+  of the 6** — the negative check that caught my own broken Save assertion.
+- Light and dark measured with composited backgrounds and WCAG sums, not read
+  off class names.
+
+### Found, pre-existing, NOT from this round
+
+`contrast.spec.js` has **20 failures at HEAD** — verified by stashing this
+round's changes and re-running. Two causes, both on every screen, which is why
+all 16 sweep screens and the badge tests go red:
+
+- `"en" [span]` in the topbar language switcher — **1.27:1**
+- `.foot_text` — **4.25:1**, just under the 4.5 bar. theme.css set `#6b7687`
+  believing it cleared it.
+
+Not touched here to keep this commit scoped to what was asked. Next up.

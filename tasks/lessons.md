@@ -1425,3 +1425,59 @@ settled in a single request what two deploys of reasoning had not.
 And fix the *request*, not the symptom — `URL::forceScheme('https')` would have
 corrected the URLs and left `isSecure()`, cookie flags and redirects still
 wrong, each waiting to be discovered separately.
+
+## A style rule is not a computed value: measure after the recalc, not before
+
+Diagnosing the roles screen, the first probe added `theme-dark` to `body` and
+read `getComputedStyle` on six elements **in the same evaluate**. It reported the
+topbar search box at 1.05:1 and the Permission button at 1.73:1 — two dark-mode
+failures that do not exist. `--field-bg` and `--text-muted` still held the light
+theme's values when they were read; the class was on the element, the custom
+properties had not resolved.
+
+Re-measured after a reload with the theme set in `localStorage` before the page
+loaded, the same elements read 14.37:1 and 6.54:1. One genuine bug remained, and
+I nearly "fixed" two invented ones on top of it.
+
+**Rule:** set the theme *before* navigation (`page.addInitScript`), or reload
+after toggling. Never trust a computed custom property read in the same task
+that changed the class that defines it. The new tests carry this as a comment so
+the next person does not repeat it.
+
+## Check that a new test fails for the reason you wrote it
+
+Three tests were added for the roles grid and all three passed. Reverting the
+CSS proved only two of them could fail: the Save-button check passed on the very
+stylesheet it existed to condemn.
+
+The assertion was `parseFloat(save.border) > 0 && save.border !== save.band` —
+comparing a border **width** (`"1px"`) against a band **colour**
+(`"rgb(37, 99, 235)"`). Never equal, so `hasEdge` was true for any bordered
+button, and Bootstrap gives every `.btn` a 1px border. The check was structurally
+incapable of failing.
+
+**Rule:** a new regression test is not finished when it passes. Revert the fix
+and watch it fail — per assertion, not per file. Two of three failing is a
+report that the third one is broken.
+
+## Point the formatter at the lines you wrote, or it rewrites the file
+
+`npx prettier --write tests/Browser/contrast.spec.js` after appending 130 lines
+produced a **455-insertion / 243-deletion** diff: there is no prettier config in
+this repo, so it reformatted the existing 342 lines from 2-space/single-quote to
+4-space/double-quote as well. The real change was invisible inside it.
+
+Restoring from `HEAD` and re-appending the block hand-formatted in the file's own
+style gave `132 insertions, 0 deletions`.
+
+**Rule:** this is the same trap as Pint reformatting three unrelated models
+earlier in this project. Before running any formatter, know whether the repo has
+a config for it; if it does not, the formatter's defaults are not the file's
+style. Check `git diff --numstat` after formatting and revert if deletions
+appear in code you did not touch.
+
+**And check the tracked path's casing first.** `git diff --stat
+tests/browser/contrast.spec.js` printed nothing at all while the file was
+modified, because git tracks it as `tests/Browser/...`. On Windows the
+filesystem accepts either and git does not — an empty diff is not proof of an
+unchanged file.

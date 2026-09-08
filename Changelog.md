@@ -2,6 +2,26 @@
 
 ## 2026-09-08
 
+### Fix
+
+- **The Services list could not be filtered by Duration.** The column shows `24–48 hours`, composed in Blade from three separate fields — `duration_min`, `duration_max`, `duration_unit` — so nothing in the table matched anything in the database and typing what was on screen returned nothing. `search()` now matches the composed expression: `CONCAT(duration_min, '-', duration_max)` plus the pluralised unit, and strips a unit word off a term that carries digits, so `24-48 hours` reaches the numbers while a bare `hours` still reaches `duration_unit`. The en-dash the view renders is folded to a hyphen, because that character is on neither an Arabic nor an English keyboard (Repository).
+- `Searchable::searchConcat()` picks the concatenation operator by driver — SQLite has no `CONCAT`, and MySQL reads `||` as a logical OR, so a portable expression cannot be written by hand. The app runs on MariaDB and the tests on SQLite, and this is exactly the seam where that difference bites (Trait).
+
+- **The Roles permission grid was unreadable in dark mode.** `.permissions-box` hard-coded `#f6f7fb`, and nothing in the dark theme took it back: the panel stayed a light slab inside a dark card with the body's light text on it at **1.06:1** — the 34 module names were legible only by selecting them. The rules now read `--surface-bg`, `--surface-border` and `--surface-card`, which already carry both themes, so light mode is unchanged (#f7fafc against the old #f6f7fb) and dark mode reads as a well recessed into the card, at **16.12:1** (CSS).
+- The grid's checkboxes are bare `<input type="checkbox">`, so the browser draws them — and with no `color-scheme` it drew the *light* widget on the dark panel: an **unchecked** box was a solid white square, which reads as switched on. The most expensive way for a permissions screen to be wrong. Scoped to the grid rather than set on `body.theme-dark`, which would repaint every native control in the panel (CSS).
+- **The grid's Save button was the same blue as the band it sits in.** `.btn-primary` on the brand-blue `.permission-header`: its white label passed contrast at 5.17:1 while the button itself was 1:1 against its own background — legible text on an invisible control, in **both** themes. Inverted to a white fill with the brand blue as the label (CSS).
+- The roles view closed its permission cards with a stray `</div>` and then closed `<section>` after the create-role modal, so the modal was parsed inside the roles section. Tags balanced — 22 opens, 22 closes (Blade).
+
+### Feature
+
+- **FAQs can be written in every language, like the rest of the content modules.** The schema, the service and the read path were already translatable — `faqs.question` and `faqs.answer` are `text` holding `{"en":…,"ar":…}` — but the form rendered one box per field, for the default language only, so an Arabic FAQ could not be entered at all. It now walks `getAllLanguageWithoutDefault()` and renders `question[{code}]` / `answer[{code}]` under a Translation divider (Blade).
+- Its validation had to change in the same commit: `question.*` and `answer.*` were `required`, which demanded **every** language. Invisible while there was only one box to fill, and a wall the moment there were two. Now `atLeastOneLanguage()`, the rule Offer, Banner, Intro and JourneyStep use — and the client-side `required` came off the default-language boxes with it, because a plain attribute cannot say "at least one of these" (Request / Blade).
+
+### Tests
+
+- `FaqTranslationTest` — 10 tests: a box per language, no client-side `required` on a translation input, both languages stored, Arabic stored readably rather than as escapes, English-only and Arabic-only both accepted, every-language-blank still refused, an edit that adds the second language without losing the first, the edit form showing what is stored, and one term finding either language (Tests).
+- `contrast.spec.js` gains the roles permission grid in **both** themes — 6 tests. The existing whole-page sweep already visited `/admin/roles` and passed the entire time the grid was unreadable, for two reasons now written into the file: the grid starts `d-none`, so `offsetParent === null` skipped its 34 labels, and the sweep never ran in dark mode. **Verified by reverting the CSS** — 4 of the 6 fail on the previous stylesheet (Tests).
+
 ### Feature
 
 - **Real Terms, Privacy Policy and About copy, in both languages.** All three settings held Latin and German filler from `SettingsSeeder`, and once the landing page shipped that filler was published at `/{locale}/terms` and `/privacy` for anyone to read. Every clause is written from what the code actually does — the approval gate in `OrderStatus`, the cancellation cut-off in `allowedNext()`, the fee rule in `DeliveryFeeCalculator`, the retention windows `laundo:prune` applies, the columns the migrations actually store — so it describes this product rather than being boilerplate from another service (Database / Content).

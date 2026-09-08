@@ -2415,8 +2415,14 @@ a.ui-button:active,
 
 
 /* ===== General ===== */
+/* The permission grid is a well recessed into the role card, so its fill has to
+   follow the theme. It was a hard `#f6f7fb`, which in dark mode left a light
+   slab inside a dark card with the body's light text on it at 1.06:1 — the
+   module names were legible only by selecting them. `--surface-bg` is the page
+   ground in both themes: #f7fafc in light, so this looks as it always did, and
+   #0f1522 in dark, which reads as inset against the #172033 card. */
 .permissions-box {
-    background: #f6f7fb;
+    background: var(--surface-bg);
     padding: 20px;
 }
 
@@ -2457,12 +2463,15 @@ a.ui-button:active,
 
 .permission-row {
     padding: 14px 10px;
-    border-bottom: 1px solid #e6e6e6;
+    /* Same reason as the box: a light hairline is invisible on a dark ground. */
+    border-bottom: 1px solid var(--surface-border);
     transition: background .2s;
 }
 
+/* The hover lifted the row to white, i.e. to the card colour it sits in. Said as
+   the token it keeps that in light mode and inverts on its own in dark. */
 .permission-row:hover {
-    background: #ffffff;
+    background: var(--surface-card);
 }
 
 /* ===== Checkbox ===== */

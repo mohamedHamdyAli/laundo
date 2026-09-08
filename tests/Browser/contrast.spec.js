@@ -340,3 +340,135 @@ test.describe('Text contrast across the dashboard', () => {
     });
   }
 });
+
+/**
+ * The roles permission grid, in both themes.
+ *
+ * The sweep above already visits `/admin/roles`, and it passed the whole time
+ * the grid was unreadable, for two reasons worth writing down:
+ *
+ *   1. **The grid starts `d-none`.** `offsetParent === null` skips it, so the
+ *      34 module labels were never measured. A screen is not covered because
+ *      its URL is in a list — only what is on screen gets read.
+ *   2. **The sweep never ran in dark mode.** `.permissions-box` hard-coded
+ *      `#f6f7fb`, and nothing in the dark theme took it back: the panel stayed
+ *      a light slab inside a dark card with the body's light text on it at
+ *      1.06:1. The markup and the classes were entirely correct.
+ *
+ * So this opens the grid and measures it under each theme. The Save button gets
+ * its own check because contrast alone cannot catch what was wrong with it: it
+ * was `.btn-primary` sitting on the brand-blue band, so its *label* was a
+ * passing 5.17:1 white-on-blue while the button had no edge at all — 1:1
+ * against its own background. Legible text on an invisible control.
+ */
+const THEMES = ['theme-light', 'theme-dark'];
+
+test.describe('The roles permission grid', () => {
+  for (const theme of THEMES) {
+    test.describe(theme, () => {
+      test.beforeEach(async ({ page }) => {
+        await login(page, ACCOUNTS.superAdmin);
+
+        // Set before navigating, so the class is on `body` at first paint.
+        // Read straight after a runtime toggle, custom properties can still
+        // hold the previous theme's values in the same task — which produced a
+        // page of confident false failures while this was being written.
+        await page.addInitScript((t) => localStorage.setItem('theme', t), theme);
+        await page.goto('/admin/roles');
+        await settled(page);
+
+        await page.click('.toggle-permissions');
+        await page.waitForSelector('.permissions-box:not(.d-none)');
+      });
+
+      test('every module label is legible', async ({ page }) => {
+        const rows = await page.evaluate(() => {
+          const opaque = (c) => c && c !== 'transparent' && !c.startsWith('rgba(0, 0, 0, 0)');
+
+          return [...document.querySelectorAll('.permission-row .col-3')].map((el) => {
+            let bg = getComputedStyle(el).backgroundColor;
+
+            for (let n = el.parentElement; n && !opaque(bg); n = n.parentElement) {
+              bg = getComputedStyle(n).backgroundColor;
+            }
+
+            return {
+              text: el.textContent.trim(),
+              color: getComputedStyle(el).color,
+              background: opaque(bg) ? bg : 'rgb(255, 255, 255)',
+            };
+          });
+        });
+
+        // One row per model in config/dashboard.php. If this ever reads zero the
+        // check below is vacuous, which is how the original bug survived.
+        expect(rows.length, 'the grid should render a row per dashboard model').toBeGreaterThan(20);
+
+        const failures = rows
+          .map((r) => ({ ...r, ratio: contrast(r.color, r.background) }))
+          .filter((r) => r.ratio < 4.5);
+
+        expect(
+          failures.map((f) => `"${f.text}" ${f.ratio.toFixed(2)}:1`),
+          `module labels below 4.5:1 with ${theme}`,
+        ).toEqual([]);
+      });
+
+      test('the Save button is distinguishable from the band it sits in', async ({ page }) => {
+        const save = await page.evaluate(() => {
+          const el = document.querySelector('.permission-header .btn');
+          if (!el) return null;
+
+          const s = getComputedStyle(el);
+
+          return {
+            fill: s.backgroundColor,
+            label: s.color,
+            borderWidth: s.borderTopWidth,
+            borderColor: s.borderTopColor,
+            band: getComputedStyle(el.closest('.permission-header')).backgroundColor,
+          };
+        });
+
+        expect(save, 'the grid header should carry a Save button').not.toBeNull();
+
+        // Its label has to be readable...
+        expect(contrast(save.label, save.fill)).toBeGreaterThanOrEqual(4.5);
+
+        // ...and the control itself needs an edge against the band. 3:1 is the
+        // WCAG bar for the boundary of a non-text UI component.
+        //
+        // The edge is a border whose COLOUR separates from the band. Comparing
+        // the border *width* to the band colour instead — the first thing this
+        // line did — makes `hasEdge` true for any bordered button, and the check
+        // then passed on the very CSS it exists to fail on: `.btn-primary`
+        // carries `border: 1px solid #2563eb` on a #2563eb band.
+        const againstBand = contrast(save.fill, save.band);
+        const hasEdge =
+          parseFloat(save.borderWidth) > 0 && contrast(save.borderColor, save.band) >= 3;
+
+        expect(
+          againstBand >= 3 || hasEdge,
+          `Save is ${againstBand.toFixed(2)}:1 against its own band with ${theme}`,
+        ).toBe(true);
+      });
+
+      test('an unchecked permission box does not read as a filled one', async ({ page }) => {
+        // These are bare `<input type="checkbox">`, so the browser draws them.
+        // With no `color-scheme` the dark panel got the *light* widget, and an
+        // unchecked box is then a solid white square — which reads as switched
+        // on, the most expensive way for this particular screen to be wrong.
+        const box = await page.evaluate(() => ({
+          dark: document.body.classList.contains('theme-dark'),
+          colorScheme: getComputedStyle(
+            document.querySelector('.permission-row input[type="checkbox"]'),
+          ).colorScheme,
+        }));
+
+        if (box.dark) {
+          expect(box.colorScheme, 'the UA needs the dark palette for these boxes').toContain('dark');
+        }
+      });
+    });
+  }
+});
