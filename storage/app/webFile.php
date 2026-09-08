@@ -79,7 +79,6 @@ return [
     'landing.nav.prices' => 'Prices',
     'landing.nav.coverage' => 'Coverage',
     'landing.nav.faq' => 'Questions',
-    'landing.nav.signin' => 'Staff sign in',
     'landing.nav.menu_open' => 'Open menu',
     'landing.nav.menu_close' => 'Close menu',
     'landing.nav.language' => 'Language',

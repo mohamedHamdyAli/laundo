@@ -2,6 +2,21 @@
 
 ## 2026-09-08
 
+### Feature
+
+- **Real Terms, Privacy Policy and About copy, in both languages.** All three settings held Latin and German filler from `SettingsSeeder`, and once the landing page shipped that filler was published at `/{locale}/terms` and `/privacy` for anyone to read. Every clause is written from what the code actually does — the approval gate in `OrderStatus`, the cancellation cut-off in `allowedNext()`, the fee rule in `DeliveryFeeCalculator`, the retention windows `laundo:prune` applies, the columns the migrations actually store — so it describes this product rather than being boilerplate from another service (Database / Content).
+- `LegalContentSeeder` owns those three keys and **nothing else**, so the copy can be refreshed on a live install with `php artisan db:seed --class=LegalContentSeeder` without `SettingsSeeder` resetting `App_Name`, `Currency`, `Country_Id` and every social URL to their template defaults on the way past. `SettingsSeeder` no longer seeds them and says so; `DatabaseSeeder` calls the new one after it (Database).
+- The documents start at `<h2>` and carry no title of their own — the page renders the title as its `<h1>`, so a repeated title showed as a duplicate heading and left the hierarchy skipping from h1 to h3 (Content).
+- **It is a draft, not legal advice.** Recorded in the seeder's docblock rather than as a banner on the page, because a public page that opens by disclaiming itself is worse than one whose owner has been told to have it checked. The liability, governing-law and data-transfer clauses are the ones a solicitor should read first (Content).
+
+- **The five screens with no search box now have one.** Prices, My Services, My Areas, Roles and Time Slots. None is a list of records — each is a single `<form>` posting a whole grid — so a server-side `search` endpoint would re-render part of it and **blank the cells it did not draw on save**. `setupClientFilter` hides non-matching rows in the browser instead: nothing is fetched, and every input stays in the DOM so a save still posts the full grid (Blade).
+- It handles the three shapes those screens actually use: flat rows (Time Slots, My Services), wrapped groups that collapse when empty (My Areas, where a city heading over no areas reads as a bug), and heading **rows** that are siblings of their items rather than parents (the price grid's category rows). Row text is read once at setup rather than per keystroke — the price grid is 300+ reads otherwise (Blade).
+- Roles filters the permission grid rather than the role list: roles are a fixed handful, but each card carries one row per dashboard model — 34 of them — and finding one meant scrolling (Blade).
+
+### Refactor
+
+- **The «Staff sign in» link is gone from the public header.** It was there because `/` used to *be* the login page and operators needed a way back; on a page whose audience is customers it was the first thing the eye met. Its Web File key, both translations and its now-dead CSS went with it — a dead key reads as a string somebody forgot to use. `/login` is unchanged and still registered by `Auth::routes()` (Blade / i18n).
+
 ### Fix
 
 - **Search silently threw away the screen's filter.** Seven list screens carry a filter beside the search box, and every one of their controllers reads it from the same request the term arrives on — but `setupAjaxSearch` sent only `query` and `page`. So typing reverted the filter to the controller's default: filtering complaints to «Resolved» and then typing put you back on the open ones, and on Refunds the filter vanished entirely. The code was written to compose; the JS was what prevented it. New `extraParams` hook, passed as a **function** so the value is read per request rather than captured at page load, and wired into all eight screens (Blade).

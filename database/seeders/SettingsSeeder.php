@@ -12,18 +12,23 @@ class SettingsSeeder extends Seeder
      */
     public function run(): void
     {
-        $loreamEn = 'It is in fact part of the Latin gibberish that printers use to fill in space in a layout temporarily whilst awaiting the arrival of the
-        final text, so that the client can have an idea in advance of what the finished page will look like!';
-        $loreamDe = 'Es handelt sich dabei um lateinische Wörter, die Drucker verwenden, um Lücken im Layout vorübergehend zu füllen, bis der endgültige Text vorliegt,
- damit der Kunde eine Vorstellung davon bekommt, wie die fertige Seite aussehen wird!';
-
         $this->create_new_config('App_Name', 'BaseCode');
-        $this->create_new_config('About', json_encode(['en' => $loreamEn, 'ar' => $loreamDe], JSON_UNESCAPED_UNICODE));
         $this->create_new_config('App_Logo', 'logo1.png');
         $this->create_new_config('Login_Cover', 'cover.png');
 
-        $this->create_new_config('Privacy_Policy', json_encode(['en' => $loreamEn, 'ar' => $loreamDe], JSON_UNESCAPED_UNICODE));
-        $this->create_new_config('Terms', json_encode(['en' => $loreamEn, 'ar' => $loreamDe], JSON_UNESCAPED_UNICODE));
+        /*
+         * `About`, `Terms` and `Privacy_Policy` are **not** seeded here any more.
+         *
+         * They used to hold Latin and German filler, which was served verbatim to
+         * both apps and — once the landing page shipped — published at
+         * /{locale}/terms and /privacy for anyone to read.
+         *
+         * `LegalContentSeeder` owns them now, and is called from
+         * `DatabaseSeeder`. It is separate so the legal copy can be refreshed on
+         * a live install without this seeder resetting `App_Name`, `Currency`,
+         * `Country_Id` and every social URL to their template defaults on the way
+         * past.
+         */
 
         $this->create_new_config('Whats_App', 'http://whatsapp.com/');
         $this->create_new_config('Facebook_Url', 'http://facebook.com/');

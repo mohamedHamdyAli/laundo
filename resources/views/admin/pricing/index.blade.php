@@ -36,6 +36,13 @@
                                 @csrf
                                 @method('PUT')
 
+                                <div class="list-toolbar">
+                                    <input type="text" id="priceFilterInput" class="form-control list-toolbar-search"
+                                        placeholder="{{ __('Filter by item or category...') }}" autocomplete="off">
+                                    <span class="text-muted small align-self-center" id="priceFilterInput-count"></span>
+                                </div>
+                                <div id="priceFilterInput-empty" class="stack-empty" style="display: none">{{ __('No data found') }}</div>
+
                                 <div class="table-responsive">
                                     <table class="table table-bordered align-middle mb-0" id="price-grid">
                                         <thead class="table-light">
@@ -109,3 +116,18 @@
         </div>
     </section>
 @endsection
+
+@push('scripts')
+    <script>
+        {{-- Filters what is already rendered. These screens post the whole
+             grid as one form, so a server-side re-render would blank the
+             cells it did not draw. --}}
+        setupClientFilter({
+            inputSelector: '#priceFilterInput',
+            itemSelector: '#price-grid tbody tr:not(.table-secondary)',
+            siblingHeadingSelector: '#price-grid tbody tr.table-secondary',
+            emptySelector: '#priceFilterInput-empty',
+            countSelector: '#priceFilterInput-count',
+        });
+    </script>
+@endpush

@@ -26,6 +26,13 @@
                             $stackCols = 'minmax(8rem,1.1fr) minmax(8rem,auto) minmax(7rem,.9fr) minmax(7rem,.9fr) minmax(7rem,auto) minmax(6rem,auto)';
                         @endphp
 
+                        <div class="list-toolbar">
+                            <input type="text" id="slotFilterInput" class="form-control list-toolbar-search"
+                                placeholder="{{ __('Filter windows...') }}" autocomplete="off">
+                            <span class="text-muted small align-self-center" id="slotFilterInput-count"></span>
+                        </div>
+                        <div id="slotFilterInput-empty" class="stack-empty" style="display: none">{{ __('No data found') }}</div>
+
                         <div class="stack-head" style="--stack-cols: {{ $stackCols }}">
                             <span>{{ __('Window') }}</span>
                             <span>{{ __('Used For') }}</span>
@@ -101,3 +108,17 @@
         </div>
     </section>
 @endsection
+
+@push('scripts')
+    <script>
+        {{-- Filters what is already rendered. These screens post the whole
+             grid as one form, so a server-side re-render would blank the
+             cells it did not draw. --}}
+        setupClientFilter({
+            inputSelector: '#slotFilterInput',
+            itemSelector: '.data-stack > .stack-row',
+            emptySelector: '#slotFilterInput-empty',
+            countSelector: '#slotFilterInput-count',
+        });
+    </script>
+@endpush

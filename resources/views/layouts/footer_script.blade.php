@@ -292,6 +292,111 @@
 </script>
 <script type="text/javascript">
     /**
+     * Filter what is already on the page, in the browser.
+     *
+     * Five screens in the sidebar have no search box: Prices, My Services, My
+     * Areas, Roles and Time Slots. None of them is a list of records — each is a
+     * single `<form>` that posts a whole grid (a price matrix, a set of
+     * switches, a set of checkboxes). A server-side `search` endpoint would
+     * re-render part of that grid, and the cells it did not render would be
+     * **blanked on save** — so the AJAX pattern the other 29 screens use is the
+     * wrong tool here, not merely a missing one.
+     *
+     * This hides non-matching rows instead. Nothing is fetched, nothing leaves
+     * the form, and every input stays in the DOM so a save still posts the full
+     * grid.
+     *
+     * Options:
+     *   inputSelector           the box (required)
+     *   itemSelector            the things to show or hide (required)
+     *   groupSelector           containers hidden once they hold no visible item
+     *   siblingHeadingSelector  heading *rows* that share a parent with the
+     *                           items — the price grid's category rows
+     *   emptySelector           shown when nothing matches
+     *   countSelector           receives "n / total"
+     *
+     * `style.display` rather than the `hidden` attribute: Bootstrap sets
+     * `display` on table rows, and a UA-stylesheet `[hidden]` rule loses to it.
+     * Restoring `''` hands the row back to the stylesheet rather than guessing
+     * whether it was `table-row` or `flex`.
+     */
+    function setupClientFilter(config) {
+        const input = document.querySelector(config.inputSelector);
+        const items = Array.from(document.querySelectorAll(config.itemSelector));
+
+        if (!input || !items.length) {
+            return;
+        }
+
+        const groups = config.groupSelector
+            ? Array.from(document.querySelectorAll(config.groupSelector))
+            : [];
+        const empty = config.emptySelector ? document.querySelector(config.emptySelector) : null;
+        const count = config.countSelector ? document.querySelector(config.countSelector) : null;
+
+        const normalise = (value) => String(value || '')
+            .toLowerCase()
+            .replace(/\s+/g, ' ')
+            .trim();
+
+        // Read once: the text of a row does not change while somebody types, and
+        // re-reading textContent per keystroke on the price grid is 300+ reads.
+        const haystacks = items.map((el) => normalise(el.textContent));
+
+        function apply() {
+            const term = normalise(input.value);
+            let visible = 0;
+
+            items.forEach((el, i) => {
+                const match = term === '' || haystacks[i].indexOf(term) !== -1;
+                el.style.display = match ? '' : 'none';
+                if (match) {
+                    visible++;
+                }
+            });
+
+            // A container with nothing left in it is noise — a city heading over
+            // no areas reads as a bug.
+            groups.forEach((group) => {
+                const hasVisible = Array.from(group.querySelectorAll(config.itemSelector))
+                    .some((el) => el.style.display !== 'none');
+                group.style.display = hasVisible ? '' : 'none';
+            });
+
+            // Heading rows that are siblings of their items rather than parents:
+            // walk forward to the next heading and count what survived.
+            if (config.siblingHeadingSelector) {
+                document.querySelectorAll(config.siblingHeadingSelector).forEach((heading) => {
+                    let hasVisible = false;
+
+                    for (let row = heading.nextElementSibling; row; row = row.nextElementSibling) {
+                        if (row.matches(config.siblingHeadingSelector)) {
+                            break;
+                        }
+                        if (row.style.display !== 'none') {
+                            hasVisible = true;
+                            break;
+                        }
+                    }
+
+                    heading.style.display = hasVisible ? '' : 'none';
+                });
+            }
+
+            if (empty) {
+                empty.style.display = visible === 0 ? '' : 'none';
+            }
+
+            if (count) {
+                count.textContent = term === '' ? '' : visible + ' / ' + items.length;
+            }
+        }
+
+        input.addEventListener('input', apply);
+        apply();
+    }
+
+    /**
      * Wire a list screen's search box to its `search` endpoint.
      *
      * `config.extraParams` is optional and is how a screen that also has a

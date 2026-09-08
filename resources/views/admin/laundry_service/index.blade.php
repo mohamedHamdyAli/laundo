@@ -50,9 +50,16 @@
                                 @method('PUT')
                                 <input type="hidden" name="laundry_id" value="{{ $selectedLaundryId }}">
 
+                                <div class="list-toolbar">
+                                    <input type="text" id="serviceFilterInput" class="form-control list-toolbar-search"
+                                        placeholder="{{ __('Filter services...') }}" autocomplete="off">
+                                    <span class="text-muted small align-self-center" id="serviceFilterInput-count"></span>
+                                </div>
+                                <div id="serviceFilterInput-empty" class="stack-empty" style="display: none">{{ __('No data found') }}</div>
+
                                 <div class="row g-3">
                                     @foreach ($services as $service)
-                                        <div class="col-lg-6">
+                                        <div class="col-lg-6" data-filter-item>
                                             <div class="card h-100 p-3">
                                                 <div class="form-check form-switch">
                                                     <input class="form-check-input" type="checkbox" role="switch"
@@ -95,3 +102,17 @@
         </div>
     </section>
 @endsection
+
+@push('scripts')
+    <script>
+        {{-- Filters what is already rendered. These screens post the whole
+             grid as one form, so a server-side re-render would blank the
+             cells it did not draw. --}}
+        setupClientFilter({
+            inputSelector: '#serviceFilterInput',
+            itemSelector: '[data-filter-item]',
+            emptySelector: '#serviceFilterInput-empty',
+            countSelector: '#serviceFilterInput-count',
+        });
+    </script>
+@endpush

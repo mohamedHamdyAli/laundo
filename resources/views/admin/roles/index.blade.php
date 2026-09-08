@@ -10,6 +10,12 @@
     <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
         <h5 class="card-title mb-0">{{ __('Roles') }}</h5>
 
+        {{-- Filters the permission rows inside every role card. The role list
+             itself is a fixed handful, but each card carries one row per
+             dashboard model — 34 of them — and finding one means scrolling. --}}
+        <input type="text" id="permissionFilterInput" class="form-control list-toolbar-search"
+            style="max-width: 22rem" placeholder="{{ __('Filter permissions...') }}" autocomplete="off">
+
         @if (canDo('role.create'))
             {{-- Same job on the page as every other list's «Add …», so the same
                  treatment. The bare «+ » was a plus sign typed into the label
@@ -129,3 +135,15 @@
 
     });
 </script>
+
+@push('scripts')
+    <script>
+        {{-- Filters what is already rendered. This screen posts a role's whole
+             permission set as one form, so a server-side re-render would drop
+             the checkboxes it did not draw. --}}
+        setupClientFilter({
+            inputSelector: '#permissionFilterInput',
+            itemSelector: '.permission-row',
+        });
+    </script>
+@endpush

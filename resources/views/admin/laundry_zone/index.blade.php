@@ -54,12 +54,19 @@
 
                                 {{-- Grouped by city: the zone list grows fast and a flat
                                      list of every governorate is unusable. --}}
+                                <div class="list-toolbar">
+                                    <input type="text" id="zoneFilterInput" class="form-control list-toolbar-search"
+                                        placeholder="{{ __('Filter areas...') }}" autocomplete="off">
+                                    <span class="text-muted small align-self-center" id="zoneFilterInput-count"></span>
+                                </div>
+                                <div id="zoneFilterInput-empty" class="stack-empty" style="display: none">{{ __('No data found') }}</div>
+
                                 @foreach ($zonesByCity as $cityName => $zones)
-                                    <div class="mb-4">
+                                    <div class="mb-4" data-filter-group>
                                         <h6 class="border-bottom pb-2">{{ $cityName }}</h6>
                                         <div class="row g-2">
                                             @foreach ($zones as $zone)
-                                                <div class="col-lg-3 col-md-4 col-sm-6">
+                                                <div class="col-lg-3 col-md-4 col-sm-6" data-filter-item>
                                                     <div class="form-check">
                                                         <input class="form-check-input" type="checkbox"
                                                             id="zone-{{ $zone->id }}" name="zones[]"
@@ -88,3 +95,18 @@
         </div>
     </section>
 @endsection
+
+@push('scripts')
+    <script>
+        {{-- Filters what is already rendered. These screens post the whole
+             grid as one form, so a server-side re-render would blank the
+             cells it did not draw. --}}
+        setupClientFilter({
+            inputSelector: '#zoneFilterInput',
+            itemSelector: '[data-filter-item]',
+            groupSelector: '[data-filter-group]',
+            emptySelector: '#zoneFilterInput-empty',
+            countSelector: '#zoneFilterInput-count',
+        });
+    </script>
+@endpush

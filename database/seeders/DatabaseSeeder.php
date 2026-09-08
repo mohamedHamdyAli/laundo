@@ -17,6 +17,10 @@ class DatabaseSeeder extends Seeder
             PermissionSeeder::class,
             AdminUserSeeder::class,
             SettingsSeeder::class,
+            // After SettingsSeeder, which no longer seeds the legal copy:
+            // this one owns About / Terms / Privacy_Policy and is safe to
+            // re-run on its own to refresh them.
+            LegalContentSeeder::class,
             LanguageSeeder::class,
 
         ]);

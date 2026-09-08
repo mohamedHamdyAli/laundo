@@ -66,9 +66,6 @@
                     @endforeach
                 </div>
 
-                <a class="signin-link" href="{{ route('login') }}">
-                    {{ webText('landing.nav.signin') }}
-                </a>
             </div>
         </nav>
 
