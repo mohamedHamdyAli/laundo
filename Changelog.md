@@ -1,5 +1,22 @@
 # Changelog
 
+## 2026-09-09
+
+### Fix
+
+- **The home page's queue sent people to a page they could not act on.** «Journeys with no driver» opened `admin.report.operations` — a report that counts those legs, lists their order codes and offers no way to assign anybody, because a driver is given a leg on the order's own screen. So the one row on the dashboard whose entire purpose is "somebody must act" led somewhere they could not, and left them to find the affected orders by hand in a list of every order. Reported from the live install (Service).
+- Three items pointed at that report and four more at the **unfiltered** order list, which is the same dead end more quietly: a number is only clickable if the screen it opens shows the rows it counted. All seven now open a filtered list — «no driver», «no laundry», «ran out of attempts», «unanswered price question», and «waiting on a customer», that last one being a real `OrderStatus` and needing no new filter (Service).
+- The queue item gained a `params` key and the home view passes it to `route()`; without it a queue item could not express a filter at all (Service / Blade).
+- **`OrderRepository::search()` understands four filters that are not order statuses.** A driverless journey is a *task* state — the order still reads «Awaiting pickup» while one of its legs waits in the pool — and «no laundry» is a null `laundry_id`. They are spelled as constants on the repository rather than added to `OrderStatus`, which is the vocabulary the apps and the API share. Each is a typed subquery through its own model, so the scope that defines "queued" stays the only definition (Repository).
+- They are in the list screen's dropdown too, under a «Waiting for a person» group — otherwise an operator arriving from the queue sees a filtered list above a box claiming to show all statuses, with no way back to it (Blade).
+- **«15» over a list of 6 orders was two numbers that looked like they disagreed.** They did not: an order has four legs, and 15 driverless legs belonged to 4 orders. The hint says so now — but only when the counts differ, since "1 journeys across 1 orders" both reads badly and adds nothing, and the one-order case has its own sentence rather than an "(s)". Returned as a translation key plus its parameters, because the view is what calls `__()` and a pre-substituted string matches no key and would render English on an Arabic panel (Service / Blade / i18n).
+- Eight new Arabic entries in `ar.json`, placeholders intact (i18n).
+
+### Tests
+
+- `HomeTest` grows from 21 to 34. Beyond the per-item checks, two sweeps over the **whole** queue: none of its items may open a report or an unfiltered order list, and every filter it links to must be one the list understands *and* must return rows for the number shown — a `status` the repository does not recognise falls through to `where('status', …)` and returns nothing, so the item would open an empty screen while displaying a count above zero, which reads as data loss. Fixing seven items one at a time is how the eighth arrives with the same defect (Tests).
+- Also pinned: the clause is dropped when it would say nothing, four legs on one order gets its own sentence, and both hint sentences carry Arabic with their placeholders (Tests).
+
 ## 2026-09-08
 
 ### Feature

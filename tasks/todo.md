@@ -2883,3 +2883,38 @@ The oldest item still open: «ممكن تظبط جزء ال about يبقا ckedi
 
 Store URLs, hotline, WhatsApp and the social links — «دا لسه». And the legal
 copy wants a solicitor's eye; the seeder says so in its docblock.
+
+---
+
+## Round 6 — the home queue led nowhere useful
+
+Reported on the live install: «Journeys with no driver» → Open landed on the
+operations report instead of somewhere a driver could be assigned. And the count
+read 15 while the order list showed 6.
+
+- [x] **The 15 vs 6 is not a bug.** Confirmed against production: 15 queued
+      legs, 4 distinct orders (4+4+4+3 by leg type), 6 orders in the table. The
+      queue counts journeys; an order has four. The hint names both counts now,
+      and only when they differ.
+- [x] **All seven order-shaped queue items open a filtered list.** Three pointed
+      at `admin.report.operations` (a page with no actions on it) and four at the
+      unfiltered order list.
+- [x] Four new filters on `OrderRepository` — `needs_driver`, `needs_laundry`,
+      `needs_rescue`, `needs_price_answer` — as typed subqueries through their
+      own models, so `OrderTask::queued()` stays the one definition of "no
+      driver". Not added to `OrderStatus`: that enum is shared with the apps and
+      the API.
+- [x] Both in the list's dropdown, grouped under «Waiting for a person», so a
+      filtered arrival does not sit under a box saying «All statuses».
+- [x] Eight Arabic entries, placeholders intact.
+
+### Verification
+
+- 950 PHPUnit tests green (938 + 12). `HomeTest` 21 → 34.
+- Two sweeps over the whole queue rather than per-item assertions: no item may
+  open a report or an unfiltered list, and every filter must be one the list
+  understands *and* return rows for the number shown.
+- Driven in the browser: clicking Open goes to `?status=needs_rescue`, shows 1
+  row of 11, and the dropdown reads «Has a journey that ran out of attempts»
+  rather than «All statuses». Filter and search compose — the term alone returns
+  7 orders, the term with the filter returns 1.

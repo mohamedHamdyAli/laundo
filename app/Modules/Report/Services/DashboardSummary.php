@@ -7,6 +7,7 @@ use App\Modules\Order\Enums\OrderStatus;
 use App\Modules\Order\Models\Order;
 use App\Modules\Order\Models\OrderRating;
 use App\Modules\Order\Models\OrderTask;
+use App\Modules\Order\Repositories\OrderRepository;
 use App\Modules\Report\Data\DateRange;
 use App\Modules\User\Models\User;
 use App\Support\LaundryContext;
@@ -122,6 +123,47 @@ class DashboardSummary
      *
      * @return array<int, array{key: string, label: string, count: int, route: string|null, severity: string, hint: string}>
      */
+    /**
+     * The hint for an item counted in journeys but opened as a list of orders.
+     *
+     * Reported on a live install: the home page said 15 and the screen it opened
+     * listed 6 orders, which reads as two numbers disagreeing. It was neither —
+     * an order has four legs, and 15 driverless legs belonged to 4 orders.
+     *
+     * Returned as a key **plus** its parameters rather than an interpolated
+     * string, because the view is what calls `__()`. A hint with its numbers
+     * already substituted matches no translation key, so it would render in
+     * English on an Arabic panel.
+     *
+     * The clause is added only when the two counts differ — "1 journeys across 1
+     * orders" both reads badly and says nothing — and the one-order case has its
+     * own sentence rather than an "(s)".
+     *
+     * @param  array<int, array<string, mixed>>  $legs
+     * @return array{hint: string, hintParams?: array<string, int>}
+     */
+    private function legsHint(string $base, array $legs): array
+    {
+        $count = count($legs);
+        $orders = collect($legs)->pluck('order_id')->unique()->count();
+
+        if ($count === 0 || $count === $orders) {
+            return ['hint' => $base];
+        }
+
+        if ($orders === 1) {
+            return [
+                'hint' => $base.' — :legs journeys on one order',
+                'hintParams' => ['legs' => $count],
+            ];
+        }
+
+        return [
+            'hint' => $base.' — :legs journeys across :orders orders',
+            'hintParams' => ['legs' => $count, 'orders' => $orders],
+        ];
+    }
+
     public function needsAPerson(): array
     {
         $snapshot = $this->operations->snapshot();
@@ -132,6 +174,7 @@ class DashboardSummary
                 'label' => 'Orders with no laundry',
                 'count' => count($snapshot['orders_unassigned']),
                 'route' => 'admin.order.index',
+                'params' => ['status' => OrderRepository::NEEDS_LAUNDRY],
                 // Nothing can happen to these at all. Worst kind of waiting.
                 'severity' => 'critical',
                 'hint' => 'No laundry covers the address, or none was chosen',
@@ -140,15 +183,28 @@ class DashboardSummary
                 'key' => 'tasks_queued',
                 'label' => 'Journeys with no driver',
                 'count' => count($snapshot['tasks_queued']),
-                'route' => 'admin.report.operations',
+                /*
+                 * The orders, not the operations report.
+                 *
+                 * This pointed at `admin.report.operations`, which counts these
+                 * legs and lists their order codes and can do nothing about
+                 * them: a driver is assigned on the order's own screen. So the
+                 * one queue item whose whole point is "somebody has to act"
+                 * sent that somebody to a page with no action on it, and left
+                 * them to find four orders by hand in a list of every order.
+                 */
+                'route' => 'admin.order.index',
+                'params' => ['status' => OrderRepository::NEEDS_DRIVER],
                 'severity' => 'critical',
-                'hint' => 'Dispatch found nobody eligible',
+                ...$this->legsHint('Dispatch found nobody eligible', $snapshot['tasks_queued']),
             ],
             [
                 'key' => 'awaiting_customer',
                 'label' => 'Waiting on a customer to confirm a price',
                 'count' => count($snapshot['orders_awaiting_customer']),
                 'route' => 'admin.order.index',
+                // This one *is* a status, so no pseudo-filter is needed.
+                'params' => ['status' => OrderStatus::Reviewed->value],
                 // Nothing times these out, by decision. They wait forever unless
                 // somebody calls, which is the reason they are on the home page.
                 'severity' => 'warning',
@@ -169,6 +225,7 @@ class DashboardSummary
                 'label' => 'Unanswered price questions',
                 'count' => count($snapshot['price_questions_open']),
                 'route' => 'admin.order.index',
+                'params' => ['status' => OrderRepository::NEEDS_PRICE_ANSWER],
                 'severity' => 'warning',
                 'hint' => 'A customer asked something and is waiting',
             ],
@@ -193,9 +250,13 @@ class DashboardSummary
                 'key' => 'tasks_exhausted',
                 'label' => 'Journeys that ran out of attempts',
                 'count' => count($snapshot['tasks_exhausted']),
-                'route' => 'admin.report.operations',
+                // The third item that pointed at the operations report, and the
+                // same objection: a person intervenes by releasing the leg and
+                // handing it to a driver, both of which are on the order.
+                'route' => 'admin.order.index',
+                'params' => ['status' => OrderRepository::NEEDS_RESCUE],
                 'severity' => 'critical',
-                'hint' => 'Escalated — a person has to intervene',
+                ...$this->legsHint('Escalated — a person has to intervene', $snapshot['tasks_exhausted']),
             ],
             [
                 'key' => 'wallets',

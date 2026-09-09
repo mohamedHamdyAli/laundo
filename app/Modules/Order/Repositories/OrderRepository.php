@@ -3,6 +3,8 @@
 namespace App\Modules\Order\Repositories;
 
 use App\Modules\Order\Models\Order;
+use App\Modules\Order\Models\OrderPriceQuery;
+use App\Modules\Order\Models\OrderTask;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
 
@@ -29,6 +31,21 @@ class OrderRepository
         return Order::with(self::EAGER)->latest('id')->paginate($perPage);
     }
 
+    /**
+     * Filters the list understands that are not `OrderStatus` cases.
+     *
+     * Kept as constants because three places have to agree on the spelling: this
+     * repository, the dropdown on the list screen, and the route the home page's
+     * queue links to.
+     */
+    public const NEEDS_DRIVER = 'needs_driver';
+
+    public const NEEDS_LAUNDRY = 'needs_laundry';
+
+    public const NEEDS_RESCUE = 'needs_rescue';
+
+    public const NEEDS_PRICE_ANSWER = 'needs_price_answer';
+
     public function search(?string $query, ?string $status = null, int $perPage = 15): LengthAwarePaginator
     {
         return Order::with(self::EAGER)
@@ -49,7 +66,44 @@ class OrderRepository
                         ));
                 });
             })
-            ->when($status, fn (Builder $q) => $q->where('status', $status))
+            ->when($status, function (Builder $q) use ($status): void {
+                /*
+                 * Two of the home page's queue items are not order statuses.
+                 *
+                 * «Journeys with no driver» is a *task* state: an order sits at
+                 * `awaiting_pickup` while one of its four legs waits in the pool
+                 * with nobody eligible, so `where('status', 'needs_driver')`
+                 * would return nothing at all. «Orders with no laundry» is a
+                 * null `laundry_id`, which is likewise not a status.
+                 *
+                 * Both are filters an operator needs to reach from the queue —
+                 * that queue's whole promise is that the number is clickable —
+                 * so they are spelled here beside the real statuses rather than
+                 * bolted onto `OrderStatus`, which is the vocabulary the apps
+                 * and the API share.
+                 */
+                match ($status) {
+                    /*
+                     * Through the model rather than `whereHas('tasks', ...)`:
+                     * inside that closure the builder is the un-generic
+                     * `Builder<Model>`, so `queued()` is invisible to phpstan
+                     * and the alternative is an inline `@var` overriding it.
+                     * `OrderTask::queued()` keeps the scope as the one
+                     * definition of "no driver", stays typed, and compiles to a
+                     * single `IN (subquery)` instead of a correlated EXISTS.
+                     */
+                    self::NEEDS_DRIVER => $q->whereIn('id', OrderTask::queued()->select('order_id')),
+                    self::NEEDS_LAUNDRY => $q->unassigned()->active(),
+                    // A leg that failed its way out of the pool. Somebody has to
+                    // release it and hand it to a driver, and both of those live
+                    // on the order's screen.
+                    self::NEEDS_RESCUE => $q->whereIn('id', OrderTask::where('status', 'failed')
+                        ->where('attempts', '>=', OrderTask::MAX_ATTEMPTS)
+                        ->select('order_id')),
+                    self::NEEDS_PRICE_ANSWER => $q->whereIn('id', OrderPriceQuery::open()->select('order_id')),
+                    default => $q->where('status', $status),
+                };
+            })
             ->latest('id')
             ->paginate($perPage);
     }

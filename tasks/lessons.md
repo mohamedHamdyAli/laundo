@@ -1566,3 +1566,54 @@ minutes.
 **Rule:** never read an exit code through a pipe. Redirect the whole run to a
 file, append the real `$?` to it, and grep the file. Piping a long test run
 through `tail` discards exactly the part worth keeping.
+
+## Comment syntax has to match the block you are standing in
+
+Twice in one session, and in opposite directions:
+
+1. A JSDoc line in `footer_script.blade.php` described the raw-echo syntax and
+   *contained* it. Blade does not care that it sits inside `/** */` — only
+   `{{-- --}}` is stripped before echoes compile — so it compiled an echo with an
+   empty expression and every panel page 500'd.
+2. A `{{-- --}}` comment inside an `@php` block in `home.blade.php`. Inside
+   `@php` the content is raw PHP, so the "comment" was compiled as code, and a
+   backtick in it became shell-exec syntax: `ParseError: unexpected token "`"`,
+   in a compiled view file with no line in my source to point at. That one would
+   have taken down the dashboard home page for everybody.
+
+**Rule:** in a `.blade.php` file — Blade comment outside PHP, PHP comment inside
+`@php`, and no `{{`, `{!!`, `@` or backtick inside either while describing them.
+After editing a shared layout or the home page, load it. The existing `HomeTest`
+caught the second one; nothing but a page load would have caught the first.
+
+## A number on a dashboard has to be clickable *and* land on its own rows
+
+The queue on the home page was built on "a number somebody cannot click is a
+number they have to go and find". Every item did have a route — and three of
+them pointed at a report with no actions on it, while four opened the
+**unfiltered** order list. Both satisfy the letter of the rule and neither
+satisfies a person: they are told 15 things need them, and handed a list of
+everything.
+
+The user's words were "مش يفتح علي الاوردرات وابدا انا احطلها سواقين" — it should
+open the orders so I can put drivers on them. That is the test: not "does it
+navigate" but "does the screen it opens let me do the thing the row is asking
+for".
+
+**Rule:** when a count links somewhere, check the destination can act on exactly
+those rows. And when fixing one such item, sweep the rest in the same change —
+here a test asserts the property over the whole queue, because seven items fixed
+one at a time is how the eighth ships with the same defect.
+
+## Two numbers that look wrong are sometimes two different units
+
+"وهنا 15 وهنا 6" — 15 on the home page, 6 in the order list. Neither was wrong:
+the queue counts journeys and an order has four of them, so 15 driverless legs
+belonged to 4 orders, out of 6 orders in total.
+
+I confirmed it by querying production rather than reasoning about it: 15 queued
+tasks, 4 distinct `order_id`s, grouped by leg type — 4 + 4 + 4 + 3.
+
+**Rule:** before changing a number that a user says disagrees with another
+number, find out what each one counts. The fix here was not arithmetic, it was
+saying the unit out loud on the row.

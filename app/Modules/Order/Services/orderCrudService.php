@@ -47,6 +47,13 @@ class orderCrudService
                 : $this->orders->getAllPaginated(),
             'activeStatus' => $status,
             'statuses' => OrderStatus::cases(),
+            // Named rather than repeated as literals: the dropdown, the
+            // repository and the home page's queue link all have to spell these
+            // the same way or the filter silently returns everything.
+            'needsDriver' => OrderRepository::NEEDS_DRIVER,
+            'needsLaundry' => OrderRepository::NEEDS_LAUNDRY,
+            'needsRescue' => OrderRepository::NEEDS_RESCUE,
+            'needsPriceAnswer' => OrderRepository::NEEDS_PRICE_ANSWER,
             'counts' => $this->orders->counts(),
         ];
 

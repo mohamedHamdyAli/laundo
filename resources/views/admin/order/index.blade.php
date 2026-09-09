@@ -52,12 +52,42 @@
                                 placeholder="{{ __('Search by order code, customer or phone...') }}">
                             <select id="orderStatusFilter" class="form-select list-toolbar-filter">
                                 <option value="">{{ __('All statuses') }}</option>
-                                @foreach ($statuses as $status)
-                                    <option value="{{ $status->value }}"
-                                        @selected(($activeStatus ?? null) === $status->value)>
-                                        {{ __($status->label()) }}
+
+                                {{-- The two the home page's queue links to, and
+                                     the reason they are here rather than in
+                                     `OrderStatus`: neither is a status. A
+                                     driverless journey is a *task* state — the
+                                     order still reads «Awaiting pickup» while one
+                                     of its legs waits in the pool — and «no
+                                     laundry» is a null `laundry_id`.
+
+                                     They belong in the dropdown all the same, or
+                                     an operator arriving from the queue sees a
+                                     filtered list above a box that claims to be
+                                     showing all statuses. --}}
+                                <optgroup label="{{ __('Waiting for a person') }}">
+                                    <option value="{{ $needsDriver }}" @selected(($activeStatus ?? null) === $needsDriver)>
+                                        {{ __('Has a journey with no driver') }}
                                     </option>
-                                @endforeach
+                                    <option value="{{ $needsLaundry }}" @selected(($activeStatus ?? null) === $needsLaundry)>
+                                        {{ __('No laundry yet') }}
+                                    </option>
+                                    <option value="{{ $needsRescue }}" @selected(($activeStatus ?? null) === $needsRescue)>
+                                        {{ __('Has a journey that ran out of attempts') }}
+                                    </option>
+                                    <option value="{{ $needsPriceAnswer }}" @selected(($activeStatus ?? null) === $needsPriceAnswer)>
+                                        {{ __('Has an unanswered price question') }}
+                                    </option>
+                                </optgroup>
+
+                                <optgroup label="{{ __('By status') }}">
+                                    @foreach ($statuses as $status)
+                                        <option value="{{ $status->value }}"
+                                            @selected(($activeStatus ?? null) === $status->value)>
+                                            {{ __($status->label()) }}
+                                        </option>
+                                    @endforeach
+                                </optgroup>
                             </select>
                         </div>
 

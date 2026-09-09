@@ -5,7 +5,10 @@ namespace Tests\Feature\Dashboard;
 use App\Modules\Complaint\Models\Complaint;
 use App\Modules\Order\Enums\OrderStatus;
 use App\Modules\Order\Models\Order;
+use App\Modules\Order\Models\OrderPriceQuery;
 use App\Modules\Order\Models\OrderRating;
+use App\Modules\Order\Models\OrderTask;
+use App\Modules\Order\Repositories\OrderRepository;
 use App\Modules\Order\Services\OrderService;
 use App\Modules\Report\Services\DashboardSummary;
 use App\Modules\User\Models\User;
@@ -472,5 +475,297 @@ class HomeTest extends TestCase
         // if this ever counted rows instead, capacity planning would be nonsense.
         $this->assertSame(1, $drivers['busy']);
         $this->assertSame(8, $drivers['open_journeys']);
+    }
+
+    // ------------------------------------------------- where the queue goes
+
+    /**
+     * A queue item has to open something you can act on.
+     *
+     * «Journeys with no driver» pointed at `admin.report.operations` — a page
+     * that counts these legs, lists their order codes, and offers no way to
+     * assign anybody. A driver is given a leg on the order's own screen. So the
+     * one item on the page whose entire purpose is "somebody must act" sent that
+     * somebody somewhere they could not, and left them to find the affected
+     * orders by hand in a list of every order there is.
+     */
+    #[Test]
+    public function the_driverless_journeys_item_opens_the_orders_and_not_a_report(): void
+    {
+        $this->orderAt(OrderStatus::AwaitingPickup);
+        $this->actingAs($this->superAdmin());
+
+        $item = collect($this->summary()->needsAPerson())->firstWhere('key', 'tasks_queued');
+
+        $this->assertSame('admin.order.index', $item['route']);
+        $this->assertSame(['status' => OrderRepository::NEEDS_DRIVER], $item['params']);
+    }
+
+    #[Test]
+    public function the_orders_with_no_laundry_item_opens_that_filter_too(): void
+    {
+        // Same defect, one row above: it opened the unfiltered list.
+        $order = $this->orderAt(OrderStatus::AwaitingPickup);
+        $order->forceFill(['laundry_id' => null])->save();
+
+        $this->actingAs($this->superAdmin());
+
+        $item = collect($this->summary()->needsAPerson())->firstWhere('key', 'unassigned');
+
+        $this->assertSame('admin.order.index', $item['route']);
+        $this->assertSame(['status' => OrderRepository::NEEDS_LAUNDRY], $item['params']);
+    }
+
+    #[Test]
+    public function the_hint_says_how_many_orders_the_legs_belong_to(): void
+    {
+        // The count is legs and the screen it opens lists orders — four legs per
+        // order. Reported as a bug on a live install: 15 on the home page over a
+        // list of 6 orders reads as two numbers disagreeing.
+        $this->orderAt(OrderStatus::AwaitingPickup);
+        $this->orderAt(OrderStatus::AwaitingPickup);
+
+        $this->actingAs($this->superAdmin());
+
+        $item = collect($this->summary()->needsAPerson())->firstWhere('key', 'tasks_queued');
+
+        $this->assertSame(8, $item['count']);
+
+        // The key carries the placeholders and the params carry the numbers —
+        // the view is what calls `__()`, and a hint with its numbers already
+        // substituted matches no translation key and renders in English.
+        $this->assertStringContainsString(':legs', $item['hint']);
+        $this->assertStringContainsString(':orders', $item['hint']);
+        $this->assertSame(['legs' => 8, 'orders' => 2], $item['hintParams']);
+    }
+
+    // ------------------------------------------- and that the filter works
+
+    #[Test]
+    public function the_filter_returns_only_orders_with_a_driverless_leg(): void
+    {
+        $waiting = $this->orderAt(OrderStatus::AwaitingPickup);
+
+        // A second order whose legs all have a driver. `Delivered` orders are
+        // created with their four legs like any other, so the legs are marked
+        // rather than the order.
+        $covered = $this->orderAt(OrderStatus::Delivered);
+        $covered->tasks()->update(['status' => 'completed']);
+
+        $this->actingAs($this->superAdmin());
+
+        $ids = app(OrderRepository::class)
+            ->search(null, OrderRepository::NEEDS_DRIVER)
+            ->pluck('id')
+            ->all();
+
+        $this->assertSame([$waiting->id], $ids);
+    }
+
+    #[Test]
+    public function the_no_laundry_filter_returns_only_unassigned_active_orders(): void
+    {
+        $assigned = $this->orderAt(OrderStatus::AwaitingPickup);
+        $unassigned = $this->orderAt(OrderStatus::AwaitingPickup);
+        $unassigned->forceFill(['laundry_id' => null])->save();
+
+        $this->actingAs($this->superAdmin());
+
+        $ids = app(OrderRepository::class)
+            ->search(null, OrderRepository::NEEDS_LAUNDRY)
+            ->pluck('id')
+            ->all();
+
+        $this->assertSame([$unassigned->id], $ids);
+        $this->assertNotContains($assigned->id, $ids);
+    }
+
+    #[Test]
+    public function the_list_screen_offers_both_filters_in_its_dropdown(): void
+    {
+        // Or an operator arriving from the queue sees a filtered list above a box
+        // that says «All statuses», and no way to get back to it.
+        $this->orderAt(OrderStatus::AwaitingPickup);
+
+        $this->actingAs($this->superAdmin())
+            ->get(route('admin.order.index'))
+            ->assertOk()
+            ->assertSee('value="'.OrderRepository::NEEDS_DRIVER.'"', false)
+            ->assertSee('value="'.OrderRepository::NEEDS_LAUNDRY.'"', false);
+    }
+
+    #[Test]
+    public function arriving_from_the_queue_filters_the_first_render(): void
+    {
+        // Not only the AJAX refresh: the link is a deep link, and a deep link
+        // that shows everything is worse than one that shows nothing.
+        $waiting = $this->orderAt(OrderStatus::AwaitingPickup);
+
+        $covered = $this->orderAt(OrderStatus::Delivered);
+        $covered->tasks()->update(['status' => 'completed']);
+
+        $response = $this->actingAs($this->superAdmin())
+            ->get(route('admin.order.index', ['status' => OrderRepository::NEEDS_DRIVER]))
+            ->assertOk();
+
+        $response->assertSee($waiting->code, false);
+        $response->assertDontSee($covered->code, false);
+    }
+
+    #[Test]
+    public function no_queue_item_opens_a_report_and_none_opens_an_unfiltered_list(): void
+    {
+        /*
+         * The rule the queue is built on, asserted over every item rather than
+         * one at a time.
+         *
+         * Three of them pointed at `admin.report.operations` and four more at
+         * the bare order list. Both are dead ends for the person the row is
+         * addressed to: the report has no action on it, and the unfiltered list
+         * makes them find the rows the number was counting. Fixing them one by
+         * one is how the next new item arrives with the same defect, so this
+         * pins the shape.
+         */
+        $this->seedEveryQueueItem();
+        $this->actingAs($this->superAdmin());
+
+        $offenders = [];
+
+        foreach ($this->summary()->needsAPerson() as $item) {
+            if (str_starts_with((string) $item['route'], 'admin.report.')) {
+                $offenders[] = $item['key'].' opens a report';
+            }
+
+            // An item that lands on the order list must say *which* orders.
+            if ($item['route'] === 'admin.order.index' && ($item['params'] ?? []) === []) {
+                $offenders[] = $item['key'].' opens the unfiltered order list';
+            }
+        }
+
+        $this->assertSame([], $offenders, implode("\n  ", $offenders));
+    }
+
+    #[Test]
+    public function every_filter_the_queue_links_to_is_one_the_list_understands(): void
+    {
+        // A `status` the repository does not know falls through to
+        // `where('status', ...)` and returns nothing — so a queue item would
+        // open an empty screen while showing a number greater than zero, which
+        // reads as data loss.
+        $this->seedEveryQueueItem();
+        $this->actingAs($this->superAdmin());
+
+        $known = [
+            OrderRepository::NEEDS_DRIVER,
+            OrderRepository::NEEDS_LAUNDRY,
+            OrderRepository::NEEDS_RESCUE,
+            OrderRepository::NEEDS_PRICE_ANSWER,
+            ...array_map(fn (OrderStatus $s) => $s->value, OrderStatus::cases()),
+        ];
+
+        foreach ($this->summary()->needsAPerson() as $item) {
+            if ($item['route'] !== 'admin.order.index') {
+                continue;
+            }
+
+            $status = $item['params']['status'] ?? null;
+
+            $this->assertContains($status, $known, "{$item['key']} links to an unknown filter: {$status}");
+
+            // And it must actually return the rows the number counted.
+            $this->assertGreaterThan(
+                0,
+                app(OrderRepository::class)->search(null, $status)->total(),
+                "{$item['key']} counts {$item['count']} but its filter returns nothing"
+            );
+        }
+    }
+
+    /**
+     * One order in each state the queue reports on, so the sweep above is not
+     * vacuous.
+     */
+    private function seedEveryQueueItem(): void
+    {
+        // A driverless leg, and no laundry.
+        $noLaundry = $this->orderAt(OrderStatus::AwaitingPickup);
+        $noLaundry->forceFill(['laundry_id' => null])->save();
+
+        // Waiting on the customer to confirm a price.
+        $this->orderAt(OrderStatus::Reviewed);
+
+        // A leg that failed its way out of the pool.
+        $rescue = $this->orderAt(OrderStatus::AwaitingPickup);
+        $rescue->tasks()->limit(1)->update([
+            'status' => 'failed',
+            'attempts' => OrderTask::MAX_ATTEMPTS,
+        ]);
+
+        // An unanswered price question.
+        $asked = $this->orderAt(OrderStatus::AwaitingPickup);
+        OrderPriceQuery::create([
+            'order_id' => $asked->id,
+            'user_id' => $this->customer->id,
+            'message' => 'Why is it this much?',
+        ]);
+    }
+
+    #[Test]
+    public function the_clause_is_dropped_when_it_would_say_nothing(): void
+    {
+        // One leg on one order would read "1 journeys across 1 orders", which is
+        // both ungrammatical and no more informative than the count beside it.
+        $order = $this->orderAt(OrderStatus::AwaitingPickup);
+        $order->tasks()->where('sequence', '>', 1)->update(['status' => 'completed']);
+
+        $this->actingAs($this->superAdmin());
+
+        $item = collect($this->summary()->needsAPerson())->firstWhere('key', 'tasks_queued');
+
+        $this->assertSame(1, $item['count']);
+        $this->assertSame('Dispatch found nobody eligible', $item['hint']);
+        $this->assertArrayNotHasKey('hintParams', $item);
+    }
+
+    #[Test]
+    public function four_legs_on_one_order_gets_its_own_sentence(): void
+    {
+        // The other awkward case: the numbers differ, so the clause is worth
+        // showing, but "across 1 orders" is not English.
+        $this->orderAt(OrderStatus::AwaitingPickup);
+
+        $this->actingAs($this->superAdmin());
+
+        $item = collect($this->summary()->needsAPerson())->firstWhere('key', 'tasks_queued');
+
+        $this->assertSame(4, $item['count']);
+        $this->assertStringContainsString('on one order', $item['hint']);
+        $this->assertSame(['legs' => 4], $item['hintParams']);
+    }
+
+    #[Test]
+    public function both_hint_sentences_are_translated_into_arabic(): void
+    {
+        // The panel is Arabic-first, and a hint that falls back to English is
+        // the one line on the row explaining why the number matters.
+        $arabic = json_decode(
+            (string) file_get_contents(dirname(__DIR__, 3).'/resources/lang/ar.json'),
+            true
+        );
+
+        foreach ([
+            'Dispatch found nobody eligible — :legs journeys on one order',
+            'Dispatch found nobody eligible — :legs journeys across :orders orders',
+            'Escalated — a person has to intervene — :legs journeys on one order',
+            'Escalated — a person has to intervene — :legs journeys across :orders orders',
+        ] as $key) {
+            $this->assertArrayHasKey($key, $arabic, "no Arabic for: {$key}");
+
+            // And the placeholders survived the translation, or the number is
+            // dropped and the sentence says nothing.
+            foreach (['legs'] as $placeholder) {
+                $this->assertStringContainsString(':'.$placeholder, $arabic[$key]);
+            }
+        }
     }
 }
