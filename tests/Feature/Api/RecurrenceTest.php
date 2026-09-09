@@ -6,6 +6,8 @@ use App\Modules\Order\Models\Order;
 use App\Modules\Order\Models\OrderRecurrence;
 use App\Modules\Order\Models\RecurrencePrompt;
 use App\Modules\Order\Services\RecurrenceService;
+use App\Modules\Setting\Models\Setting;
+use App\Modules\TimeSlot\Models\TimeSlot;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
 use PHPUnit\Framework\Attributes\Test;
@@ -17,6 +19,10 @@ use Tests\TestCase;
  * The rule these tests exist to protect: **a schedule asks, it does not order.**
  * The scheduler must be able to run any number of times without creating a single
  * order, and without asking the same question twice.
+ *
+ * Saying yes does not order either - it hands back a basket. Only POST /orders
+ * carrying the prompt back closes the question, which is what lets a recurring
+ * order be re-priced, paid for and capacity-checked like any other.
  */
 class RecurrenceTest extends TestCase
 {
@@ -122,9 +128,9 @@ class RecurrenceTest extends TestCase
     }
 
     #[Test]
-    public function confirming_a_prompt_creates_the_order_at_todays_prices(): void
+    public function confirming_a_prompt_hands_back_a_basket_and_creates_nothing(): void
     {
-        $this->dueSchedule();
+        $schedule = $this->dueSchedule();
         $this->artisan('orders:prompt-recurring')->assertSuccessful();
         $prompt = RecurrencePrompt::firstOrFail();
 
@@ -132,16 +138,196 @@ class RecurrenceTest extends TestCase
 
         $response = $this->postJson("/api/v1/recurrences/prompts/{$prompt->id}/confirm", [], $this->apiHeaders());
 
-        $response->assertCreated();
+        $response->assertOk()
+            ->assertJsonPath('data.prompt_id', $prompt->id)
+            ->assertJsonPath('data.recurrence_id', $schedule->id)
+            ->assertJsonPath('data.for_date', $prompt->prompted_for->toDateString())
+            ->assertJsonPath('data.service_id', $this->catalog['service']->id)
+            ->assertJsonPath('data.pickup_address_id', $this->address->id)
+            // One address on the schedule, so the wizard opens with both legs on it.
+            ->assertJsonPath('data.delivery_address_id', $this->address->id)
+            ->assertJsonPath('data.items.0.qty', 2);
+
+        // The whole point: nothing was bought, and the question is still open so
+        // a customer who closes the app is asked again.
+        $this->assertSame(0, Order::withoutGlobalScopes()->count());
+        $this->assertNull($prompt->fresh()->answer);
+
+        // And asking twice is not an error - it is the same basket.
+        $this->postJson("/api/v1/recurrences/prompts/{$prompt->id}/confirm", [], $this->apiHeaders())->assertOk();
+    }
+
+    #[Test]
+    public function an_order_placed_from_a_prompt_closes_it_and_carries_the_schedule(): void
+    {
+        $schedule = $this->dueSchedule();
+        $this->artisan('orders:prompt-recurring')->assertSuccessful();
+        $prompt = RecurrencePrompt::firstOrFail();
+
+        Sanctum::actingAs($this->customer);
+
+        // The wizard's own data, not the schedule's: a different quantity, and a
+        // payment method the schedule never held.
+        $this->postJson('/api/v1/orders', [
+            'prompt_id' => $prompt->id,
+            'service_id' => $this->catalog['service']->id,
+            'pickup_address_id' => $this->address->id,
+            'items' => [['item_id' => $this->catalog['items'][0]->id, 'qty' => 5]],
+            'pickup_date' => now()->addDay()->toDateString(),
+            'payment_method' => 'cash',
+            'accepts_review_terms' => true,
+        ], $this->apiHeaders())->assertCreated();
 
         $order = Order::withoutGlobalScopes()->firstOrFail();
-        $this->assertSame($order->id, $prompt->fresh()->order_id);
-        $this->assertSame('confirmed', $prompt->fresh()->answer);
-        $this->assertSame(OrderRecurrence::firstOrFail()->id, $order->recurrence_id);
 
-        // 2 x 17 = 34, priced when the order was created rather than when the
-        // schedule was saved.
-        $this->assertSame('34.00', $order->estimated_subtotal);
+        $this->assertSame($schedule->id, $order->recurrence_id);
+        $this->assertSame('confirmed', $prompt->fresh()->answer);
+        $this->assertSame($order->id, $prompt->fresh()->order_id);
+        $this->assertNotNull($prompt->fresh()->answered_at);
+
+        // 5 x 17, the basket the customer actually agreed to - the schedule still
+        // says 2.
+        $this->assertSame('85.00', $order->estimated_subtotal);
+        $this->assertSame([['item_id' => $this->catalog['items'][0]->id, 'qty' => 2]], $schedule->fresh()->items);
+    }
+
+    #[Test]
+    public function the_wizards_payment_method_reaches_a_recurring_order(): void
+    {
+        // The old one-tap confirm never sent one, so every recurring order was
+        // stored with payment_method null - which also zeroed the cash surcharge
+        // for a customer who was about to pay cash.
+        Setting::updateOrCreate(['key' => 'Cash_Surcharge'], ['value' => '15']);
+
+        $this->dueSchedule();
+        $this->artisan('orders:prompt-recurring')->assertSuccessful();
+        $prompt = RecurrencePrompt::firstOrFail();
+
+        Sanctum::actingAs($this->customer);
+
+        $this->postJson('/api/v1/orders', [
+            'prompt_id' => $prompt->id,
+            'service_id' => $this->catalog['service']->id,
+            'pickup_address_id' => $this->address->id,
+            'items' => [['item_id' => $this->catalog['items'][0]->id, 'qty' => 2]],
+            'payment_method' => 'cash',
+            'accepts_review_terms' => true,
+        ], $this->apiHeaders())->assertCreated();
+
+        $order = Order::withoutGlobalScopes()->firstOrFail();
+
+        $this->assertSame('cash', $order->payment_method?->value ?? $order->payment_method);
+        $this->assertSame('15.00', $order->cash_surcharge);
+    }
+
+    #[Test]
+    public function a_recurring_order_is_held_to_the_window_cap(): void
+    {
+        // Exempt before this change, because the customer had no slot picker to
+        // be sent back to. They have one now, so the back door closes.
+        $slot = TimeSlot::create([
+            'start_time' => '15:00:00', 'end_time' => '18:00:00',
+            'applies_to' => 'both', 'capacity' => 1, 'sort_order' => 1, 'status' => 'active',
+        ]);
+        $tomorrow = now()->addDay()->toDateString();
+
+        Sanctum::actingAs($this->customer);
+
+        $body = [
+            'service_id' => $this->catalog['service']->id,
+            'pickup_address_id' => $this->address->id,
+            'items' => [['item_id' => $this->catalog['items'][0]->id, 'qty' => 1]],
+            'pickup_slot_id' => $slot->id,
+            'pickup_date' => $tomorrow,
+            'accepts_review_terms' => true,
+        ];
+
+        $this->postJson('/api/v1/orders', $body, $this->apiHeaders())->assertCreated();
+
+        $this->dueSchedule();
+        $this->artisan('orders:prompt-recurring')->assertSuccessful();
+        $prompt = RecurrencePrompt::firstOrFail();
+
+        $this->postJson('/api/v1/orders', ['prompt_id' => $prompt->id] + $body, $this->apiHeaders())
+            ->assertStatus(422)
+            ->assertJsonPath('errors.pickup_slot_id.0', 'This window is fully booked. Please choose another one.');
+
+        // Refused, so the question stays open for a window that is not full.
+        $this->assertNull($prompt->fresh()->answer);
+        $this->assertSame(1, Order::withoutGlobalScopes()->count());
+    }
+
+    #[Test]
+    public function a_customer_cannot_place_an_order_against_someone_elses_prompt(): void
+    {
+        $this->dueSchedule();
+        $this->artisan('orders:prompt-recurring')->assertSuccessful();
+        $prompt = RecurrencePrompt::firstOrFail();
+
+        $stranger = $this->customer('+201077665533');
+        $strangerAddress = $this->addressFor($stranger, $this->geo['zones'][0]);
+        Sanctum::actingAs($stranger);
+
+        // The prompt exists, so validation passes - ownership is what refuses it.
+        $this->postJson('/api/v1/orders', [
+            'prompt_id' => $prompt->id,
+            'service_id' => $this->catalog['service']->id,
+            'pickup_address_id' => $strangerAddress->id,
+            'items' => [['item_id' => $this->catalog['items'][0]->id, 'qty' => 1]],
+            'accepts_review_terms' => true,
+        ], $this->apiHeaders())->assertNotFound();
+
+        $this->assertNull($prompt->fresh()->answer);
+        $this->assertSame(0, Order::withoutGlobalScopes()->count());
+    }
+
+    #[Test]
+    public function the_schedule_keeps_its_basket_until_the_customer_says_otherwise(): void
+    {
+        $schedule = $this->dueSchedule();
+        $newItem = $this->catalog['items'][1] ?? $this->catalog['items'][0];
+
+        Sanctum::actingAs($this->customer);
+
+        $this->putJson("/api/v1/recurrences/{$schedule->id}/items", [
+            'items' => [['item_id' => $newItem->id, 'qty' => 7]],
+        ], $this->apiHeaders())
+            ->assertOk()
+            ->assertJsonPath('data.items.0.item_id', $newItem->id)
+            ->assertJsonPath('data.items.0.qty', 7);
+
+        $this->assertSame([['item_id' => $newItem->id, 'qty' => 7]], $schedule->fresh()->items);
+
+        // Everything else about the schedule is its identity, and untouched.
+        $this->assertSame('weekly', $schedule->fresh()->frequency);
+        $this->assertSame(1, $schedule->fresh()->day_of_week);
+    }
+
+    #[Test]
+    public function an_empty_basket_cannot_be_saved_to_a_schedule(): void
+    {
+        $schedule = $this->dueSchedule();
+
+        Sanctum::actingAs($this->customer);
+
+        $this->putJson("/api/v1/recurrences/{$schedule->id}/items", ['items' => []], $this->apiHeaders())
+            ->assertStatus(422);
+
+        $this->assertCount(1, $schedule->fresh()->items);
+    }
+
+    #[Test]
+    public function another_customers_schedule_cannot_have_its_basket_rewritten(): void
+    {
+        $schedule = $this->dueSchedule();
+
+        Sanctum::actingAs($this->customer('+201077665522'));
+
+        $this->putJson("/api/v1/recurrences/{$schedule->id}/items", [
+            'items' => [['item_id' => $this->catalog['items'][0]->id, 'qty' => 9]],
+        ], $this->apiHeaders())->assertNotFound();
+
+        $this->assertSame(2, $schedule->fresh()->items[0]['qty']);
     }
 
     #[Test]
@@ -170,7 +356,19 @@ class RecurrenceTest extends TestCase
 
         Sanctum::actingAs($this->customer);
 
-        $this->postJson("/api/v1/recurrences/prompts/{$prompt->id}/confirm", [], $this->apiHeaders())->assertCreated();
+        $body = [
+            'prompt_id' => $prompt->id,
+            'service_id' => $this->catalog['service']->id,
+            'pickup_address_id' => $this->address->id,
+            'items' => [['item_id' => $this->catalog['items'][0]->id, 'qty' => 2]],
+            'accepts_review_terms' => true,
+        ];
+
+        $this->postJson('/api/v1/orders', $body, $this->apiHeaders())->assertCreated();
+
+        // A second wizard run against a spent question must not buy the same
+        // wash twice - nor may the prompt be re-opened by either answer.
+        $this->postJson('/api/v1/orders', $body, $this->apiHeaders())->assertStatus(400);
         $this->postJson("/api/v1/recurrences/prompts/{$prompt->id}/confirm", [], $this->apiHeaders())->assertStatus(400);
         $this->postJson("/api/v1/recurrences/prompts/{$prompt->id}/decline", [], $this->apiHeaders())->assertStatus(400);
 

@@ -402,11 +402,21 @@ class OrderReviewTest extends TestCase
         $this->artisan('orders:prompt-recurring')->assertSuccessful();
 
         $prompt = RecurrencePrompt::firstOrFail();
-        $order = $recurrences->confirm($prompt, $this->customer);
+
+        // The prompt now opens the wizard rather than placing the order, so the
+        // consent is given the same way it is for any other order - explicitly,
+        // on the screen that shows the estimate.
+        $order = $recurrences->placeFromPrompt($prompt, $this->customer, [
+            'service_id' => $schedule->service_id,
+            'pickup_address_id' => $schedule->pickup_address_id,
+            'items' => $schedule->items,
+            'accepts_review_terms' => true,
+        ]);
 
         // Otherwise a recurring order would reach the laundry with no record that
         // anybody agreed to being re-priced.
         $this->assertNotNull($order->review_terms_accepted_at);
+        $this->assertSame($schedule->id, $order->recurrence_id);
     }
 
     // ------------------------------------------------------------------ helpers

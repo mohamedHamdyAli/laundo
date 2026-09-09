@@ -17,8 +17,10 @@ use RuntimeException;
  *
  * The behaviour the business asked for, stated plainly: **a schedule never places
  * an order.** On its due day it asks the customer «محتاج تغسل النهاردة؟» and waits.
- * Confirming creates the order; declining, or not answering at all, skips that
- * cycle and leaves the schedule alive for the next one.
+ * Saying yes opens the ordinary wizard on a pre-filled basket — the pieces are
+ * reviewed, a window is picked and a payment method chosen — and the order that
+ * comes out of it is what closes the question. Declining, or not answering at
+ * all, skips that cycle and leaves the schedule alive for the next one.
  *
  * That is why `recurrence_prompts` exists. Without a row per cycle the scheduler
  * could not tell "not asked yet" from "asked and ignored", and would either
@@ -140,41 +142,66 @@ class RecurrenceService
     }
 
     /**
-     * «أيوه، اغسل النهاردة» — create the order from the saved basket.
+     * «أيوه» — hand the app the basket to open the wizard with.
      *
-     * Priced now, not when the schedule was saved: a basket agreed to in March
-     * must not be billed at March's prices in September.
+     * Deliberately not an order. The customer is being asked whether to wash
+     * today, not asked to buy a basket agreed to months ago at prices nobody has
+     * shown them since — the same reason `reorder` returns intent rather than
+     * placing anything. From here the app runs the ordinary wizard: review the
+     * pieces, pick a window, choose how to pay.
+     *
+     * The prompt stays open. It closes when an order actually exists, so a
+     * customer who abandons the wizard is still asked.
+     *
+     * @return array<string, mixed>
      */
-    public function confirm(RecurrencePrompt $prompt, User $customer): Order
+    public function basketFor(RecurrencePrompt $prompt): array
+    {
+        $recurrence = $prompt->recurrence;
+
+        return [
+            'prompt_id' => $prompt->id,
+            'recurrence_id' => $recurrence?->id,
+            // The cycle this question is about, which is the date the wizard
+            // should open on — not today, if the scheduler ran late.
+            'for_date' => $prompt->prompted_for->toDateString(),
+            'service_id' => $recurrence?->service_id,
+            'pickup_address_id' => $recurrence?->pickup_address_id,
+            // The schedule holds one address; the wizard can still be sent
+            // elsewhere, but this is what it opens with.
+            'delivery_address_id' => $recurrence?->pickup_address_id,
+            'time_slot_id' => $recurrence?->time_slot_id,
+            'items' => array_map(
+                fn (array $line) => ['item_id' => (int) $line['item_id'], 'qty' => (int) $line['qty']],
+                $recurrence->items ?? []
+            ),
+        ];
+    }
+
+    /**
+     * The order the customer finished the wizard with, tied back to its cycle.
+     *
+     * Priced from what they just agreed to, not from the schedule: the whole
+     * point of sending them through the wizard is that the basket, the window
+     * and the payment method are theirs to change.
+     *
+     * One transaction, because an order that exists while its prompt still says
+     * "unanswered" would be asked for a second time.
+     *
+     * @param  array<string, mixed>  $data
+     */
+    public function placeFromPrompt(RecurrencePrompt $prompt, User $customer, array $data): Order
     {
         if ($prompt->isAnswered()) {
             throw new RuntimeException('already_answered');
         }
 
-        $recurrence = $prompt->recurrence;
-
-        return DB::transaction(function () use ($prompt, $recurrence, $customer) {
+        return DB::transaction(function () use ($prompt, $customer, $data) {
+            // The link is ours to set, never the client's: a request naming
+            // someone else's schedule would otherwise file its order under it.
             $order = $this->orders->place($customer, [
-                'service_id' => $recurrence->service_id,
-                'pickup_address_id' => $recurrence->pickup_address_id,
-                'delivery_address_id' => $recurrence->pickup_address_id,
-                'pickup_slot_id' => $recurrence->time_slot_id,
-                'pickup_date' => $prompt->prompted_for->toDateString(),
-                'items' => $recurrence->items,
-                'recurrence_id' => $recurrence->id,
-                // Confirming the prompt IS the consent: the customer is being
-                // asked, in the moment, whether to wash today, and the same
-                // review-and-final-price terms apply as in the wizard. Without
-                // this a recurring order would reach the laundry with no record
-                // that anyone agreed to being re-priced.
-                'accepts_review_terms' => true,
-            ],
-                // Exempt from the window cap, deliberately. The customer was
-                // asked «محتاج تغسل النهاردة؟» and said yes, and this screen has
-                // no slot picker to send them back to — refusing here turns away
-                // the most loyal customer there is over a number they never saw.
-                // The overbook is the platform's problem to absorb.
-                enforceSlotCapacity: false);
+                'recurrence_id' => $prompt->recurrence_id,
+            ] + $data);
 
             $prompt->update([
                 'answer' => 'confirmed',
@@ -184,6 +211,27 @@ class RecurrenceService
 
             return $order;
         });
+    }
+
+    /**
+     * «تحب أخلي دي كمياتك الافتراضية؟» — after the customer edited the basket.
+     *
+     * Only ever on the customer's say-so. A schedule that silently rewrote
+     * itself from the last order would make «كل أسبوع» mean something different
+     * every week, and the customer would have no way to see it happen.
+     *
+     * @param  array<int, array{item_id: int|string, qty: int|string}>  $items
+     */
+    public function updateItems(OrderRecurrence $recurrence, array $items): OrderRecurrence
+    {
+        $recurrence->update([
+            'items' => array_map(
+                fn (array $line) => ['item_id' => (int) $line['item_id'], 'qty' => (int) $line['qty']],
+                array_values($items)
+            ),
+        ]);
+
+        return $recurrence->refresh();
     }
 
     /**

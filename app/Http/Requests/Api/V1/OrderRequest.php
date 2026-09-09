@@ -2,10 +2,11 @@
 
 namespace App\Http\Requests\Api\V1;
 
-use App\Modules\Payment\Enums\PaymentMethod;
 use App\Http\Requests\Api\V1\Concerns\OneDiscountPerOrder;
+use App\Modules\Payment\Enums\PaymentMethod;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\Validator;
 
 /**
  * The order wizard's payload.
@@ -17,9 +18,9 @@ use Illuminate\Validation\Rule;
  */
 class OrderRequest extends FormRequest
 {
-        use OneDiscountPerOrder;
+    use OneDiscountPerOrder;
 
-public function authorize(): bool
+    public function authorize(): bool
     {
         return true;
     }
@@ -95,6 +96,12 @@ public function authorize(): bool
             // priced, and then refused at the last step.
             'payment_method' => ['nullable', Rule::in(PaymentMethod::values())],
 
+            // The repeat schedule's question this order is answering, if it is
+            // answering one. Only the id: which schedule it belongs to is read
+            // off the prompt, never off the request, so a customer cannot file
+            // an order under somebody else's schedule.
+            'prompt_id' => ['nullable', 'integer', 'exists:recurrence_prompts,id'],
+
             // «أضف صوراً للبقع الصعبة»
             'photos' => ['nullable', 'array', 'max:5'],
             'photos.*' => ['image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
@@ -115,7 +122,7 @@ public function authorize(): bool
         ];
     }
 
-    public function withValidator(\Illuminate\Validation\Validator $validator): void
+    public function withValidator(Validator $validator): void
     {
         $this->refuseASecondDiscount($validator);
     }

@@ -10,7 +10,9 @@ use App\Modules\Order\Enums\OrderStatus;
 use App\Modules\Order\Enums\TaskType;
 use App\Modules\Order\Models\Order;
 use App\Modules\Order\Models\OrderMedia;
+use App\Modules\Order\Models\RecurrencePrompt;
 use App\Modules\Order\Services\OrderService;
+use App\Modules\Order\Services\RecurrenceService;
 use App\Modules\Order\Services\RescheduleService;
 use App\Modules\TimeSlot\Models\TimeSlot;
 use Illuminate\Http\JsonResponse;
@@ -103,10 +105,28 @@ class OrderController extends Controller
 
     public function store(OrderRequest $request): JsonResponse
     {
+        $data = $request->validated();
+        $promptId = $data['prompt_id'] ?? null;
+        unset($data['prompt_id']);
+
+        $prompt = $promptId ? $this->findPrompt($request, $promptId) : null;
+
+        // Validated as existing, but existing is not the same as the caller's.
+        if ($promptId && ! $prompt) {
+            return failReturnNotFound(__('Request not found.'));
+        }
+
         try {
-            $order = $this->orders->place($request->user(), $request->validated());
+            // Answering a repeat schedule's question and placing an ordinary
+            // order are the same write; the prompt only adds what it has to be
+            // closed with, so the wizard's own data stays authoritative.
+            $order = $prompt
+                ? app(RecurrenceService::class)->placeFromPrompt($prompt, $request->user(), $data)
+                : $this->orders->place($request->user(), $data);
         } catch (RuntimeException $e) {
-            return $this->translateFailure($e);
+            return $e->getMessage() === 'already_answered'
+                ? failReturnMsg(__('You have already answered this request.'))
+                : $this->translateFailure($e);
         }
 
         // Stain photos, attached after the order exists so they can carry its id.
@@ -214,6 +234,20 @@ class OrderController extends Controller
         }
 
         return successReturnData($this->orders->reorderPayload($order));
+    }
+
+    /**
+     * A repeat schedule's question, if it belongs to the caller.
+     *
+     * Reached through the schedule's owner rather than the prompt itself, which
+     * has no user of its own.
+     */
+    private function findPrompt(Request $request, $id): ?RecurrencePrompt
+    {
+        return RecurrencePrompt::whereHas(
+            'recurrence',
+            fn ($q) => $q->where('user_id', $request->user()->id)
+        )->find($id);
     }
 
     private function find(Request $request, $id): ?Order

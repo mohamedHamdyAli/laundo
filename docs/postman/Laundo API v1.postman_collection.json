@@ -2115,10 +2115,10 @@
                     "orders"
                   ]
                 },
-                "description": "`accepts_review_terms` is **required and must be truthy** — the whole of the review flow rests on it: the customer is agreeing that the price they just saw is an estimate and the real one arrives after the pieces are counted.\n\n`items` may be an empty array for a quote-priced service costed after inspection; the service rejects an empty basket where it matters.\n\nAn absent `delivery_address_id` means «same address».\n\nHandover is asked **once per leg**: `pickup_method` for the bag going out and `delivery_method` for the clean clothes coming back. Each is `door` (handed over in person) or `leave` (left at the door), and each defaults to `door`. The example sends two different values on purpose — a customer may well want the bag taken from their hands and the clean clothes left at the door, and one field could not say that.\n\nTo attach stain photos (max 5, jpg/jpeg/png/webp, 5 MB each) switch the body to **form-data** and send `photos[]`.\n\n**Saves `data.id` into `order_id`.**\n\n`payment_method` accepts **`cash` | `card` | `wallet` | `instapay`**. It is read by pricing, not merely stored: choosing `cash` adds the configured `Cash_Surcharge` as its own line in the response (`cash_surcharge`), applied **after** any coupon - a coupon discounts the washing, not the cost of handling notes. Sending nothing returns a surcharge of 0, which is right for a quote taken before the customer has chosen how to pay.\n\n**Photos** - «أضف صوراً للبقع الصعبة» - are accepted here as up to 5 image files under `photos[]`. That needs a `multipart/form-data` body rather than the JSON above; duplicate the request and switch the body mode to form-data to try it.\n\n`coupon_code` and `offer_id` are **mutually exclusive** — one discount per order. Send `offer_id` when the customer arrived through a card in «عروض متميزة»: the offer's own coupon is applied and a `coupon_code` sent beside it is **refused with a message** rather than quietly dropped, because charging the offer's price while the customer believes a second discount applied is the worst outcome of the three. An offer that only points at a service carries no coupon, so a promo code beside *that* one passes through.",
+                "description": "`accepts_review_terms` is **required and must be truthy** — the whole of the review flow rests on it: the customer is agreeing that the price they just saw is an estimate and the real one arrives after the pieces are counted.\n\n`items` may be an empty array for a quote-priced service costed after inspection; the service rejects an empty basket where it matters.\n\nAn absent `delivery_address_id` means «same address».\n\nHandover is asked **once per leg**: `pickup_method` for the bag going out and `delivery_method` for the clean clothes coming back. Each is `door` (handed over in person) or `leave` (left at the door), and each defaults to `door`. The example sends two different values on purpose — a customer may well want the bag taken from their hands and the clean clothes left at the door, and one field could not say that.\n\nTo attach stain photos (max 5, jpg/jpeg/png/webp, 5 MB each) switch the body to **form-data** and send `photos[]`.\n\n**Saves `data.id` into `order_id`.**\n\n`payment_method` accepts **`cash` | `card` | `wallet` | `instapay`**. It is read by pricing, not merely stored: choosing `cash` adds the configured `Cash_Surcharge` as its own line in the response (`cash_surcharge`), applied **after** any coupon - a coupon discounts the washing, not the cost of handling notes. Sending nothing returns a surcharge of 0, which is right for a quote taken before the customer has chosen how to pay.\n\n**Photos** - «أضف صوراً للبقع الصعبة» - are accepted here as up to 5 image files under `photos[]`. That needs a `multipart/form-data` body rather than the JSON above; duplicate the request and switch the body mode to form-data to try it.\n\n`coupon_code` and `offer_id` are **mutually exclusive** — one discount per order. Send `offer_id` when the customer arrived through a card in «عروض متميزة»: the offer's own coupon is applied and a `coupon_code` sent beside it is **refused with a message** rather than quietly dropped, because charging the offer's price while the customer believes a second discount applied is the worst outcome of the three. An offer that only points at a service carries no coupon, so a promo code beside *that* one passes through.\n\n**Answering a repeat schedule.** Send `prompt_id` (from `POST /recurrences/prompts/{id}/confirm`) and this same call also closes that question: the order is stamped with the schedule's `recurrence_id` and the prompt is marked confirmed, in one transaction. A prompt that is not the caller's is a 404; one already answered is a 400. Everything else on the body stays authoritative — the basket, window and payment method are the customer's to change.",
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n    \"service_id\": 1,\n    \"items\": [\n        {\n            \"item_id\": 1,\n            \"qty\": 3\n        },\n        {\n            \"item_id\": 2,\n            \"qty\": 1\n        }\n    ],\n    \"pickup_address_id\": \"{{address_id}}\",\n    \"delivery_address_id\": null,\n    \"pickup_date\": \"2026-09-05\",\n    \"delivery_date\": \"2026-09-07\",\n    \"pickup_slot_id\": 1,\n    \"delivery_slot_id\": 2,\n    \"pickup_method\": \"door\",\n    \"delivery_method\": \"leave\",\n    \"driver_note\": \"Call before arriving\",\n    \"special_instructions\": \"Separate the whites\",\n    \"accepts_review_terms\": true,\n    \"coupon_code\": null,\n    \"offer_id\": null,\n    \"payment_method\": \"cash\"\n}",
+                  "raw": "{\n    \"prompt_id\": null,\n    \"service_id\": 1,\n    \"items\": [\n        {\n            \"item_id\": 1,\n            \"qty\": 3\n        },\n        {\n            \"item_id\": 2,\n            \"qty\": 1\n        }\n    ],\n    \"pickup_address_id\": \"{{address_id}}\",\n    \"delivery_address_id\": null,\n    \"pickup_date\": \"2026-09-05\",\n    \"delivery_date\": \"2026-09-07\",\n    \"pickup_slot_id\": 1,\n    \"delivery_slot_id\": 2,\n    \"pickup_method\": \"door\",\n    \"delivery_method\": \"leave\",\n    \"driver_note\": \"Call before arriving\",\n    \"special_instructions\": \"Separate the whites\",\n    \"accepts_review_terms\": true,\n    \"coupon_code\": null,\n    \"offer_id\": null,\n    \"payment_method\": \"cash\"\n}",
                   "options": {
                     "raw": {
                       "language": "json"
@@ -2928,7 +2928,7 @@
                     "confirm"
                   ]
                 },
-                "description": "The order is created here, from the saved basket **at today's prices**. Answering twice is refused."
+                "description": "«أيوه» — hands back a **pre-filled basket**, not an order.\n\nThe customer still reviews the pieces, picks a window and chooses how to pay in the ordinary wizard; `POST /orders` carrying `prompt_id` is what closes the question. That is deliberate: a basket agreed to months ago must not be bought at prices nobody has shown since, and a recurring order has to be capacity-checked and paid for like any other.\n\nNo side effect, so calling it twice returns the same basket. A prompt that has already been answered returns 400.\n\nResponse `data`: `prompt_id`, `recurrence_id`, `for_date`, `service_id`, `pickup_address_id`, `delivery_address_id`, `time_slot_id`, `items[]`."
               },
               "response": []
             },
@@ -2977,6 +2977,66 @@
                   ]
                 },
                 "description": "Skips this cycle. The schedule itself is untouched and will ask again next time."
+              },
+              "response": []
+            },
+            {
+              "name": "Update schedule basket",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Responds with the API envelope', function () {",
+                      "    const body = pm.response.json();",
+                      "    pm.expect(body).to.have.property('key');",
+                      "    pm.expect(body).to.have.property('code', pm.response.code);",
+                      "});"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "lang",
+                    "value": "{{lang}}",
+                    "description": "ar | en — read by the ApiLocale middleware. Optional; falls back to the default language."
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/v1/recurrences/{{recurrence_id}}/items",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "recurrences",
+                    "{{recurrence_id}}",
+                    "items"
+                  ]
+                },
+                "description": "«تحب أخلي دي كمياتك الافتراضية؟» — offered by the app **after** the customer edited the basket on their way through the wizard.\n\nThe pieces only. Frequency, weekday and address are the schedule's identity and are still cancel-and-recreate, because a schedule that quietly moved to another day would keep its history while meaning something else.\n\nSame bounds as create: at least one line, `qty` 1–999, active items. Someone else's schedule is a 404.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"items\": [\n        {\n            \"item_id\": 1,\n            \"qty\": 4\n        },\n        {\n            \"item_id\": 2,\n            \"qty\": 1\n        }\n    ]\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
               },
               "response": []
             },

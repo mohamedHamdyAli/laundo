@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Api\V1\RecurrenceItemsRequest;
 use App\Http\Requests\Api\V1\RecurrenceRequest;
 use App\Modules\Order\Models\OrderRecurrence;
 use App\Modules\Order\Models\RecurrencePrompt;
@@ -125,7 +126,12 @@ class RecurrenceController extends Controller
     }
 
     /**
-     * «أيوه» — the order is created here, from the saved basket at today's prices.
+     * «أيوه» — hands back the basket to open the wizard with, not an order.
+     *
+     * The customer still reviews the pieces, picks a window and chooses how to
+     * pay; `POST /orders` carries `prompt_id` back and that is what closes this
+     * question. Kept as a POST because it is the app's "yes" — it has no side
+     * effect, and calling it twice returns the same basket.
      */
     public function confirmPrompt(Request $request, $id): JsonResponse
     {
@@ -135,19 +141,29 @@ class RecurrenceController extends Controller
             return failReturnNotFound(__('Request not found.'));
         }
 
-        try {
-            $order = $this->recurrences->confirm($prompt, $request->user());
-        } catch (RuntimeException $e) {
-            return $e->getMessage() === 'already_answered'
-                ? failReturnMsg(__('You have already answered this request.'))
-                : failReturnMsg(__('We could not create your order.'));
+        if ($prompt->isAnswered()) {
+            return failReturnMsg(__('You have already answered this request.'));
         }
 
-        return successReturnCreated([
-            'order_id' => $order->id,
-            'code' => $order->code,
-            'total' => (float) $order->estimated_total,
-        ], __('Your order has been placed.'));
+        return successReturnData($this->recurrences->basketFor($prompt));
+    }
+
+    /**
+     * «تحب أخلي دي كمياتك الافتراضية؟» — offered after the customer edited the
+     * basket on their way through the wizard.
+     */
+    public function updateItems(RecurrenceItemsRequest $request, $id): JsonResponse
+    {
+        $schedule = $this->findSchedule($request, $id);
+
+        if (! $schedule) {
+            return failReturnNotFound(__('Schedule not found.'));
+        }
+
+        return successReturnData(
+            $this->present($this->recurrences->updateItems($schedule, $request->validated()['items'])),
+            __('Repeat schedule updated.')
+        );
     }
 
     /**

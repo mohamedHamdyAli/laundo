@@ -343,12 +343,24 @@ Route::middleware('auth:sanctum')->group(function () {
     |
     | A schedule never places an order by itself. On its due day it asks
     | «محتاج تغسل النهاردة؟» — /recurrences/prompts is where the app collects those
-    | questions, and confirm/decline is where the customer's answer decides.
+    | questions.
+    |
+    | `confirm` is «أيوه» and hands back a pre-filled basket, not an order: the
+    | customer reviews the pieces, picks a window and chooses how to pay in the
+    | ordinary wizard, and `POST /orders` carries `prompt_id` back. That call is
+    | what closes the question — so a customer who abandons the wizard is asked
+    | again, and a recurring order is priced, paid for and capacity-checked like
+    | any other.
+    |
+    | `items` exists for the one thing the wizard cannot decide for the customer:
+    | whether the quantities they just edited should become the schedule's.
     */
     Route::get('/recurrences', [RecurrenceController::class, 'index'])->name('api.v1.recurrences.index');
     Route::post('/recurrences', [RecurrenceController::class, 'store'])->name('api.v1.recurrences.store');
     Route::put('/recurrences/{id}/pause', [RecurrenceController::class, 'pause'])->name('api.v1.recurrences.pause');
     Route::put('/recurrences/{id}/resume', [RecurrenceController::class, 'resume'])->name('api.v1.recurrences.resume');
+    Route::put('/recurrences/{id}/items', [RecurrenceController::class, 'updateItems'])
+        ->name('api.v1.recurrences.items');
     Route::delete('/recurrences/{id}', [RecurrenceController::class, 'destroy'])->name('api.v1.recurrences.destroy');
 
     Route::get('/recurrences/prompts', [RecurrenceController::class, 'pendingPrompts'])
