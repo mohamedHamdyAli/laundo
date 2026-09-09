@@ -4,6 +4,31 @@
 
 ### Feature
 
+- **A dispatch board: every waiting journey in one place, `Delivery → Dispatch`.** Until now a leg could only be given a driver from inside its own order's page — filter the order list to «has a journey with no driver», open an order, read its Transport table, assign, go back, open the next. The home page counted fifteen waiting journeys and reaching them meant walking four orders. The rows were already being built and thrown away: `OperationsReport::queuedTasks()` assembles order code, leg, waiting hours and attempts for up to fifty waiting legs, and the operations report renders the count (Controller / Service / Blade).
+- **What it lists:** a leg with no driver that is not finished — one filter for both things the home queue counts apart, a pending leg nobody took and a failed one, because `TaskService` nulls `driver_id` on failure. Longest wait first, which is the dispatcher's own priority. Three figures across the top, and «waiting» and «failed» are counted **apart**: the first needs a driver, the second needs somebody to find out what happened (Service).
+- **Per row:** order code and link, the leg, the customer, **the area** — the field that decides who is eligible, so it is not two clicks away — how long it has waited, the failure reason and attempts, and then either a driver picker showing each candidate's load or the reason nobody is eligible. Plus the whole-order tickbox (Blade).
+- Assigning reuses `admin.order.tasks.assign`, which redirects `back()` — so the operator lands on the board again and there is **one** code path for giving a leg to a driver rather than two that could disagree about the rules (Controller).
+- A board-wide «Try them all again», and AJAX search by order code, customer or phone with a leg-type filter that composes with the term (Controller / Blade).
+- **The home queue now opens the board** rather than the filtered order list, falling back to that list for a role holding `order.view` without `order_task.view` — a queue row that opens a 403 is worse than one that opens a longer route to the same place (Service).
+
+### Migration
+
+- `OrderTask` gains the `DashboardModel` trait and a line in `config/dashboard.php`, so `PermissionSeeder` generates `order_task.*`. That is what puts the board in the sidebar — `MenuBuilder` builds from `{key}.view` — and what lets a dispatcher be given the board without full access to orders. **Both seeders must run on deploy:** `php artisan db:seed --class=PermissionSeeder` then `--class=RoleSeeder` (Database).
+- `RoleSeeder` grants `order_task.view` to `laundry_owner`. Not new power: an owner with `order.update` can already assign a leg from the order page, and the board is rooted in the tenant-scoped `Order` so it lists only its own. What it removes is having to find those legs one order at a time (Database).
+
+### Fix
+
+- The board's eager load selects `orders.user_id`. A column list on the parent that leaves out the foreign key gives every row a null relation, and the Customer column silently read «—» (Service).
+- `failure_reason` is a cast enum, not a string; `__()` on the enum itself reads as an array offset and took the page down with a 500 (Blade).
+- The empty state tells «the board is clear» from «your search matched nothing». Claiming every journey has a driver because a search missed is a statement an operator would act on (Blade).
+
+### Tests
+
+- `DispatchBoardTest` — 17. What belongs on the board and what does not (assigned, completed), failed counted apart from never-taken, longest wait first, the area on the row, assigning from it and the leg leaving it, the whole order cleared from one row, the board-wide retry and its honest failure, the reason on the row, search by code, the leg filter, the two empty states, **a laundry owner seeing only its own legs**, and the permission gate in both directions (Tests).
+- `/admin/dispatch` joins the whole-page contrast sweep (Tests).
+
+### Feature
+
 - **The driver picker says what each driver is already carrying** — «Mahmoud Driver — 5 of 20», or «5, no limit» where no cap is set. The list has always arrived sorted least-loaded-first, which is a real decision the dispatcher makes and the operator could not see: two names looked interchangeable when one was a single order off their limit (Blade / Service).
 - **One driver can take the whole chain in one action.** A tickbox beside Assign — «and the other N legs of this order» — where it used to be four separate submissions of four separate forms. This is also what the capacity rule already assumes: `max_concurrent_orders` counts distinct **orders**, so the remaining legs of an order a driver is now holding cost nothing further against their cap. Each leg is still checked on its own, because the delivery leg can be in a different zone from the pickup — and **whatever is refused is named** in the message. Doing three of four quietly would be worse than doing one, since the operator would leave believing the order was covered (Blade / Controller).
 - **«Try the queue again».** Dispatch re-offers a queued leg on a ten-minute schedule, which is the right cadence for a background sweep and the wrong one for somebody who has just given a driver the zone or raised a cap. The button runs the same `dispatch()` the scheduled command calls, and reports how many of the waiting legs found somebody (Blade / Controller / Routes).
@@ -47,9 +72,27 @@
 - `HomeTest` grows from 21 to 34. Beyond the per-item checks, two sweeps over the **whole** queue: none of its items may open a report or an unfiltered order list, and every filter it links to must be one the list understands *and* must return rows for the number shown — a `status` the repository does not recognise falls through to `where('status', …)` and returns nothing, so the item would open an empty screen while displaying a count above zero, which reads as data loss. Fixing seven items one at a time is how the eighth arrives with the same defect (Tests).
 - Also pinned: the clause is dropped when it would say nothing, four legs on one order gets its own sentence, and both hint sentences carry Arabic with their placeholders (Tests).
 
+### Feature
+
+- **A repeat schedule's question now opens the wizard instead of placing the order.** `POST /recurrences/prompts/{id}/confirm` created an order on one tap: the schedule's basket, the schedule's window, the cycle's date, no price shown before agreeing, and — because it never passed a `payment_method` — every recurring order stored with `payment_method` null, which also zeroed `cash_surcharge` for a customer about to pay cash. It now returns a **pre-filled basket** and creates nothing; the customer reviews the pieces, picks a window and chooses how to pay in the ordinary wizard (API / Service).
+- `POST /orders` accepts `prompt_id`. In one transaction it stamps the order with the schedule's `recurrence_id` and closes the prompt (`confirmed` + `order_id`). The link is read off the prompt, never off the request, so an order cannot be filed under someone else's schedule; a prompt that is not the caller's is a 404 and one already answered is a 400 (API / Service).
+- The prompt stays open until an order actually exists, so a customer who abandons the wizard is asked again. `GET /recurrences/prompts` is therefore also an abandoned-basket list — deliberate, and better than counting a tap as an answer (Service).
+- `PUT /recurrences/{id}/items` — «تحب أخلي دي كمياتك الافتراضية؟», offered after the customer edits the basket. Pieces only, same bounds as create; frequency, weekday and address stay cancel-and-recreate, because a schedule that quietly moved to another day would keep its history while meaning something else (API / Service / Request).
+- `RecurrenceService::confirm()` split into `basketFor()` and `placeFromPrompt()`; the second is the old body taking the wizard's data instead of the schedule's. Nothing new was built — `reorder` was already the "hand back intent, not a purchase" pattern and the wizard already existed; this connects the two (Service).
+
+### Fix
+
+- **Slot capacity is enforced on recurring orders again.** It was bypassed on purpose while the confirm screen had no slot picker to send a refused customer back to. It has one now, so the exemption is gone and a full window returns 422 on `pickup_slot_id` like any other order — closing a back door where a customer could postpone and rebook into a window the wizard had already sealed (Service).
+
+### Tests
+
+- `RecurrenceTest` grows by seven: confirm returns a basket and creates nothing (and is safe to call twice), an order carrying `prompt_id` closes the prompt and carries the schedule while leaving the schedule's own basket alone, the wizard's `payment_method` reaches the order and its cash surcharge, a full window now refuses a recurring order and leaves the question open, a stranger's `prompt_id` is refused, and `PUT …/items` updates the basket while an empty one and another customer's schedule are both refused. `a_prompt_cannot_be_answered_twice` now spends the prompt through `POST /orders` and checks all three re-entry paths (Tests).
+- `OrderReviewTest::a_recurring_order_carries_the_consent_too` moved to `placeFromPrompt()`; the consent is now given explicitly on the estimate screen rather than set for the customer (Tests).
+
 ### Documentation
 
-- Added `docs/recurrence-mobile-guide.md` — the Order Recurrence feature written for the mobile team, in Arabic. Covers the lifecycle (create -> daily 09:00 cron -> prompt + push -> answer -> order), all eight `/api/v1/recurrences*` endpoints with real request/response shapes, the FCM payload, the response envelope, and twelve integration traps: ISO `day_of_week` (1=Mon), `starts_on` being `after:today` rather than `after_or_equal`, delivery address always mirroring pickup, no edit endpoint, cancelled schedules staying in the list, slot capacity deliberately bypassed on confirm, and the fact that a customer with no registered device gets the prompt row but no push — so the app must poll `GET /recurrences/prompts` on launch rather than rely on the notification.
+- Added `docs/recurrence-mobile-guide.md` — the Order Recurrence feature written for the mobile team, in Arabic. Covers the lifecycle (create -> daily 09:00 cron -> prompt + push -> basket -> wizard -> order), all nine `/api/v1/recurrences*` endpoints with real request/response shapes, the FCM payload, the response envelope, and twelve integration traps: ISO `day_of_week` (1=Mon), `starts_on` being `after:today` rather than `after_or_equal`, delivery address always mirroring pickup, no edit endpoint, cancelled schedules staying in the list, slot capacity deliberately bypassed on confirm, and the fact that a customer with no registered device gets the prompt row but no push — so the app must poll `GET /recurrences/prompts` on launch rather than rely on the notification.
+- Updated the same guide, the Postman collection (103 requests) and `docs/api-reference.html` for the wizard flow above: the new `confirm` payload, `POST /orders` + `prompt_id`, `PUT …/items`, and the capacity exemption being gone.
 
 ## 2026-09-08
 

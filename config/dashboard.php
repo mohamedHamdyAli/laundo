@@ -10,19 +10,20 @@ use App\Modules\Coupon\Models\Coupon;
 use App\Modules\Driver\Models\Driver;
 use App\Modules\Faq\Models\Faq;
 use App\Modules\Intro\Models\intro;
-use App\Modules\JourneyStep\Models\JourneyStep;
-use App\Modules\Offer\Models\Offer;
 use App\Modules\Item\Models\Item;
 use App\Modules\ItemCategory\Models\ItemCategory;
+use App\Modules\JourneyStep\Models\JourneyStep;
 use App\Modules\Laundry\Models\Laundry;
 use App\Modules\LaundryService\Models\LaundryService;
 use App\Modules\LaundryStaff\Models\LaundryStaff;
 use App\Modules\LaundryZone\Models\LaundryZone;
 use App\Modules\Moderator\Models\Moderator;
 use App\Modules\Notification\Models\NotificationLog;
+use App\Modules\Offer\Models\Offer;
 use App\Modules\Order\Models\Order;
 use App\Modules\Order\Models\OrderRating;
 use App\Modules\Order\Models\OrderRecurrence;
+use App\Modules\Order\Models\OrderTask;
 use App\Modules\Payment\Models\DriverEarning;
 use App\Modules\Payment\Models\Payment;
 use App\Modules\Payment\Models\Refund;
@@ -58,6 +59,9 @@ return [
         LaundryZone::class,
         Driver::class,
         Order::class,
+        // The dispatch board. Its own permission so the board can be granted
+        // without full order access, and so it appears in the sidebar at all.
+        OrderTask::class,
         Coupon::class,
         Offer::class,
         JourneyStep::class,

@@ -69,6 +69,12 @@ class RoleSeeder extends Seeder
             // order is placed by a customer, never by the laundry.
             'order.view',
             'order.update',
+            // The dispatch board. Not new power: an owner with `order.update`
+            // can already assign a leg from the order page, and the board is
+            // rooted in the tenant-scoped Order so it lists only its own. What
+            // it removes is having to find those legs one order at a time —
+            // and without it the queue on its own home page links to a 403.
+            'order_task.view',
             // Revenue, orders and laundry performance only. `report.update` is
             // the super-admin gate for driver performance and operations health,
             // which are not tenant-scoped and would leak other laundries' drivers.

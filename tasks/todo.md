@@ -2964,3 +2964,145 @@ that change what a person can do rather than how it looks.
 - **Half the driver profile cannot be cleared** through the form: `array_filter`
   in `profilePayload()` drops nulls, so blanking a shift or a note leaves the
   old value, and unchecking every zone leaves the zones intact.
+
+---
+
+# Recurrence: the prompt opens the wizard instead of placing the order
+
+**The ask.** The notification arrives, the customer says yes, and the app then
+asks «نفس القطع اللي المرة اللي فاتت؟». No → he re-enters quantities. Either way
+he continues into the normal booking cycle — slot, then payment — and the order
+that comes out sits under the schedule as one of its occurrences.
+
+**Where we are.** `confirmPrompt` is one tap and the order exists: same basket,
+the schedule's slot, the cycle's date, no price shown before agreeing, and no
+`payment_method` at all — which also zeroes `cash_surcharge` for a customer who
+will pay cash. The wizard the ask describes already exists (`quote` → `store`),
+and `reorder` is already the "hand back a pre-filled basket" pattern. This
+connects the two rather than building a third.
+
+**Decisions taken** (asked and answered 2026-09-09):
+
+| Question | Answer |
+| --- | --- |
+| When is a prompt closed? | Only when the order is actually created |
+| Does the schedule learn the new quantities? | Only if the customer says so — the app asks |
+| The existing `confirm` endpoint | Same URL, new behaviour: it returns the basket |
+| Slot capacity on a recurring order | Enforced again, like any other order |
+
+## Checklist
+
+### Service
+- [x] `RecurrenceService::confirm()` → `basketFor(RecurrencePrompt): array` — returns the
+      pre-filled basket, creates nothing, leaves the prompt open. Shape mirrors
+      `OrderService::reorderPayload()` plus the prompt's own context (`prompt_id`,
+      `for_date`, `time_slot_id`).
+- [x] `RecurrenceService::placeFromPrompt(RecurrencePrompt, User, array $data): Order` —
+      the old `confirm()` body, but priced from the *wizard's* data, inside one
+      transaction: place the order with `recurrence_id`, then mark the prompt
+      `confirmed` + `order_id`. Drop `enforceSlotCapacity: false`.
+- [x] `RecurrenceService::updateItems(OrderRecurrence, array $items): OrderRecurrence` —
+      backs «تحب أخلي دي الافتراضية؟».
+
+### API
+- [x] `RecurrenceController::confirmPrompt()` returns the basket (200, not 201).
+- [x] `RecurrenceController::updateItems()` + `PUT /recurrences/{id}/items`.
+- [x] `RecurrenceItemsRequest` — `items` required array, same `item_id`/`qty` rules
+      as `RecurrenceRequest`.
+- [x] `OrderRequest`: `prompt_id` nullable, exists on `recurrence_prompts`.
+- [x] `OrderController::store()` branches — with `prompt_id` it goes through
+      `placeFromPrompt`, otherwise `place()` as today. Refuse someone else's
+      prompt (404) and an already-answered one (400).
+- [x] `routes/api.php`: the new route, and the block comment — it currently says
+      confirm creates the order.
+
+### Tests
+- [x] Rewrite `confirming_a_prompt_creates_the_order_at_todays_prices` — confirm now
+      returns a basket and creates nothing.
+- [x] Placing with `prompt_id` closes the prompt, links `order_id`, sets `recurrence_id`.
+- [x] A prompt already answered is refused at `store`.
+- [x] Someone else's `prompt_id` is refused.
+- [x] A full window now refuses a recurring order (capacity re-enforced).
+- [x] `payment_method` from the wizard reaches the order and its cash surcharge.
+- [x] `PUT /recurrences/{id}/items` updates the schedule; another customer's is 404.
+- [x] Fix `OrderReviewTest::a_recurring_order_carries_the_consent_too` — it calls
+      `RecurrenceService::confirm()` directly.
+
+### Docs
+- [x] `docs/recurrence-mobile-guide.md` — sections 3 and 5 change substantially.
+- [x] Postman: the confirm request body/description, the new items request,
+      `prompt_id` on create-order.
+- [x] `generate-reference.py` → regenerate `docs/api-reference.html`.
+- [x] Republish the mobile-guide artifact.
+- [x] `Changelog.md`.
+
+## Done — 2026-09-09
+
+Whole suite green apart from `HomeTest > the driverless journeys item opens the
+orders and not a report`, which belongs to the dispatch-board work in the same
+working tree: `DashboardSummary.php:183` now points the queue item at
+`admin.dispatch.index` and that test still expects `admin.order.index`. Untouched
+here. PHPStan clean, Pint clean, 103 endpoints in routes, Postman and the
+reference.
+
+## Open risk
+
+The prompt stays open until an order exists, so a customer who abandons the
+wizard is asked again by nothing — the prompt simply waits in
+`GET /recurrences/prompts`. That is the chosen behaviour, but it means the
+"pending prompts" list is now also an abandoned-basket list. Worth a look after
+it ships.
+
+---
+
+## Round 8 — the dispatch board
+
+Approved. The last big gap on the delivery side: every leg is assigned from
+inside one order's page, so finding the work means the order list's filter, then
+opening orders one at a time. Meanwhile `OperationsReport::queuedTasks()`
+already builds order code, leg, waiting hours and attempts for 50 waiting legs
+and the report throws all of it away to print a count.
+
+- [x] **A permission, the way this project makes them.** `OrderTask` gets the
+      `DashboardModel` trait and a line in `config/dashboard.php`, so
+      `PermissionSeeder` generates `order_task.*`. That is what lets the board
+      appear in the sidebar (`MenuBuilder` builds from `{key}.view`) and lets a
+      role be given the board without full order access.
+- [x] **`GET /admin/dispatch`** — every leg with no driver that is not finished,
+      longest-waiting first. That is both things the home queue counts: pending
+      legs, and failed ones (a failure nulls `driver_id`, so one filter catches
+      both).
+- [x] **Per row:** order code and link, leg, customer, the **area** — the field
+      that decides eligibility — how long it has waited, attempts and the
+      failure reason, then either a driver picker with each driver's load or the
+      reason nobody is eligible.
+- [x] Assign from the board, reusing `admin.order.tasks.assign` (it redirects
+      `back()`, so it returns to the board), including the whole-order tickbox.
+- [x] A board-wide «Try the queue again».
+- [x] AJAX search + a leg-type filter, per the project's list conventions.
+- [x] Loads batched in one query — the per-driver `COUNT` inside a `usort`
+      comparator is what made the order page cost hundreds of queries.
+- [x] Link it from the home queue, so «Journeys with no driver» opens the board
+      rather than a filtered order list.
+- [x] Tests: the board lists what needs a person and nothing else, ordering,
+      assigning from it, the reason showing, tenant isolation for a laundry
+      owner, and the permission gate.
+
+### Verification
+
+- 995 PHPUnit tests green (970 + 25). `DispatchBoardTest` is 17 of them.
+- Driven in the browser end to end: the board renders with its three counts, the
+  search returns one row for an order code and the *other* empty state for a
+  miss, the picker reads «Mahmoud Driver — 6 of 20», and **assigning from the
+  board worked** — flash «Task assigned.», back on `/admin/dispatch`, the leg
+  gone, all three counts at zero.
+- Two real bugs caught by driving it rather than reading it: the eager load
+  omitted `orders.user_id`, so every Customer cell read «—»; and
+  `failure_reason` is a cast enum, so `__()` on it took the page down with a 500.
+- `/admin/dispatch` added to the whole-page contrast sweep.
+
+### Deploy note
+
+`PermissionSeeder` **and** `RoleSeeder` have to run on the server. The board is
+gated on `order_task.view`, which does not exist there yet, and the
+laundry-owner grant is what stops that role's own home queue linking to a 403.

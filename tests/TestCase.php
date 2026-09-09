@@ -70,6 +70,10 @@ abstract class TestCase extends BaseTestCase
             'laundry_service.view', 'laundry_service.update',
             'laundry_zone.view', 'laundry_zone.update',
             'order.view', 'order.update',
+            // Mirrors RoleSeeder: the dispatch board. Not new power — an owner
+            // with `order.update` can already assign a leg from the order page,
+            // and the board is rooted in the tenant-scoped Order.
+            'order_task.view',
             // Mirrors RoleSeeder: the tenant-scoped reports only. Driver
             // performance and operations health are gated on report.update,
             // because tasks are not tenant-scoped and the scope would not stop

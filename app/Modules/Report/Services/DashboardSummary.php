@@ -164,6 +164,26 @@ class DashboardSummary
         ];
     }
 
+    /**
+     * Where a driverless-journey row should open.
+     *
+     * The dispatch board when the reader can see it: it lists the legs
+     * themselves and can assign one, where the filtered order list still has
+     * them opening an order at a time to reach the same table.
+     *
+     * The filtered order list stays as the fallback, because a role can hold
+     * `order.view` without `order_task.view` and a queue row that opens a 403
+     * is worse than one that opens a longer route to the same place.
+     *
+     * @return array{route: string, params: array<string, string>}
+     */
+    private function dispatchTarget(string $fallbackFilter): array
+    {
+        return canDo('order_task.view')
+            ? ['route' => 'admin.dispatch.index', 'params' => []]
+            : ['route' => 'admin.order.index', 'params' => ['status' => $fallbackFilter]];
+    }
+
     public function needsAPerson(): array
     {
         $snapshot = $this->operations->snapshot();
@@ -193,8 +213,7 @@ class DashboardSummary
                  * sent that somebody to a page with no action on it, and left
                  * them to find four orders by hand in a list of every order.
                  */
-                'route' => 'admin.order.index',
-                'params' => ['status' => OrderRepository::NEEDS_DRIVER],
+                ...$this->dispatchTarget(OrderRepository::NEEDS_DRIVER),
                 'severity' => 'critical',
                 ...$this->legsHint('Dispatch found nobody eligible', $snapshot['tasks_queued']),
             ],
@@ -253,8 +272,7 @@ class DashboardSummary
                 // The third item that pointed at the operations report, and the
                 // same objection: a person intervenes by releasing the leg and
                 // handing it to a driver, both of which are on the order.
-                'route' => 'admin.order.index',
-                'params' => ['status' => OrderRepository::NEEDS_RESCUE],
+                ...$this->dispatchTarget(OrderRepository::NEEDS_RESCUE),
                 'severity' => 'critical',
                 ...$this->legsHint('Escalated — a person has to intervene', $snapshot['tasks_exhausted']),
             ],

@@ -24,6 +24,7 @@ use App\Modules\LaundryZone\Controllers\LaundryZoneController;
 use App\Modules\Moderator\Controllers\ModeratorController;
 use App\Modules\Notification\Controllers\NotificationLogController;
 use App\Modules\Offer\Controllers\OfferController;
+use App\Modules\Order\Controllers\DispatchController;
 use App\Modules\Order\Controllers\OrderController;
 use App\Modules\Order\Controllers\OrderReviewController as DashboardOrderReviewController;
 use App\Modules\Order\Controllers\OrderTaskController;
@@ -475,6 +476,26 @@ Route::middleware(['auth', 'dashboard.only'])->prefix('/admin')->group(function 
     | handover happened.
     |
     */
+    /*
+    |--------------------------------------------------------------------------
+    | The dispatch board
+    |--------------------------------------------------------------------------
+    |
+    | Every waiting journey across every order. Gated on `order_task.view` --
+    | its own permission, so the board can be given to a dispatcher without
+    | full access to orders -- while assigning still goes through
+    | `admin.order.tasks.assign` and its `order.update`.
+    |
+    */
+    Route::controller(DispatchController::class)->group(function () {
+        Route::get('/dispatch', 'index')
+            ->middleware('permission:order_task.view')->name('admin.dispatch.index');
+        Route::get('/dispatch/search', 'search')
+            ->middleware('permission:order_task.view')->name('admin.dispatch.search');
+        Route::post('/dispatch/redispatch', 'redispatchAll')
+            ->middleware('permission:order.update')->name('admin.dispatch.redispatch');
+    });
+
     Route::controller(OrderTaskController::class)->group(function () {
         Route::post('/order/task/assign/{id}', 'assign')
             ->middleware('permission:order.update')->name('admin.order.tasks.assign');

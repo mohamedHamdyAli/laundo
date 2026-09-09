@@ -100,8 +100,12 @@ return [
             'title' => 'Delivery',
             'icon' => 'bi bi-truck-front',
             'items' => [
-                'driver' => 1,
-                'driver_earning' => 2,
+                // First, because it is the screen somebody opens to do the
+                // day's work; the driver list is where they go to fix what it
+                // reports.
+                'order_task' => 1,
+                'driver' => 2,
+                'driver_earning' => 3,
             ],
         ],
 
@@ -215,6 +219,7 @@ return [
         'laundry_service' => 'bi bi-ui-checks',
         'laundry_zone' => 'bi bi-geo',
 
+        'order_task' => 'bi bi-signpost-split',
         'driver' => 'bi bi-truck',
         // Was `bi bi-cash-stack`, which is now the Money group's own icon.
         'driver_earning' => 'bi bi-coin',
@@ -263,6 +268,7 @@ return [
         'laundry_service' => 'My Services',
         'laundry_zone' => 'My Areas',
 
+        'order_task' => 'Dispatch',
         'driver' => 'Drivers',
         'driver_earning' => 'Driver Earnings',
 
@@ -310,6 +316,7 @@ return [
         'laundry_service' => 'admin.laundry_service.index',
         'laundry_zone' => 'admin.laundry_zone.index',
 
+        'order_task' => 'admin.dispatch.index',
         'driver' => 'admin.driver.index',
         'driver_earning' => 'admin.earning.index',
 

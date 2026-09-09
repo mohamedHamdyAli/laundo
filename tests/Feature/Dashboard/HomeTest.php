@@ -484,16 +484,34 @@ class HomeTest extends TestCase
      *
      * «Journeys with no driver» pointed at `admin.report.operations` — a page
      * that counts these legs, lists their order codes, and offers no way to
-     * assign anybody. A driver is given a leg on the order's own screen. So the
-     * one item on the page whose entire purpose is "somebody must act" sent that
-     * somebody somewhere they could not, and left them to find the affected
-     * orders by hand in a list of every order there is.
+     * assign anybody. Then it pointed at the order list filtered to the orders
+     * holding those legs, which was better and still left the operator opening
+     * an order at a time to reach the same Transport table.
+     *
+     * It opens the **dispatch board** now: the legs themselves, each with a
+     * driver picker on its own row.
      */
     #[Test]
-    public function the_driverless_journeys_item_opens_the_orders_and_not_a_report(): void
+    public function the_driverless_journeys_item_opens_the_dispatch_board(): void
     {
         $this->orderAt(OrderStatus::AwaitingPickup);
         $this->actingAs($this->superAdmin());
+
+        $item = collect($this->summary()->needsAPerson())->firstWhere('key', 'tasks_queued');
+
+        $this->assertSame('admin.dispatch.index', $item['route']);
+    }
+
+    #[Test]
+    public function it_falls_back_to_the_filtered_order_list_for_a_role_without_the_board(): void
+    {
+        // A role can hold `order.view` without `order_task.view`, and a queue
+        // row that opens a 403 is worse than one that opens a longer route to
+        // the same place.
+        $this->orderAt(OrderStatus::AwaitingPickup);
+
+        $this->grant('laundry_owner', ['laundry.view', 'order.view', 'order.update']);
+        $this->actingAs($this->tenant['owner']->fresh());
 
         $item = collect($this->summary()->needsAPerson())->firstWhere('key', 'tasks_queued');
 

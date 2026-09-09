@@ -320,6 +320,7 @@ const ALL_SCREENS = [
   '/admin/user',
   '/admin/city',
   '/admin/roles',
+  '/admin/dispatch',
   '/admin/rating',
   '/admin/recurrence',
   '/admin/complaint',

@@ -6,6 +6,7 @@ use App\Modules\Driver\Models\Driver;
 use App\Modules\Order\Enums\TaskFailureReason;
 use App\Modules\Order\Enums\TaskStatus;
 use App\Modules\Order\Enums\TaskType;
+use App\Trait\DashboardModel;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -43,6 +44,14 @@ use Illuminate\Support\Carbon;
  */
 class OrderTask extends Model
 {
+    /*
+     * The marker `PermissionGenerator` walks for. It is here so the dispatch
+     * board can have a permission of its own — `order_task.view` — which is
+     * what puts it in the sidebar (`MenuBuilder` builds from `{key}.view`) and
+     * what lets a role be given the board without full access to orders.
+     */
+    use DashboardModel;
+
     /**
      * Two failures and a task stops going round the pool.
      *
