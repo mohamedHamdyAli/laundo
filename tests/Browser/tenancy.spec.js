@@ -152,7 +152,7 @@ test.describe('the AJAX pieces PHP tests cannot reach', () => {
     await login(page, ACCOUNTS.superAdmin);
     await page.goto('/admin/laundry');
 
-    const rowsBefore = await page.locator('#laundry-table-body tr').count();
+    const rowsBefore = await page.locator('#laundry-table-body .stack-row').count();
     expect(rowsBefore).toBeGreaterThan(1);
 
     // pressSequentially, not fill(): setupAjaxSearch listens on `keyup`, and

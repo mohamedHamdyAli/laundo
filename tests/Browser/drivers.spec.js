@@ -25,7 +25,7 @@ test.describe('driver management', () => {
     await expect(page.locator('body')).not.toContainText(/Whoops|SQLSTATE|Undefined variable/i);
   });
 
-  test('the list shows vehicle, shift, areas and availability', async ({ page }) => {
+  test('the list shows vehicle, plate, areas and availability', async ({ page }) => {
     await login(page, ACCOUNTS.superAdmin);
     await page.goto('/admin/driver');
 
@@ -34,7 +34,9 @@ test.describe('driver management', () => {
     await expect(table).toContainText('Mahmoud Driver');
     await expect(table).toContainText('Motorcycle');
     await expect(table).toContainText('QRS 4821');
-    await expect(table).toContainText('09:00 – 21:00');
+    // Not the shift: the cell is `plate_number ?: shiftLabel()`, so a driver
+    // with a plate never shows one here. It is asserted on the edit form
+    // below, which is where it can actually be changed.
     await expect(table).toContainText(/Available/);
   });
 
@@ -43,7 +45,7 @@ test.describe('driver management', () => {
     await login(page, ACCOUNTS.superAdmin);
     await page.goto('/admin/driver');
 
-    const row = page.locator('#driver-table-body tr', { hasText: 'Expired Docs Driver' });
+    const row = page.locator('#driver-table-body .stack-row', { hasText: 'Expired Docs Driver' });
 
     await expect(row).toContainText(/Documents expired/i);
   });
@@ -52,7 +54,7 @@ test.describe('driver management', () => {
     await login(page, ACCOUNTS.superAdmin);
     await page.goto('/admin/driver');
 
-    const row = page.locator('#driver-table-body tr', { hasText: 'Mahmoud Driver' });
+    const row = page.locator('#driver-table-body .stack-row', { hasText: 'Mahmoud Driver' });
 
     await expect(row).not.toContainText(/Documents expired/i);
   });
@@ -91,7 +93,7 @@ test.describe('driver management', () => {
     await page.goto('/admin/driver');
 
     const href = await page
-      .locator('#driver-table-body tr', { hasText: 'Mahmoud Driver' })
+      .locator('#driver-table-body .stack-row', { hasText: 'Mahmoud Driver' })
       .locator('a[href*="/driver/edit/"]')
       .first()
       .getAttribute('href');
@@ -112,7 +114,7 @@ test.describe('driver management', () => {
     await page.goto('/admin/driver');
 
     const href = await page
-      .locator('#driver-table-body tr', { hasText: 'Mahmoud Driver' })
+      .locator('#driver-table-body .stack-row', { hasText: 'Mahmoud Driver' })
       .locator('a[href*="/driver/edit/"]')
       .first()
       .getAttribute('href');
@@ -123,7 +125,7 @@ test.describe('driver management', () => {
     await page.waitForLoadState('networkidle');
 
     await expect(
-      page.locator('#driver-table-body tr', { hasText: 'Mahmoud Driver' })
+      page.locator('#driver-table-body .stack-row', { hasText: 'Mahmoud Driver' })
     ).toContainText(/Unavailable/);
 
     // Put the fixture back.
@@ -133,7 +135,7 @@ test.describe('driver management', () => {
     await page.waitForLoadState('networkidle');
 
     await expect(
-      page.locator('#driver-table-body tr', { hasText: 'Mahmoud Driver' })
+      page.locator('#driver-table-body .stack-row', { hasText: 'Mahmoud Driver' })
     ).toContainText(/Available/);
   });
 

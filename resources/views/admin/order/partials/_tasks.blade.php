@@ -16,6 +16,23 @@
                 </button>
             </form>
         @endif
+
+        {{-- Dispatch re-offers a queued leg every ten minutes, which is right
+             for a background sweep and wrong for somebody who has just given a
+             driver the zone or raised a cap and wants to know whether it worked.
+             Without this they either wait, or assign every leg by hand having
+             already done the work that would have let dispatch do it. --}}
+        @php
+            $waiting = $row->tasks->filter(fn ($t) => $t->driver_id === null && ! $t->status->isFinished());
+        @endphp
+        @if ($waiting->isNotEmpty() && canDo('order.update'))
+            <form method="POST" action="{{ route('admin.order.tasks.dispatch', $row->id) }}">
+                @csrf
+                <button type="submit" class="btn-quiet">
+                    <i class="bi bi-arrow-repeat"></i>{{ __('Try the queue again') }}
+                </button>
+            </form>
+        @endif
     </div>
 
     <div class="card-body">
@@ -69,7 +86,11 @@
                                     @if ($task->driver)
                                         {{ $task->driver->name }}
                                     @else
-                                        <span class="badge bg-warning text-dark">{{ __('In the queue') }}</span>
+                                        {{-- The Status column already names this state («Awaiting a driver»).
+                                             This column is about the driver, so it says what is true
+                                             of the driver rather than repeating the state under a
+                                             second name in the same row. --}}
+                                        <span class="badge bg-warning text-dark">{{ __('Nobody yet') }}</span>
                                     @endif
                                 </td>
                                 <td>
@@ -89,24 +110,57 @@
                                 <td>{{ $task->piece_count ?? '—' }}</td>
                                 <td class="text-end">
                                     @if (canDo('order.update') && ! $task->status->isFinished())
+                                        @php $remainingLegs = $row->tasks->reject(fn ($t) => $t->status->isFinished())->count(); @endphp
                                         @php $eligible = $taskCandidates[$task->id] ?? []; @endphp
                                         @if (! empty($eligible))
                                             <form method="POST" action="{{ route('admin.order.tasks.assign', $task->id) }}"
-                                                class="d-flex gap-1 justify-content-end">
+                                                class="d-flex flex-column align-items-end gap-1">
                                                 @csrf
-                                                <select name="driver_id" class="form-select form-select-sm"
-                                                    style="max-width: 160px;" required>
-                                                    <option value="">{{ __('Choose a driver') }}</option>
-                                                    @foreach ($eligible as $candidate)
-                                                        <option value="{{ $candidate->id }}"
-                                                            @selected($task->driver_id === $candidate->id)>
-                                                            {{ $candidate->name }}
-                                                        </option>
-                                                    @endforeach
-                                                </select>
-                                                <button type="submit" class="btn btn-sm btn-outline-primary">
-                                                    {{ __('Assign') }}
-                                                </button>
+                                                <div class="d-flex gap-1 justify-content-end">
+                                                    {{-- 13rem, not 15: the panel sits in a 749px column
+                                                         and a wider control pushed the whole table into
+                                                         horizontal scroll, putting Assign off-screen. The
+                                                         load label is trimmed to suit rather than the
+                                                         column being sacrificed for it. --}}
+                                                    <select name="driver_id" class="form-select form-select-sm"
+                                                        style="max-width: 13rem;" required>
+                                                        <option value="">{{ __('Choose a driver') }}</option>
+                                                        @foreach ($eligible as $candidate)
+                                                            @php $load = $driverLoads[$candidate->id] ?? null; @endphp
+                                                            {{-- The list arrives sorted least-loaded-first, which was
+                                                                 a real decision the dispatcher makes and the operator
+                                                                 could not see: two names looked interchangeable when
+                                                                 one was a single order off their limit. --}}
+                                                            <option value="{{ $candidate->id }}"
+                                                                @selected($task->driver_id === $candidate->id)>
+                                                                {{ $candidate->name }}@if ($load) —
+                                                                    @if ($load['cap'])
+                                                                        {{ __(':held of :cap', ['held' => $load['load'], 'cap' => $load['cap']]) }}
+                                                                    @else
+                                                                        {{ __(':held, no limit', ['held' => $load['load']]) }}
+                                                                    @endif
+                                                                @endif
+                                                            </option>
+                                                        @endforeach
+                                                    </select>
+                                                    <button type="submit" class="btn btn-sm btn-outline-primary">
+                                                        {{ __('Assign') }}
+                                                    </button>
+                                                </div>
+
+                                                {{-- One driver taking the whole chain is the normal case, and it
+                                                     cost four separate submissions. It is also what the capacity
+                                                     rule assumes: the cap counts distinct *orders*, so four legs of
+                                                     one order are one job in a driver's day. Each remaining leg is
+                                                     still checked on its own — the delivery leg can be in a
+                                                     different zone — and the message says what was refused. --}}
+                                                @if ($remainingLegs > 1)
+                                                    <label class="form-check form-check-sm small text-muted mb-0">
+                                                        <input class="form-check-input" type="checkbox"
+                                                            name="rest_of_order" value="1">
+                                                        {{ __('and the other :count legs of this order', ['count' => $remainingLegs - 1]) }}
+                                                    </label>
+                                                @endif
                                             </form>
                                         @else
                                             {{-- «No eligible driver» on its own covers five unrelated

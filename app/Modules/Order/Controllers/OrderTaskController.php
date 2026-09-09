@@ -32,7 +32,10 @@ class OrderTaskController extends Controller
 
     public function assign(Request $request, $id)
     {
-        $request->validate(['driver_id' => ['required', 'exists:users,id']]);
+        $request->validate([
+            'driver_id' => ['required', 'exists:users,id'],
+            'rest_of_order' => ['nullable', 'boolean'],
+        ]);
 
         $task = $this->find($id);
         $driver = Driver::find($request->get('driver_id'));
@@ -51,7 +54,101 @@ class OrderTaskController extends Controller
             });
         }
 
-        return back()->with('success', __('Task assigned.'));
+        if (! $request->boolean('rest_of_order')) {
+            return back()->with('success', __('Task assigned.'));
+        }
+
+        return back()->with('success', $this->assignRest($task, $driver));
+    }
+
+    /**
+     * Give the order's other open legs to the same driver.
+     *
+     * One driver taking the whole chain is the normal case, and it used to cost
+     * four separate submissions of four separate forms. It is also what the
+     * capacity rule already assumes: `max_concurrent_orders` counts distinct
+     * **orders**, so the remaining legs of an order the driver is now holding
+     * cost nothing further against their cap.
+     *
+     * Each leg still goes through `assign()` on its own, so the eligibility
+     * rules are applied per leg rather than once — the delivery leg can be in a
+     * different zone from the pickup, and that is exactly the case where a
+     * blanket assignment would be wrong. Whatever is refused is **named** in the
+     * message: silently doing three of four legs is worse than doing one, since
+     * the operator would leave believing the order was covered.
+     */
+    private function assignRest(OrderTask $assigned, Driver $driver): string
+    {
+        $done = 1;
+        $refused = [];
+
+        foreach ($assigned->order->tasks as $leg) {
+            if ($leg->id === $assigned->id || $leg->status->isFinished() || $leg->driver_id !== null) {
+                continue;
+            }
+
+            try {
+                $this->dispatcher->assign($leg, $driver);
+                $done++;
+            } catch (RuntimeException) {
+                $refused[] = __($leg->type->label());
+            }
+        }
+
+        if ($refused === []) {
+            return __(':count legs assigned to :driver', ['count' => $done, 'driver' => $driver->name]);
+        }
+
+        return __(':count legs assigned to :driver. Still without a driver: :legs', [
+            'count' => $done,
+            'driver' => $driver->name,
+            'legs' => implode(', ', $refused),
+        ]);
+    }
+
+    /**
+     * Try the queue again, now.
+     *
+     * Dispatch re-offers a queued leg on a ten-minute schedule, which is the
+     * right cadence for a background sweep and the wrong one for a person who
+     * has just fixed the thing that was blocking it — added a zone to a driver,
+     * flipped availability, raised a cap. Without this they either wait, or
+     * assign every leg by hand, having already done the work that would have
+     * let dispatch do it.
+     *
+     * The same `dispatch()` the scheduled command calls, so a leg assigned here
+     * went through the identical rules.
+     */
+    public function redispatch($orderId)
+    {
+        $order = Order::with('tasks')->findOrFail($orderId);
+
+        $queued = $order->tasks->filter(
+            fn (OrderTask $task) => $task->driver_id === null && ! $task->status->isFinished()
+        );
+
+        if ($queued->isEmpty()) {
+            return back()->with('success', __('Every leg already has a driver.'));
+        }
+
+        $taken = 0;
+
+        foreach ($queued as $task) {
+            if ($this->dispatcher->dispatch($task) !== null) {
+                $taken++;
+            }
+        }
+
+        if ($taken === 0) {
+            return back()->with('error', __('Still nobody eligible for the :count waiting legs.', [
+                'count' => $queued->count(),
+            ]));
+        }
+
+        return back()->with('success', __(':taken of :count waiting legs found a driver.', [
+            'taken' => $taken,
+            'count' => $queued->count(),
+        ]));
     }
 
     /**

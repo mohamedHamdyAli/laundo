@@ -89,6 +89,32 @@ class DispatchReasonTest extends TestCase
         return ($order ?? $this->order())->tasks->firstWhere('sequence', 1);
     }
 
+    /**
+     * An order whose legs are all in the queue.
+     *
+     * `TaskGenerator::generate()` calls `dispatch()` on each leg the moment it
+     * creates them, so placing an order while an eligible driver exists hands
+     * him the whole chain immediately. That is correct behaviour — and it means
+     * a test that places an order and then assigns a leg is asserting against a
+     * chain that already has a driver on it. Five of these tests failed on
+     * exactly that before this helper existed.
+     *
+     * Returned to the queue in bulk, which is what `release()` does per leg.
+     */
+    private function queuedOrder(): Order
+    {
+        $order = $this->order();
+
+        $order->tasks()->update([
+            'driver_id' => null,
+            'assigned_at' => null,
+            'started_at' => null,
+            'status' => 'pending',
+        ]);
+
+        return $order->fresh(['tasks']);
+    }
+
     private function why(OrderTask $task): ?array
     {
         return app(DriverDispatcher::class)->whyNobodyEligible($task);
@@ -304,5 +330,182 @@ class DispatchReasonTest extends TestCase
                 );
             }
         }
+    }
+
+    // ------------------------------------ giving one driver the whole chain
+
+    #[Test]
+    public function the_picker_says_what_each_driver_is_already_carrying(): void
+    {
+        // The candidates arrive sorted least-loaded-first, which is a decision
+        // the dispatcher makes and the operator could not see: two names looked
+        // interchangeable when one was a single order off their limit.
+        $driver = $this->driverUser('+201033330012', zoneIds: [$this->geo['zones'][0]]);
+        $driver->profile->forceFill(['max_concurrent_orders' => 4])->save();
+
+        // One *other* order in his hands, and the order under test left in the
+        // queue — otherwise placement gives him that one too and the figure
+        // under test moves.
+        $this->order()->tasks()->update(['driver_id' => $driver->id, 'status' => 'assigned']);
+
+        $order = $this->queuedOrder();
+
+        $this->actingAs($this->superAdmin())
+            ->get(route('admin.order.show', $order->id))
+            ->assertOk()
+            ->assertSee('1 of 4');
+    }
+
+    #[Test]
+    public function a_driver_with_no_cap_is_shown_as_having_none(): void
+    {
+        // An empty cap means "no limit" by design -- profilePayload() maps the
+        // blank field back to null on purpose -- so the picker must not print
+        // "1 of" and then nothing.
+        $this->driverUser('+201033330013', zoneIds: [$this->geo['zones'][0]]);
+
+        $order = $this->queuedOrder();
+
+        $this->actingAs($this->superAdmin())
+            ->get(route('admin.order.show', $order->id))
+            ->assertOk()
+            ->assertSee('0, no limit');
+    }
+
+    #[Test]
+    public function one_submission_can_take_the_whole_chain(): void
+    {
+        // The normal case, and it used to be four submissions of four forms.
+        // The cap counts distinct *orders*, so the remaining legs cost the
+        // driver nothing further -- which is why one action is the right shape.
+        $driver = $this->driverUser('+201033330014', zoneIds: [$this->geo['zones'][0]]);
+
+        $order = $this->queuedOrder();
+        $first = $order->tasks->firstWhere('sequence', 1);
+
+        $this->actingAs($this->superAdmin())
+            ->post(route('admin.order.tasks.assign', $first->id), [
+                'driver_id' => $driver->id,
+                'rest_of_order' => '1',
+            ])
+            ->assertRedirect();
+
+        $fresh = $order->fresh(['tasks']);
+
+        $this->assertSame(4, $fresh->tasks->count());
+        $this->assertSame(
+            [$driver->id, $driver->id, $driver->id, $driver->id],
+            $fresh->tasks->pluck('driver_id')->all()
+        );
+    }
+
+    #[Test]
+    public function without_the_box_ticked_only_the_one_leg_is_assigned(): void
+    {
+        // The default has to stay one leg: an operator who wanted one leg and
+        // silently got four would have no way to tell until the driver called.
+        $driver = $this->driverUser('+201033330015', zoneIds: [$this->geo['zones'][0]]);
+
+        $order = $this->queuedOrder();
+        $first = $order->tasks->firstWhere('sequence', 1);
+
+        $this->actingAs($this->superAdmin())
+            ->post(route('admin.order.tasks.assign', $first->id), ['driver_id' => $driver->id])
+            ->assertRedirect();
+
+        $this->assertSame(1, $order->fresh(['tasks'])->tasks->whereNotNull('driver_id')->count());
+    }
+
+    #[Test]
+    public function a_leg_the_driver_cannot_take_is_named_rather_than_skipped(): void
+    {
+        /*
+         * The delivery leg is matched against the *delivery* address's zone, so
+         * a driver can legitimately be right for three legs and wrong for the
+         * fourth. Doing three of four quietly is worse than doing one: the
+         * operator would leave believing the order was covered.
+         */
+        $driver = $this->driverUser('+201033330016', zoneIds: [$this->geo['zones'][0]]);
+
+        $order = $this->queuedOrder();
+
+        // A delivery address in a zone this driver does not serve.
+        $elsewhere = $this->addressFor($this->customer, $this->geo['zones'][1]);
+        $order->forceFill(['delivery_address_id' => $elsewhere->id])->save();
+
+        $first = $order->fresh(['tasks'])->tasks->firstWhere('sequence', 1);
+
+        $response = $this->actingAs($this->superAdmin())
+            ->post(route('admin.order.tasks.assign', $first->id), [
+                'driver_id' => $driver->id,
+                'rest_of_order' => '1',
+            ])
+            ->assertRedirect();
+
+        $fresh = $order->fresh(['tasks']);
+
+        // Three taken, the delivery leg left in the queue and named.
+        $this->assertSame(3, $fresh->tasks->whereNotNull('driver_id')->count());
+        $this->assertNull($fresh->tasks->firstWhere('type', 'deliver_to_customer')->driver_id);
+
+        $message = $response->getSession()->get('success');
+        $this->assertStringContainsString('Still without a driver', $message);
+        $this->assertStringContainsString('Deliver to customer', $message);
+    }
+
+    // ------------------------------------------------- trying the queue again
+
+    #[Test]
+    public function the_queue_can_be_retried_once_the_blocker_is_fixed(): void
+    {
+        // The whole point: the operator has just given the driver the zone, and
+        // the scheduled sweep is up to ten minutes away.
+        $order = $this->order();
+
+        $driver = $this->driverUser('+201033330017');
+        $this->assertSame(0, $order->tasks->whereNotNull('driver_id')->count());
+
+        // The fix an operator would make.
+        $driver->zones()->sync([$this->geo['zones'][0]]);
+
+        $this->actingAs($this->superAdmin())
+            ->post(route('admin.order.tasks.dispatch', $order->id))
+            ->assertRedirect();
+
+        $this->assertSame(4, $order->fresh(['tasks'])->tasks->whereNotNull('driver_id')->count());
+    }
+
+    #[Test]
+    public function retrying_with_nothing_fixed_says_so_rather_than_claiming_success(): void
+    {
+        $order = $this->order();
+
+        $response = $this->actingAs($this->superAdmin())
+            ->post(route('admin.order.tasks.dispatch', $order->id))
+            ->assertRedirect();
+
+        $this->assertNotNull($response->getSession()->get('error'));
+        $this->assertSame(0, $order->fresh(['tasks'])->tasks->whereNotNull('driver_id')->count());
+    }
+
+    #[Test]
+    public function the_retry_button_only_shows_while_something_is_waiting(): void
+    {
+        $driver = $this->driverUser('+201033330018', zoneIds: [$this->geo['zones'][0]]);
+
+        $waiting = $this->queuedOrder();
+
+        $this->actingAs($this->superAdmin())
+            ->get(route('admin.order.show', $waiting->id))
+            ->assertOk()
+            ->assertSee('Try the queue again');
+
+        // Now give every leg a driver: there is nothing left to retry.
+        $waiting->tasks()->update(['driver_id' => $driver->id, 'status' => 'assigned']);
+
+        $this->actingAs($this->superAdmin())
+            ->get(route('admin.order.show', $waiting->id))
+            ->assertOk()
+            ->assertDontSee('Try the queue again');
     }
 }

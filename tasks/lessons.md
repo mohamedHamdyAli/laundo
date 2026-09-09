@@ -1617,3 +1617,38 @@ tasks, 4 distinct `order_id`s, grouped by leg type — 4 + 4 + 4 + 3.
 **Rule:** before changing a number that a user says disagrees with another
 number, find out what each one counts. The fix here was not arithmetic, it was
 saying the unit out loud on the row.
+
+## Ask what the framework already did before the test acts
+
+Five new dispatch tests failed together, all reporting "4 is identical to 1" or a
+string missing from a page. One cause: `TaskGenerator::generate()` calls
+`dispatch()` on each leg the moment it creates it, so placing an order while an
+eligible driver exists hands him the whole chain **before the test does
+anything**. Every assertion about "assign one leg" was measuring a chain that was
+already fully assigned.
+
+The code was right; the setup was. A `queuedOrder()` helper that returns the legs
+to the queue after placement fixed all five at once.
+
+**Rule:** when a test arranges state through a service, read what that service
+does on the way past. Placement, observers, and model events do work that a
+`create()` in a test does not imply — and a test built on the wrong starting
+state fails in a way that looks like a bug in the code under test.
+
+## Measure the layout cost of a label before and after, on the real column
+
+Adding the driver's load to the picker («Mahmoud Driver — 5 of 20 orders»)
+widened the select from 160px to 240px and pushed the whole Transport table into
+horizontal scroll, putting **Assign off-screen** — a clarity improvement that
+cost the operator the button it sat next to.
+
+Shortening the label to «5 of 20» and the control to 13rem brought the overflow
+from 46px to 8px. Then the useful check: strip the label in the DOM and set the
+old width back, and re-measure. All three read 8px — so the remainder was the
+table's own baseline and never mine.
+
+**Rule:** after adding text to a constrained control, measure
+`table.scrollWidth - wrapper.clientWidth` and whether the adjacent button is
+still reachable. And before "fixing" the last few pixels, neutralise your change
+in the DOM and re-measure — otherwise you tune against something you did not
+cause.

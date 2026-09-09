@@ -72,7 +72,10 @@ class DispatchDashboardTest extends TestCase
 
         $this->actingAs($this->superAdmin())->get("/admin/order/show/{$order->id}")
             ->assertOk()
-            ->assertSee(__('In the queue'), false);
+            // The Driver column answers "who", and the Status column beside it
+            // already says «Awaiting a driver» — so this cell names the driver
+            // situation instead of repeating the state under a second name.
+            ->assertSee(__('Nobody yet'), false);
     }
 
     #[Test]

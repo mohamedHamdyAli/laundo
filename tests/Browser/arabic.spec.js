@@ -125,7 +125,7 @@ test.describe('Arabic across the dashboard', () => {
     // gap went unnoticed for six phases.
     const leaks = [
       'Review the pieces', 'Send the final price to the customer',
-      'Transport', 'In the queue', 'Under review', 'Approved but unpaid',
+      'Transport', 'Nobody yet', 'Under review', 'Approved but unpaid',
       'Does not match the ledger', 'Discount Codes',
     ];
 

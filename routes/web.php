@@ -482,6 +482,11 @@ Route::middleware(['auth', 'dashboard.only'])->prefix('/admin')->group(function 
             ->middleware('permission:order.update')->name('admin.order.tasks.release');
         Route::post('/order/task/generate/{id}', 'generate')
             ->middleware('permission:order.update')->name('admin.order.tasks.generate');
+        // Runs the same sweep the scheduled command does, for an operator who
+        // has just fixed whatever was blocking and should not have to wait ten
+        // minutes to find out whether it worked. `{id}` is the order.
+        Route::post('/order/task/dispatch/{id}', 'redispatch')
+            ->middleware('permission:order.update')->name('admin.order.tasks.dispatch');
     });
 
     /*

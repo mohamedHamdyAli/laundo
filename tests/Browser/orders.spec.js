@@ -46,19 +46,26 @@ test.describe('Orders — super admin', () => {
   test('the table has every column the operator reads', async ({ page }) => {
     await page.goto('/admin/order');
 
-    const headers = await page.locator('#table_list thead th').allTextContents();
+    // The labels live in a `.stack-head` strip, not a `<thead>`: this list is
+    // card rows now, and `#table_list thead th` matched nothing at all.
+    const headers = await page.locator('.stack-head span').allTextContents();
     const joined = headers.join(' | ');
 
     for (const column of [/Order|الطلب/i, /Customer|العميل/i, /Service|الخدمة/i,
-      /Laundry|المغسلة/i, /Status|الحالة/i, /Total|الإجمالي/i]) {
+      /Status|الحالة/i, /Total|الإجمالي/i]) {
       expect(joined).toMatch(column);
     }
+
+    // The laundry has no column of its own — it is the subtitle under the
+    // service — but it is still something the operator reads, so it is
+    // asserted where it actually renders.
+    await expect(page.locator('#order-table-body')).toContainText(/Laundry|مغسلة/i);
   });
 
   test('AJAX search repaints the table', async ({ page }) => {
     await page.goto('/admin/order');
 
-    const rowsBefore = await page.locator('#order-table-body tr').count();
+    const rowsBefore = await page.locator('#order-table-body .stack-row').count();
 
     // pressSequentially, not fill: setupAjaxSearch listens on keyup, which
     // page.fill() never emits.
@@ -75,7 +82,7 @@ test.describe('Orders — super admin', () => {
     await search.pressSequentially(' ');
     await back;
 
-    const rowsAfter = await page.locator('#order-table-body tr').count();
+    const rowsAfter = await page.locator('#order-table-body .stack-row').count();
     expect(rowsAfter).toBeGreaterThanOrEqual(Math.min(rowsBefore, 1));
   });
 

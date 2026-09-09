@@ -4,6 +4,26 @@
 
 ### Feature
 
+- **The driver picker says what each driver is already carrying** — «Mahmoud Driver — 5 of 20», or «5, no limit» where no cap is set. The list has always arrived sorted least-loaded-first, which is a real decision the dispatcher makes and the operator could not see: two names looked interchangeable when one was a single order off their limit (Blade / Service).
+- **One driver can take the whole chain in one action.** A tickbox beside Assign — «and the other N legs of this order» — where it used to be four separate submissions of four separate forms. This is also what the capacity rule already assumes: `max_concurrent_orders` counts distinct **orders**, so the remaining legs of an order a driver is now holding cost nothing further against their cap. Each leg is still checked on its own, because the delivery leg can be in a different zone from the pickup — and **whatever is refused is named** in the message. Doing three of four quietly would be worse than doing one, since the operator would leave believing the order was covered (Blade / Controller).
+- **«Try the queue again».** Dispatch re-offers a queued leg on a ten-minute schedule, which is the right cadence for a background sweep and the wrong one for somebody who has just given a driver the zone or raised a cap. The button runs the same `dispatch()` the scheduled command calls, and reports how many of the waiting legs found somebody (Blade / Controller / Routes).
+
+### Improvement
+
+- The Driver column said «In the queue» while the Status column beside it said «Awaiting a driver» — one state named twice in the same row. The Driver column answers *who*, so it now reads «Nobody yet» (Blade).
+- **The order page was issuing hundreds of queries to draw one order.** `candidates()` calls `activeOrders()` — a `COUNT(DISTINCT order_id)` — once per driver *and again inside a `usort` comparator*, for each of up to four unfinished legs. The load figures come from one grouped read of the distinct (driver, order) pairs instead (Service).
+
+### Tests
+
+- `DispatchReasonTest` grows to 20. The chain: one submission takes all four legs; without the box only one leg moves; a leg the driver cannot take is named rather than skipped. The retry: it works once the blocker is fixed, it says so rather than claiming success when nothing changed, and the button only shows while something is waiting. The picker: the load and cap are printed, and a driver with no cap is shown as having none (Tests).
+- A `queuedOrder()` helper, because `TaskGenerator` dispatches each leg the moment it creates it — so placing an order while an eligible driver exists hands him the whole chain immediately. Five of these tests failed on exactly that before the helper existed; the behaviour is correct and the test setup was not (Tests).
+
+### Fix
+
+- **Four browser specs were asserting markup that no longer exists.** `drivers.spec.js` (six selectors), `orders.spec.js` (the column strip and two row selectors) and `tenancy.spec.js` (one) all looked for `<tr>` / `<th>` in lists that render `.stack-row` cards inside a `.stack-head` strip. They matched nothing, so they could not fail on a real regression — and three of them failed on the selector alone. The driver list also pinned a shift label that only renders when the driver has **no** plate number, while pinning the plate on the same driver; the shift is asserted on the edit form, where it can actually be changed (Tests).
+
+### Feature
+
 - **The order screen says *why* a leg has no driver.** It printed «No eligible driver» and stopped. That sentence covers five unrelated situations with five different remedies — nobody is assigned to the area, every account is inactive, none is switched on as available, they are set to another city, or they are all at their concurrent-order cap — plus a sixth that is a data problem rather than a staffing one: the address never got an area, so no rule can even be evaluated. From an empty dropdown an operator cannot tell which, and the question arrived as "the drivers appear based on what?". On the live install it was the cap: one driver, holding three orders, limit three, and nothing in the panel said so (Service / Blade).
 - `DriverDispatcher::whyNobodyEligible()` re-runs the same five rules and reports where the candidates went, in the order the rules apply. `isEligible()` stays the authority — nothing in the new method decides eligibility, it only counts who fell out at which rule. The single-driver case names the numbers («already holding 3 of 3 orders») because that is the one an operator can act on in ten seconds (Service).
 - Nine Arabic entries, placeholders intact (i18n).
@@ -26,6 +46,10 @@
 
 - `HomeTest` grows from 21 to 34. Beyond the per-item checks, two sweeps over the **whole** queue: none of its items may open a report or an unfiltered order list, and every filter it links to must be one the list understands *and* must return rows for the number shown — a `status` the repository does not recognise falls through to `where('status', …)` and returns nothing, so the item would open an empty screen while displaying a count above zero, which reads as data loss. Fixing seven items one at a time is how the eighth arrives with the same defect (Tests).
 - Also pinned: the clause is dropped when it would say nothing, four legs on one order gets its own sentence, and both hint sentences carry Arabic with their placeholders (Tests).
+
+### Documentation
+
+- Added `docs/recurrence-mobile-guide.md` — the Order Recurrence feature written for the mobile team, in Arabic. Covers the lifecycle (create -> daily 09:00 cron -> prompt + push -> answer -> order), all eight `/api/v1/recurrences*` endpoints with real request/response shapes, the FCM payload, the response envelope, and twelve integration traps: ISO `day_of_week` (1=Mon), `starts_on` being `after:today` rather than `after_or_equal`, delivery address always mirroring pickup, no edit endpoint, cancelled schedules staying in the list, slot capacity deliberately bypassed on confirm, and the fact that a customer with no registered device gets the prompt row but no push — so the app must poll `GET /recurrences/prompts` on launch rather than rely on the notification.
 
 ## 2026-09-08
 

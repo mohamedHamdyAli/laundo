@@ -7,6 +7,7 @@ use App\Modules\Item\Models\Item;
 use App\Modules\Laundry\Models\Laundry;
 use App\Modules\Order\Enums\OrderStatus;
 use App\Modules\Order\Models\Order;
+use App\Modules\Order\Models\OrderTask;
 use App\Modules\Order\Repositories\OrderRepository;
 use App\Modules\Pricing\Models\ItemPrice;
 use App\Modules\User\Models\User;
@@ -82,6 +83,8 @@ class orderCrudService
             // *why* rather than leaving the operator to guess between five
             // unrelated causes with five different remedies.
             $data['taskBlockers'] = $this->taskBlockers($row);
+            // What each candidate is already carrying, so the picker can say it.
+            $data['driverLoads'] = $this->driverLoads($data['taskCandidates']);
         }
 
         return $data;
@@ -125,6 +128,61 @@ class orderCrudService
             if (! $task->status->isFinished()) {
                 $out[$task->id] = $dispatcher->candidates($task);
             }
+        }
+
+        return $out;
+    }
+
+    /**
+     * How many orders each candidate is already carrying, and their cap.
+     *
+     * The picker used to list bare names. The candidates arrive sorted
+     * least-loaded-first, which is a real decision the dispatcher makes and
+     * which the operator could not see — so two drivers looked
+     * interchangeable when one was one order off their limit.
+     *
+     * Counted in **one** query for every candidate on the page rather than by
+     * calling `activeOrders()` per driver. That method runs a
+     * `COUNT(DISTINCT order_id)` each time and `candidates()` already calls it
+     * from inside a `usort` comparator, so a busy zone was costing hundreds of
+     * queries to draw one order.
+     *
+     * @param  array<int, array<int, Driver>>  $candidates
+     * @return array<int, array{load: int, cap: int|null}> keyed by driver id
+     */
+    private function driverLoads(array $candidates): array
+    {
+        $drivers = [];
+
+        foreach ($candidates as $forTask) {
+            foreach ($forTask as $driver) {
+                $drivers[$driver->id] = $driver;
+            }
+        }
+
+        if ($drivers === []) {
+            return [];
+        }
+
+        // One read of the distinct (driver, order) pairs, grouped in PHP.
+        // `distinct()->count()` over two columns cannot give a per-driver figure
+        // in one aggregate, and this is a handful of rows either way.
+        $counted = OrderTask::query()
+            ->whereIn('driver_id', array_keys($drivers))
+            ->open()
+            ->select('driver_id', 'order_id')
+            ->distinct()
+            ->get()
+            ->groupBy('driver_id')
+            ->map(fn ($rows) => $rows->count());
+
+        $out = [];
+
+        foreach ($drivers as $id => $driver) {
+            $out[$id] = [
+                'load' => (int) ($counted[$id] ?? 0),
+                'cap' => $driver->profile?->max_concurrent_orders,
+            ];
         }
 
         return $out;

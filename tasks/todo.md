@@ -2918,3 +2918,49 @@ read 15 while the order list showed 6.
   row of 11, and the dropdown reads «Has a journey that ran out of attempts»
   rather than «All statuses». Filter and search compose — the term alone returns
   7 orders, the term with the filter returns 1.
+
+---
+
+## Round 7 — making the delivery side easier
+
+«عاوزك تشوف موضوع الدليفري يكون سهل وواضح اكتر». Surveyed every screen an
+operator touches to get an order collected and delivered, then took the items
+that change what a person can do rather than how it looks.
+
+- [x] **Why a leg has no driver**, on the screen. Six causes, six different
+      remedies, one message before this. (Shipped separately as 87e2f9e.)
+- [x] **The picker names each driver's load** — «5 of 20», or «5, no limit».
+      The list was already sorted least-loaded-first and the operator could not
+      see it.
+- [x] **One action gives the whole chain to one driver**, instead of four
+      submissions. Each leg is still checked on its own and refusals are named.
+- [x] **«Try the queue again»** — the scheduled sweep is ten minutes away, which
+      is no use to somebody who has just fixed the blocker.
+- [x] Killed the query storm behind the picker: `activeOrders()` was running per
+      driver *and* inside a `usort` comparator, per leg.
+- [x] «In the queue» / «Awaiting a driver» in the same row — the Driver column
+      now answers *who*: «Nobody yet».
+- [x] Four browser specs were asserting `<tr>`/`<th>` against lists that became
+      card rows. They matched nothing and could not fail on a regression.
+
+### Left as decisions, not changed
+
+- **Shift times are collected, validated, stored, displayed — and never read by
+  dispatch.** A driver set to 09:00–17:00 is still offered work at 23:00.
+  Enforcing it would suddenly make drivers ineligible outside their window,
+  which could stop dispatch on a live install overnight. That is the owner's
+  call, not a silent fix.
+- **A laundry owner can dispatch but cannot see a driver.** The role has
+  `order.update` (so the whole Transport panel works) and no `driver.*`, so
+  `/admin/driver` 403s — an owner facing «No eligible driver» cannot look up
+  why. Granting `driver.view` is a permissions decision.
+- **No cross-order dispatch board.** Every leg is assigned from inside one
+  order's page. `OperationsReport::queuedTasks()` already builds order code,
+  leg, waiting hours and attempts for up to 50 queued legs and the report
+  renders only the count. A board is the biggest remaining win and the biggest
+  build.
+- **Driver Performance and Operations Health have no link anywhere** — URL-only,
+  because `config/menu.php` maps the Reports item to the revenue report alone.
+- **Half the driver profile cannot be cleared** through the form: `array_filter`
+  in `profilePayload()` drops nulls, so blanking a shift or a note leaves the
+  old value, and unchecking every zone leaves the zones intact.
