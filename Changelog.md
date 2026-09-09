@@ -2,6 +2,16 @@
 
 ## 2026-09-09
 
+### Feature
+
+- **The order screen says *why* a leg has no driver.** It printed «No eligible driver» and stopped. That sentence covers five unrelated situations with five different remedies — nobody is assigned to the area, every account is inactive, none is switched on as available, they are set to another city, or they are all at their concurrent-order cap — plus a sixth that is a data problem rather than a staffing one: the address never got an area, so no rule can even be evaluated. From an empty dropdown an operator cannot tell which, and the question arrived as "the drivers appear based on what?". On the live install it was the cap: one driver, holding three orders, limit three, and nothing in the panel said so (Service / Blade).
+- `DriverDispatcher::whyNobodyEligible()` re-runs the same five rules and reports where the candidates went, in the order the rules apply. `isEligible()` stays the authority — nothing in the new method decides eligibility, it only counts who fell out at which rule. The single-driver case names the numbers («already holding 3 of 3 orders») because that is the one an operator can act on in ten seconds (Service).
+- Nine Arabic entries, placeholders intact (i18n).
+
+### Tests
+
+- `DispatchReasonTest` — 12 tests, one per reason, plus the two that matter most either side of it: an eligible driver must produce **no** message at all, and the screen must show a dropdown and no reason when somebody can take the leg. Also that every reason carries Arabic and that no translation drops a placeholder — the number is what makes the sentence useful (Tests).
+
 ### Fix
 
 - **The home page's queue sent people to a page they could not act on.** «Journeys with no driver» opened `admin.report.operations` — a report that counts those legs, lists their order codes and offers no way to assign anybody, because a driver is given a leg on the order's own screen. So the one row on the dashboard whose entire purpose is "somebody must act" led somewhere they could not, and left them to find the affected orders by hand in a list of every order. Reported from the live install (Service).

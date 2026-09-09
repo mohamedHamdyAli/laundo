@@ -109,7 +109,19 @@
                                                 </button>
                                             </form>
                                         @else
-                                            <small class="text-muted">{{ __('No eligible driver') }}</small>
+                                            {{-- «No eligible driver» on its own covers five unrelated
+                                                 situations — nobody serves the area, they all switched
+                                                 themselves off, the city does not match, they are all at
+                                                 their order limit, or the address never got an area — and
+                                                 each has a different remedy. The operator cannot see which
+                                                 from an empty dropdown, so the reason is spelled out. --}}
+                                            @php $blocker = $taskBlockers[$task->id] ?? null; @endphp
+                                            <small class="d-block text-muted">{{ __('No eligible driver') }}</small>
+                                            @if ($blocker)
+                                                <small class="d-block text-attention" style="max-width: 22rem">
+                                                    {{ __($blocker['reason'], $blocker['params']) }}
+                                                </small>
+                                            @endif
                                         @endif
 
                                         @if ($task->driver_id)

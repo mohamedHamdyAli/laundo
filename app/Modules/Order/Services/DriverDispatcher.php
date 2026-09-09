@@ -136,6 +136,111 @@ class DriverDispatcher
         return $eligible;
     }
 
+    /**
+     * Why nobody can take this task.
+     *
+     * The screen used to say «No eligible driver» and stop there. That one
+     * sentence covers five unrelated situations with five different remedies —
+     * no driver serves the area, they all switched themselves unavailable, the
+     * city does not match, they are all at their cap, or the address never got a
+     * zone — and an operator staring at an empty dropdown cannot tell which. The
+     * question came in as "the drivers appear based on what?", and answering it
+     * once in a message is worth more than answering it in a chat.
+     *
+     * So this re-runs the same five rules and reports where the candidates went.
+     * `isEligible()` stays the authority: nothing here decides eligibility, it
+     * only counts who fell out at which rule, in the order the rules apply.
+     *
+     * @return array{reason: string, params: array<string, int|string>}|null
+     *                                                                       null when a driver *is* available
+     */
+    public function whyNobodyEligible(OrderTask $task): ?array
+    {
+        if ($this->candidates($task) !== []) {
+            return null;
+        }
+
+        // Rule 3 needs a zone to compare against, and without one no rule can
+        // even be evaluated — so this is first, and it is a data problem rather
+        // than a staffing one.
+        if ($this->zoneFor($task) === null) {
+            return ['reason' => 'This address has no area set, so nobody can be matched to it', 'params' => []];
+        }
+
+        $all = Driver::with(['profile', 'zones'])->get();
+
+        if ($all->isEmpty()) {
+            return ['reason' => 'There are no drivers on the system yet', 'params' => []];
+        }
+
+        $zoneId = $this->zoneFor($task);
+        $taskCity = $this->cityFor($task);
+
+        $inZone = $all->filter(fn (Driver $d) => $d->zones->contains('id', $zoneId));
+
+        if ($inZone->isEmpty()) {
+            return [
+                'reason' => 'No driver covers this area — :total drivers, none assigned to it',
+                'params' => ['total' => $all->count()],
+            ];
+        }
+
+        $active = $inZone->filter(fn (Driver $d) => $d->status === 'active');
+
+        if ($active->isEmpty()) {
+            return [
+                'reason' => ':covering cover this area, but none of their accounts is active',
+                'params' => ['covering' => $inZone->count()],
+            ];
+        }
+
+        $available = $active->filter(fn (Driver $d) => $d->profile?->is_available);
+
+        if ($available->isEmpty()) {
+            return [
+                'reason' => ':covering cover this area, but none is switched on as available',
+                'params' => ['covering' => $active->count()],
+            ];
+        }
+
+        $rightCity = $available->filter(
+            fn (Driver $d) => $d->profile?->city_id === null
+                || $taskCity === null
+                || $d->profile->city_id === $taskCity
+        );
+
+        if ($rightCity->isEmpty()) {
+            return [
+                'reason' => ':covering cover this area, but are set to a different city',
+                'params' => ['covering' => $available->count()],
+            ];
+        }
+
+        // Everything else passed, so what is left is the cap — and this is the
+        // one an operator can act on immediately, which is why it names the
+        // numbers rather than saying "at capacity".
+        // `first()` on a collection already proven non-empty, so no nullsafe on
+        // the driver itself — only on the profile, which genuinely can be absent.
+        $atCap = $rightCity->first();
+        $cap = $atCap->profile?->max_concurrent_orders;
+
+        if ($cap !== null) {
+            return $rightCity->count() === 1
+                ? [
+                    'reason' => 'One driver covers this area and is already holding :held of :cap orders',
+                    'params' => ['held' => $this->activeOrders($atCap), 'cap' => $cap],
+                ]
+                : [
+                    'reason' => ':covering cover this area and every one of them is at their order limit',
+                    'params' => ['covering' => $rightCity->count()],
+                ];
+        }
+
+        // Should not be reachable: no rule is left to fail. Said plainly rather
+        // than returning a confident wrong answer.
+        return ['reason' => 'No driver is eligible, and the usual reasons do not apply', 'params' => []];
+    }
+
     public function isEligible(Driver $driver, OrderTask $task): bool
     {
         if ($driver->status !== 'active') {

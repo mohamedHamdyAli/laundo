@@ -78,6 +78,10 @@ class orderCrudService
             // eligibility is per zone and per city, and the four legs do not all
             // happen in the same place.
             $data['taskCandidates'] = $this->taskCandidates($row);
+            // Paired with the candidates: when a leg has none, the screen says
+            // *why* rather than leaving the operator to guess between five
+            // unrelated causes with five different remedies.
+            $data['taskBlockers'] = $this->taskBlockers($row);
         }
 
         return $data;
@@ -120,6 +124,34 @@ class orderCrudService
         foreach ($order->tasks as $task) {
             if (! $task->status->isFinished()) {
                 $out[$task->id] = $dispatcher->candidates($task);
+            }
+        }
+
+        return $out;
+    }
+
+    /**
+     * Why each unfinished leg has nobody to give it to.
+     *
+     * Only the legs that actually have no candidate get an entry, so the view
+     * can treat presence as "there is something to explain".
+     *
+     * @return array<int, array{reason: string, params: array<string, int|string>}>
+     */
+    private function taskBlockers(Order $order): array
+    {
+        $dispatcher = app(DriverDispatcher::class);
+        $out = [];
+
+        foreach ($order->tasks as $task) {
+            if ($task->status->isFinished()) {
+                continue;
+            }
+
+            $reason = $dispatcher->whyNobodyEligible($task);
+
+            if ($reason !== null) {
+                $out[$task->id] = $reason;
             }
         }
 
