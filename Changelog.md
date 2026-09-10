@@ -2,6 +2,16 @@
 
 ## 2026-09-10
 
+### Fix
+
+- **The panel's hand-edited assets now carry a version stamp.** `theme.css` and `custom.js` have no build step, no content hash and sit behind Cloudflare, so the release before this one shipped Blade referring to rules and behaviour the cached files did not have. Two faults were visible on the live site at once: the sidebar's new counts rendered as bare numbers because `.menu-badge` was not in the stylesheet the browser held, and the splash — `position: fixed` in the new one — painted as a full-size logo across the top of every page, over content nobody could click. `assetVersion()` stamps `filemtime()` onto `theme.css`, `custom.css` and the five `custom/*.js` files, so a deploy that touches one changes its URL (Helper / Blade).
+- The splash lays itself out inline as well as in the stylesheet. It paints before any stylesheet is guaranteed to have arrived, and a 240px logo across the top of the page is not an acceptable answer to a cache miss (Blade).
+
+### Tests
+
+- `AssetCacheBustingTest`: every hand-edited asset is referenced with a `?v=`, the stamp changes when the file does, a missing file falls back rather than throwing, and the splash carries its own layout (Tests).
+
+
 ### Feature
 
 - **Laundries have a front door of their own.** `GET /laundry/login`, `/laundry/register` and `/laundry/applied`, on `layouts.auth-card` — a card on a navy ground carrying the landing page's typography, because a laundry arrives here from the marketing site and the panel's own shell has no Arabic webfont at all. The sign-in form posts to the same `login` route: one authentication path, two doors (Routes / Blade / CSS).

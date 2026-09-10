@@ -68,8 +68,8 @@
 
 
 {{-- Custom JS --}}
-<script type="text/javascript" src="{{ asset('assets/js/custom/common.js') }}"></script>
-<script type="text/javascript" src="{{ asset('assets/js/custom/custom.js') }}"></script>
+<script type="text/javascript" src="{{ asset('assets/js/custom/common.js') }}?v={{ assetVersion('js/custom/common.js') }}"></script>
+<script type="text/javascript" src="{{ asset('assets/js/custom/custom.js') }}?v={{ assetVersion('js/custom/custom.js') }}"></script>
 
 {{--
     The panel's own dropdowns.
@@ -122,7 +122,7 @@
         });
     });
 </script>
-<script type="text/javascript" src="{{ asset('assets/js/custom/function.js') }}"></script>
+<script type="text/javascript" src="{{ asset('assets/js/custom/function.js') }}?v={{ assetVersion('js/custom/function.js') }}"></script>
 
 {{-- Notifications --}}
 <script type="text/javascript">
@@ -130,7 +130,7 @@
     window.notificationUnreadUrl = "{{ route('admin.myNotifications.unread') }}";
     window.notificationReadUrlTemplate = "{{ route('admin.myNotifications.read', ['id' => '__ID__']) }}";
 </script>
-<script type="text/javascript" src="{{ asset('assets/js/custom/notifications.js') }}"></script>
+<script type="text/javascript" src="{{ asset('assets/js/custom/notifications.js') }}?v={{ assetVersion('js/custom/notifications.js') }}"></script>
 {{-- Keeps a create or edit form's contents when validation fails, instead of
      reloading the page and losing every file, password and select2 choice
      `old()` cannot carry back. Loaded after the widgets it has to find. --}}

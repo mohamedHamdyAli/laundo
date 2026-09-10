@@ -7,11 +7,11 @@
 @if (panelIsRtl())
     <link rel="stylesheet" href="{{ asset('assets/css/main/rtl.css') }}">
     <link rel="stylesheet" href="{{ asset('assets/css/pages/otherpages_rtl.css') }}" />
-    <link rel="stylesheet" href="{{ asset('assets/css/custom.css') }}" />
+    <link rel="stylesheet" href="{{ asset('assets/css/custom.css') }}?v={{ assetVersion('css/custom.css') }}" />
 @else
     <link rel="stylesheet" href="{{ asset('assets/css/main/app.css') }}">
     <link rel="stylesheet" href="{{ asset('assets/css/pages/otherpages.css') }}" />
-    <link rel="stylesheet" href="{{ asset('assets/css/custom.css') }}" />
+    <link rel="stylesheet" href="{{ asset('assets/css/custom.css') }}?v={{ assetVersion('css/custom.css') }}" />
 @endif
 {{-- Bootstrap Switch --}}
 <link rel="stylesheet" href="{{ asset('assets/css/bootstrap-switch-button.min.css') }}">
@@ -71,7 +71,7 @@
     first thing to notice: identical specificity, and select2's stylesheet won
     on load order alone.
 --}}
-<link rel="stylesheet" href="{{ asset('assets/css/theme.css') }}" />
+<link rel="stylesheet" href="{{ asset('assets/css/theme.css') }}?v={{ assetVersion('css/theme.css') }}" />
 @yield('css')
 
 <script>

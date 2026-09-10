@@ -1101,3 +1101,25 @@ if (! function_exists('landingAssetVersion')) {
             : (string) app()->version();
     }
 }
+
+if (! function_exists('assetVersion')) {
+    /**
+     * The same stamp, for the panel's own hand-edited assets.
+     *
+     * `landingAssetVersion()` was written for the landing page and then the
+     * panel turned out to have the identical problem, twice over on one
+     * deploy: `theme.css` and `custom.js` are edited by hand, have no build
+     * step and no content hash, and sit behind Cloudflare. A release that
+     * changed both shipped Blade that referred to rules and behaviour the
+     * cached files did not have — the sidebar's new badges rendered as bare
+     * numbers, and the splash, which is `position: fixed` in the new
+     * stylesheet, painted as a full-size image across the top of every page.
+     *
+     * Same implementation, honest name. The old one is kept because four
+     * views already call it and it is not wrong, only narrowly named.
+     */
+    function assetVersion(string $relativePath): string
+    {
+        return landingAssetVersion($relativePath);
+    }
+}

@@ -41,12 +41,23 @@
      brand asset itself means an uploaded logo still gets a sensible reveal
      instead of a hand-drawn imitation of one. `brand-loader.js` takes it away
      the moment both the wipe and the page are done. --}}
-<div id="brand-loader" aria-hidden="true">
-    <img src="{{ brandLogo('dark') }}" alt="" class="brand-loader-mark">
+{{-- The inline styles are not laziness, they are the failure mode.
+
+     This element paints before any stylesheet is guaranteed to have arrived,
+     and on the deploy that introduced it `theme.css` was still being served
+     from cache — so the rules that make it a full-screen overlay did not
+     exist and a 240px logo rendered inline across the top of every page,
+     over content nobody could click. Enough of the layout to be harmless
+     lives here where nothing can strip it; `theme.css` still owns the wipe,
+     the dark ground and the fade. --}}
+<div id="brand-loader" aria-hidden="true"
+    style="position:fixed;inset:0;z-index:99999;display:flex;align-items:center;justify-content:center;background:#fff">
+    <img src="{{ brandLogo('dark') }}" alt="" class="brand-loader-mark"
+        style="width:min(240px,52vw);height:auto">
 </div>
 {{-- Here rather than with the rest of the scripts: it has to be listening
      before the wipe can finish, and everything else loads after the page. --}}
-<script src="{{ asset('assets/js/custom/brand-loader.js') }}"></script>
+<script src="{{ asset('assets/js/custom/brand-loader.js') }}?v={{ assetVersion('js/custom/brand-loader.js') }}"></script>
 <div id="app">
     @include('layouts.sidebar')
     <div id="main" class='layout-navbar'>
