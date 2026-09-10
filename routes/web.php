@@ -5,12 +5,14 @@ use App\Http\Controllers\Admin\NotificationController;
 use App\Http\Controllers\Admin\RoleController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\LandingController;
+use App\Http\Controllers\LaundryApplicationController;
 use App\Http\Controllers\LocaleController;
 use App\Modules\Banner\Controllers\BannerController;
 use App\Modules\City\Controllers\CityController;
 use App\Modules\Complaint\Controllers\ComplaintController;
 use App\Modules\Country\Controllers\CountryController;
 use App\Modules\Coupon\Controllers\CouponController;
+use App\Modules\Driver\Controllers\DriverApplicationController;
 use App\Modules\Driver\Controllers\DriverController;
 use App\Modules\Faq\Controllers\FaqController;
 use App\Modules\Intro\Controllers\IntroController;
@@ -79,7 +81,59 @@ Route::get('/privacy', [LandingController::class, 'legal'])
 
 Route::get('/locale/{code}', [LocaleController::class, 'set'])->name('locale.set');
 
+/*
+| «انضم لنا» — somebody asking to drive, from the landing page's modal.
+|
+| Guest and throttled. It answers JSON because the form is a modal on a page
+| the visitor is reading: redirecting them to a thank-you page would throw
+| away what they were halfway through, and this is a three-box ask.
+|
+| The lead is not a `users` row. Nobody here has been vetted or has a licence
+| on file, and writing them in beside staff would have to be undone by hand
+| the day they never answer the phone.
+*/
+Route::post('/drivers/apply', [DriverApplicationController::class, 'store'])
+    ->middleware('throttle:6,1')
+    ->name('driver.apply');
+
 Auth::routes(['register' => false]);
+
+/*
+| The laundry's own door.
+|
+| A second entrance, not a second authentication path: the form on it posts to
+| the `login` route above, so throttling, the session and the redirect to
+| /admin/home have exactly one implementation. Only the copy differs.
+|
+| It exists because `dashboard.only` has admitted `role.type = laundry` since
+| the tenant work landed, and nothing anywhere said so — an owner handed an
+| account arrived at a page headed «Admin Control Panel» and reasonably assumed
+| it was not for them.
+*/
+Route::get('/laundry/login', fn () => view('auth.laundry-login'))
+    ->middleware('guest')
+    ->name('laundry.login');
+
+/*
+| «سجّل مغسلتك» — a laundry applying to join.
+|
+| Guest-only, like the login beside it. The form creates the laundry and its
+| owner switched **off**; an operator approving it is what turns both on, and
+| until then `LoginController` answers a sign-in attempt with «still being
+| reviewed» rather than letting them into an empty panel.
+|
+| `applied` is its own address rather than a flash message so that a refresh
+| does not re-submit the form, and so the thank-you page can be linked to.
+*/
+Route::middleware('guest')->group(function () {
+    Route::get('/laundry/register', [LaundryApplicationController::class, 'create'])
+        ->name('laundry.register');
+    Route::post('/laundry/register', [LaundryApplicationController::class, 'store'])
+        ->middleware('throttle:6,1')
+        ->name('laundry.register.store');
+    Route::get('/laundry/applied', [LaundryApplicationController::class, 'submitted'])
+        ->name('laundry.applied');
+});
 
 /*
 |--------------------------------------------------------------------------
@@ -315,6 +369,21 @@ Route::middleware(['auth', 'dashboard.only'])->prefix('/admin')->group(function 
         Route::put('/laundry/update/{id}', 'update')->middleware('permission:laundry.update')->name('admin.laundry.update');
         Route::delete('/laundry/delete/{id}', 'destroy')->middleware('permission:laundry.delete')->name('admin.laundry.delete');
         Route::post('/laundry/status/{id}', 'toggleStatus')->middleware('permission:laundry.toggle')->name('admin.laundry.toggleStatus');
+
+        /*
+        | Applications from the public register form.
+        |
+        | Gated on `laundry.update` rather than a permission of their own:
+        | approving is switching a laundry on, which is exactly what that
+        | permission already means, and a sixth action would have to be added to
+        | `PermissionGenerator::$actions` — a list deliberately fixed at five.
+        */
+        Route::get('/laundry/pending', 'pending')
+            ->middleware('permission:laundry.update')->name('admin.laundry.pending');
+        Route::post('/laundry/approve/{id}', 'approve')
+            ->middleware('permission:laundry.update')->name('admin.laundry.approve');
+        Route::post('/laundry/reject/{id}', 'reject')
+            ->middleware('permission:laundry.update')->name('admin.laundry.reject');
     });
 
     /*
@@ -366,6 +435,37 @@ Route::middleware(['auth', 'dashboard.only'])->prefix('/admin')->group(function 
         Route::put('/item-category/update/{id}', 'update')->middleware('permission:item_category.update')->name('admin.item_category.update');
         Route::delete('/item-category/delete/{id}', 'destroy')->middleware('permission:item_category.delete')->name('admin.item_category.delete');
         Route::post('/item-category/status/{id}', 'toggleStatus')->middleware('permission:item_category.toggle')->name('admin.item_category.toggleStatus');
+    });
+
+    /*
+    |--------------------------------------------------------------------------
+    | Driver applications
+    |--------------------------------------------------------------------------
+    |
+    | Leads from the public «انضم لنا» form. No create and no edit: a row
+    | arrives from the form or it does not exist, so the module has a list, a
+    | detail, a "we rang them" toggle and a delete.
+    |
+    | The toggle is on `driver_application.toggle` rather than `.update`,
+    | because a two-state flag on one row is exactly what that action means
+    | everywhere else in this panel.
+    */
+    Route::controller(DriverApplicationController::class)->group(function () {
+        Route::get('/driver-application', 'index')
+            ->middleware('permission:driver_application.view')->name('admin.driver_application.index');
+        Route::get('/driver-application/search', 'search')
+            ->middleware('permission:driver_application.view')->name('admin.driver_application.search');
+        Route::get('/driver-application/show/{id}', 'show')
+            ->middleware('permission:driver_application.view')->name('admin.driver_application.show');
+        // Not `toggleStatus`. Everywhere else in this panel that name is an
+        // AJAX endpoint answering `{success, status}` for
+        // `x-status-toggle-button`; this one is an ordinary form post that
+        // redirects, and borrowing the name would invite somebody to drop that
+        // component on the screen and watch it break.
+        Route::post('/driver-application/handled/{id}', 'toggleHandled')
+            ->middleware('permission:driver_application.toggle')->name('admin.driver_application.handled');
+        Route::delete('/driver-application/delete/{id}', 'destroy')
+            ->middleware('permission:driver_application.delete')->name('admin.driver_application.delete');
     });
 
     /*

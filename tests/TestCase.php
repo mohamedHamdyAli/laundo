@@ -262,6 +262,10 @@ abstract class TestCase extends BaseTestCase
             'phone' => $laundryPhone,
             'email' => strtolower("laundry{$tag}").'@test.local',
             'status' => 'active',
+            // A fixture is a laundry an operator already has, not an
+            // application: null here would put every test's laundry in the
+            // approval queue.
+            'approved_at' => now(),
         ]);
 
         $owner = User::create([

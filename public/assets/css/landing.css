@@ -704,6 +704,23 @@ html.landing.theme-dark .brand-mark--light {
     box-shadow: var(--shadow-hairline);
 }
 
+/* The partners' way in. A quiet link rather than a button: the page's calls to
+   action belong to customers, and a laundry owner arrives here knowing what
+   they came for. */
+.nav-laundry-login {
+    color: var(--text-muted);
+    font-size: .8125rem;
+    font-weight: 700;
+    text-decoration: none;
+    white-space: nowrap;
+}
+
+.nav-laundry-login:hover,
+.nav-laundry-login:focus-visible {
+    color: var(--text-strong);
+    text-decoration: underline;
+}
+
 .nav-toggle {
     display: none;
     align-items: center;
@@ -2022,6 +2039,16 @@ html[lang="ar"] .hero-lead {
     font-size: 1.0625rem;
 }
 
+/* Two store buttons side by side, wrapping on a narrow card rather than
+   stretching: a download link that spans the card reads as the card's primary
+   action, and this section is deliberately subordinate to the customer CTA
+   above it. */
+.partner-stores {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .5rem 1.25rem;
+}
+
 .partner-body {
     margin-block: .5rem 1rem;
     color: var(--text-muted);
@@ -2578,4 +2605,184 @@ html[dir="rtl"] .timeline::after {
     html[dir="rtl"] .timeline::after {
         transform-origin: top;
     }
+}
+
+/* ==========================================================================
+   «انضم لنا» — the driver recruitment dialog
+
+   Three boxes on top of the page the visitor was reading, rather than a page
+   of its own: a courier who has to leave an article to type a name and a
+   number is a lead lost on the way. A native <dialog>, so the backdrop, the
+   focus trap and Escape are the browser's and not hand-written.
+   ========================================================================== */
+.driver-form {
+    width: min(30rem, calc(100vw - 2rem));
+    padding: clamp(1.5rem, 5vw, 2.25rem);
+    border: 1px solid var(--card-border);
+    border-radius: var(--radius-lg);
+    background: var(--surface-card);
+    color: var(--text-strong);
+    font-family: var(--font-stack);
+    box-shadow: var(--shadow-lift);
+}
+
+.driver-form::backdrop {
+    background: rgba(8, 20, 35, .55);
+    backdrop-filter: blur(2px);
+}
+
+.driver-form-dismiss {
+    display: flex;
+    justify-content: flex-end;
+    margin-block-end: -.5rem;
+}
+
+.driver-form-dismiss button {
+    display: grid;
+    place-items: center;
+    padding: .375rem;
+    border: none;
+    border-radius: 50%;
+    background: none;
+    color: var(--text-muted);
+    cursor: pointer;
+}
+
+.driver-form-dismiss button:hover {
+    background: var(--surface-bg);
+    color: var(--text-strong);
+}
+
+.driver-form-title {
+    margin: 0 0 .5rem;
+    font-size: 1.375rem;
+    font-weight: 700;
+}
+
+.driver-form-body {
+    margin: 0 0 1.5rem;
+    color: var(--text-muted);
+    font-size: .9375rem;
+    line-height: 1.7;
+}
+
+.driver-form-fields {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.driver-form-field {
+    display: flex;
+    flex-direction: column;
+    gap: .375rem;
+}
+
+.driver-form-field > span {
+    color: var(--text-strong);
+    font-size: .8125rem;
+    font-weight: 700;
+}
+
+.driver-form-field > span small {
+    color: var(--text-muted);
+    font-size: .75rem;
+    font-weight: 400;
+}
+
+.driver-form-field input,
+.driver-form-field textarea {
+    width: 100%;
+    padding: .6875rem .875rem;
+    border: 1px solid var(--surface-border);
+    border-radius: var(--radius-control);
+    background: var(--surface-bg);
+    color: var(--text-strong);
+    font-family: inherit;
+    font-size: .9375rem;
+}
+
+.driver-form-field textarea {
+    resize: vertical;
+}
+
+.driver-form-field input:focus,
+.driver-form-field textarea:focus {
+    border-color: var(--brand-primary);
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, .18);
+    outline: none;
+}
+
+.driver-form-field .is-wrong {
+    border-color: var(--tone-bad);
+}
+
+.driver-form-error {
+    color: var(--tone-bad);
+    font-size: .8125rem;
+    font-style: normal;
+}
+
+.driver-form-alert {
+    margin: 0;
+    padding: .75rem .9375rem;
+    border-inline-start: 3px solid var(--tone-bad);
+    border-radius: var(--radius-control);
+    background: var(--tone-bad-bg);
+    color: var(--tone-bad);
+    font-size: .875rem;
+}
+
+.driver-form-submit {
+    margin-block-start: .25rem;
+    padding: .8125rem 1.25rem;
+    border: none;
+    border-radius: var(--radius-control);
+    background: var(--brand-primary);
+    color: #fff;
+    font-family: inherit;
+    font-size: .9375rem;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.driver-form-submit:hover {
+    background: var(--brand-primary-dark);
+}
+
+.driver-form-submit:disabled {
+    opacity: .6;
+    cursor: progress;
+}
+
+.driver-form-seal {
+    display: grid;
+    place-items: center;
+    width: 3rem;
+    height: 3rem;
+    margin-block-end: 1rem;
+    border-radius: 50%;
+    background: var(--tone-ok-bg);
+    color: var(--tone-ok);
+}
+
+/* The partner card's own button. Looks like the quiet CTA beside it on the
+   laundry card, because they are the same offer to two audiences. */
+.partner-cta {
+    display: inline-flex;
+    align-items: center;
+    gap: .4rem;
+    padding: 0;
+    border: none;
+    background: none;
+    color: var(--brand-text);
+    font-family: inherit;
+    font-size: .9375rem;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.partner-cta:hover,
+.partner-cta:focus-visible {
+    text-decoration: underline;
 }

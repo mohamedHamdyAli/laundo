@@ -3,6 +3,7 @@
 namespace App\Modules\Report\Services;
 
 use App\Modules\Complaint\Models\Complaint;
+use App\Modules\Laundry\Models\Laundry;
 use App\Modules\Order\Enums\OrderStatus;
 use App\Modules\Order\Models\Order;
 use App\Modules\Order\Models\OrderRating;
@@ -228,6 +229,17 @@ class DashboardSummary
                 // somebody calls, which is the reason they are on the home page.
                 'severity' => 'warning',
                 'hint' => 'Nothing times these out — somebody has to call',
+            ],
+            [
+                'key' => 'laundry_applications',
+                'label' => 'Laundries waiting to be approved',
+                'count' => Laundry::withoutGlobalScopes()->pending()->count(),
+                'route' => 'admin.laundry.pending',
+                // Warning, not critical: nobody is stranded and no order is
+                // stuck. But an application nobody answers is a supplier who
+                // signs with somebody else, so it does not belong off the page.
+                'severity' => 'warning',
+                'hint' => 'Applied through the public form and cannot sign in yet',
             ],
             [
                 'key' => 'complaints',

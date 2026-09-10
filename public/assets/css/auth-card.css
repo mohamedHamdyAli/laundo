@@ -1,0 +1,567 @@
+/* ==========================================================================
+   The laundry's sign-in and application pages.
+
+   A card on a navy ground, not the panel's split screen. Two reasons it is not
+   the split: the application form is long, and the split has nowhere to put a
+   long form — its right-hand half is a brand panel and its left is one column
+   of about 380px. And the split is the *panel's* face, which is exactly the
+   impression these pages should not give. A laundry arrives here from the
+   marketing site, so this reads as a continuation of it.
+
+   Every token comes from landing.css, which this file is loaded after. It
+   declares none of its own: the landing page is the design system here, and a
+   second copy of the palette is the drift theme.css and landing.css already
+   have a parity test to prevent.
+   ========================================================================== */
+
+.auth-page {
+    margin: 0;
+    min-height: 100vh;
+    background:
+        radial-gradient(120% 90% at 50% 0%, rgba(37, 99, 235, .35), transparent 60%),
+        linear-gradient(168deg, var(--brand-navy) 0%, var(--brand-navy-2) 100%);
+    color: var(--text-strong);
+    font-family: var(--font-stack);
+    -webkit-font-smoothing: antialiased;
+}
+
+.auth-ground {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1.75rem;
+    min-height: 100vh;
+    padding: clamp(2rem, 6vw, 4rem) var(--gutter);
+}
+
+.auth-brand {
+    display: inline-block;
+    flex: none;
+}
+
+.auth-brand img {
+    display: block;
+    width: clamp(150px, 26vw, 190px);
+    height: auto;
+}
+
+/* ---------------------------------------------------------------- the card */
+
+.auth-card {
+    width: 100%;
+    max-width: 30rem;
+    padding: clamp(1.75rem, 4vw, 2.5rem);
+    border: 1px solid var(--card-border);
+    border-radius: var(--radius-lg);
+    background: var(--surface-card);
+    box-shadow: var(--shadow-lift);
+}
+
+/* The application form. Wider, and two columns once there is room — a
+   fourteen-field form in one 30rem column is a scroll nobody finishes. */
+.auth-card.is-wide {
+    max-width: 46rem;
+}
+
+.auth-title {
+    margin: 0 0 .35rem;
+    color: var(--text-strong);
+    font-size: clamp(1.35rem, 3vw, 1.65rem);
+    font-weight: 700;
+    line-height: 1.3;
+    text-wrap: balance;
+}
+
+.auth-subtitle {
+    margin: 0 0 1.75rem;
+    color: var(--text-muted);
+    font-size: .9375rem;
+    line-height: 1.65;
+}
+
+.auth-footnote {
+    margin: 0;
+    color: var(--on-navy-muted);
+    font-size: .875rem;
+    text-align: center;
+}
+
+.auth-footnote a {
+    color: var(--on-navy);
+    font-weight: 700;
+    text-decoration: none;
+}
+
+.auth-footnote a:hover,
+.auth-footnote a:focus-visible {
+    text-decoration: underline;
+}
+
+/* ---------------------------------------------------------------- the form */
+
+.auth-grid {
+    display: grid;
+    gap: 1.125rem;
+    grid-template-columns: 1fr;
+}
+
+@media (min-width: 40rem) {
+    .auth-card.is-wide .auth-grid {
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .auth-grid .is-full {
+        grid-column: 1 / -1;
+    }
+}
+
+.auth-field {
+    display: flex;
+    flex-direction: column;
+    gap: .375rem;
+    min-width: 0;
+}
+
+.auth-label {
+    color: var(--text-strong);
+    font-size: .8125rem;
+    font-weight: 700;
+}
+
+.auth-label .is-required {
+    color: var(--tone-bad);
+}
+
+.auth-input,
+.auth-select,
+.auth-textarea {
+    width: 100%;
+    padding: .6875rem .875rem;
+    border: 1px solid var(--surface-border);
+    border-radius: var(--radius-control);
+    background: var(--surface-bg);
+    color: var(--text-strong);
+    font-family: inherit;
+    font-size: .9375rem;
+    transition: border-color .15s ease, box-shadow .15s ease;
+}
+
+.auth-textarea {
+    min-height: 5.5rem;
+    resize: vertical;
+}
+
+.auth-input::placeholder,
+.auth-textarea::placeholder {
+    color: var(--text-muted);
+    opacity: .7;
+}
+
+.auth-input:focus,
+.auth-select:focus,
+.auth-textarea:focus {
+    border-color: var(--brand-primary);
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, .18);
+    outline: none;
+}
+
+.auth-input.has-error,
+.auth-select.has-error,
+.auth-textarea.has-error {
+    border-color: var(--tone-bad);
+}
+
+.auth-error {
+    color: var(--tone-bad);
+    font-size: .8125rem;
+}
+
+.auth-hint {
+    color: var(--text-muted);
+    font-size: .8125rem;
+}
+
+/* The password box and its reveal button share one border, so the eye reads as
+   part of the field rather than a button parked beside it. */
+.auth-password {
+    display: flex;
+    align-items: stretch;
+    border: 1px solid var(--surface-border);
+    border-radius: var(--radius-control);
+    background: var(--surface-bg);
+    overflow: hidden;
+}
+
+.auth-password:focus-within {
+    border-color: var(--brand-primary);
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, .18);
+}
+
+.auth-password .auth-input {
+    border: none;
+    border-radius: 0;
+    background: none;
+}
+
+.auth-password .auth-input:focus {
+    box-shadow: none;
+}
+
+.auth-reveal {
+    display: grid;
+    place-items: center;
+    padding-inline: .75rem;
+    border: none;
+    background: none;
+    color: var(--text-muted);
+    cursor: pointer;
+}
+
+.auth-reveal:hover {
+    color: var(--text-strong);
+}
+
+.auth-reveal svg {
+    display: block;
+    width: 18px;
+    height: 18px;
+}
+
+/* --------------------------------------------------------------- the check */
+
+.auth-check {
+    display: flex;
+    align-items: flex-start;
+    gap: .625rem;
+    color: var(--text-muted);
+    font-size: .875rem;
+    line-height: 1.6;
+}
+
+.auth-check input {
+    flex: none;
+    width: 1.05rem;
+    height: 1.05rem;
+    margin-top: .18rem;
+    accent-color: var(--brand-primary);
+}
+
+.auth-check a {
+    color: var(--brand-text);
+    font-weight: 600;
+}
+
+/* -------------------------------------------------------------- the button */
+
+.auth-submit {
+    width: 100%;
+    margin-top: 1.5rem;
+    padding: .8125rem 1.25rem;
+    border: none;
+    border-radius: var(--radius-control);
+    background: var(--brand-primary);
+    color: #fff;
+    font-family: inherit;
+    font-size: .9375rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background-color .15s ease;
+}
+
+.auth-submit:hover {
+    background: var(--brand-primary-dark);
+}
+
+.auth-submit:focus-visible {
+    outline: 3px solid var(--brand-primary-soft);
+    outline-offset: 2px;
+}
+
+.auth-links {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: .5rem 1rem;
+    margin-top: 1rem;
+    font-size: .875rem;
+}
+
+.auth-links a {
+    color: var(--brand-text);
+    font-weight: 600;
+    text-decoration: none;
+}
+
+.auth-links a:hover,
+.auth-links a:focus-visible {
+    text-decoration: underline;
+}
+
+/* --------------------------------------------------------------- the notes */
+
+.auth-note {
+    margin: 0 0 1.25rem;
+    padding: .75rem .9375rem;
+    border-inline-start: 3px solid currentColor;
+    border-radius: var(--radius-control);
+    font-size: .875rem;
+    line-height: 1.6;
+}
+
+.auth-note.is-good {
+    background: var(--tone-ok-bg);
+    color: var(--tone-ok);
+}
+
+.auth-note.is-bad {
+    background: var(--tone-bad-bg);
+    color: var(--tone-bad);
+}
+
+/* A section rule inside the long form: «بيانات المغسلة» then «حساب المالك».
+   Fourteen fields with no break is a wall. */
+.auth-legend {
+    display: flex;
+    align-items: center;
+    gap: .75rem;
+    margin: .5rem 0 -.25rem;
+    color: var(--text-muted);
+    font-size: .75rem;
+    font-weight: 700;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+}
+
+.auth-legend::after {
+    content: "";
+    flex: 1;
+    height: 1px;
+    background: var(--surface-border);
+}
+
+/* ------------------------------------------------------------ the thank-you */
+
+.auth-card.is-message {
+    text-align: center;
+}
+
+.auth-seal {
+    display: grid;
+    place-items: center;
+    width: 3.5rem;
+    height: 3.5rem;
+    margin: 0 auto 1.25rem;
+    border-radius: 50%;
+    background: var(--tone-ok-bg);
+    color: var(--tone-ok);
+}
+
+.auth-seal svg {
+    width: 26px;
+    height: 26px;
+}
+
+.auth-card.is-message .auth-steps {
+    margin: 1.5rem 0 0;
+    padding: 1.25rem 0 0;
+    border-top: 1px solid var(--surface-border);
+    color: var(--text-muted);
+    font-size: .875rem;
+    line-height: 1.7;
+    list-style: none;
+    text-align: start;
+}
+
+.auth-steps li {
+    position: relative;
+    padding-inline-start: 1.5rem;
+}
+
+.auth-steps li + li {
+    margin-top: .625rem;
+}
+
+.auth-steps li::before {
+    content: "";
+    position: absolute;
+    inset-inline-start: 0;
+    top: .55rem;
+    width: .5rem;
+    height: .5rem;
+    border-radius: 50%;
+    background: var(--brand-primary);
+}
+
+@media (prefers-reduced-motion: reduce) {
+
+    .auth-input,
+    .auth-select,
+    .auth-textarea,
+    .auth-submit {
+        transition: none;
+    }
+}
+
+/* ----------------------------------------------------------------- the map */
+
+.auth-map {
+    height: 260px;
+    border: 1px solid var(--surface-border);
+    border-radius: var(--radius-control);
+    overflow: hidden;
+}
+
+/* Marks that a pin has actually been dropped. The fields are empty until then
+   on purpose — a map centred on Cairo must not be mistaken for a location the
+   applicant chose. */
+.auth-map.is-set {
+    border-color: var(--tone-ok);
+}
+
+/* Leaflet paints its own controls; keep them under the card's own stacking so
+   a zoom button cannot sit over the fields below on a short viewport. */
+.auth-map .leaflet-container {
+    height: 100%;
+    font-family: inherit;
+}
+
+/* ==========================================================================
+   x-map-picker on a page with no Bootstrap.
+
+   The component is the panel's, and the panel loads Bootstrap; this page
+   deliberately does not. So its search box arrived as a bare input beside a
+   bare button, its icon as nothing at all, and its "clear the pin" as plain
+   blue text — the classes it hangs on (`input-group`, `form-control`, `btn`)
+   had no rules behind them.
+
+   These are those rules, scoped to this page and written in the card's own
+   language rather than Bootstrap's, so the picker reads as part of the form
+   instead of a widget dropped into it. Loading Bootstrap for six selectors
+   would have cost 200 KB and put the panel's look back on the page.
+   ========================================================================== */
+
+.auth-page .map-picker {
+    display: flex;
+    flex-direction: column;
+    gap: .375rem;
+}
+
+.auth-page .map-picker .form-label {
+    color: var(--text-strong);
+    font-size: .8125rem;
+    font-weight: 700;
+}
+
+.auth-page .map-picker-search {
+    margin-bottom: .25rem;
+}
+
+/* One control, not two: the field and its button share a border and a radius,
+   the same way the password box and its eye do above. */
+.auth-page .map-picker .input-group {
+    display: flex;
+    align-items: stretch;
+    border: 1px solid var(--surface-border);
+    border-radius: var(--radius-control);
+    background: var(--surface-bg);
+    overflow: hidden;
+}
+
+.auth-page .map-picker .input-group:focus-within {
+    border-color: var(--brand-primary);
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, .18);
+}
+
+/* The icon slot holds a bootstrap-icons glyph, and that font is not on this
+   page either. Nothing to show, so nothing is reserved for it. */
+.auth-page .map-picker .input-group-text {
+    display: none;
+}
+
+.auth-page .map-picker .form-control {
+    flex: 1;
+    min-width: 0;
+    padding: .6875rem .875rem;
+    border: none;
+    background: none;
+    color: var(--text-strong);
+    font-family: inherit;
+    font-size: .9375rem;
+}
+
+.auth-page .map-picker .form-control:focus {
+    outline: none;
+}
+
+.auth-page .map-picker .form-control::placeholder {
+    color: var(--text-muted);
+    opacity: .7;
+}
+
+.auth-page .map-picker .btn {
+    flex: none;
+    padding-inline: 1.125rem;
+    border: none;
+    border-inline-start: 1px solid var(--surface-border);
+    background: none;
+    color: var(--brand-text);
+    font-family: inherit;
+    font-size: .875rem;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.auth-page .map-picker .btn:hover {
+    background: rgba(37, 99, 235, .07);
+}
+
+.auth-page .map-picker-canvas {
+    border: 1px solid var(--surface-border);
+    border-radius: var(--radius-control);
+}
+
+.auth-page .map-picker-results {
+    background: var(--surface-card);
+    border-color: var(--surface-border);
+    border-radius: var(--radius-control);
+}
+
+.auth-page .map-picker-result {
+    color: var(--text-strong);
+    border-bottom-color: var(--surface-border);
+    cursor: pointer;
+}
+
+.auth-page .map-picker-result:hover,
+.auth-page .map-picker-result:focus {
+    background: var(--surface-bg);
+}
+
+.auth-page .map-picker-result .where,
+.auth-page .map-picker-empty,
+.auth-page .map-picker-hint {
+    color: var(--text-muted);
+}
+
+/* The hint reads as the field's help text, so it sits with the other hints
+   rather than being centred under a map. */
+.auth-page .map-picker-foot {
+    align-items: baseline;
+}
+
+.auth-page .map-picker-hint {
+    margin: 0;
+    font-size: .8125rem;
+}
+
+.auth-page .map-picker-clear {
+    padding: 0;
+    border: none;
+    background: none;
+    color: var(--brand-text);
+    font-family: inherit;
+    font-size: .8125rem;
+    font-weight: 600;
+    cursor: pointer;
+    text-decoration: underline;
+}

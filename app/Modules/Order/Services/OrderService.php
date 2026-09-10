@@ -206,6 +206,14 @@ class OrderService
             // transition — there is no previous status to move from.
             $this->announcePlacement($order);
 
+            // And the laundry, when the assigner found one. Nothing else tells
+            // them: every other notification on an order goes to the customer
+            // or the driver, and the party that has to clean the clothes was
+            // left to notice by refreshing its own panel.
+            if ($order->laundry_id) {
+                $this->announceLaundryAssignment($order);
+            }
+
             return $order;
         });
     }
@@ -274,7 +282,14 @@ class OrderService
 
             $this->machine->note($order, "Assigned to laundry #{$laundryId}.", 'admin', $actor);
 
-            return $order->refresh();
+            $order->refresh();
+
+            // The laundry that has just been given the work. Reassignment
+            // included: the new one has to know, and the old one has already
+            // been told by whoever moved it.
+            $this->announceLaundryAssignment($order);
+
+            return $order;
         });
     }
 
@@ -304,6 +319,21 @@ class OrderService
             'special_instructions' => $order->special_instructions,
             'items' => $items,
         ];
+    }
+
+    /**
+     * Tell the laundry it has work. Swallowed for the same reason as the
+     * placement announcement below it.
+     */
+    private function announceLaundryAssignment(Order $order): void
+    {
+        try {
+            app(OrderNotifier::class)->orderAssignedToLaundry($order);
+        } catch (\Throwable $e) {
+            Log::warning('[notifications] laundry assignment', [
+                'order' => $order->id, 'error' => $e->getMessage(),
+            ]);
+        }
     }
 
     /**

@@ -242,3 +242,117 @@
         }
     }
 })();
+
+/**
+ * «انضم لنا» — the driver recruitment dialog.
+ *
+ * Posts in the background and swaps to a thank-you in place, so the page the
+ * visitor was reading is still behind it when they close. A redirect to a
+ * thank-you page would throw that away for a three-box form.
+ *
+ * `<dialog>` carries the modal behaviour, the focus trap, the backdrop and
+ * Escape, so none of that is written here.
+ */
+(function () {
+    'use strict';
+
+    var dialog = document.getElementById('driver-form');
+    var opener = document.querySelector('[data-driver-open]');
+
+    if (!dialog || !opener || typeof dialog.showModal !== 'function') {
+        return;
+    }
+
+    var form = dialog.querySelector('[data-driver-form]');
+    var ask = dialog.querySelector('[data-driver-ask]');
+    var done = dialog.querySelector('[data-driver-done]');
+    var alert = dialog.querySelector('[data-driver-alert]');
+    var submit = form.querySelector('[type="submit"]');
+
+    function clearErrors() {
+        alert.hidden = true;
+        alert.textContent = '';
+
+        dialog.querySelectorAll('[data-error-for]').forEach(function (node) {
+            node.hidden = true;
+            node.textContent = '';
+        });
+
+        dialog.querySelectorAll('.is-wrong').forEach(function (node) {
+            node.classList.remove('is-wrong');
+        });
+    }
+
+    opener.addEventListener('click', function () {
+        clearErrors();
+        ask.hidden = false;
+        done.hidden = true;
+        dialog.showModal();
+        // The first box, not the close button the markup happens to put first.
+        var first = form.querySelector('input');
+        if (first) {
+            first.focus();
+        }
+    });
+
+    form.addEventListener('submit', function (event) {
+        event.preventDefault();
+        clearErrors();
+
+        var idle = submit.textContent;
+        submit.disabled = true;
+        submit.textContent = submit.dataset.sending || idle;
+
+        fetch(form.getAttribute('action'), {
+            method: 'POST',
+            body: new FormData(form),
+            credentials: 'same-origin',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'application/json'
+            }
+        }).then(function (response) {
+            if (response.status === 201) {
+                ask.hidden = true;
+                done.hidden = false;
+                form.reset();
+
+                return;
+            }
+
+            return response.json().then(function (body) {
+                var errors = (body && body.errors) || {};
+                var named = false;
+
+                Object.keys(errors).forEach(function (key) {
+                    var slot = dialog.querySelector('[data-error-for="' + key + '"]');
+                    var field = form.querySelector('[name="' + key + '"]');
+
+                    if (slot) {
+                        slot.textContent = [].concat(errors[key])[0];
+                        slot.hidden = false;
+                        named = true;
+                    }
+
+                    if (field) {
+                        field.classList.add('is-wrong');
+                    }
+                });
+
+                // Throttled, or a rule with no box of its own. Either way it
+                // has to be readable rather than a form that silently did
+                // nothing.
+                if (!named) {
+                    alert.textContent = (body && body.message) || form.dataset.failed || '';
+                    alert.hidden = !alert.textContent;
+                }
+            });
+        }).catch(function () {
+            alert.textContent = form.dataset.failed || '';
+            alert.hidden = !alert.textContent;
+        }).finally(function () {
+            submit.disabled = false;
+            submit.textContent = idle;
+        });
+    });
+})();

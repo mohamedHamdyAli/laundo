@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
 use App\Models\Role;
+use App\Modules\Driver\Enums\VehicleType;
 use App\Modules\Driver\Models\Driver;
 use App\Modules\Order\Enums\TaskStatus;
 use App\Services\Auth\OtpService;
@@ -344,7 +345,10 @@ class DriverController extends Controller
             'status' => $driver->status,
             'is_available' => (bool) $profile?->is_available,
             'vehicle' => [
+                // The stored string, and its label for display. The apps
+                // were printing the raw column, which is now a slug.
                 'type' => $profile?->vehicle_type,
+                'type_label' => VehicleType::parse($profile?->vehicle_type)?->label(),
                 'plate_number' => $profile?->plate_number,
             ],
             'license' => [

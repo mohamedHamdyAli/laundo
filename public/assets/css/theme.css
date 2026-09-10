@@ -643,6 +643,42 @@ html[dir="rtl"] #notification-list {
     border: 1px solid var(--surface-border);
 }
 
+/* «Forgot your password?» and the link to the other door.
+
+   Scoped under .login-split at the same depth as the rules above rather than
+   left bare: the vendor's app.css sets `a` colour and weight globally and
+   out-specifies a single class. */
+.login-split .login-form-panel .login-link {
+    color: var(--brand-primary);
+    font-size: .875rem;
+    font-weight: 600;
+    text-decoration: none;
+}
+
+.login-split .login-form-panel .login-link:hover {
+    text-decoration: underline;
+}
+
+.login-split .login-form-panel .login-alt-door {
+    border-top: 1px solid var(--surface-border);
+    color: var(--text-muted);
+    font-size: .875rem;
+    margin-bottom: 0;
+    margin-top: 1.75rem;
+    padding-top: 1.25rem;
+    text-align: center;
+}
+
+.login-split .login-form-panel .login-alt-door a {
+    color: var(--brand-primary);
+    font-weight: 600;
+    text-decoration: none;
+}
+
+.login-split .login-form-panel .login-alt-door a:hover {
+    text-decoration: underline;
+}
+
 /* Class name kept: it is referenced from auth/login.blade.php, and renaming a
    class to match a colour is how the next rebrand gets the same problem.
    The gradient now runs primary -> primary-dark rather than primary -> soft:
@@ -2871,4 +2907,215 @@ body.theme-dark .select2-container--bootstrap-5 .select2-dropdown {
 
 .show-page .select2-container--bootstrap-5 .select2-selection__arrow {
     display: none;
+}
+
+/* ==========================================================================
+   The splash
+
+   Replaces the vendor template's two rotating squares — a spinner that said
+   nothing and sat on a translucent sheet the dashboard showed through, so it
+   read as a page glitching rather than a page arriving.
+
+   The wordmark is revealed a letter at a time by clipping the real brand asset
+   in six discrete steps. Six because LAUNDO has six letters; `steps(6, end)`
+   lands the wipe on each letter boundary in turn instead of sliding through
+   them. Clipping the shipped logo rather than typesetting the letters keeps the
+   actual mark — including an uploaded one — instead of an approximation of it
+   in whatever font the panel happens to have.
+
+   The wipe is physical (always left to right), not logical: LAUNDO reads the
+   same way on an RTL page.
+   ========================================================================== */
+#brand-loader {
+    position: fixed;
+    inset: 0;
+    z-index: 99999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #fff;
+    opacity: 1;
+    transition: opacity .35s ease;
+}
+
+#brand-loader.is-leaving {
+    opacity: 0;
+    pointer-events: none;
+}
+
+.brand-loader-mark {
+    width: min(240px, 52vw);
+    height: auto;
+    /* The resting state is the finished word: if the animation never runs —
+       reduced motion, a browser that skips it — the visitor sees the logo, not
+       an empty screen. */
+    clip-path: inset(0 0 0 0);
+    animation: brand-loader-write .72s steps(6, end) 1 both;
+}
+
+@keyframes brand-loader-write {
+    from {
+        clip-path: inset(0 100% 0 0);
+    }
+
+    to {
+        clip-path: inset(0 0 0 0);
+    }
+}
+
+body.theme-dark #brand-loader {
+    background: #0e1726;
+}
+
+@media (prefers-reduced-motion: reduce) {
+
+    .brand-loader-mark {
+        animation-duration: .01ms;
+    }
+
+    #brand-loader {
+        transition-duration: .01ms;
+    }
+}
+
+/* ==========================================================================
+   Laundry applications
+
+   One row per application, carrying everything an operator needs to decide —
+   who applied, from where, how to reach them, when they asked — so the
+   decision does not begin by opening a detail page and coming back.
+   ========================================================================== */
+.application-row {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: .75rem 1.5rem;
+    padding: 1.25rem 0;
+    border-bottom: 1px solid var(--surface-border, #e0e3e5);
+}
+
+.application-row:last-of-type {
+    border-bottom: none;
+}
+
+.application-name {
+    margin: 0 0 .75rem;
+    font-weight: 700;
+}
+
+.application-facts {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .25rem 2rem;
+    margin: 0;
+}
+
+.application-facts div {
+    min-width: 0;
+}
+
+.application-facts dt {
+    color: var(--text-muted, #6c757d);
+    font-size: .6875rem;
+    font-weight: 600;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+}
+
+.application-facts dd {
+    margin: 0;
+    font-size: .875rem;
+    font-weight: 600;
+}
+
+.application-address {
+    margin: .75rem 0 0;
+    color: var(--text-muted, #6c757d);
+    font-size: .875rem;
+}
+
+.application-actions {
+    display: flex;
+    align-items: start;
+    gap: .5rem;
+}
+
+.application-actions form {
+    margin: 0;
+}
+
+.application-reject {
+    grid-column: 1 / -1;
+}
+
+@media (max-width: 48rem) {
+    .application-row {
+        grid-template-columns: 1fr;
+    }
+
+    .application-actions {
+        flex-wrap: wrap;
+    }
+}
+
+/* ==========================================================================
+   Inline validation messages
+
+   Painted by `custom/form-validation.js` when a submit comes back 422. Not
+   Bootstrap's `.invalid-feedback`, which only shows when a sibling carries
+   `.is-invalid` — these are appended to the field's wrapper, which is what
+   puts a message under a file dropzone or a select2 rather than under the
+   hidden control they replace.
+   ========================================================================== */
+.js-field-error {
+    display: block;
+    margin-top: .3rem;
+    color: var(--tone-bad, #b3261e);
+    font-size: .8125rem;
+    line-height: 1.5;
+}
+
+/* The vendor theme only paints `.is-invalid` on `.form-control`. A select2, a
+   file dropzone and a checkbox need the same mark. */
+.needs-validation .is-invalid,
+.needs-validation .is-invalid + .select2 .select2-selection {
+    border-color: var(--tone-bad, #b3261e) !important;
+}
+
+.js-form-banner {
+    margin-bottom: 1rem;
+}
+
+/* ==========================================================================
+   Sidebar queue badges
+
+   Only on the handful of screens that are a queue something else fills — see
+   `App\Services\MenuBadges`. A count beside every item is a count nobody
+   reads, and zero is never drawn: an empty queue should look like everything
+   else on the list, not like a queue reporting itself empty.
+   ========================================================================== */
+.sidebar-link .menu-badge,
+.submenu-item a .menu-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 1.25rem;
+    height: 1.25rem;
+    margin-inline-start: auto;
+    padding-inline: .375rem;
+    border-radius: 999px;
+    background: #d97706;
+    color: #fff;
+    font-size: .6875rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    line-height: 1;
+}
+
+/* The link is a flex row already in this theme; `margin-inline-start: auto`
+   only pushes the badge to the end if it is. Forced here so a badge cannot
+   end up glued to the label on one of the two link shapes. */
+.sidebar-link,
+.submenu-item a {
+    display: flex;
+    align-items: center;
 }

@@ -111,8 +111,12 @@ class driverCrudService
         $data = [
             'drivers' => $this->driverRepository->getAllPaginated(),
             'cities' => City::where('status', 'active')->get(),
+            // Keyed by city id, not by the city's translated name: the form
+            // hides the groups that are not the chosen city, and matching a
+            // <select> value against a display string breaks the moment the
+            // panel language changes.
             'zonesByCity' => $this->zoneRepository->allActive()->groupBy(
-                fn ($zone) => $zone->city ? getLocalizedValueDashboard($zone->city, 'name') : '-'
+                fn ($zone) => (string) ($zone->city_id ?? '')
             ),
         ];
 

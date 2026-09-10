@@ -66,6 +66,16 @@
                     @endforeach
                 </div>
 
+                {{-- The laundries' way in. The panel has admitted them since the
+                     tenant work landed, but the only address was /login, headed
+                     «Admin Control Panel» — so an owner handed an account had
+                     nowhere to start from and nothing telling them it was
+                     theirs. Customers use the apps; this link is for partners,
+                     which is why it sits in the aside and not the nav list. --}}
+                <a class="nav-laundry-login" href="{{ route('laundry.login') }}">
+                    {{ webText('landing.nav.laundry_login') }}
+                </a>
+
             </div>
         </nav>
 

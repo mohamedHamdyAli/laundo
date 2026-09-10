@@ -1,0 +1,516 @@
+/* ==========================================================================
+   The operator's door.
+
+   Where a super admin signs in. It used to be the vendor template's split — a
+   white card on a navy half, a cyan button belonging to no palette in this
+   application, and Arabic rendered in whatever face the browser picked,
+   because the panel ships no Arabic webfont at all.
+
+   The brief was «هيبة»: it should feel like taking the controls. That is read
+   here as a light, quiet, exact room rather than a dark one — presence coming
+   from space, alignment and restraint, the way a bank's door does, not from
+   turning the lights off.
+
+   Four decisions:
+
+   1. **One card, centred, on a cool light ground.** The ground is tinted
+      toward the brand navy rather than the warm cream every generated page
+      reaches for; it belongs to this product's palette and not to a mood.
+
+   2. **The wordmark is the largest thing on the page.** Not a badge in a
+      corner — the mark, then the card. It is the only ornament, so it may be
+      big.
+
+   3. **Navy is the action.** The brand blue is bright and belongs on cards and
+      charts inside the panel; on the threshold the deeper navy reads as
+      weight. Brass appears once, as a short rule under the mark, and nowhere
+      else — an accent spent twice is a scheme, spent once it is a detail.
+
+   4. **It moves, barely.** Three very soft shapes drifting behind the ground
+      over three quarters of a minute, and one entrance sequence on load. Both
+      stop for `prefers-reduced-motion`.
+
+   Committed to this one look rather than following the panel's theme: this
+   screen is the threshold, not part of the room behind it.
+   ========================================================================== */
+
+.hall {
+    --hall-ground: #e8edf3;
+    --hall-card: #ffffff;
+    --hall-navy: #0f2d52;
+    --hall-navy-deep: #08203c;
+    --hall-ink: #12263f;
+    --hall-quiet: #5d7488;
+    --hall-rule: #dce3ec;
+    --hall-field: #f4f7fa;
+    --hall-brass: #a17c25;
+    --hall-bad: #b3261e;
+    --hall-bad-bg: #fdeceb;
+    --hall-good: #0f7b3f;
+    --hall-good-bg: #e6f4ec;
+
+    position: relative;
+    display: grid;
+    place-items: center;
+    min-height: 100vh;
+    margin: 0;
+    padding: clamp(1.5rem, 5vw, 3rem);
+    background: var(--hall-ground);
+    color: var(--hall-ink);
+    font-family: 'IBM Plex Sans Arabic', 'Nunito', system-ui, -apple-system, 'Segoe UI', sans-serif;
+    -webkit-font-smoothing: antialiased;
+    overflow: hidden;
+}
+
+/* ---------------------------------------------------------- the background */
+
+.hall-bg {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    overflow: hidden;
+}
+
+/* Three shapes, no image. Slow enough that it reads as light changing in a
+   room rather than as something animating on a web page — anything quicker
+   turns a sign-in screen into a screensaver. */
+.hall-bg span {
+    position: absolute;
+    display: block;
+    border-radius: 50%;
+    filter: blur(60px);
+    will-change: transform;
+}
+
+.hall-bg span:nth-child(1) {
+    inset-block-start: -18%;
+    inset-inline-start: -10%;
+    width: 46vw;
+    height: 46vw;
+    background: radial-gradient(circle, rgba(15, 45, 82, .16), transparent 68%);
+    animation: hall-drift-a 46s ease-in-out infinite;
+}
+
+.hall-bg span:nth-child(2) {
+    inset-block-end: -22%;
+    inset-inline-end: -12%;
+    width: 52vw;
+    height: 52vw;
+    background: radial-gradient(circle, rgba(37, 99, 235, .13), transparent 68%);
+    animation: hall-drift-b 58s ease-in-out infinite;
+}
+
+.hall-bg span:nth-child(3) {
+    inset-block-start: 30%;
+    inset-inline-end: 26%;
+    width: 30vw;
+    height: 30vw;
+    background: radial-gradient(circle, rgba(161, 124, 37, .09), transparent 66%);
+    animation: hall-drift-c 52s ease-in-out infinite;
+}
+
+@keyframes hall-drift-a {
+    50% { transform: translate3d(7vw, 5vh, 0) scale(1.12); }
+}
+
+@keyframes hall-drift-b {
+    50% { transform: translate3d(-6vw, -4vh, 0) scale(1.08); }
+}
+
+@keyframes hall-drift-c {
+    50% { transform: translate3d(-4vw, 6vh, 0) scale(.92); }
+}
+
+/* --------------------------------------------------------------- the stage */
+
+.hall-stage {
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    max-width: 27rem;
+}
+
+.hall-mark {
+    display: block;
+    width: clamp(200px, 30vw, 286px);
+    height: auto;
+    margin: 0 auto 1rem;
+}
+
+/* The one accent, and the only ornament on the page. A short brass rule under
+   the mark: enough to say the palette has a second colour, not enough to make
+   it a scheme. */
+.hall-rule {
+    width: 3.25rem;
+    height: 2px;
+    margin: 0 auto clamp(2rem, 5vw, 2.75rem);
+    border: none;
+    background: var(--hall-brass);
+}
+
+.hall-card {
+    padding: clamp(1.75rem, 4vw, 2.5rem);
+    border: 1px solid var(--hall-rule);
+    border-radius: 1rem;
+    background: var(--hall-card);
+    box-shadow:
+        0 1px 2px rgba(12, 38, 63, .04),
+        0 18px 40px -24px rgba(12, 38, 63, .28);
+}
+
+.hall-heading {
+    margin: 0;
+    color: var(--hall-ink);
+    font-size: clamp(1.375rem, 2.4vw, 1.625rem);
+    font-weight: 700;
+    letter-spacing: -.015em;
+    line-height: 1.3;
+}
+
+.hall-sub {
+    margin: .5rem 0 2rem;
+    color: var(--hall-quiet);
+    font-size: .9375rem;
+    line-height: 1.7;
+}
+
+/* ---------------------------------------------------------------- the form */
+
+.hall-fields {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+}
+
+.hall-field {
+    display: flex;
+    flex-direction: column;
+    gap: .4375rem;
+}
+
+.hall-label {
+    color: var(--hall-ink);
+    font-size: .8125rem;
+    font-weight: 700;
+}
+
+.hall-input {
+    width: 100%;
+    padding: .75rem .9375rem;
+    border: 1px solid var(--hall-rule);
+    border-radius: .5rem;
+    background: var(--hall-field);
+    color: var(--hall-ink);
+    font-family: inherit;
+    font-size: .9375rem;
+    transition: border-color .16s ease, box-shadow .16s ease, background-color .16s ease;
+}
+
+.hall-input::placeholder {
+    color: var(--hall-quiet);
+    opacity: .65;
+}
+
+.hall-input:focus {
+    border-color: var(--hall-navy);
+    background: var(--hall-card);
+    box-shadow: 0 0 0 3px rgba(15, 45, 82, .12);
+    outline: none;
+}
+
+.hall-input.is-wrong {
+    border-color: var(--hall-bad);
+}
+
+/* Autofill repaints the field a fixed pale yellow in Chromium. The inset
+   shadow is the only way to keep the card's own surface. */
+.hall-input:-webkit-autofill,
+.hall-input:-webkit-autofill:hover,
+.hall-input:-webkit-autofill:focus {
+    -webkit-text-fill-color: var(--hall-ink);
+    -webkit-box-shadow: 0 0 0 100px var(--hall-field) inset;
+    caret-color: var(--hall-ink);
+}
+
+.hall-secret {
+    display: flex;
+    align-items: stretch;
+    border: 1px solid var(--hall-rule);
+    border-radius: .5rem;
+    background: var(--hall-field);
+    overflow: hidden;
+    transition: border-color .16s ease, box-shadow .16s ease, background-color .16s ease;
+}
+
+.hall-secret:focus-within {
+    border-color: var(--hall-navy);
+    background: var(--hall-card);
+    box-shadow: 0 0 0 3px rgba(15, 45, 82, .12);
+}
+
+.hall-secret .hall-input {
+    border: none;
+    border-radius: 0;
+    background: none;
+    box-shadow: none;
+}
+
+.hall-reveal {
+    display: grid;
+    place-items: center;
+    padding-inline: .875rem;
+    border: none;
+    background: none;
+    color: var(--hall-quiet);
+    cursor: pointer;
+}
+
+.hall-reveal:hover {
+    color: var(--hall-ink);
+}
+
+.hall-reveal svg {
+    display: block;
+}
+
+.hall-submit {
+    width: 100%;
+    margin-top: .75rem;
+    padding: .875rem 1.25rem;
+    border: none;
+    border-radius: .5rem;
+    background: var(--hall-navy);
+    color: #fff;
+    font-family: inherit;
+    font-size: .9375rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background-color .16s ease;
+}
+
+.hall-submit:hover {
+    background: var(--hall-navy-deep);
+}
+
+.hall-submit:focus-visible,
+.hall-reveal:focus-visible {
+    outline: 2px solid var(--hall-brass);
+    outline-offset: 2px;
+}
+
+.hall-aside {
+    font-size: .875rem;
+}
+
+.hall-aside a {
+    color: var(--hall-quiet);
+    text-decoration: none;
+}
+
+.hall-aside a:hover,
+.hall-aside a:focus-visible {
+    color: var(--hall-navy);
+    text-decoration: underline;
+}
+
+.hall-note {
+    margin: 0 0 1.25rem;
+    padding: .75rem .9375rem;
+    border-inline-start: 3px solid var(--hall-bad);
+    border-radius: .375rem;
+    background: var(--hall-bad-bg);
+    color: var(--hall-bad);
+    font-size: .875rem;
+    line-height: 1.6;
+}
+
+.hall-note.is-good {
+    border-inline-start-color: var(--hall-good);
+    background: var(--hall-good-bg);
+    color: var(--hall-good);
+}
+
+/* Outside the card, on the ground: it is a way off this page, not part of
+   signing in to it. */
+.hall-door {
+    margin: 1.5rem 0 0;
+    color: var(--hall-quiet);
+    font-size: .8125rem;
+    text-align: center;
+}
+
+.hall-door a {
+    color: var(--hall-navy);
+    font-weight: 700;
+    text-decoration: none;
+}
+
+.hall-door a:hover,
+.hall-door a:focus-visible {
+    text-decoration: underline;
+}
+
+/* ------------------------------------------------------------ the entrance
+
+   One sequence on load, not an effect per element: the mark, then its rule,
+   then the card, then the door. Under half a second end to end — long enough
+   to be a arrival, short enough that somebody typing straight into the field
+   never notices it happened. */
+
+@media (prefers-reduced-motion: no-preference) {
+
+    .hall-mark,
+    .hall-rule,
+    .hall-card,
+    .hall-door {
+        animation: hall-enter .5s cubic-bezier(.22, .61, .36, 1) both;
+    }
+
+    .hall-mark { animation-delay: .04s; }
+    .hall-rule { animation-delay: .12s; }
+    .hall-card { animation-delay: .18s; }
+    .hall-door { animation-delay: .3s; }
+}
+
+@keyframes hall-enter {
+    from {
+        opacity: 0;
+        transform: translate3d(0, 10px, 0);
+    }
+
+    to {
+        opacity: 1;
+        transform: none;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+
+    .hall-bg span {
+        animation: none;
+    }
+
+    .hall-input,
+    .hall-secret,
+    .hall-submit {
+        transition: none;
+    }
+}
+
+/* ------------------------------------------------------------ narrow view */
+
+@media (max-width: 30rem) {
+    .hall-card {
+        padding: 1.5rem 1.25rem;
+    }
+
+    .hall-bg span {
+        filter: blur(40px);
+    }
+}
+
+/* ==========================================================================
+   What the panel governs
+
+   Four chips either side of the card, drifting up and down out of step. They
+   are the answer to "make it feel like signing in as an administrator": the
+   page shows the shape of the operation behind the door rather than asserting
+   it in a sentence.
+
+   Every figure is marked «مثال». The alternative — real counts — would
+   publish a business's daily volume to anybody who loads its sign-in screen,
+   and unmarked invented ones would be read as a claim, because every number
+   on a screen is.
+
+   Absolutely quiet: translucent, small, behind the card in the stacking order,
+   and gone below the width where they would crowd it.
+   ========================================================================== */
+
+.hall-orbit {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+}
+
+.hall-chip {
+    position: absolute;
+    display: flex;
+    align-items: center;
+    gap: .625rem;
+    padding: .625rem .875rem;
+    border: 1px solid var(--hall-rule);
+    border-radius: .75rem;
+    background: rgba(255, 255, 255, .72);
+    box-shadow: 0 10px 26px -18px rgba(12, 38, 63, .45);
+    backdrop-filter: blur(6px);
+    animation: hall-bob 7s ease-in-out infinite;
+    /* Out of step with each other, so four things bobbing reads as drift and
+       not as one mechanism. */
+    animation-delay: calc(var(--chip) * -1.6s);
+}
+
+.hall-chip.is-start { inset-inline-start: clamp(1.5rem, 7vw, 6rem); }
+.hall-chip.is-end { inset-inline-end: clamp(1.5rem, 7vw, 6rem); }
+
+.hall-chip:nth-child(1) { inset-block-start: 20%; }
+.hall-chip:nth-child(2) { inset-block-start: 58%; }
+.hall-chip:nth-child(3) { inset-block-start: 26%; }
+.hall-chip:nth-child(4) { inset-block-start: 64%; }
+
+.hall-chip-icon {
+    display: grid;
+    place-items: center;
+    width: 2rem;
+    height: 2rem;
+    border-radius: .5rem;
+    background: rgba(15, 45, 82, .07);
+    color: var(--hall-navy);
+}
+
+.hall-chip-body {
+    display: flex;
+    flex-direction: column;
+    line-height: 1.25;
+}
+
+.hall-chip-value {
+    color: var(--hall-ink);
+    font-size: 1.125rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+}
+
+.hall-chip-label {
+    color: var(--hall-quiet);
+    font-size: .75rem;
+    white-space: nowrap;
+}
+
+/* Small, but never invisible: the whole reason the numbers are allowed on the
+   page is that this word is beside them. */
+.hall-chip-note {
+    align-self: flex-start;
+    padding: .0625rem .375rem;
+    border-radius: .25rem;
+    background: rgba(161, 124, 37, .14);
+    color: var(--hall-brass);
+    font-size: .625rem;
+    font-weight: 700;
+}
+
+@keyframes hall-bob {
+    50% { transform: translateY(-10px); }
+}
+
+/* The card comes first. Below this width the chips would sit on top of it. */
+@media (max-width: 68rem) {
+    .hall-orbit {
+        display: none;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .hall-chip {
+        animation: none;
+    }
+}

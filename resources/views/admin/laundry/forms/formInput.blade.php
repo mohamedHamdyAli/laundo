@@ -184,6 +184,44 @@
         </div>
     @endif
 
+    {{-- Editing, and the laundry has an owner account.
+
+         Its name, email and phone are the person's, not the laundry record's,
+         so they are shown and not edited. The password is here because when an
+         owner is locked out this is the screen somebody goes looking on — it
+         was previously possible only through «Laundry Staff», which lists
+         owners by accident of its `role.type = laundry` scope. --}}
+    @if (Route::is('*.edit') && ($row->owner ?? null))
+        <div class="col-12 form-divider">
+            <div class="form-section-legend">{{ __('Owner Account') }}</div>
+        </div>
+
+        <div class="col-12">
+            <p class="text-muted mb-3">
+                {{ __('Signs in as') }} <strong>{{ $row->owner->email }}</strong>
+                &mdash; {{ $row->owner->name }}.
+                {{ __('Leave the password blank to keep the current one.') }}
+            </p>
+        </div>
+
+        <div class="col-lg-6">
+            <div class="mb-3">
+                <label for="owner-password" class="form-label">{{ __('New Password') }}</label>
+                <input type="password" name="owner_password" class="form-control" id="owner-password"
+                    placeholder="{{ __('Leave blank to keep the current password') }}" autocomplete="new-password">
+            </div>
+        </div>
+
+        <div class="col-lg-6">
+            <div class="mb-3">
+                <label for="owner-password-confirm" class="form-label">{{ __('Confirm New Password') }}</label>
+                <input type="password" name="owner_password_confirmation" class="form-control"
+                    id="owner-password-confirm" placeholder="{{ __('Confirm Password') }}"
+                    autocomplete="new-password">
+            </div>
+        </div>
+    @endif
+
     <div class="col-12 form-divider">
         <div class="form-section-legend">{{ __('Translation') }}</div>
     </div>

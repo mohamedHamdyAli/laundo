@@ -2,6 +2,7 @@
 
 namespace App\Modules\Driver\Requests;
 
+use App\Modules\Driver\Enums\VehicleType;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -37,7 +38,9 @@ class DriverRequest extends FormRequest
             'status' => [$isUpdate ? 'nullable' : 'required', 'in:active,inactive'],
 
             // Vehicle and documents — بيانات المركبة / رخصة القيادة / مستندات المركبة
-            'vehicle_type' => ['nullable', 'string', 'max:100'],
+            // A closed list now, not free text: fleet mix is a question
+            // operations will ask, and it cannot be answered over typing.
+            'vehicle_type' => ['nullable', Rule::in(VehicleType::values())],
             'plate_number' => ['nullable', 'string', 'max:50'],
             'license_number' => ['nullable', 'string', 'max:100'],
             'license_expiry' => ['nullable', 'date'],

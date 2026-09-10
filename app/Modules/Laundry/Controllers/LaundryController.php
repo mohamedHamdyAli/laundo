@@ -3,9 +3,12 @@
 namespace App\Modules\Laundry\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Modules\Laundry\Models\Laundry;
 use App\Modules\Laundry\Requests\LaundryRequest;
+use App\Modules\Laundry\Services\LaundryApplicationService;
 use App\Modules\Laundry\Services\laundryCrudService;
 use Illuminate\Http\Request;
+use RuntimeException;
 
 class LaundryController extends Controller
 {
@@ -72,6 +75,53 @@ class LaundryController extends Controller
         $this->laundryCrudService->deleteRecord($id);
 
         return redirect()->route('admin.laundry.index')->with('success', __('Deleted Successfully'));
+    }
+
+    /**
+     * «مستنية موافقة» — the applications nobody has decided on.
+     *
+     * Its own action rather than a query string on `index`, because the two
+     * screens do different things: this one draws approve and reject buttons,
+     * and the list does not. A filter that changed which buttons a row has
+     * would be a second screen pretending to be one.
+     */
+    public function pending(Request $request)
+    {
+        $laundries = Laundry::withoutGlobalScopes()
+            ->pending()
+            ->with(['city', 'owner'])
+            ->paginate(10);
+
+        $view = view('admin.laundry.pending', compact('laundries'));
+
+        return $request->ajax() ? response($view) : $view;
+    }
+
+    public function approve(Request $request, $id)
+    {
+        $laundry = Laundry::withoutGlobalScopes()->findOrFail($id);
+
+        try {
+            app(LaundryApplicationService::class)->approve($laundry);
+        } catch (RuntimeException) {
+            return back()->with('error', __('This laundry has already been approved.'));
+        }
+
+        return back()->with('success', __('Laundry approved. They can sign in now.'));
+    }
+
+    public function reject(Request $request, $id)
+    {
+        $request->validate([
+            // Optional, but capped: it is emailed to the applicant verbatim.
+            'rejection_reason' => ['nullable', 'string', 'max:1000'],
+        ]);
+
+        $laundry = Laundry::withoutGlobalScopes()->findOrFail($id);
+
+        app(LaundryApplicationService::class)->reject($laundry, $request->input('rejection_reason'));
+
+        return back()->with('success', __('Application rejected.'));
     }
 
     public function toggleStatus(Request $request, $id)

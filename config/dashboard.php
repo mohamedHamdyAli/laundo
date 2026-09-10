@@ -8,6 +8,7 @@ use App\Modules\Complaint\Models\Complaint;
 use App\Modules\Country\Models\Country;
 use App\Modules\Coupon\Models\Coupon;
 use App\Modules\Driver\Models\Driver;
+use App\Modules\Driver\Models\DriverApplication;
 use App\Modules\Faq\Models\Faq;
 use App\Modules\Intro\Models\intro;
 use App\Modules\Item\Models\Item;
@@ -58,6 +59,7 @@ return [
         TimeSlot::class,
         LaundryZone::class,
         Driver::class,
+        DriverApplication::class,
         Order::class,
         // The dispatch board. Its own permission so the board can be granted
         // without full order access, and so it appears in the sidebar at all.

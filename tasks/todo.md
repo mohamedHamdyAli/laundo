@@ -3106,3 +3106,224 @@ and the report throws all of it away to print a count.
 `PermissionSeeder` **and** `RoleSeeder` have to run on the server. The board is
 gated on `order_task.view`, which does not exist there yet, and the
 laundry-owner grant is what stops that role's own home queue linking to a 403.
+
+---
+
+# A door of their own: laundry sign-in, and a password they can change
+
+**Where we are.** A laundry owner and their staff *can* already sign in — the
+`dashboard.only` gate allows `role.type = laundry`, and the topbar's «Change
+Password» works for them. Nothing says so. `/login` reads «Sign in to your
+**admin** account» over a panel captioned «**Admin Control Panel**», and no
+link anywhere points a laundry at it.
+
+Three gaps behind that:
+
+1. **No door with their name on it.** They use the admin login or nothing.
+2. **A super admin cannot reset an owner's password where anyone would look.**
+   `LaundryRequest` puts `owner_*` behind `if (! $isUpdate)`, so the laundry
+   edit screen has no owner section at all. It is possible only through the
+   *Laundry Staff* screen, which happens to list owners because its scope is
+   `role.type = laundry`.
+3. **«Forgot password» does not exist on the login screen**, and the pages
+   behind `password.request` extend `layouts.app` — Vite — so a link to them is
+   a 500 on any deploy that skipped `npm run build`.
+
+**Decisions taken** (asked and answered 2026-09-10): a separate page for
+laundries; add both the owner-password reset and the forgot-password link.
+
+## Checklist
+
+### A — `/laundry/login`
+- [x] `layouts/auth.blade.php`: the shell `auth/login.blade.php` already is —
+      fonts, `auth.css`, `theme.css`, RTL swap, favicon — with the copy and the
+      brand panel as slots. Two near-identical 110-line files would drift.
+- [x] `auth/login.blade.php` re-expressed on that layout, unchanged to look at.
+- [x] `auth/laundry-login.blade.php`: same form, laundry copy.
+- [x] `GET /laundry/login` (`guest`), named `laundry.login`. **It posts to the
+      same `POST /login`** — one auth path, two doors, so throttling, session
+      and the `/admin/home` redirect are untouched and cannot drift. Same shape
+      as `GET /locale/{code}` being a second door beside the panel's own.
+- [x] Cross-links: «هل أنت مغسلة؟» on the admin login, «دخول الإدارة» on the
+      laundry one, and an entry in the landing header's `site-nav-aside`.
+
+### B — reset the owner's password from the laundry screen
+- [x] `Laundry::owner()` — HasOne through `users.laundry_id` + role slug
+      `laundry_owner`. It does not exist yet; every caller re-derives it.
+- [x] `LaundryRequest`: `owner_password` nullable on update, `min:8|confirmed`.
+- [x] `laundryCrudService::updateRecord()`: set it on the owner when filled,
+      inside the transaction already there. Blank leaves it alone.
+- [x] `forms/formInput.blade.php`: an owner block on edit — name and email shown
+      read-only, one password pair, help text saying blank = unchanged.
+- [x] Nothing to show when a laundry has no owner row; don't render an empty box.
+
+### C — «نسيت الباسورد»
+- [x] Link to `password.request` on both login pages.
+- [x] Move `auth/passwords/email` and `reset` onto `layouts/auth` — off Vite,
+      onto the look of the page that linked to them. Adding a visible link to a
+      page that 500s without a build is not shipping the feature.
+
+### Tests
+- [x] `/laundry/login` renders, is guest-only, and its form posts to `/login`.
+- [x] A laundry owner signing in from it reaches `/admin/home`.
+- [x] The reset changes the owner's password; blank leaves the hash untouched.
+- [x] A laundry owner cannot reach another laundry's edit screen (tenant scope).
+- [x] The two password pages render with no Vite manifest present.
+
+### Docs
+- [x] **CLAUDE.md is wrong today**: it says `dashboard.only` gates `/admin` on
+      `role.type === 'dashboard'`. The middleware allows `laundry` too, and that
+      is the whole reason any of this works.
+- [x] `Changelog.md`.
+
+## Done — 2026-09-10
+
+1009 tests green, PHPStan clean, Pint clean. Drove all four pages in the browser:
+`/login`, `/laundry/login`, `/password/reset` and the Arabic landing header with
+«دخول المغاسل» in it.
+
+One thing the tests caught that reading would not have: `Laundry::owner()` was
+first written with `latestOfMany()`, whose aggregate subquery ignores the
+constraints declared before it — on a laundry that also has staff it returned
+null. Now a plain constrained `hasOne` ordered by id.
+
+## Not in scope, but blocking in production
+
+`MAIL_MAILER=log`. The forgot-password form will accept an address and report
+success while the mail goes to `storage/logs`. The link is correct code and an
+inert feature until SMTP is configured — an ops change, not a code one.
+
+---
+
+# Laundries: register, wait for approval — and a splash that says the name
+
+Four asks in one pass. The first is done; the rest hang together because none of
+them works without the third.
+
+**Decisions taken** (asked and answered 2026-09-10): a card over a coloured
+ground for both laundry pages; the registration form collects the **whole**
+laundry record; approval lives on the laundry list **and** the home queue, with
+a notification; the approval email is written now and is inert until SMTP.
+
+## The bug underneath all of it
+
+**The panel does not check `status` at sign-in.** `LoginController` uses
+`AuthenticatesUsers` unmodified, so an `inactive` user signs in fine. The API
+refuses them (`account_inactive`, 403) — the panel is the outlier, and
+`laundryCrudService::deleteRecord()` already *claims* the opposite: it
+deactivates a deleted laundry's users "so an orphan cannot still sign in".
+
+Nothing enforced that promise. Without it, "wait for approval" is decoration —
+a pending owner signs straight in.
+
+## Checklist
+
+### 0 — the splash (done)
+- [x] `#brand-loader` in `layouts/main`, painted on the first frame instead of
+      appended by `custom.js` at the bottom of the page.
+- [x] The wordmark revealed a letter at a time: a six-step clip wipe over the
+      real brand asset, so an uploaded logo still gets a sensible reveal.
+- [x] `brand-loader.js` — hides on the later of `window.load` and the wipe, then
+      removes the node; a 1.2s belt for reduced motion and warm caches.
+
+### 1 — sign-in is gated on status
+- [x] `LoginController::credentials()` adds `status = active`, so a pending or
+      suspended account is refused with the ordinary "these credentials do not
+      match" rather than a message that tells an attacker the account exists.
+- [x] A pending laundry owner is the exception: they get told, because they are
+      not a failed login, they are a queued application.
+
+### 2 — the two pages, redesigned
+- [x] `layouts/auth` gains a `card` variant: one centred card over a brand-navy
+      ground, no split. The register form is long, and the split's right-hand
+      panel has nowhere to put it.
+- [x] `auth/laundry-login` on the card, with a link to register.
+- [x] `auth/laundry-register`: the whole laundry record — name (per language),
+      phone, email, address, city, map pin, logo — plus the owner's name, email,
+      phone and password.
+
+### 3 — pending, and approval
+- [x] Migration: `laundries.approved_at` nullable. **Not** a third `status`
+      enum value — `status` is the binary the toggle button drives, and every
+      query that excludes `inactive` already excludes a pending laundry.
+- [x] Registration creates the laundry `inactive` with `approved_at` null and
+      the owner `inactive`.
+- [x] `Laundry::scopePending()`, `approve()`, `reject()`.
+- [x] Laundry list: a «مستنية موافقة» filter, and approve/reject actions.
+- [x] `DashboardSummary::needsAPerson()` gains the pending count.
+- [x] `AdminNotification` to super admins and admins on a new registration.
+- [x] A «طلبك تحت المراجعة» page the owner lands on.
+
+### 4 — the landing page asks for them
+- [x] Partner card «عندك مغسلة؟» → the register page. Its CTA is currently
+      conditional on a configured contact route and none is set, so the card has
+      no button at all today.
+- [x] Partner card «عايز تشتغل مندوب؟» → the apps. Two new settings,
+      `Android_App_Url` and `Ios_App_Url`, each rendered only when really set —
+      the same `realSetting()` discipline the rest of the page uses, so an
+      unconfigured install shows no dead button.
+
+### Tests
+- [x] An inactive user cannot sign in to the panel; an active one still can.
+- [x] Registration creates an inactive laundry and an inactive owner, and
+      notifies the admins.
+- [x] A pending owner is told they are pending rather than that their password
+      is wrong.
+- [x] Approval activates both and lets them in; rejection does not.
+- [x] The pending filter lists only pending laundries.
+- [x] The register page validates the same rules the panel's create screen does.
+- [x] The partner cards link to the register page and to whichever store URLs
+      are set — and draw no button when they are not.
+
+## 2026-09-10 — مراجعة القطع: اعرض طلب العميل فقط + زرار «إضافة قطعة»
+
+الشاشة كانت بتفرد كتالوج الخدمة كله (12 صف، 11 منهم أصفار) قدام المغسلة.
+
+- [x] `_review_form.blade.php`: الصفوف اللي `estimated_qty = 0` (ومالهاش `final_qty`
+      من جولة سابقة أو من `old()`) تترندر بـ `d-none` بدل ما تتشال — عشان تفضل
+      متبعوتة في الفورم بنفس الـ `lines[]` index وبصفر، والسيرفس بيرمي الأصفار
+      أصلاً. يعني صفر تغيير في الكنترولر والسيرفس والبايلود.
+- [x] زرار «إضافة قطعة لم تكن في الطلب» بيفتح collapse فيه شيك بوكس لكل صنف
+      مخفي + سعره؛ العلامة بتظهر الصف وتحط 1 وتعمل focus، وشيل العلامة بيرجعه 0.
+- [x] صف empty-state لما مفيش أي قطعة ظاهرة (الحالة الوحيدة: عميل ملوش أصناف).
+- [x] الإجماليات تتحدث فورًا (نداء `recalculate()` الموجود).
+- [x] 3 مفاتيح ترجمة جديدة في `resources/lang/ar.json`.
+- [x] تشغيل السويت + معاينة الشاشة فعليًا.
+
+### المراجعة
+
+اتنفّذت في ملف Blade واحد: `resources/views/admin/order/partials/_review_form.blade.php`.
+مفيش تغيير في الكنترولر ولا السيرفس ولا الميجريشن — الصفوف المخفية لسه بتتبعت
+بنفس الـ `lines[]` index وبصفر، و`OrderReviewService::price()` بيرميها زي ما كان
+بيعمل من الأول. يعني البايلود والـ `old()` بعد أي validation error زي ما هما.
+
+**التحقق:** السويت كلها خضرا (1039 tests / 3305 assertions)، وسبيك Playwright
+مؤقت شغّل الشاشة فعليًا على طلب 10001: صفّين ظاهرين و8 مطويين، فتح البيكر، علّم
+على «T-shirt on hanger» فظهر الصف بـ 1 والإجمالي اتحرك من 72.00 لـ 90.00
+والفرق بقى +18.00، وشيل العلامة رجّع كل حاجة مكانها. السبيك اتمسح بعد التشغيل،
+و`orders.spec.js` + `dashboard.spec.js` (47 tests) خضرا.
+
+**حادثة في نفس الجلسة:** `git checkout -- resources/lang/ar.json` مسح تعديلات
+غير مرفوعة على الملف (1440 مفتاح رجعوا 1308). الاسترجاع اتعمل بمسح كل نداءات
+`__()` في المشروع ومقارنتها بالملف، وترجمة الـ 153 مفتاح الناقصين. التفاصيل في
+`tasks/lessons.md`.
+
+
+---
+
+# Shipped — 2026-09-10
+
+Everything above, plus what came out of using it:
+
+- The login redesign went through two rejected directions before landing on
+  light-and-premium. The dark one is not in the tree; the notes on why the
+  first attempt failed are in `auth-command.css`.
+- Driver app-store links were built and then removed in full — a driver cannot
+  register themselves, so the download led to an app they could not sign in to.
+  Replaced by the «انضم لنا» dialog.
+- Four bugs the work turned up rather than set out to fix: the panel never
+  checking `status` at sign-in, a laundry never being told it had an order,
+  `latestOfMany()` silently returning null on `Laundry::owner()`, and every
+  dashboard form throwing away what was typed on a validation failure.
+
+1048 tests, PHPStan clean, Pint clean.

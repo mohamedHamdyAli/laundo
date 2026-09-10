@@ -39,4 +39,8 @@
     @include('landing.partials._faq')
     @include('landing.partials._cta')
     @include('landing.partials._partners')
+
+    {{-- The dialog the partner card opens. Last in the document so it is never
+         inside a section that could clip or transform it. --}}
+    @include('landing.partials._driver_form')
 @endsection

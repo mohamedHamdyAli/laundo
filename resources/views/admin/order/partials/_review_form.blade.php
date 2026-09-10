@@ -16,6 +16,20 @@
     // input; for everything else it stays read-only, because a laundry must not
     // be able to overwrite a price the platform sets.
     $quotePriced = $row->service && ! $row->service->isPerItem();
+
+    // What the counter sees first is the customer's own basket. The rest of the
+    // catalogue is still posted with the form -- every piece keeps its `lines[]`
+    // index and a count of zero, which `price()` drops -- but it is folded behind
+    // «add a piece» rather than laid out as a wall of zeros to scroll past. A
+    // piece found on a previous round, and a count typed before a validation
+    // error, both count as listed: neither may disappear on a redraw.
+    $isListed = function (array $entry, int $index): bool {
+        return $entry['estimated_qty'] > 0
+            || (int) old("lines.$index.qty", $entry['final_qty']) > 0;
+    };
+
+    $extraItems = collect($reviewItems)->reject(fn ($entry, $index) => $isListed($entry, $index));
+    $listedCount = count($reviewItems) - $extraItems->count();
 @endphp
 
 <div class="card mb-3 border-primary">
@@ -67,7 +81,8 @@
                     </thead>
                     <tbody>
                         @foreach ($reviewItems as $index => $entry)
-                            <tr>
+                            @php $listed = $isListed($entry, $index); @endphp
+                            <tr class="review-row{{ $listed ? '' : ' d-none' }}" data-row="{{ $index }}">
                                 <td>
                                     {{ getLocalizedValueDashboard($entry['item'], 'name') }}
                                     <input type="hidden" name="lines[{{ $index }}][item_id]"
@@ -103,6 +118,14 @@
                                 </td>
                             </tr>
                         @endforeach
+
+                        {{-- Only reachable when the customer listed nothing at all; when
+                             it is, the picker below is the only way into the table. --}}
+                        <tr id="review-empty" class="{{ $listedCount > 0 ? 'd-none' : '' }}">
+                            <td colspan="5" class="text-center text-muted py-3">
+                                {{ __('Nothing counted yet. Use «Add a piece» below to record what arrived.') }}
+                            </td>
+                        </tr>
                     </tbody>
                     <tfoot class="table-light">
                         <tr>
@@ -134,6 +157,48 @@
                     </tfoot>
                 </table>
             </div>
+
+            @if ($extraItems->isNotEmpty())
+                {{--
+                    The catalogue, folded away. Ticking a box does not add a row --
+                    the row is already in the form -- it reveals the one that was
+                    posted as a zero. So nothing is re-indexed, `old()` survives a
+                    validation error, and the service receives exactly the payload
+                    it received before this screen changed.
+                --}}
+                <div class="mb-3">
+                    <button class="btn btn-outline-primary btn-sm" type="button"
+                        data-bs-toggle="collapse" data-bs-target="#extra-pieces"
+                        aria-expanded="false" aria-controls="extra-pieces">
+                        <i class="fa fa-plus"></i> {{ __('Add a piece that was not in the order') }}
+                    </button>
+
+                    <div class="collapse mt-2" id="extra-pieces">
+                        <div class="card card-body bg-light py-2">
+                            <p class="text-muted small mb-2">
+                                {{ __('Tick anything you found that the customer did not list.') }}
+                            </p>
+
+                            <div class="row g-2">
+                                @foreach ($extraItems as $index => $entry)
+                                    <div class="col-12 col-md-6 col-xl-4">
+                                        <div class="form-check">
+                                            <input class="form-check-input extra-piece" type="checkbox"
+                                                id="extra-piece-{{ $index }}" data-row="{{ $index }}">
+                                            <label class="form-check-label" for="extra-piece-{{ $index }}">
+                                                {{ getLocalizedValueDashboard($entry['item'], 'name') }}
+                                                @unless ($quotePriced)
+                                                    <span class="text-muted small">{{ moneyFormat($entry['price']) }}</span>
+                                                @endunless
+                                            </label>
+                                        </div>
+                                    </div>
+                                @endforeach
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            @endif
 
             <div class="mb-3">
                 <label class="form-label">{{ __('Note to the customer') }}</label>
@@ -200,8 +265,33 @@
                 }
             }
 
+            // The empty table is a real state on an order the customer left blank,
+            // and it stops being empty the moment a box is ticked.
+            function syncEmptyState() {
+                $('#review-empty').toggleClass('d-none', $('tr.review-row').not('.d-none').length > 0);
+            }
+
+            $(document).on('change', '.extra-piece', function () {
+                const row = $('tr.review-row[data-row="' + $(this).data('row') + '"]');
+                const qty = row.find('.review-qty');
+
+                row.toggleClass('d-none', ! this.checked);
+                // Ticking the box is the statement that the piece is there, so it
+                // starts at one: left at zero the line would be dropped on save
+                // and the tick would have meant nothing.
+                qty.val(this.checked ? Math.max(parseInt(qty.val(), 10) || 0, 1) : 0);
+
+                if (this.checked) {
+                    qty.trigger('focus').trigger('select');
+                }
+
+                recalculate();
+                syncEmptyState();
+            });
+
             $(document).on('input change', '.review-qty, .review-price', recalculate);
             recalculate();
+            syncEmptyState();
         });
     </script>
 @endpush

@@ -29,6 +29,24 @@
     @stack('styles')
 </head>
 <body>
+{{-- The splash.
+
+     It is markup and not a jQuery append any more: the old one was added by
+     custom.js, which loads at the bottom of the page, so the "loading" screen
+     arrived after the thing it was meant to cover. Here it paints on the first
+     frame.
+
+     The wordmark is revealed a letter at a time by a six-step clip wipe over
+     the real logo — six steps because LAUNDO has six letters, and animating the
+     brand asset itself means an uploaded logo still gets a sensible reveal
+     instead of a hand-drawn imitation of one. `brand-loader.js` takes it away
+     the moment both the wipe and the page are done. --}}
+<div id="brand-loader" aria-hidden="true">
+    <img src="{{ brandLogo('dark') }}" alt="" class="brand-loader-mark">
+</div>
+{{-- Here rather than with the rest of the scripts: it has to be listening
+     before the wipe can finish, and everything else loads after the page. --}}
+<script src="{{ asset('assets/js/custom/brand-loader.js') }}"></script>
 <div id="app">
     @include('layouts.sidebar')
     <div id="main" class='layout-navbar'>

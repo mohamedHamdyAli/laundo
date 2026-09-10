@@ -17,9 +17,11 @@
     `driver_earnings` really does store `basis` and `rate` alongside the amount
     so the arithmetic can be shown.
 
-    The links go to whatever contact route is configured. When none is, the
-    cards still render — the ask is worth stating even before there is a form
-    behind it — but no dead button is drawn.
+    The laundry card goes to the application form. The driver card opens a
+    dialog for a name and a number, because a driver cannot register
+    themselves — `driver_profiles` is created from the panel — so the honest
+    ask is a lead for somebody to ring rather than a sign-up that leads
+    nowhere. Both leads land in the dashboard with a count beside the menu.
 --}}
 @php
     $partnerHref = match (true) {
@@ -45,11 +47,14 @@
             <h3 class="partner-title">{{ webText('landing.partner.laundry_title') }}</h3>
             <p class="partner-body">{{ webText('landing.partner.laundry_body') }}</p>
 
-            @if ($partnerHref !== null)
-                <x-landing.cta :href="$partnerHref" variant="quiet" icon="arrow">
-                    {{ webText('landing.partner.laundry_cta') }}
-                </x-landing.cta>
-            @endif
+            {{-- Unconditional, unlike the driver card below: there is a form
+                 behind this one now, so there is always somewhere to send
+                 them. It used to hang off whatever contact route was
+                 configured, and none is — which is why this card has had no
+                 button at all. --}}
+            <x-landing.cta :href="route('laundry.register')" variant="quiet" icon="arrow">
+                {{ webText('landing.partner.laundry_cta') }}
+            </x-landing.cta>
         </article>
 
         <article class="partner-card" data-reveal>
@@ -59,11 +64,15 @@
             <h3 class="partner-title">{{ webText('landing.partner.driver_title') }}</h3>
             <p class="partner-body">{{ webText('landing.partner.driver_body') }}</p>
 
-            @if ($partnerHref !== null)
-                <x-landing.cta :href="$partnerHref" variant="quiet" icon="arrow">
-                    {{ webText('landing.partner.driver_cta') }}
-                </x-landing.cta>
-            @endif
+            {{-- Opens the form rather than linking anywhere. A driver cannot
+                 register themselves — `driver_profiles` is created from the
+                 panel — so the honest ask is a name and a number for somebody
+                 to ring, not a sign-up that leads to an account nobody can
+                 make. --}}
+            <button type="button" class="partner-cta" data-driver-open>
+                {{ webText('landing.partner.driver_cta') }}
+                <x-landing.icon name="arrow" :size="16" />
+            </button>
         </article>
 
     </div>

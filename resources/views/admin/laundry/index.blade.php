@@ -1,13 +1,33 @@
 @extends('layouts.main')
 
 @section('content')
+    @php
+        // Counted here rather than passed in, so the badge cannot go stale on
+        // the AJAX search path — which re-renders the body and not the header.
+        $pendingApplications = canDo('laundry.update')
+            ? \App\Modules\Laundry\Models\Laundry::withoutGlobalScopes()->pending()->count()
+            : 0;
+    @endphp
+
     <div class="card-header d-flex justify-content-between align-items-center">
         <h5 class="card-title mb-0">{{ __('Laundries') }}</h5>
-        @if (canDo('laundry.create'))
-            <a href="{{ route('admin.laundry.create') }}" class="btn-add">
-                <i class="fa fa-plus"></i> {{ __('Add Laundry') }}
-            </a>
-        @endif
+        <div class="d-flex align-items-center gap-2">
+            {{-- Only when there is something to look at. A permanent link to an
+                 empty screen is one an operator learns to ignore, and this one
+                 has to be noticed on the day it is not empty. --}}
+            @if ($pendingApplications > 0)
+                <a href="{{ route('admin.laundry.pending') }}" class="btn btn-warning btn-sm">
+                    <i class="bi bi-hourglass-split"></i>
+                    {{ __('Applications') }}
+                    <span class="badge bg-dark ms-1">{{ $pendingApplications }}</span>
+                </a>
+            @endif
+            @if (canDo('laundry.create'))
+                <a href="{{ route('admin.laundry.create') }}" class="btn-add">
+                    <i class="fa fa-plus"></i> {{ __('Add Laundry') }}
+                </a>
+            @endif
+        </div>
     </div>
 
     <section class="section">

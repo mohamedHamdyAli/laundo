@@ -4,6 +4,7 @@ namespace App\Modules\User\Models;
 
 use App\Models\Role;
 use App\Modules\Address\Models\Address;
+use App\Modules\Laundry\Models\Laundry;
 use App\Modules\Order\Models\Order;
 use App\Modules\Order\Models\OrderRecurrence;
 use App\Modules\User\Services\CustomerReference;
@@ -191,6 +192,21 @@ class User extends Authenticatable
     public function role(): BelongsTo
     {
         return $this->belongsTo(Role::class, 'role_id');
+    }
+
+    /**
+     * The laundry this account belongs to, for the owner and staff who have one.
+     *
+     * Null for everybody else — a customer, a driver and a moderator are not
+     * tenants. `users.laundry_id` has been the column the tenant scope reads
+     * since it was added; this only names the other end of it, so a query can
+     * ask about the laundry rather than re-deriving it from the id.
+     *
+     * @return BelongsTo<Laundry, $this>
+     */
+    public function laundry(): BelongsTo
+    {
+        return $this->belongsTo(Laundry::class, 'laundry_id');
     }
 
     /**

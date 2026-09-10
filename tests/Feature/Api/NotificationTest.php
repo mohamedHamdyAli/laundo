@@ -83,6 +83,51 @@ class NotificationTest extends TestCase
     }
 
     #[Test]
+    public function placing_an_order_tells_the_laundry_too(): void
+    {
+        // The gap this closes: every other notification on an order goes to
+        // the customer or the driver. The laundry — the party that has to
+        // actually clean the clothes — was told by nobody and found out by
+        // somebody refreshing the panel.
+        $this->placedOrder();
+
+        $this->assertDatabaseHas('notification_logs', [
+            'user_id' => $this->tenant['owner']->id,
+            'event' => NotificationEvent::OrderAssignedToLaundry->value,
+            'channel' => 'database',
+            'status' => NotificationLog::SENT,
+        ]);
+    }
+
+    #[Test]
+    public function assigning_a_laundry_by_hand_tells_it(): void
+    {
+        // An order placed where no laundry covers the zone is assigned later
+        // by an operator, and that laundry has to hear about it too.
+        $order = $this->placedOrder();
+
+        $other = $this->laundryWithOwner('B', '+201011110004', '+201011110005');
+        $this->cover($other['laundry'], $this->geo['zones'][0]->id, $this->catalog['service']->id);
+
+        app(OrderService::class)
+            ->assignLaundry($order->fresh(), $other['laundry']->id, $this->superAdmin());
+
+        $this->assertDatabaseHas('notification_logs', [
+            'user_id' => $other['owner']->id,
+            'event' => NotificationEvent::OrderAssignedToLaundry->value,
+            'status' => NotificationLog::SENT,
+        ]);
+    }
+
+    #[Test]
+    public function a_laundry_cannot_mute_being_given_work(): void
+    {
+        // Transactional: a laundry that does not know it has an order does not
+        // clean it, so the «الإشعارات» toggle cannot silence this one.
+        $this->assertTrue(NotificationEvent::OrderAssignedToLaundry->isTransactional());
+    }
+
+    #[Test]
     public function the_customer_is_told_the_final_price_is_ready(): void
     {
         $order = $this->reviewedOrder();

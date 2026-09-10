@@ -47,11 +47,19 @@
                     @if ($item['type'] === 'group')
                         @php
                             $groupActive = collect($item['items'])->contains(fn ($sub) => $routeIsActive($sub['route']));
+                            // A closed dropdown hides its children, so the
+                            // group carries their count. Without this a badge
+                            // is invisible until somebody opens the very
+                            // dropdown it exists to make them open.
+                            $groupBadge = collect($item['items'])->sum(fn ($sub) => $sub['badge'] ?? 0);
                         @endphp
                         <li class="sidebar-item has-sub {{ $groupActive ? 'active' : '' }}">
                             <a href="#" class="sidebar-link">
                                 <i class="{{ $item['icon'] }}"></i>
                                 <span>{{ __($item['title']) }}</span>
+                                @if ($groupBadge > 0)
+                                    <span class="menu-badge">{{ $groupBadge }}</span>
+                                @endif
                             </a>
 
                             <ul class="submenu {{ $groupActive ? 'active' : '' }}">
@@ -60,6 +68,9 @@
                                         <a href="{{ route($sub['route']) }}">
                                             <i class="{{ $sub['icon'] }} me-2"></i>
                                             {{ __($sub['title']) }}
+                                            @if (($sub['badge'] ?? 0) > 0)
+                                                <span class="menu-badge">{{ $sub['badge'] }}</span>
+                                            @endif
                                         </a>
                                     </li>
                                 @endforeach
@@ -72,6 +83,9 @@
                             <a href="{{ route($item['route']) }}" class="sidebar-link">
                                 <i class="{{ $item['icon'] }}"></i>
                                 <span>{{ __($item['title']) }}</span>
+                                @if (($item['badge'] ?? 0) > 0)
+                                    <span class="menu-badge">{{ $item['badge'] }}</span>
+                                @endif
                             </a>
                         </li>
                     @endif

@@ -60,6 +60,16 @@ class LaundryRequest extends FormRequest
                 'owner_phone' => ['required', 'string', 'max:191', 'regex:'.phoneRegex(), 'unique:users,phone'],
                 'owner_password' => 'required|string|min:8|confirmed',
             ];
+        } else {
+            // The owner's identity is not editable here — an account's name,
+            // email and phone belong to the person, not to the laundry record.
+            // Its password is, because somebody has to be able to hand a locked
+            // -out owner a new one, and this is the screen they will look on.
+            // Nullable: an empty box on a form that is mostly about something
+            // else must mean "leave it alone", never "blank the password".
+            $rules += [
+                'owner_password' => 'nullable|string|min:8|confirmed',
+            ];
         }
 
         return $rules;

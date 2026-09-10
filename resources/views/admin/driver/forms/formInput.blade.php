@@ -104,9 +104,21 @@
     <div class="col-md-4">
         <div class="mb-3">
             <label class="form-label">{{ __('Vehicle Type') }}</label>
-            <input type="text" name="vehicle_type" class="form-control"
-                placeholder="{{ __('e.g. Motorcycle, Van') }}"
-                value="{{ old('vehicle_type', $profile?->vehicle_type) }}" {{ $readonly ? 'readonly' : '' }}>
+            @php
+                // The stored value may predate the list — the column was free
+                // text. `parse()` matches it case-insensitively so «Motorcycle»
+                // selects Motorcycle instead of showing blank and being dropped
+                // on the next save.
+                $vehicleType = old('vehicle_type', \App\Modules\Driver\Enums\VehicleType::parse($profile?->vehicle_type)?->value);
+            @endphp
+            <select name="vehicle_type" class="form-select" {{ $readonly ? 'disabled' : '' }}>
+                <option value="">{{ __('Not set') }}</option>
+                @foreach (\App\Modules\Driver\Enums\VehicleType::cases() as $case)
+                    <option value="{{ $case->value }}" @selected($vehicleType === $case->value)>
+                        {{ __($case->label()) }}
+                    </option>
+                @endforeach
+            </select>
         </div>
     </div>
 
@@ -207,7 +219,8 @@
     <div class="col-md-3">
         <div class="mb-3">
             <label class="form-label">{{ __('City') }}</label>
-            <select name="city_id" class="form-select" {{ Route::is('*.show') ? 'disabled' : '' }}>
+            <select name="city_id" id="driver-city" class="form-select"
+                {{ Route::is('*.show') ? 'disabled' : '' }}>
                 <option value="">{{ __('Any city') }}</option>
                 @foreach ($cities ?? [] as $city)
                     <option value="{{ $city->id }}"
@@ -253,18 +266,41 @@
         </small>
     </div>
 
-    @forelse ($zonesByCity ?? [] as $cityName => $zones)
-        <div class="col-12 mt-2">
-            <strong class="small text-muted">{{ $cityName }}</strong>
+    {{-- Grouped by city, and narrowed to the chosen one.
+
+         Every city's zones used to be listed at once, so a driver whose city
+         was Sharqia was offered Cairo's districts to tick — and dispatch would
+         then match an order in Nasr City against a driver who cannot reach it.
+
+         **A ticked zone is never hidden**, whatever city it belongs to. That
+         is the whole rule here. Hiding one would leave coverage switched on
+         and invisible: `hidden` does not stop a checkbox submitting, so an
+         operator looking at Cairo would save and silently keep the Giza zones
+         somebody set last month. A zone outside the chosen city that is
+         already ticked stays on screen and is marked, so it can be seen and
+         unticked deliberately.
+
+         Rendered in full and narrowed in the browser rather than fetched: the
+         whole list is a few dozen checkboxes, and a round trip on every change
+         of a <select> would be a slower form and a second thing to keep
+         working. --}}
+    @forelse ($zonesByCity ?? [] as $cityId => $zones)
+        <div class="col-12 mt-2 zone-head" data-zone-city="{{ $cityId }}">
+            <strong class="small text-muted">
+                {{ $zones->first()?->city ? getLocalizedValueDashboard($zones->first()->city, 'name') : __('No city') }}
+            </strong>
         </div>
         @foreach ($zones as $zone)
-            <div class="col-lg-3 col-md-4 col-sm-6">
+            <div class="col-lg-3 col-md-4 col-sm-6 zone-item" data-zone-city="{{ $cityId }}">
                 <div class="form-check">
                     <input class="form-check-input" type="checkbox" name="zones[]" value="{{ $zone->id }}"
                         id="zone-{{ $zone->id }}" {{ in_array($zone->id, $driverZones) ? 'checked' : '' }}
                         {{ $readonly ? 'disabled' : '' }}>
                     <label class="form-check-label" for="zone-{{ $zone->id }}">
                         {{ getLocalizedValueDashboard($zone, 'name') }}
+                        <span class="zone-outside badge bg-warning text-dark ms-1" hidden>
+                            {{ __('Outside the chosen city') }}
+                        </span>
                     </label>
                 </div>
             </div>
@@ -280,3 +316,72 @@
         </div>
     @endforelse
 </div>
+
+@push('scripts')
+    <script>
+        // Narrow the zone list to the chosen city.
+        //
+        // The rule that matters: a ticked zone is never hidden. `hidden` does
+        // not stop a checkbox submitting, so hiding a ticked one would leave
+        // coverage switched on where nobody can see or remove it — an operator
+        // would save the driver believing they cover Cairo and keep whatever
+        // Giza zones were set months ago. Ticked zones outside the chosen city
+        // stay visible and are flagged instead, so removing them is a decision
+        // somebody makes rather than one the form makes for them.
+        (function () {
+            var city = document.getElementById('driver-city');
+            var items = document.querySelectorAll('.zone-item');
+            var heads = document.querySelectorAll('.zone-head');
+
+            if (!city || !items.length) {
+                return;
+            }
+
+            function apply() {
+                var chosen = city.value;
+                var visibleByCity = {};
+
+                items.forEach(function (item) {
+                    var box = item.querySelector('input[type="checkbox"]');
+                    var mine = chosen === '' || item.dataset.zoneCity === chosen;
+                    var ticked = box && box.checked;
+
+                    // Visible when it belongs to the chosen city, or when it is
+                    // ticked and therefore cannot be hidden.
+                    var show = mine || ticked;
+
+                    item.hidden = !show;
+
+                    var flag = item.querySelector('.zone-outside');
+
+                    if (flag) {
+                        flag.hidden = mine || !ticked;
+                    }
+
+                    if (show) {
+                        visibleByCity[item.dataset.zoneCity] = true;
+                    }
+                });
+
+                // A city heading with nothing under it is a heading for
+                // nothing.
+                heads.forEach(function (head) {
+                    head.hidden = !visibleByCity[head.dataset.zoneCity];
+                });
+            }
+
+            apply();
+            city.addEventListener('change', apply);
+
+            // Unticking a zone from another city removes the last reason to
+            // show it, so the list has to settle again.
+            items.forEach(function (item) {
+                var box = item.querySelector('input[type="checkbox"]');
+
+                if (box) {
+                    box.addEventListener('change', apply);
+                }
+            });
+        })();
+    </script>
+@endpush

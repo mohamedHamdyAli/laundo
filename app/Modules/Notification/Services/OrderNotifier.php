@@ -197,6 +197,42 @@ class OrderNotifier
         ));
     }
 
+    /**
+     * Tell a laundry it has been given an order.
+     *
+     * The gap this closes: the customer is told when an order is placed and at
+     * every step after it, and a driver is told the moment a journey is
+     * assigned — the laundry, which is the party that has to actually clean
+     * the clothes, was told by nobody. It found out by somebody refreshing the
+     * panel.
+     *
+     * Sent to the owner and the staff, not just the owner: on a laundry with
+     * shifts the owner is the least likely of them to be looking.
+     */
+    public function orderAssignedToLaundry(Order $order): void
+    {
+        $laundry = $order->laundry;
+
+        if (! $laundry) {
+            return;
+        }
+
+        $recipients = $laundry->users()->where('status', 'active')->get();
+
+        if ($recipients->isEmpty()) {
+            return;
+        }
+
+        $this->dispatcher->sendMany($recipients, new NotificationMessage(
+            event: NotificationEvent::OrderAssignedToLaundry,
+            title: __('A new order for you'),
+            body: __('Order :code has been assigned to your laundry.', ['code' => $order->code]),
+            url: "/admin/order/show/{$order->id}",
+            data: ['order_id' => (string) $order->id],
+            subject: $order,
+        ));
+    }
+
     private function toCustomer(Order $order, NotificationMessage $message): void
     {
         $customer = $order->customer;

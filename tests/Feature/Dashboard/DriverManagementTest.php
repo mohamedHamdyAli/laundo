@@ -50,7 +50,7 @@ class DriverManagementTest extends TestCase
             'password' => 'password',
             'password_confirmation' => 'password',
             'status' => 'active',
-            'vehicle_type' => 'Van',
+            'vehicle_type' => 'van',
             'plate_number' => 'XYZ 999',
             'license_number' => 'DL-1',
             'shift_start' => '08:00',
@@ -63,7 +63,8 @@ class DriverManagementTest extends TestCase
 
         $this->assertNotNull($driver);
         $this->assertSame(Role::DRIVER, $driver->role->slug);
-        $this->assertSame('Van', $driver->profile->vehicle_type);
+        // A slug now, not typed text: the field is a closed list.
+        $this->assertSame('van', $driver->profile->vehicle_type);
         $this->assertCount(2, $driver->zones);
 
         // Created by an admin with the driver present, so putting them through the

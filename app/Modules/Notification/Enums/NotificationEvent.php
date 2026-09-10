@@ -66,6 +66,17 @@ enum NotificationEvent: string
     case RescheduleNeeded = 'reschedule_needed';
 
     /**
+     * A laundry has been given an order.
+     *
+     * Transactional: nothing else tells them. The customer is notified when
+     * an order is placed and at every step after, and the driver is notified
+     * when a journey is assigned — the laundry, which is the one who has to
+     * actually clean the clothes, was told by nobody and had to notice by
+     * refreshing its own panel.
+     */
+    case OrderAssignedToLaundry = 'order_assigned_to_laundry';
+
+    /**
      * Whether silence would stall something.
      */
     public function isTransactional(): bool
@@ -88,6 +99,8 @@ enum NotificationEvent: string
             // Nothing is collected until the customer picks a time, so a muted
             // customer would simply never be collected.
             self::RescheduleNeeded,
+            // A laundry that does not know it has an order does not clean it.
+            self::OrderAssignedToLaundry,
         ], true);
     }
 
@@ -122,6 +135,7 @@ enum NotificationEvent: string
             self::ComplaintClosed => 'Complaint closed',
             self::PriceConfirmationSilent => 'Price confirmation overdue',
             self::RescheduleNeeded => 'New time needed',
+            self::OrderAssignedToLaundry => 'Order assigned to your laundry',
         };
     }
 

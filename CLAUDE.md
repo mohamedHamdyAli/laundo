@@ -132,9 +132,29 @@ Three enforcement points, all bypassing checks for `role.slug === 'super_admin'`
 | Blade | `canDo('category.create')` helper |
 | Sidebar | `MenuBuilder` derives visible items from the user's `*.view` permissions |
 
-`EnsureDashboardRole` (`dashboard.only`) additionally gates all `/admin` routes on `role.type === 'dashboard'`. System roles/permissions are flagged `is_system = true` and should not be deleted.
+`EnsureDashboardRole` (`dashboard.only`) additionally gates all `/admin` routes on `role.type`, which must be **`dashboard` or `laundry`** — not `dashboard` alone. A laundry owner and their staff sign in to the same panel and are confined by their permission set and by the tenant scope, not by the gate; `app` (customers, drivers) stays locked out. System roles/permissions are flagged `is_system = true` and should not be deleted.
+
+Laundries therefore have a **second front door**: `GET /laundry/login`, whose form posts to the same `login` route — one authentication path, so throttling, the session and the `/admin/home` redirect cannot drift. `/login` still works for them; the separate page exists because it was headed «Admin Control Panel» and nothing told an owner the account they were handed belonged there. `auth/passwords/{email,reset}` and the admin login extend **`layouts.auth`** — the shell lifted out of the old `login.blade.php`, deliberately *not* `layouts.app`, which is the panel's only Vite chain.
+
+The **laundry** pages (`/laundry/login`, `/laundry/register`, `/laundry/applied`) extend **`layouts.auth-card`** instead: a card on a navy ground, loading `landing.css` + `auth-card.css` and nothing else. They read as a continuation of the marketing site the applicant arrived from, and they get IBM Plex Sans Arabic — the panel's own shell still has no Arabic webfont. `class="landing"` on `<html>` is load-bearing there: landing.css scopes its dark tokens and its 100% root font size to it.
+
+Laundries can also **apply for themselves**: `GET /laundry/register` files the laundry `inactive` with `approved_at` null and the owner `inactive`, and `admin/laundry/pending` is where an operator approves or rejects. Approval flips both halves *and every staff account on the laundry* — turning on one of two is a half-open door. **Pending is a null `approved_at`, never a third `status` value**: `status` is the binary the toggle button drives and a dozen queries filter on, and a pending laundry is simply `inactive`, which they already exclude. A laundry the panel creates is stamped approved on the spot, because an operator creating one *is* the approval.
+
+**Sign-in is gated on `status = active`** (`LoginController::credentials()`). It was not, for the whole life of the panel — `AuthenticatesUsers` matches email and password and nothing else, so any inactive account signed straight in while the API refused it. A pending laundry gets a «still being reviewed» message rather than the generic failure; everyone else gets the generic one, so the form cannot be used to discover which addresses hold accounts.
+
+A locked-out owner is given a new password from the **laundry edit screen** (`owner_password`, blank means unchanged) — `Laundry::owner()` is the relation that finds them. Note it is a plain constrained `hasOne` ordered by id: `latestOfMany()` builds its aggregate subquery *without* the constraints declared before it, so on a laundry that also has staff it picks the newest staff row and the role filter then discards it, returning null.
 
 ### Sidebar
+
+**Queue counts.** `App\Services\MenuBadges::for($model)` returns a number or
+null, and `MenuBuilder` hangs it on every item; a closed dropdown carries the
+sum of its children. Two rules, both tested in `MenuBadgeTest`: **only work
+waiting on a person** (never a row count — a badge beside Zones reading 25
+teaches an operator to stop reading the ones that matter), and **zero draws
+nothing**. It is a class and not a config entry because a closure in
+`config/menu.php` does not survive `config:cache`, and it is uncached because a
+stale badge on a queue reads as "nothing waiting" to somebody who then does not
+look.
 
 `config/menu.php` drives everything — `groups` (dropdowns), `singles`, plus parallel `icons` / `titles` / `routes` maps keyed by model name. `MenuBuilder` intersects those keys with the user's `*.view` permissions. A new module needs an entry in the relevant `groups`/`singles` list **and** in all three UI maps, or it renders with nulls.
 
@@ -350,6 +370,23 @@ Views are Blade under `resources/views/admin/{module}/` (with `partials/`, `form
 **Styling is a static vendor admin template, not a build pipeline.** CSS/JS come from `public/assets/**` via `asset()` calls in `layouts/include.blade.php` and `layouts/footer_script.blade.php` — Bootstrap 5, jQuery, Font Awesome, bootstrap-icons, select2, sweetalert2, toastify, filepond, bootstrap-table, leaflet. RTL swaps to `assets/css/main/rtl.css` based on the session language. Project overrides go in `public/assets/css/theme.css` and `custom.css`; the vendor `main/app.css` often out-specifies them, so **match its selector specificity instead of relying on load order** — and before changing a property, grep for *every* rule that sets it, in both override files and the vendor CSS. More than one "fix" here has been a no-op because a second `!important` rule was still winning.
 
 Vite/Tailwind are near-unused but **not dead**: `@vite` appears only in `layouts/app.blade.php` — and seven views do extend it (`auth/passwords/*`, `auth/register`, `auth/verify`, `home`, `welcome`). `Auth::routes(['register' => false])` in `routes/web.php` makes `/password/reset` reachable, so **`npm run build` is required before deploying** or that page 500s with a missing Vite manifest. It appears to work locally only because `npm run dev` leaves a gitignored `public/hot` behind. Don't route new styles through Vite unless you're deliberately migrating.
+
+### Dashboard forms keep what you typed
+
+`public/assets/js/custom/form-validation.js` binds to **`form.needs-validation`**
+— the class all 41 create and edit forms already carried — intercepts the
+submit, and posts in the background. On a 422 it paints each message beside its
+field and scrolls to the first; on success it follows the controller's redirect.
+
+**No controller was changed and none should need to be**: Laravel already
+answers a request that wants JSON with `422 {message, errors}` instead of a
+redirect. Before this, a failed validation was a full page load and everything
+`old()` cannot carry — every file chosen, both passwords, every select2
+selection — was lost.
+
+The small action forms (approve, toggle, delete) deliberately do **not** carry
+the class: there is nothing typed in them to lose, and a background submit would
+only hide the page they lead to.
 
 ## Naming Conventions
 

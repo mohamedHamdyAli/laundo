@@ -116,10 +116,10 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 });
 
-$('body').append('<div id="loader-container"><div class="loader"></div></div>');
-$(window).on('load', function () {
-    $('#loader-container').fadeOut('slow');
-});
+// The splash lives in layouts/main.blade.php and is driven by
+// assets/js/custom/brand-loader.js. It used to be appended from here, which
+// meant the "loading" screen only appeared once this file — loaded at the
+// bottom of the page — had run.
 
 setTimeout(function () {
     $(".error-msg").fadeOut(1500)

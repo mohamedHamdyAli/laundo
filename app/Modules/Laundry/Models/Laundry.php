@@ -14,6 +14,7 @@ use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Carbon;
 
 /**
@@ -59,6 +60,9 @@ class Laundry extends Model
         'lng',
         'logo',
         'status',
+        'approved_at',
+        'rejected_at',
+        'rejection_reason',
     ];
 
     /**
@@ -73,6 +77,8 @@ class Laundry extends Model
         return [
             'lat' => 'decimal:7',
             'lng' => 'decimal:7',
+            'approved_at' => 'datetime',
+            'rejected_at' => 'datetime',
         ];
     }
 
@@ -116,9 +122,70 @@ class Laundry extends Model
         return $this->belongsTo(City::class, 'city_id');
     }
 
+    /**
+     * Everybody who signs in for this laundry — the owner and the staff.
+     *
+     * @return HasMany<User, $this>
+     */
     public function users(): HasMany
     {
         return $this->hasMany(User::class, 'laundry_id');
+    }
+
+    /**
+     * Applications waiting for somebody to decide.
+     *
+     * Oldest first: a queue whose age nobody can see gets worked newest-first,
+     * and the laundry that has waited longest is the one most likely to give up.
+     *
+     * @param  Builder<static>  $query
+     * @return Builder<static>
+     */
+    public function scopePending(Builder $query): Builder
+    {
+        return $query->whereNull('approved_at')
+            ->whereNull('rejected_at')
+            ->oldest('created_at');
+    }
+
+    public function isPending(): bool
+    {
+        return $this->approved_at === null && $this->rejected_at === null;
+    }
+
+    public function isApproved(): bool
+    {
+        return $this->approved_at !== null;
+    }
+
+    public function isRejected(): bool
+    {
+        return $this->rejected_at !== null;
+    }
+
+    /**
+     * The account created alongside this laundry.
+     *
+     * Every caller that needed the owner re-derived it from `users` plus a role
+     * slug; naming it once is what lets the edit screen offer a password reset
+     * without guessing which of a laundry's users is the one to reset.
+     *
+     * Ordered rather than left to the database: `users.laundry_id` holds the
+     * staff too, and nothing in the schema stops a second owner row. Oldest
+     * wins, which is the account created alongside the laundry.
+     *
+     * Not `latestOfMany()` — its aggregate subquery is built without the
+     * constraints added before it, so it picks the newest user of ANY laundry
+     * role and the role filter then discards it. On a laundry with staff that
+     * returns null, which is how it was caught.
+     *
+     * @return HasOne<User, $this>
+     */
+    public function owner(): HasOne
+    {
+        return $this->hasOne(User::class, 'laundry_id')
+            ->whereHas('role', fn ($query) => $query->where('slug', 'laundry_owner'))
+            ->orderBy('id');
     }
 
     /**

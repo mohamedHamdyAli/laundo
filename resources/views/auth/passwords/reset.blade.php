@@ -1,65 +1,56 @@
-@extends('layouts.app')
+@extends('layouts.auth')
 
-@section('content')
-<div class="container">
-    <div class="row justify-content-center">
-        <div class="col-md-8">
-            <div class="card">
-                <div class="card-header">{{ __('Reset Password') }}</div>
+{{-- Off `layouts.app` for the same reason as the request page beside it. --}}
 
-                <div class="card-body">
-                    <form method="POST" action="{{ route('password.update') }}">
-                        @csrf
+@section('title', __('Reset Password'))
+@section('heading', __('Set a new password'))
+@section('subtitle', __('Choose a password of at least eight characters.'))
+@section('tagline', __('The control room'))
 
-                        <input type="hidden" name="token" value="{{ $token }}">
+@section('form')
+    <form method="POST" action="{{ route('password.update') }}" class="hall-fields">
+        @csrf
+        <input type="hidden" name="token" value="{{ $token }}">
 
-                        <div class="row mb-3">
-                            <label for="email" class="col-md-4 col-form-label text-md-end">{{ __('Email Address') }}</label>
+        @error('email')
+            <p class="hall-note">{{ $message }}</p>
+        @enderror
 
-                            <div class="col-md-6">
-                                <input id="email" type="email" class="form-control @error('email') is-invalid @enderror" name="email" value="{{ $email ?? old('email') }}" required autocomplete="email" autofocus>
-
-                                @error('email')
-                                    <span class="invalid-feedback" role="alert">
-                                        <strong>{{ $message }}</strong>
-                                    </span>
-                                @enderror
-                            </div>
-                        </div>
-
-                        <div class="row mb-3">
-                            <label for="password" class="col-md-4 col-form-label text-md-end">{{ __('Password') }}</label>
-
-                            <div class="col-md-6">
-                                <input id="password" type="password" class="form-control @error('password') is-invalid @enderror" name="password" required autocomplete="new-password">
-
-                                @error('password')
-                                    <span class="invalid-feedback" role="alert">
-                                        <strong>{{ $message }}</strong>
-                                    </span>
-                                @enderror
-                            </div>
-                        </div>
-
-                        <div class="row mb-3">
-                            <label for="password-confirm" class="col-md-4 col-form-label text-md-end">{{ __('Confirm Password') }}</label>
-
-                            <div class="col-md-6">
-                                <input id="password-confirm" type="password" class="form-control" name="password_confirmation" required autocomplete="new-password">
-                            </div>
-                        </div>
-
-                        <div class="row mb-0">
-                            <div class="col-md-6 offset-md-4">
-                                <button type="submit" class="btn btn-primary">
-                                    {{ __('Reset Password') }}
-                                </button>
-                            </div>
-                        </div>
-                    </form>
-                </div>
-            </div>
+        <div class="hall-field">
+            <label class="hall-label" for="email">{{ __('Email address') }}</label>
+            <input class="hall-input @error('email') is-wrong @enderror" id="email" name="email" type="email"
+                value="{{ $email ?? old('email') }}" required autocomplete="email" autofocus dir="ltr">
         </div>
-    </div>
-</div>
+
+        <div class="hall-field">
+            <label class="hall-label" for="password">{{ __('New password') }}</label>
+            <div class="hall-secret">
+                <input class="hall-input @error('password') is-wrong @enderror" id="password" name="password"
+                    type="password" required autocomplete="new-password" dir="ltr">
+                <button class="hall-reveal" type="button" data-reveal-for="password"
+                    aria-label="{{ __('Show password') }}">
+                    <x-landing.icon name="eye" :size="18" />
+                </button>
+            </div>
+            @error('password')
+                <span class="hall-label" style="color: var(--hall-bad)">{{ $message }}</span>
+            @enderror
+        </div>
+
+        <div class="hall-field">
+            <label class="hall-label" for="password-confirm">{{ __('Confirm new password') }}</label>
+            <input class="hall-input" id="password-confirm" name="password_confirmation" type="password" required
+                autocomplete="new-password" dir="ltr">
+        </div>
+
+        <button class="hall-submit" type="submit">{{ __('Reset Password') }}</button>
+
+        <div class="hall-aside">
+            <a href="{{ route('login') }}">{{ __('Back to sign in') }}</a>
+        </div>
+    </form>
 @endsection
+
+@push('scripts')
+    <script src="{{ asset('assets/js/auth-card.js') }}?v={{ landingAssetVersion('js/auth-card.js') }}" defer></script>
+@endpush

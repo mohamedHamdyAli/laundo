@@ -96,6 +96,10 @@ class MenuBuilder
             'title' => config("menu.titles.$model"),
             'icon' => config("menu.icons.$model"),
             'route' => config("menu.routes.$model"),
+            // Null for all but the handful of screens that are a queue
+            // something else fills. See MenuBadges for why it is a class and
+            // not a config entry.
+            'badge' => MenuBadges::for($model),
         ];
     }
 }

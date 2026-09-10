@@ -131,6 +131,10 @@
     window.notificationReadUrlTemplate = "{{ route('admin.myNotifications.read', ['id' => '__ID__']) }}";
 </script>
 <script type="text/javascript" src="{{ asset('assets/js/custom/notifications.js') }}"></script>
+{{-- Keeps a create or edit form's contents when validation fails, instead of
+     reloading the page and losing every file, password and select2 choice
+     `old()` cannot carry back. Loaded after the widgets it has to find. --}}
+<script type="text/javascript" src="{{ asset('assets/js/custom/form-validation.js') }}?v={{ landingAssetVersion('js/custom/form-validation.js') }}"></script>
 <script type="text/javascript" src="{{ asset('assets/js/custom/bootstrap-table/formatter.js') }}"></script>
 <script type="text/javascript" src="{{ asset('assets/js/custom/bootstrap-table/queryParams.js') }}"></script>
 <script type="text/javascript" src="{{ asset('assets/js/custom/bootstrap-table/actionEvents.js') }}"></script>

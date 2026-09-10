@@ -72,6 +72,11 @@
         'globe' => '<circle cx="12" cy="12" r="9"/><path d="M3.3 9.6h17.4M3.3 14.4h17.4"/><path d="M12 3a14 14 0 0 1 0 18 14 14 0 0 1 0-18z"/>',
         'mail' => '<path d="M3.4 6.6h17.2v10.8H3.4z"/><path d="M3.4 7.2l8.6 6 8.6-6"/>',
         'phone' => '<path d="M8.2 3.6H5.6a1.9 1.9 0 0 0-1.9 2.1C4.4 13 11 19.6 18.3 20.3a1.9 1.9 0 0 0 2.1-1.9v-2.6l-4.3-1.4-1.9 2.2a15 15 0 0 1-5.2-5.2l2.2-1.9z"/>',
+
+        // Show the password. Its struck-through twin is drawn by adding the
+        // slash in the markup rather than as a second entry, so the two states
+        // cannot drift apart in size or weight.
+        'eye' => '<path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z"/><circle cx="12" cy="12" r="3"/>',
     ];
 @endphp
 

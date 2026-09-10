@@ -40,6 +40,12 @@ class laundryCrudService
                 'lng' => $request['lng'] ?? null,
                 'logo' => uploadOrUpdateImage($request['logo'] ?? null, 'images/laundries/logo'),
                 'status' => $request['status'],
+                // An operator creating a laundry *is* the approval — they are
+                // the person the public form's applications are queued for.
+                // Left null it would file every laundry the panel creates as an
+                // application waiting on somebody, including the one the
+                // operator is looking at.
+                'approved_at' => now(),
             ]);
 
             $ownerRole = Role::where('slug', 'laundry_owner')->firstOrFail();
@@ -85,6 +91,14 @@ class laundryCrudService
 
             if (isset($request['logo'])) {
                 $data['logo'] = uploadOrUpdateImage($request['logo'], 'images/laundries/logo', $laundry->logo);
+            }
+
+            // Hand a locked-out owner a new password. `filled()` rather than
+            // isset(): the field ships on every submit of this form and arrives
+            // as an empty string when untouched, which must leave the account
+            // alone. The cast on User hashes it.
+            if (filled($request['owner_password'] ?? null) && $laundry->owner) {
+                $laundry->owner->update(['password' => $request['owner_password']]);
             }
 
             return $this->laundryRepository->update($request['id'], $data);

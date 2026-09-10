@@ -105,7 +105,11 @@ return [
                 // reports.
                 'order_task' => 1,
                 'driver' => 2,
-                'driver_earning' => 3,
+                // Third rather than last: it is the only item in the panel
+                // that grows on its own, and a queue nobody is reminded of is
+                // a queue of couriers who took another job.
+                'driver_application' => 3,
+                'driver_earning' => 4,
             ],
         ],
 
@@ -221,6 +225,7 @@ return [
 
         'order_task' => 'bi bi-signpost-split',
         'driver' => 'bi bi-truck',
+        'driver_application' => 'bi bi-person-plus',
         // Was `bi bi-cash-stack`, which is now the Money group's own icon.
         'driver_earning' => 'bi bi-coin',
 
@@ -270,6 +275,7 @@ return [
 
         'order_task' => 'Dispatch',
         'driver' => 'Drivers',
+        'driver_application' => 'Applicants',
         'driver_earning' => 'Driver Earnings',
 
         'user' => 'Users',
@@ -318,6 +324,7 @@ return [
 
         'order_task' => 'admin.dispatch.index',
         'driver' => 'admin.driver.index',
+        'driver_application' => 'admin.driver_application.index',
         'driver_earning' => 'admin.earning.index',
 
         'user' => 'admin.user.index',
