@@ -161,6 +161,41 @@ class orderCrudService
     }
 
     /**
+     * Deletes several orders, and reports honestly on the ones it would not.
+     *
+     * **Not one transaction.** Each order is judged and erased on its own, so a
+     * selection of twenty that contains one collected order still deletes the
+     * nineteen. Rolling the lot back because of one would make the feature
+     * useless for the job it exists for — clearing a list — and would teach the
+     * operator to select rows one at a time, which is what they were doing
+     * before.
+     *
+     * The refusals come back keyed by order **code**, not id: the operator
+     * selected «#10011», and an id means nothing to them.
+     *
+     * @param  array<int, int|string>  $ids
+     * @return array{deleted: int, refused: array<string, string>}
+     */
+    public function deleteMany(array $ids): array
+    {
+        $deleted = 0;
+        $refused = [];
+
+        foreach ($ids as $id) {
+            $order = $this->orders->findById($id);
+
+            try {
+                $this->deleteRecord($order->id);
+                $deleted++;
+            } catch (RuntimeException $e) {
+                $refused['#'.$order->code] = $e->getMessage();
+            }
+        }
+
+        return ['deleted' => $deleted, 'refused' => $refused];
+    }
+
+    /**
      * Eligible drivers for each unfinished leg.
      *
      * @return array<int, array<int, Driver>>

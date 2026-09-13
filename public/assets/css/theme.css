@@ -1904,6 +1904,52 @@ body.theme-dark .status-toggle:hover { filter: brightness(1.25); }
     flex-wrap: wrap;
 }
 
+/* ==========================================================================
+   Bulk selection on a stack list
+
+   The select cell is a grid track like any other, so it is centred against the
+   row rather than against the text baseline — the rows are two lines tall and a
+   top-aligned box reads as belonging to the first line only.
+   ========================================================================== */
+
+.stack-select {
+    align-items: center;
+    display: flex;
+    justify-content: center;
+}
+
+.stack-select .form-check-input {
+    cursor: pointer;
+    margin: 0;
+}
+
+/* The bar appears only once something is ticked, so it may not take space or
+   shift the list when it is not there — hence `hidden` on the element and no
+   reserved height here. */
+.bulk-bar {
+    align-items: center;
+    background: var(--surface-card);
+    border: 1px solid var(--brand-primary);
+    border-radius: .65rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: .75rem;
+    justify-content: space-between;
+    margin-bottom: .6rem;
+    padding: .6rem 1rem;
+}
+
+.bulk-count {
+    color: var(--brand-primary);
+    font-weight: 700;
+}
+
+.bulk-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .5rem;
+}
+
 /* The star row on the ratings list. Amber rather than the accent, because it is
    a score and not a link, and letter-spaced so five glyphs read as five. */
 .rating-stars {

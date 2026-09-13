@@ -100,10 +100,47 @@
                              AJAX helper targets it by that name and replaces its
                              HTML wholesale. --}}
                         @php
-                            $stackCols = 'minmax(8rem,1.1fr) minmax(9rem,1.3fr) minmax(8rem,1fr) minmax(9rem,1.1fr) minmax(6rem,auto) auto';
+                            // The leading `auto` is the select column, and it is
+                            // only in the track list when the operator can
+                            // actually delete — otherwise every row would carry
+                            // an empty gutter for a control nobody is shown.
+                            $mayDelete = canDo('order.delete');
+                            $stackCols = ($mayDelete ? 'auto ' : '')
+                                . 'minmax(8rem,1.1fr) minmax(9rem,1.3fr) minmax(8rem,1fr) minmax(9rem,1.1fr) minmax(6rem,auto) auto';
                         @endphp
 
+                        @if ($mayDelete)
+                            {{-- The selection bar. Hidden until something is
+                                 ticked: a permanently visible «0 selected» strip
+                                 is furniture, and it pushes the list down the
+                                 page for the whole time nobody is using it. --}}
+                            <form id="order-bulk-form" method="POST"
+                                action="{{ route('admin.order.bulkDelete') }}"
+                                class="bulk-bar" hidden>
+                                @csrf
+                                <span class="bulk-count" id="order-bulk-count"></span>
+                                <div class="bulk-actions">
+                                    <button type="button" class="btn-quiet" id="order-bulk-clear">
+                                        {{ __('Clear selection') }}
+                                    </button>
+                                    <button type="submit" class="btn btn-sm btn-danger">
+                                        <i class="fa fa-trash me-1"></i>{{ __('Delete selected') }}
+                                    </button>
+                                </div>
+                            </form>
+                        @endif
+
                         <div class="stack-head" style="--stack-cols: {{ $stackCols }}">
+                            @if ($mayDelete)
+                                <span class="stack-select">
+                                    {{-- Selects every *selectable* row on this
+                                         page — never a row the guard refuses,
+                                         which is why it counts boxes rather than
+                                         rows. --}}
+                                    <input type="checkbox" class="form-check-input" id="order-select-all"
+                                        aria-label="{{ __('Select all') }}">
+                                </span>
+                            @endif
                             <span>{{ __('Order') }}</span>
                             <span>{{ __('Customer') }}</span>
                             <span>{{ __('Service') }}</span>
@@ -164,6 +201,82 @@
                     $('#pagination-wrapper').html(response.pagination);
                 });
             });
+
+            @if ($mayDelete)
+            /*
+             * Bulk selection.
+             *
+             * Every handler is **delegated from `document`**, not bound to the
+             * boxes. The table body is replaced wholesale by the search helper
+             * and by the status filter above, so anything bound directly to a
+             * row stops working the first time somebody types — which is the
+             * moment a bulk delete is most likely to be used, because searching
+             * is how you find the rows you want gone.
+             *
+             * Selection deliberately does **not** survive a repaint: the ids are
+             * read out of the DOM at submit time, so a row that scrolled out of
+             * the result set cannot be deleted by a tick the operator can no
+             * longer see. `syncBar()` after every repaint is what enforces that.
+             */
+            const bulkForm = $('#order-bulk-form');
+
+            function selected() {
+                return $('#order-table-body .order-select:checked');
+            }
+
+            function syncBar() {
+                const boxes = $('#order-table-body .order-select');
+                const picked = selected();
+
+                bulkForm.prop('hidden', picked.length === 0);
+                $('#order-bulk-count').text(
+                    @json(__(':count selected')).replace(':count', picked.length)
+                );
+
+                // Indeterminate when some but not all are ticked — otherwise the
+                // header box claims «none selected» while three rows are.
+                const all = $('#order-select-all');
+                all.prop('checked', boxes.length > 0 && picked.length === boxes.length);
+                all.prop('indeterminate', picked.length > 0 && picked.length < boxes.length);
+            }
+
+            $(document).on('change', '#order-table-body .order-select', syncBar);
+
+            $(document).on('change', '#order-select-all', function () {
+                $('#order-table-body .order-select').prop('checked', this.checked);
+                syncBar();
+            });
+
+            $(document).on('click', '#order-bulk-clear', function () {
+                $('#order-table-body .order-select').prop('checked', false);
+                syncBar();
+            });
+
+            // A repaint drops every tick with it, so the bar has to be told.
+            $(document).ajaxComplete(syncBar);
+
+            bulkForm.on('submit', function (e) {
+                const picked = selected();
+
+                if (picked.length === 0) {
+                    e.preventDefault();
+                    return;
+                }
+
+                const count = picked.length;
+                if (!confirm(@json(__('Delete :count selected orders? This cannot be undone.')).replace(':count', count))) {
+                    e.preventDefault();
+                    return;
+                }
+
+                // The ids are collected here rather than kept in a variable, so
+                // what is submitted is exactly what is ticked on screen now.
+                bulkForm.find('input[name="ids[]"]').remove();
+                picked.each(function () {
+                    $('<input>', { type: 'hidden', name: 'ids[]', value: this.value }).appendTo(bulkForm);
+                });
+            });
+            @endif
         });
     </script>
 @endpush

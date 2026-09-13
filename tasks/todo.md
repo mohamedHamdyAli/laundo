@@ -3739,6 +3739,20 @@ Two things worth knowing that were not in the plan:
   route, so it would throw on `route('admin.order.edit')`. Hence the module's
   own `shared/controlBut`.
 
+### Follow-up — bulk selection
+
+Shipped after the single delete was verified in production: a checkbox column,
+select-all, and a selection bar posting to `admin.order.bulkDelete`. Same guard,
+applied per id server-side. 22 PHPUnit tests and 17 Playwright tests on this
+area, all green.
+
+Two decisions worth keeping:
+
+* **Per-order transactions, not one.** One refusal must not undo nineteen
+  successes, or the feature is worthless for the job it exists for.
+* **Handlers delegated from `document`.** The body is repainted by the search
+  helper; a handler bound to a row dies on the first keystroke.
+
 Deliberately **not** done: no cancel button. The panel still cannot cancel an
 order — only the customer's app can — and adding one is a state-machine change
 rather than a screen, so it stays a separate decision.

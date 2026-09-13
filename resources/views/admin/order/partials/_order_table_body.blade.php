@@ -8,6 +8,10 @@
     contain a button, so the row becomes a `<div>`, the code carries the link,
     and the button sits in `.stack-actions`. See the shape note in theme.css.
 
+    The checkbox and the bin are drawn from the **same** call to the guard —
+    one `$deletable` per row — so a row can never offer one and refuse the
+    other.
+
     The delete is offered on the **status** half of `OrderDeletionGuard` only.
     Asking the whole guard here would be five existence queries per row; the
     money half runs when the button is actually pressed, and a refusal comes
@@ -19,10 +23,29 @@
 --}}
 @php
     $deletionGuard = app(\App\Modules\Order\Services\OrderDeletionGuard::class);
+    $mayDelete = canDo('order.delete');
 @endphp
 
 @forelse ($orders as $order)
+    @php $deletable = $deletionGuard->statusAllows($order); @endphp
+
     <div class="stack-row tone-{{ $order->status->tone() }}">
+
+        @if ($mayDelete)
+            {{-- The select cell. It is rendered for every row, not only the
+                 selectable ones: the grid has a track for it either way, and an
+                 empty cell keeps the five data columns aligned down the page.
+                 A row the guard would refuse simply has no control in it —
+                 the same rule as the bin, so the two never disagree about what
+                 is deletable. --}}
+            <div class="stack-select">
+                @if ($deletable)
+                    <input type="checkbox" class="form-check-input order-select"
+                        value="{{ $order->id }}"
+                        aria-label="{{ __('Select') }} #{{ $order->code }}">
+                @endif
+            </div>
+        @endif
 
         <div>
             <span class="row-lead">
@@ -83,7 +106,7 @@
             </a>
             @include('admin.order.shared.controlBut', [
                 'row' => $order,
-                'offer' => $deletionGuard->statusAllows($order),
+                'offer' => $deletable,
             ])
         </div>
 

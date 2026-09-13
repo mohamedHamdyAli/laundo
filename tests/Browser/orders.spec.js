@@ -134,6 +134,61 @@ test.describe('Orders — super admin', () => {
     await expect(page.locator('a[href*="/admin/order/create"]')).toHaveCount(0);
   });
 
+  test('the selection bar counts what is ticked and hides when nothing is', async ({ page }) => {
+    await page.goto('/admin/order');
+
+    const bar = page.locator('#order-bulk-form');
+    const boxes = page.locator('#order-table-body .order-select');
+
+    // Furniture rule: the bar is not on the page until it has something to say.
+    await expect(bar).toBeHidden();
+    expect(await boxes.count()).toBeGreaterThan(0);
+
+    await boxes.first().check();
+    await expect(bar).toBeVisible();
+    await expect(page.locator('#order-bulk-count')).toContainText('1');
+
+    await boxes.nth(1).check();
+    await expect(page.locator('#order-bulk-count')).toContainText('2');
+
+    await page.locator('#order-bulk-clear').click();
+    await expect(bar).toBeHidden();
+  });
+
+  test('select-all ticks only the rows the guard allows', async ({ page }) => {
+    await page.goto('/admin/order');
+
+    const rows = page.locator('.stack-row');
+    const boxes = page.locator('#order-table-body .order-select');
+
+    const rowCount = await rows.count();
+    const boxCount = await boxes.count();
+
+    // The install always carries collected orders, so «every row is selectable»
+    // means the guard stopped being consulted rather than that the data moved.
+    expect(boxCount).toBeGreaterThan(0);
+    expect(boxCount).toBeLessThan(rowCount);
+
+    await page.locator('#order-select-all').check();
+    await expect(page.locator('#order-bulk-count')).toContainText(String(boxCount));
+  });
+
+  test('a repaint clears the selection rather than deleting rows nobody can see', async ({ page }) => {
+    await page.goto('/admin/order');
+
+    await page.locator('#order-table-body .order-select').first().check();
+    await expect(page.locator('#order-bulk-form')).toBeVisible();
+
+    // `page.type`, not `page.fill` — the helper binds keyup, and fill sets the
+    // value without firing it. The search then repaints the body, and the ticks
+    // go with it: a row that is no longer in the result set must not be
+    // deletable by a checkbox the operator can no longer see.
+    await page.type('#orderSearchInput', '#1');
+    await page.waitForResponse((r) => r.url().includes('/admin/order/search'));
+
+    await expect(page.locator('#order-bulk-form')).toBeHidden();
+  });
+
   test('delete is offered on the rows the guard allows and withheld on the rest', async ({ page }) => {
     await page.goto('/admin/order');
 

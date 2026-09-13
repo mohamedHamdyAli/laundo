@@ -287,6 +287,141 @@ class OrderDeletionTest extends TestCase
         $this->assertDatabaseHas('orders', ['id' => $order->id]);
     }
 
+    // ------------------------------------------------------ a whole selection
+
+    private function bulkDelete(array $ids)
+    {
+        return $this->actingAs($this->admin)
+            ->post(route('admin.order.bulkDelete'), ['ids' => $ids]);
+    }
+
+    #[Test]
+    public function a_selection_of_deletable_orders_goes_in_one_go(): void
+    {
+        $ids = [$this->order()->id, $this->order()->id, $this->order()->id];
+
+        $this->bulkDelete($ids)->assertSessionHas('success');
+
+        foreach ($ids as $id) {
+            $this->assertDatabaseMissing('orders', ['id' => $id]);
+        }
+    }
+
+    #[Test]
+    public function one_refusal_does_not_take_the_rest_of_the_selection_with_it(): void
+    {
+        // The decision this pins down. A selection of twenty that contains one
+        // collected order still deletes the nineteen — rolling the lot back
+        // would send the operator right back to deleting rows one at a time,
+        // which is the thing the checkbox column exists to stop.
+        $ok = $this->order();
+        $collected = $this->order(OrderStatus::PickedUp->value);
+        $alsoOk = $this->order();
+
+        $this->bulkDelete([$ok->id, $collected->id, $alsoOk->id])
+            ->assertSessionHas('success')
+            ->assertSessionHas('error');
+
+        $this->assertDatabaseMissing('orders', ['id' => $ok->id]);
+        $this->assertDatabaseMissing('orders', ['id' => $alsoOk->id]);
+        $this->assertDatabaseHas('orders', ['id' => $collected->id]);
+    }
+
+    #[Test]
+    public function a_refusal_names_the_order_and_the_reason(): void
+    {
+        // «3 could not be deleted» gives the operator nothing to act on, and the
+        // reasons differ between rows.
+        $collected = $this->order(OrderStatus::PickedUp->value);
+
+        $this->bulkDelete([$collected->id]);
+
+        $error = session('error');
+
+        $this->assertStringContainsString('#'.$collected->code, $error);
+        $this->assertStringContainsString('already been collected', $error);
+    }
+
+    #[Test]
+    public function a_bulk_delete_obeys_the_money_half_too(): void
+    {
+        // The list only draws checkboxes on the status half of the guard, so the
+        // money half has to be applied server-side or a paid order that is still
+        // «awaiting pickup» would be selectable and would go.
+        $paid = $this->order();
+
+        Payment::create([
+            'order_id' => $paid->id,
+            'user_id' => $this->buyer->id,
+            'provider' => 'cash',
+            'method' => 'cash',
+            'status' => PaymentStatus::Captured->value,
+            'amount' => 100,
+        ]);
+
+        $this->bulkDelete([$paid->id])->assertSessionHas('error');
+        $this->assertDatabaseHas('orders', ['id' => $paid->id]);
+    }
+
+    #[Test]
+    public function a_bulk_delete_needs_the_same_permission(): void
+    {
+        $order = $this->order();
+
+        $operator = User::create([
+            'name' => 'Reader',
+            'email' => 'bulkreader@example.test',
+            'phone' => '+201044440002',
+            'password' => bcrypt('secret123'),
+            'role_id' => Role::where('slug', 'admin')->value('id'),
+            'status' => 'active',
+        ]);
+
+        $this->grant('admin', ['order.view']);
+
+        $this->actingAs($operator)
+            ->post(route('admin.order.bulkDelete'), ['ids' => [$order->id]])
+            ->assertForbidden();
+
+        $this->assertDatabaseHas('orders', ['id' => $order->id]);
+    }
+
+    #[Test]
+    public function an_empty_or_oversized_selection_is_refused(): void
+    {
+        $this->actingAs($this->admin)
+            ->post(route('admin.order.bulkDelete'), ['ids' => []])
+            ->assertSessionHasErrors('ids');
+
+        // The cap is not a formality: every id costs the guard five queries, so
+        // an uncapped request can be made to walk the whole table.
+        $this->actingAs($this->admin)
+            ->post(route('admin.order.bulkDelete'), ['ids' => range(1, 101)])
+            ->assertSessionHasErrors('ids');
+    }
+
+    #[Test]
+    public function the_checkbox_and_the_bin_agree_on_every_row(): void
+    {
+        // Both are drawn from one call to the guard. If they ever disagree, the
+        // list is offering a selection it will then refuse.
+        $deletable = $this->order();
+        $collected = $this->order(OrderStatus::PickedUp->value);
+
+        $html = $this->actingAs($this->admin)
+            ->get(route('admin.order.index'))
+            ->assertOk()
+            ->getContent();
+
+        $this->assertStringContainsString('value="'.$deletable->id.'"', $html);
+        $this->assertStringContainsString(route('admin.order.delete', $deletable->id), $html);
+
+        $this->assertStringNotContainsString(
+            'class="form-check-input order-select" value="'.$collected->id.'"', $html
+        );
+        $this->assertStringNotContainsString(route('admin.order.delete', $collected->id), $html);
+    }
+
     // ------------------------------------------------------- who may press it
 
     #[Test]

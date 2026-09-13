@@ -568,6 +568,9 @@ Route::middleware(['auth', 'dashboard.only'])->prefix('/admin')->group(function 
         // `x-action-buttons` and this module's own controlBut both build the URL
         // from `route("$routePrefix.delete", $id)`.
         Route::delete('/order/delete/{id}', 'destroy')->middleware('permission:order.delete')->name('admin.order.delete');
+        // The same guard, applied to a selection. POST rather than DELETE because
+        // the ids travel in the body and a form is the whole of the client.
+        Route::post('/order/bulk-delete', 'bulkDestroy')->middleware('permission:order.delete')->name('admin.order.bulkDelete');
     });
 
     // «تحميل الفاتورة» — a printable page rather than a PDF, since no PDF package
