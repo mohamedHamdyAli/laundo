@@ -94,6 +94,28 @@
                 <td style="text-align:end;">- {{ moneyFormat($discount) }}</td>
             </tr>
         @endif
+        @if ($cash_surcharge > 0)
+            {{-- «رسوم الدفع النقدي». Its own line rather than folded into the
+                 delivery fee: the customer can avoid it by paying another way,
+                 and a charge you cannot see is a charge you cannot avoid. --}}
+            <tr>
+                <td>{{ __('Cash handling fee') }}</td>
+                <td style="text-align:end;">{{ moneyFormat($cash_surcharge) }}</td>
+            </tr>
+        @endif
+        @if ($tax > 0)
+            {{-- The rate is named, not just the amount. An invoice that says
+                 «ضريبة» and a number is one an accountant has to reverse-engineer
+                 before they can file it. --}}
+            <tr>
+                <td>{{ __('Subtotal before tax') }}</td>
+                <td style="text-align:end;">{{ moneyFormat($pre_tax_total) }}</td>
+            </tr>
+            <tr>
+                <td>{{ __('Tax') }} ({{ rtrim(rtrim(number_format($tax_rate, 2), '0'), '.') }}%)</td>
+                <td style="text-align:end;">{{ moneyFormat($tax) }}</td>
+            </tr>
+        @endif
         <tr class="grand">
             <td>{{ __('Total') }}</td>
             <td style="text-align:end;">{{ moneyFormat($total) }}</td>

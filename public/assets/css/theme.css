@@ -52,6 +52,16 @@
     --tone-bad: #b3261e;
     --tone-bad-bg: #fdeceb;
 
+    /* Two more, added for the wallets screen's owner-type pill. It has five
+       audiences and the four status tones above are down to three usable ones:
+       `tone-bad` is red, which on this screen would read as «act on this»
+       rather than «this is a member of staff». Neutral and teal are
+       deliberately quiet — the pill classifies a row, it does not warn. */
+    --tone-neutral: #4b5563;
+    --tone-neutral-bg: #eef0f3;
+    --tone-brand: #0f766e;
+    --tone-brand-bg: #e2f2f0;
+
     /* The round controls in the top bar — the theme toggle and the bell — are
        siblings and must never drift apart in size. They were 38px and 2.4rem,
        which read as sloppy at a glance. */
@@ -88,6 +98,11 @@ body.theme-dark {
     --tone-warn-bg: rgba(251, 191, 36, .14);
     --tone-bad: #ff9b92;
     --tone-bad-bg: rgba(255, 155, 146, .14);
+
+    --tone-neutral: #aab3c2;
+    --tone-neutral-bg: rgba(170, 179, 194, .14);
+    --tone-brand: #5ec8bd;
+    --tone-brand-bg: rgba(94, 200, 189, .14);
 
     /* The same 4% / 7% mix, resolved against the dark card. */
     --field-bg: #202837;
@@ -1576,6 +1591,17 @@ body.theme-dark {
     color: #fff;
 }
 
+/* The laundry list's commission control. Its own hover colour rather than
+   `action-view`'s brand blue: it sits beside view/edit/delete and opens a
+   dialog that changes what a laundry is paid, so it should not read as one
+   more way to look at the row. */
+.action-commission:hover,
+.action-commission:focus-visible {
+    background-color: #0f766e;
+    border-color: #0f766e;
+    color: #fff;
+}
+
 /* ==========================================================================
    Summary cards — the counts a list page opens with.
    ========================================================================== */
@@ -1806,6 +1832,8 @@ a.stack-row:focus-visible {
 .status-pill.tone-ok   { background: var(--tone-ok-bg);   color: var(--tone-ok); }
 .status-pill.tone-warn { background: var(--tone-warn-bg); color: var(--tone-warn); }
 .status-pill.tone-bad  { background: var(--tone-bad-bg);  color: var(--tone-bad); }
+.status-pill.tone-neutral { background: var(--tone-neutral-bg); color: var(--tone-neutral); }
+.status-pill.tone-brand   { background: var(--tone-brand-bg);   color: var(--tone-brand); }
 
 /* The row takes the same token as a stripe colour and nothing else. */
 .order-row.tone-live { --row-tone: var(--tone-live); }

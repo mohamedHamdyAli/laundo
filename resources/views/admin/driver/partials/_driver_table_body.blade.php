@@ -29,7 +29,17 @@
             @endif
         </div>
         <div>
-            <span class="row-main">{{ $profile?->vehicle_type ?? '-' }}</span>
+            @php
+                // Through the enum, not raw. The column stores `motorcycle` and
+                // the edit form has rendered the label since VehicleType was
+                // introduced, so the list was the one screen still showing an
+                // untranslated slug. parse() falls back to the stored string for
+                // the free-text values that predate the list.
+                $vehicle = \App\Modules\Driver\Enums\VehicleType::parse($profile?->vehicle_type);
+            @endphp
+            <span class="row-main">
+                {{ $vehicle ? __($vehicle->label()) : ($profile?->vehicle_type ?: '-') }}
+            </span>
             <span class="row-sub">{{ $profile?->plate_number ?: $profile?->shiftLabel() ?: '-' }}</span>
         </div>
         <div>
@@ -52,10 +62,35 @@
             @endif
         </div>
         <div>
+            {{-- Never blank. A driver on no rule earns nothing, and an empty
+                 cell would read as «not loaded» rather than «not paid». --}}
+            @php $bonusRule = $driver->profile?->bonusRule; @endphp
+            @if ($bonusRule && $bonusRule->status === 'active')
+                <span class="row-main">{{ getLocalizedValueDashboard($bonusRule, 'name') }}</span>
+                <span class="row-sub">{{ $bonusRule->explainImmediate() }}</span>
+            @elseif ($bonusRule)
+                <span class="status-pill tone-warn">{{ __('Rule switched off') }}</span>
+            @else
+                <span class="row-sub">{{ __('No bonus') }}</span>
+            @endif
+        </div>
+        <div>
             <x-status-toggle-button :id="$driver->id" :status="$driver->status"
                 endpoint="{{ route('admin.driver.toggleStatus', $driver->id) }}" permission="driver.toggle" />
         </div>
         <div class="stack-actions">
+            @if (canDo('setting.update'))
+                {{-- One modal for the whole list, filled from these attributes.
+                     A modal per row would be forty copies of the same markup. --}}
+                <button type="button" class="btn btn-sm action-btn action-commission js-bonus-btn"
+                    data-id="{{ $driver->id }}"
+                    data-name="{{ $driver->name }}"
+                    data-rule="{{ $driver->profile?->bonus_rule_id }}"
+                    data-action="{{ route('admin.driver.bonus', $driver->id) }}"
+                    title="{{ __('Bonus') }}" aria-label="{{ __('Bonus') }}">
+                    <i class="fa fa-gift"></i>
+                </button>
+            @endif
             @include('admin.driver.shared.controlBut', ['row' => $driver])
         </div>
     </div>

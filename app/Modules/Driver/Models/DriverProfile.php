@@ -44,6 +44,14 @@ class DriverProfile extends Model
         // Deliberately not fillable from any request payload: DriverController
         // writes them with forceFill after checking there is a live task, and a
         // profile update must not be able to move the driver on the map.
+        //
+        // `bonus_rule_id` is absent for two reasons of its own. It is a money
+        // term, so it belongs behind `setting.update` rather than the
+        // `driver.update` an operator holds to keep licences and shifts current
+        // — the same boundary the laundry commission draws. And
+        // driverCrudService::profilePayload() runs the payload through
+        // array_filter, which drops nulls: a rule assigned through the form
+        // could never be un-assigned again.
     ];
 
     protected function casts(): array
@@ -64,6 +72,16 @@ class DriverProfile extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class, 'user_id');
+    }
+
+    /**
+     * The bonus terms this driver is on. **Null means no bonus.**
+     *
+     * @return BelongsTo<DriverBonusRule, $this>
+     */
+    public function bonusRule(): BelongsTo
+    {
+        return $this->belongsTo(DriverBonusRule::class, 'bonus_rule_id');
     }
 
     /**

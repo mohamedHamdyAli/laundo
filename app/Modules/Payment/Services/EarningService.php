@@ -3,6 +3,7 @@
 namespace App\Modules\Payment\Services;
 
 use App\Modules\Driver\Models\Driver;
+use App\Modules\Driver\Services\BonusResolver;
 use App\Modules\Order\Models\Order;
 use App\Modules\Order\Models\OrderTask;
 use App\Modules\Payment\Models\DriverEarning;
@@ -11,56 +12,47 @@ use App\Modules\Wallet\Services\WalletService;
 use Illuminate\Support\Facades\DB;
 
 /**
- * «تمت إضافة أرباحك إلى الرصيد المعلق».
+ * «تمت إضافة أرباحك إلى الرصيد المعلق» — the immediate half of a driver's bonus.
  *
- * A driver earns a share of the delivery fee, split across the legs they actually
- * did. The share is a **setting**, not a constant: it is a commercial number, it
- * will be argued about, and burying it in code would mean a deploy every time it
- * moves.
+ * **A driver's salary is not in this system.** The owner's decision: it is paid
+ * outside, entirely — «ملناش دعوة بيه خالص». What moves here is a bonus on top
+ * of it, and only for a driver who has been put on a rule.
  *
- * Earnings are **pending** until the order completes. By then the money has
+ * What decides the amount is `DriverBonusRule`, resolved per driver by
+ * `BonusResolver`. It used to be a hardcoded `DEFAULT_RATE = 0.20` behind a
+ * setting with no field on the settings form and no seeder row — so every driver
+ * was paid a fifth of every delivery fee at a rate nobody could see, change or
+ * stop. **No rule now means no bonus**, which is the safe direction for a
+ * default nobody has yet chosen.
+ *
+ * Bonuses are **pending** until the order completes. By then the money has
  * arrived; paying for a delivery that was later returned would have to be clawed
  * back, and clawing back from a driver who has already withdrawn is a
  * conversation nobody wants.
  *
- * The rate is stored on every row alongside the result. A driver asking why a job
- * paid 12.50 has to be shown the sum, and a rate that changes next month must not
- * silently restate last month's earnings — the same rule as copying prices onto
- * an order.
+ * The basis and rate are stored on every row alongside the result. A driver
+ * asking why a job paid 12.50 has to be shown the sum, and terms that change
+ * next month must not silently restate last month — the same rule as copying
+ * prices onto an order.
  */
 class EarningService
 {
-    /**
-     * The fallback share when nothing is configured.
-     *
-     * Deliberately conservative: a wrong number that pays too little is a
-     * complaint, and a wrong number that pays too much is a loss nobody notices.
-     */
-    private const DEFAULT_RATE = 0.20;
-
-    public function __construct(private readonly WalletService $wallets) {}
+    public function __construct(
+        private readonly WalletService $wallets,
+        private readonly BonusResolver $bonuses,
+    ) {}
 
     /**
-     * The configured share of the delivery fee, as a fraction.
-     */
-    public function rate(): float
-    {
-        $setting = getSettingValue('Driver_Earning_Rate');
-
-        if ($setting === null || $setting === '') {
-            return self::DEFAULT_RATE;
-        }
-
-        // Stored as a percentage in the dashboard, because that is how anybody
-        // setting it thinks about it.
-        return max(0.0, min((float) $setting / 100, 1.0));
-    }
-
-    /**
-     * Record what a completed leg earned.
+     * Record what a completed leg earned under this driver's rule.
      *
      * Idempotent: the unique key on `order_task_id` means a replayed completion
      * cannot pay a driver twice for one journey.
+     *
+     * Returns null — writing no row and touching no wallet — whenever the leg
+     * earns nothing: the driver is on no rule, the rule pays only monthly, or
+     * the basis is `per_order` and this is one of the three legs that is not the
+     * handover to the customer. A row of zero would only make a history harder
+     * to read.
      */
     public function recordFor(OrderTask $task): ?DriverEarning
     {
@@ -75,34 +67,32 @@ class EarningService
         }
 
         $order = $task->order;
-        $rate = $this->rate();
 
-        // Split evenly across the four legs: the driver is paid for the journeys
-        // they made, and one driver doing all four earns the whole share.
-        $basis = round((float) $order->delivery_fee / 4, 2);
-        $amount = round($basis * $rate, 2);
+        $share = $this->bonuses->forLeg(
+            $this->bonuses->ruleFor($task->driver_id),
+            $order,
+            $task->type,
+        );
 
-        if ($amount <= 0) {
-            // An unpriced delivery earns nothing, and a zero row would only make
-            // the driver's history harder to read.
+        if ($share === null) {
             return null;
         }
 
-        return DB::transaction(function () use ($task, $order, $basis, $rate, $amount) {
+        return DB::transaction(function () use ($task, $order, $share) {
             $earning = DriverEarning::create([
                 'driver_id' => $task->driver_id,
                 'order_id' => $order->id,
                 'order_task_id' => $task->id,
-                'amount' => $amount,
-                'basis' => $basis,
-                'rate' => $rate,
+                'amount' => $share['amount'],
+                'basis' => $share['basis'],
+                'rate' => $share['rate'],
                 'status' => DriverEarning::PENDING,
             ]);
 
             $driver = $task->driver;
 
             if ($driver) {
-                $this->wallets->addPending($driver, $amount);
+                $this->wallets->addPending($driver, $share['amount']);
             }
 
             return $earning;

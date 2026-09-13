@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Modules\Complaint\Models\Complaint;
 use App\Modules\Driver\Models\DriverApplication;
+use App\Modules\Driver\Models\DriverBonusAward;
 use App\Modules\Laundry\Models\Laundry;
 use App\Modules\Order\Enums\OrderStatus;
 use App\Modules\Order\Models\Order;
@@ -72,6 +73,12 @@ class MenuBadges
             // second is the worse of the two: approved is a promise.
             'refund' => Refund::pending()->count()
                 + Refund::where('status', Refund::APPROVED)->whereNull('settled_at')->count(),
+
+            // Months worked out and waiting on somebody to approve. Only the
+            // ones that would actually pay: a driver who missed every target
+            // has nothing to decide, and counting them would put a number
+            // beside a screen with no work on it.
+            'driver_bonus_award' => DriverBonusAward::due()->where('amount', '>', 0)->count(),
 
             default => null,
         };

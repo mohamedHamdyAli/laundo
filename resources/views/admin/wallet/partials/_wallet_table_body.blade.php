@@ -13,6 +13,19 @@
             <span class="row-sub">{{ $wallet->owner?->phone ?? $wallet->owner?->email }}</span>
         </div>
         <div>
+            @php
+                $ownerType = \App\Modules\Wallet\Enums\WalletOwnerType::forRoleSlug($wallet->owner?->role?->slug);
+            @endphp
+            @if ($ownerType)
+                <span class="status-pill {{ $ownerType->tone() }}">{{ __($ownerType->singular()) }}</span>
+            @else
+                {{-- A role no group covers. Named rather than blanked, so a
+                     wallet on a role added later is visible as unclassified
+                     instead of looking like a row with missing data. --}}
+                <span class="status-pill tone-neutral">{{ $wallet->owner?->role?->slug ?? __('Unknown') }}</span>
+            @endif
+        </div>
+        <div>
             @if ($wallet->isReconciled())
                 <span class="status-pill tone-ok">{{ __('Balanced') }}</span>
             @else

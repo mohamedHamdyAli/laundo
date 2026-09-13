@@ -50,14 +50,29 @@ class GeneralSettingRequest extends FormRequest
                 'Hotline' => 'nullable|string|max:20',
                 'Call' => 'nullable|string|max:20',
                 'Email' => 'nullable|string|max:191',
-                'Tax' => 'nullable|numeric|min:0',
+                // The state's tax, as a percentage added on the order total.
+                // Capped, because it was uncapped and a fat-fingered 1000 would
+                // have multiplied every invoice in the country by eleven.
+                'Tax' => 'nullable|numeric|min:0|max:100',
+                // What the platform takes from a laundry on each order. The
+                // general rate; a laundry that negotiated its own overrides it
+                // on its own row.
+                'Commission_Rate' => 'nullable|numeric|min:0|max:100',
                 // A closed list, not free text: an unrecognised code reaches
                 // NumberFormatter and renders as the literal string on every
                 // price in the panel and both apps.
                 'Currency' => 'nullable|in:EGP,SAR,AED,KWD,QAR,USD',
-                // The driver's share of the delivery fee, as a percentage —
-                // which is how anybody setting it thinks about it.
-                'Driver_Earning_Rate' => 'nullable|numeric|min:0|max:100',
+                /*
+                 * `Driver_Earning_Rate` used to be validated here and was never
+                 * reachable: it had no input on this form and no seeder row, so
+                 * the rule guarded nothing while EarningService quietly paid
+                 * every driver a hardcoded 20% of every delivery fee.
+                 *
+                 * A driver's bonus is now per-driver — `DriverBonusRule`, set
+                 * from «قواعد البونس» and assigned on the driver's own row — so
+                 * there is no platform-wide driver rate left to validate. The
+                 * rule is gone rather than left as decoration.
+                 */
                 // «قد يتم تطبيق رسوم إضافية» is permissive, so the default is
                 // none and this is what turns it on.
                 'Cash_Surcharge' => 'nullable|numeric|min:0|max:1000',

@@ -55,6 +55,13 @@ class InvoiceRenderer
             'subtotal' => $subtotal,
             'delivery_fee' => (float) $order->delivery_fee,
             'discount' => (float) $order->discount_total,
+            // Both were computed into the total and shown on neither line. A
+            // charge the customer cannot find on the invoice is a charge they
+            // will phone about.
+            'cash_surcharge' => (float) $order->cash_surcharge,
+            'tax_rate' => $order->taxRate(),
+            'tax' => $order->payableTax(),
+            'pre_tax_total' => $order->preTaxTotal(),
             'total' => $order->payableTotal(),
             'paid' => $order->payment_status === 'paid',
             // «رقم المعاملة», when there is one.

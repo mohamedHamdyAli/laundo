@@ -7,6 +7,7 @@ use App\Modules\Order\Enums\OrderStatus;
 use App\Modules\Order\Models\Order;
 use App\Modules\Order\Models\OrderStatusLog;
 use App\Modules\Payment\Services\EarningService;
+use App\Modules\Payment\Services\SettlementService;
 use App\Modules\User\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -63,7 +64,7 @@ class OrderStateMachine
                 'note' => $note,
             ]);
 
-            $this->settleEarnings($order, $to);
+            $this->settleMoney($order, $to);
             $this->announce($order, $to);
 
             return $order->refresh();
@@ -122,22 +123,45 @@ class OrderStateMachine
     }
 
     /**
-     * A driver's pending earnings become spendable when the order completes, and
-     * evaporate if it never does.
+     * What the status change owes people.
+     *
+     * Three parties are paid out of one order — the driver a share of the
+     * delivery, the laundry its share of the work, the platform its commission —
+     * and all three move on the same two moments: everything becomes real when
+     * the order completes, and evaporates if it never does.
      *
      * Here rather than in a listener because it is a consequence of the status
      * change itself, and the two belong in the same transaction: an order that
-     * completed without releasing what it owed would be a silent debt.
+     * completed without paying what it owed would be a silent debt.
+     *
+     * Written as statements rather than a `match`, unlike the dispatch above it:
+     * each branch has two side effects and no value, which is the one shape
+     * `match` cannot say plainly.
      */
-    private function settleEarnings(Order $order, OrderStatus $to): void
+    private function settleMoney(Order $order, OrderStatus $to): void
     {
         $earnings = app(EarningService::class);
+        $settlements = app(SettlementService::class);
 
-        match ($to) {
-            OrderStatus::Completed => $earnings->releaseFor($order),
-            OrderStatus::Cancelled, OrderStatus::Returned => $earnings->cancelFor($order),
-            default => null,
-        };
+        // The price is agreed, so what each side is owed can be worked out and
+        // shown before anybody waits for the clothes to arrive. Nothing moves.
+        if ($to === OrderStatus::Confirmed) {
+            $settlements->recordFor($order);
+
+            return;
+        }
+
+        if ($to === OrderStatus::Completed) {
+            $earnings->releaseFor($order);
+            $settlements->settleFor($order);
+
+            return;
+        }
+
+        if ($to === OrderStatus::Cancelled || $to === OrderStatus::Returned) {
+            $earnings->cancelFor($order);
+            $settlements->cancelFor($order);
+        }
     }
 
     /**

@@ -13,6 +13,8 @@ use App\Modules\Complaint\Controllers\ComplaintController;
 use App\Modules\Country\Controllers\CountryController;
 use App\Modules\Coupon\Controllers\CouponController;
 use App\Modules\Driver\Controllers\DriverApplicationController;
+use App\Modules\Driver\Controllers\DriverBonusAwardController;
+use App\Modules\Driver\Controllers\DriverBonusRuleController;
 use App\Modules\Driver\Controllers\DriverController;
 use App\Modules\Faq\Controllers\FaqController;
 use App\Modules\Intro\Controllers\IntroController;
@@ -30,9 +32,11 @@ use App\Modules\Order\Controllers\DispatchController;
 use App\Modules\Order\Controllers\OrderController;
 use App\Modules\Order\Controllers\OrderReviewController as DashboardOrderReviewController;
 use App\Modules\Order\Controllers\OrderTaskController;
+use App\Modules\Payment\Controllers\CommissionRuleController;
 use App\Modules\Payment\Controllers\InvoiceController;
 use App\Modules\Payment\Controllers\PaymentLedgerController;
 use App\Modules\Payment\Controllers\RefundController;
+use App\Modules\Payment\Controllers\SettlementController;
 use App\Modules\Pricing\Controllers\PricingController;
 use App\Modules\Rating\Controllers\RatingController;
 use App\Modules\Recurrence\Controllers\RecurrenceController;
@@ -384,6 +388,18 @@ Route::middleware(['auth', 'dashboard.only'])->prefix('/admin')->group(function 
             ->middleware('permission:laundry.update')->name('admin.laundry.approve');
         Route::post('/laundry/reject/{id}', 'reject')
             ->middleware('permission:laundry.update')->name('admin.laundry.reject');
+
+        /*
+        | «العمولة» — what this laundry pays the platform on each order.
+        |
+        | `setting.update`, NOT `laundry.update`. A laundry owner has
+        | `laundry.update` by design — the tenant scope is what confines them to
+        | their own row — so gating the commission on it would hand the payer the
+        | dial. It is platform configuration and sits behind the permission that
+        | governs the general rate.
+        */
+        Route::post('/laundry/commission/{id}', 'commission')
+            ->middleware('permission:setting.update')->name('admin.laundry.commission');
     });
 
     /*
@@ -840,11 +856,132 @@ Route::middleware(['auth', 'dashboard.only'])->prefix('/admin')->group(function 
     |
     */
     Route::controller(WalletController::class)->group(function () {
+        /*
+        | «محفظتي» — your own wallet, and deliberately NOT behind `wallet.view`.
+        |
+        | The list below is not tenant-scoped, so `wallet.view` is the right to
+        | read every balance on the platform — a laundry owner must not have it.
+        | Reading your own is a different capability, so it gets its own door.
+        | Declared before `/wallet/show/{id}` would ever be reached, but the
+        | literal segment could not collide with it anyway.
+        */
+        Route::get('/my-wallet', 'mine')->name('admin.wallet.mine');
+
         Route::get('/wallet', 'index')->middleware('permission:wallet.view')->name('admin.wallet.index');
         Route::get('/wallet/search', 'search')->middleware('permission:wallet.view')->name('admin.wallet.search');
         Route::get('/wallet/show/{id}', 'show')->middleware('permission:wallet.view')->name('admin.wallet.show');
         Route::post('/wallet/adjust/{id}', 'adjust')->middleware('permission:wallet.update')->name('admin.wallet.adjust');
         Route::post('/wallet/freeze/{id}', 'toggleFreeze')->middleware('permission:wallet.update')->name('admin.wallet.freeze');
+    });
+
+    /*
+    |--------------------------------------------------------------------------
+    | Driver bonus rules (قواعد البونس)
+    |--------------------------------------------------------------------------
+    |
+    | The terms a driver's bonus is paid on. A driver on no rule earns nothing,
+    | which replaced a hardcoded 20% of every delivery fee that nobody could see
+    | or stop.
+    |
+    | `assign` is gated on `setting.update`, NOT `driver.update`: an operator
+    | holds the latter to keep licences and shifts current, and what a driver is
+    | paid is a money term. Same boundary as the laundry commission.
+    */
+    Route::controller(DriverBonusRuleController::class)->group(function () {
+        Route::get('/driver-bonus-rule', 'index')
+            ->middleware('permission:driver_bonus_rule.view')->name('admin.driver_bonus_rule.index');
+        Route::get('/driver-bonus-rule/search', 'search')
+            ->middleware('permission:driver_bonus_rule.view')->name('admin.driver_bonus_rule.search');
+        Route::get('/driver-bonus-rule/create', 'create')
+            ->middleware('permission:driver_bonus_rule.create')->name('admin.driver_bonus_rule.create');
+        Route::post('/driver-bonus-rule/store', 'store')
+            ->middleware('permission:driver_bonus_rule.create')->name('admin.driver_bonus_rule.store');
+        Route::get('/driver-bonus-rule/show/{id}', 'show')
+            ->middleware('permission:driver_bonus_rule.view')->name('admin.driver_bonus_rule.show');
+        Route::get('/driver-bonus-rule/edit/{id}', 'edit')
+            ->middleware('permission:driver_bonus_rule.update')->name('admin.driver_bonus_rule.edit');
+        Route::put('/driver-bonus-rule/update/{id}', 'update')
+            ->middleware('permission:driver_bonus_rule.update')->name('admin.driver_bonus_rule.update');
+        Route::delete('/driver-bonus-rule/delete/{id}', 'destroy')
+            ->middleware('permission:driver_bonus_rule.delete')->name('admin.driver_bonus_rule.delete');
+        Route::post('/driver-bonus-rule/status/{id}', 'toggleStatus')
+            ->middleware('permission:driver_bonus_rule.toggle')->name('admin.driver_bonus_rule.toggleStatus');
+
+        Route::post('/driver/bonus/{id}', 'assign')
+            ->middleware('permission:setting.update')->name('admin.driver.bonus');
+    });
+
+    /*
+    |--------------------------------------------------------------------------
+    | Monthly driver bonuses (مكافآت الشهر)
+    |--------------------------------------------------------------------------
+    |
+    | Read-and-decide. The month is recomputed on every view for anything still
+    | `due`, and an approved row is frozen. Nothing pays on a schedule: approving
+    | is a person's act, the same rule as a refund.
+    */
+    Route::controller(DriverBonusAwardController::class)->group(function () {
+        Route::get('/driver-bonus', 'index')
+            ->middleware('permission:driver_bonus_award.view')->name('admin.driver_bonus.index');
+        Route::get('/driver-bonus/search', 'search')
+            ->middleware('permission:driver_bonus_award.view')->name('admin.driver_bonus.search');
+        Route::post('/driver-bonus/approve/{id}', 'approve')
+            ->middleware('permission:driver_bonus_award.update')->name('admin.driver_bonus.approve');
+        Route::post('/driver-bonus/reject/{id}', 'reject')
+            ->middleware('permission:driver_bonus_award.update')->name('admin.driver_bonus.reject');
+    });
+
+    /*
+    |--------------------------------------------------------------------------
+    | Commissions (قواعد العمولة)
+    |--------------------------------------------------------------------------
+    |
+    | What the platform charges a laundry. Several may apply to one laundry and
+    | they add together, each landing as its own line on the settlement.
+    |
+    | It replaces `laundries.commission_rate`, a single nullable percentage that
+    | could only ever express one agreement. A laundry with nothing attached
+    | falls back to the general rate in Settings.
+    */
+    Route::controller(CommissionRuleController::class)->group(function () {
+        Route::get('/commission-rule', 'index')
+            ->middleware('permission:commission_rule.view')->name('admin.commission_rule.index');
+        Route::get('/commission-rule/search', 'search')
+            ->middleware('permission:commission_rule.view')->name('admin.commission_rule.search');
+        Route::get('/commission-rule/create', 'create')
+            ->middleware('permission:commission_rule.create')->name('admin.commission_rule.create');
+        Route::post('/commission-rule/store', 'store')
+            ->middleware('permission:commission_rule.create')->name('admin.commission_rule.store');
+        Route::get('/commission-rule/show/{id}', 'show')
+            ->middleware('permission:commission_rule.view')->name('admin.commission_rule.show');
+        Route::get('/commission-rule/edit/{id}', 'edit')
+            ->middleware('permission:commission_rule.update')->name('admin.commission_rule.edit');
+        Route::put('/commission-rule/update/{id}', 'update')
+            ->middleware('permission:commission_rule.update')->name('admin.commission_rule.update');
+        Route::delete('/commission-rule/delete/{id}', 'destroy')
+            ->middleware('permission:commission_rule.delete')->name('admin.commission_rule.delete');
+        Route::post('/commission-rule/status/{id}', 'toggleStatus')
+            ->middleware('permission:commission_rule.toggle')->name('admin.commission_rule.toggleStatus');
+    });
+
+    /*
+    |--------------------------------------------------------------------------
+    | Order settlements (تسويات الطلبات)
+    |--------------------------------------------------------------------------
+    |
+    | How each order was divided between the platform and the laundry that
+    | cleaned it. Read-only: a settlement is produced by the order completing,
+    | never by somebody filling in a form.
+    |
+    | Unlike payments and driver earnings beside it, `OrderSettlement` IS
+    | tenant-scoped — the laundry is one of the two parties, so it reads its own
+    | rows rather than being kept off the screen entirely.
+    */
+    Route::controller(SettlementController::class)->group(function () {
+        Route::get('/settlement', 'index')
+            ->middleware('permission:order_settlement.view')->name('admin.settlement.index');
+        Route::get('/settlement/search', 'search')
+            ->middleware('permission:order_settlement.view')->name('admin.settlement.search');
     });
 
     /*

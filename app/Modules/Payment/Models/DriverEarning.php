@@ -109,9 +109,22 @@ class DriverEarning extends Model
 
     /**
      * The sum, in words, for a driver asking why a job paid what it did.
+     *
+     * Branches on the rate, because a bonus rule can pay a **flat amount** per
+     * order or per journey as well as a share of the delivery fee. A flat row
+     * stores its own amount as the basis and a rate of 1 — the literal truth of
+     * «one of these, at full value» — and rendering that through the percentage
+     * form gives «EGP 20.00 x 100%», which reads like a bug to the driver it is
+     * shown to. Both the admin ledger and the driver app call this.
      */
     public function explain(): string
     {
-        return sprintf('%s x %s%%', moneyFormat($this->basis), rtrim(rtrim(number_format((float) $this->rate * 100, 2), '0'), '.'));
+        $rate = (float) $this->rate;
+
+        if ($rate >= 1.0) {
+            return moneyFormat($this->amount);
+        }
+
+        return sprintf('%s x %s%%', moneyFormat($this->basis), rtrim(rtrim(number_format($rate * 100, 2), '0'), '.'));
     }
 }

@@ -773,7 +773,7 @@ a:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; border-r
           <tr><td><span class="tag t-brand">6 التسويق</span></td><td>العروض، الأكواد، البانرات، التعريفية، خطوات الرحلة، الأسئلة</td><td>التطبيق بيشتغل بس شاشاته بتبان فاضية</td></tr>
           <tr><td><span class="tag t-mute">7 الطلبات</span></td><td>الطلبات</td><td>—</td></tr>
           <tr><td><span class="tag t-mute">8 العمليات</span></td><td>الشكاوى، التقييمات، الاشتراكات، المواعيد</td><td>من غير مواعيد مفيش حد يقدر يحدد وقت استلام</td></tr>
-          <tr><td><span class="tag t-mute">9 المالية</span></td><td>المدفوعات، الاستردادات، المحافظ</td><td>—</td></tr>
+          <tr><td><span class="tag t-mute">9 المالية</span></td><td>المدفوعات، الاستردادات، المحافظ، محفظتي، تسويات الطلبات</td><td>—</td></tr>
           <tr><td><span class="tag t-mute">10 التقارير</span></td><td>خمس تقارير</td><td>—</td></tr>
           <tr><td><span class="tag t-mute">99 النظام</span></td><td>المشرفين، الأدوار، اللغات، سجل الإشعارات، الإعدادات</td><td>—</td></tr>
         </tbody>
@@ -1264,6 +1264,7 @@ a:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; border-r
       <header><h4>المحافظ</h4><span class="path">/admin/wallet · /wallet/show/{id}</span></header>
       <dl class="facts">
         <dt>الغرض</dt><dd>رصيد العميل داخل المنصة، وسجل حركاته.</dd>
+        <dt>الفلتر</dt><dd>قايمة بتقسّم المحافظ حسب صاحبها: <strong>العملاء · المناديب · المغاسل · موظفو المغاسل · المنصة</strong>، وعمود «النوع» بيقول ده مين في كل صف. الكروت التلاتة فوق <strong>بتتبع الفلتر</strong>، فالأرقام دايماً بتوصف اللي إنت شايفه.</dd>
         <dt>الأزرار</dt><dd><code>POST /admin/wallet/adjust/{id}</code> — تسوية <strong>بتطلب سبب إجباري</strong>؛ <code>POST /admin/wallet/freeze/{id}</code> — تجميد.</dd>
         <dt>الحقول</dt><dd><code>user_id</code>، <code>balance</code>، <code>pending_balance</code>، <code>currency</code>، <code>is_frozen</code>.</dd>
         <dt>أسباب الحركة</dt><dd><code>top_up</code>، <code>order_payment</code>، <code>refund</code>، <code>withdrawal</code>، <code>earning</code>، <code>adjustment</code></dd>
@@ -1271,6 +1272,66 @@ a:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; border-r
         <dt>يغذّي</dt><dd><span class="tag t-mute">API</span> <code>GET /wallet</code>، <code>POST /wallet/top-up</code>، <code>POST /wallet/withdraw</code>، <code>GET /wallet/transactions</code></dd>
         <dt>الصلاحية</dt><dd><code>wallet.view</code> / <code>update</code>. <strong>مالك المغسلة والعميل بيترفضوا</strong> — وفيه اختبارات متصفح بتتأكد من ده.</dd>
         <dt>فخاخ</dt><dd class="n-crit"><strong>الرصيد ما بيتعدّلش مباشرة أبداً — كل تغيير معاملة مسجّلة.</strong> لو لقيت أي مسار بيسمح بتحديد رصيد رقم مباشرة، دي تذكرة أمان مش تحسين.</dd>
+        <dt>مش باگ</dt><dd><strong>القايمة من غير فلتر بتخفي المحافظ الفاضية، ومع الفلتر بتوريها.</strong> ده مقصود: من غير فلتر السؤال «الفلوس فين»، وصفحة محافظ بصفر بتدفن اللي فيها رصيد؛ ومع الفلتر إنت سألت «وريني المغاسل»، والرد باللي معاها رصيد النهاردة بس بيخلي حد يفتكر إن المغسلة مالهاش محفظة. الشاشة نفسها بتكتب القاعدة الشغالة فوق الجدول.</dd>
+      </dl>
+    </article>
+
+    <article class="screen">
+      <header><h4>قواعد البونس</h4><span class="path">/admin/driver-bonus-rule</span></header>
+      <dl class="facts">
+        <dt>الغرض</dt><dd>شروط البونس اللي بيتحاسب بيها السائق. القاعدة بتتعمل مرة وبتتربط بأكتر من سائق.</dd>
+        <dt>الحقول</dt><dd><strong>الأساس</strong>: مبلغ ثابت لكل طلب · مبلغ ثابت لكل رحلة · نسبة من رسوم التوصيل. زائد <strong>أهداف شهرية</strong> (وصّل N طلب → مبلغ) و<strong>شروط جودة</strong>: أقل نسبة التزام بالمواعيد، أقل تقييم توصيل، أقصى عدد رحلات فاشلة.</dd>
+        <dt>يعتمد على</dt><dd>لا شيء. بس السائق لازم يتربط بيها من زرار «البونس» في صف السائق.</dd>
+        <dt>الصلاحية</dt><dd><code>driver_bonus_rule.*</code> للقاعدة نفسها، لكن <strong>ربط سائق بقاعدة بيطلب <code>setting.update</code></strong> مش <code>driver.update</code>: الأخيرة بتتدي لمين يظبط الرخص والورديات، وأجر السائق قرار مالي.</dd>
+        <dt>فخاخ</dt><dd class="n-crit"><strong>السائق اللي مش على قاعدة مبياخدش بونس خالص</strong> — وده الافتراضي لكل السائقين. قبل كده كان كل سائق بياخد 20% من رسوم التوصيل من ثابت مدفون في الكود ورا إعداد مالوش خانة في الشاشة. جرّب كمان: <strong>«لكل طلب» بتدفع مرة واحدة</strong> عند التسليم للعميل، مش على الأربع رحلات؛ و<strong>القاعدة الموقوفة مبتدفعش</strong> لكل السائقين عليها؛ و<strong>الصفر في شرط الجودة شرط حقيقي</strong> مش زي الفراغ.</dd>
+      </dl>
+    </article>
+
+    <article class="screen">
+      <header><h4>مكافآت الشهر</h4><span class="path">/admin/driver-bonus</span></header>
+      <dl class="facts">
+        <dt>الغرض</dt><dd>كل سائق على قاعدة، وإيه اللي عمله الشهر ده: طلباته الموصّلة، نسبة التزامه بالمواعيد، متوسط تقييم توصيله، ورحلاته الفاشلة — وأنهي هدف وصله، وأنهي شرط وقّفه لو اتوقف.</dd>
+        <dt>الأزرار</dt><dd><code>POST /admin/driver-bonus/approve/{id}</code> — <strong>الاعتماد هو الوحيد اللي بينزّل فلوس</strong> في محفظة السائق؛ <code>reject</code> بيرفض مع سبب.</dd>
+        <dt>مصدر الأرقام</dt><dd>الالتزام من <code>order_tasks.due_at</code>، التقييم من <code>order_ratings.delivery</code> (تقييم التوصيل وحده، مش تقييم المغسلة)، والفشل من الرحلات <code>failed</code>. تلاتتهم أعمدة النظام بيكتبها من زمان ومحدش كان بيقراها.</dd>
+        <dt>يعتمد على</dt><dd><strong>قاعدة بونس فيها أهداف شهرية</strong>، و<strong>سائقين مربوطين بيها</strong>.</dd>
+        <dt>الصلاحية</dt><dd><code>driver_bonus_award.view</code> / <code>update</code></dd>
+        <dt>فخاخ</dt><dd class="n-crit"><strong>مفيش حاجة بتدفع نفسها.</strong> أمر <code>drivers:close-bonus-month</code> بيشتغل أول الشهر ويحسب ويبعت تنبيه واحد بس — وعمره ما بيعتمد. الشهر المفتوح بيتعاد حسابه في كل زيارة والمعتمد <strong>مجمّد</strong>. جرّب كمان: <strong>القياس الناقص عمره ما بيكسر شرط</strong> — سائق لسه محدش قيّمه مانزلش تحت الحد، هو ملوش تقييم أصلاً؛ و<strong>أعلى هدف يتحقق بيتدفع، مش المجموع</strong>.</dd>
+      </dl>
+    </article>
+
+    <article class="screen">
+      <header><h4>محفظتي</h4><span class="path">/admin/my-wallet</span></header>
+      <dl class="facts">
+        <dt>الغرض</dt><dd>رصيد <em>المستخدم اللي داخل</em> هو نفسه وسجل حركاته. بيتفتح من قائمة الاسم فوق على اليمين، مش من السايدبار.</dd>
+        <dt>الأزرار</dt><dd>مفيش. الشاشة دي بتقرأ بس — التسوية والتجميد بيحصلوا من شاشة المحافظ، لأنهم حاجات بتتعمل <em>على</em> محفظة من حد تاني.</dd>
+        <dt>يعتمد على</dt><dd>لا حاجة. المحفظة بتتعمل أول ما تتفتح لو مكنتش موجودة.</dd>
+        <dt>الصلاحية</dt><dd><strong>مفيش صلاحية عليها بقصد.</strong> <code>wallet.view</code> معناها قراية كل محافظ المنصة — قايمة المحافظ مش متقسّمة على المغاسل — وقراية محفظتك إنت حاجة تانية خالص. المحفظة بتتحدد من <code>$request-&gt;user()</code> فمفيش id يتلعب فيه.</dd>
+        <dt>فخاخ</dt><dd>مالك المغسلة بيوصل هنا وبياخد <strong>403</strong> على <code>/admin/wallet</code>. الاتنين مختبرين في المتصفح — لو مالك المغسلة قدر يفتح قايمة المحافظ، دي تذكرة أمان.</dd>
+      </dl>
+    </article>
+
+    <article class="screen">
+      <header><h4>العمولات</h4><span class="path">/admin/commission-rule</span></header>
+      <dl class="facts">
+        <dt>الغرض</dt><dd>الرسوم اللي المنصة بتاخدها من المغسلة. كل رسم له اسم و<strong>نسبة مئوية أو مبلغ ثابت</strong>، وبيتربط بأي عدد من المغاسل.</dd>
+        <dt>القاعدة الأهم</dt><dd class="n-crit"><strong>المغسلة ممكن تحمل أكتر من رسم والرسوم بتتجمع على بعضها.</strong> مثال: «عمولة أساسية 10%» + «رسوم منصة 5 ج» على طلب بـ200 ج = 25 ج. وكل رسم بيظهر <strong>كسطر مستقل</strong> في التسوية عشان المغسلة تقدر تراجع الحساب مش تاخده كرقم واحد.</dd>
+        <dt>يعتمد على</dt><dd>لا شيء. الربط بالمغسلة من زرار «العمولة» في صف المغسلة.</dd>
+        <dt>الصلاحية</dt><dd><code>commission_rule.*</code> للرسم نفسه، و<strong>ربط مغسلة برسم بيطلب <code>setting.update</code></strong> مش <code>laundry.update</code> — لأن صاحب المغسلة عنده <code>laundry.update</code> وماينفعش يحدد هو اللي بيدفعه.</dd>
+        <dt>فخاخ</dt><dd class="n-crit"><strong>«مفيش رسوم مربوطة» مش زي «رسم بصفر».</strong> المغسلة اللي مالهاش أي رسم بتتبع <strong>النسبة العامة</strong> في الإعدادات؛ المغسلة اللي مش هتدفع حاجة فعلاً لازم تتحط على رسم بصفر. جرّب كمان: <strong>الرسم الموقوف مبيحاسبش</strong> لكل المغاسل عليه؛ و<strong>الإجمالي عمره ما بيعدّي قيمة الطلب</strong> مهما جمّعت رسوم؛ و<strong>تعديل رسم مش بيغيّر تسوية قديمة</strong> — الاسم والشروط بتتنسخ على السطر وقت الحساب.</dd>
+      </dl>
+    </article>
+
+    <article class="screen">
+      <header><h4>تسويات الطلبات</h4><span class="path">/admin/settlement</span></header>
+      <dl class="facts">
+        <dt>الغرض</dt><dd>كل طلب اتقسم إزاي بين المنصة والمغسلة: الأساس، النسبة، عمولة المنصة، ونصيب المغسلة.</dd>
+        <dt>الأزرار</dt><dd>مفيش. الصف بيتعمل لما الطلب يتأكد سعره وبيتسوّى لما يكتمل — مش بحاجة حد يملاها.</dd>
+        <dt>الحقول</dt><dd><code>basis</code> (إجمالي الطلب <strong>ناقص الضريبة</strong>)، <code>commission_rate</code>، <code>commission_amount</code>، <code>laundry_amount</code>، <code>tax_amount</code> (متسجّلة وما بتتقسمش)، <code>status</code>.</dd>
+        <dt>الحالات</dt><dd><code>pending</code> اتسجّلت ومحصلش تحويل · <code>settled</code> المحفظتين اتشحنوا · <code>cancelled</code> الطلب ما اكتملش</dd>
+        <dt>يعتمد على</dt><dd><strong>نسبة عمولة</strong> — عامة من <code>الإعدادات العامة</code> أو خاصة بالمغسلة من زرار «العمولة» في قايمة المغاسل — و<strong>سوبر أدمن موجود</strong> عشان يبقى فيه محفظة تستلم العمولة.</dd>
+        <dt>يغذّي</dt><dd>محفظة السوبر أدمن (سبب <code>commission</code>) ومحفظة مالك المغسلة (سبب <code>laundry_payout</code>)، والاتنين في نفس المعاملة.</dd>
+        <dt>الصلاحية</dt><dd><code>order_settlement.view</code>. <strong>مقسّمة على المغاسل</strong> — بعكس المدفوعات وأرباح المندوبين اللي جنبها — لأن المغسلة طرف في التسوية ولازم تقرا بتاعتها هي بس.</dd>
+        <dt>فخاخ</dt><dd class="n-crit"><strong>صف فاضل <code>pending</code> بعد ما الطلب اكتمل معناه إن مفيش حد يستلم:</strong> يا إما المنصة من غير سوبر أدمن، يا إما المغسلة من غير حساب مالك. دي مش شاشة بايظة — دي بتقولك على عطل. جرّب كمان: نسبة المغسلة <strong>فاضية مش صفر</strong> معناها «امشي على النسبة العامة»؛ الصفر معناه «مفيش عمولة خالص»، والاتنين اتفاقين مختلفين.</dd>
       </dl>
     </article>
 

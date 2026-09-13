@@ -47,7 +47,7 @@
                         @php
                             // Shared by the label strip and every row, so the labels
                             // sit exactly over the fields they name.
-                            $stackCols = 'minmax(3.8rem,4rem) minmax(9rem,1.3fr) minmax(8rem,1fr) minmax(8rem,1fr) minmax(7rem,auto) minmax(6rem,auto)';
+                            $stackCols = 'minmax(3.8rem,4rem) minmax(9rem,1.3fr) minmax(8rem,1fr) minmax(8rem,1fr) minmax(6rem,auto) minmax(7rem,auto) minmax(7rem,auto)';
                         @endphp
 
                         <div class="stack-head" style="--stack-cols: {{ $stackCols }}">
@@ -55,6 +55,7 @@
                             <span>{{ __('Name') }}</span>
                             <span>{{ __('Phone') }}</span>
                             <span>{{ __('City') }}</span>
+                            <span>{{ __('Commission') }}</span>
                             <span>{{ __('Status') }}</span>
                             <span class="text-end">{{ __('Action') }}</span>
                         </div>
@@ -73,6 +74,66 @@
             </div>
         </div>
     </section>
+
+    @if (canDo('setting.update'))
+        {{-- «العمولة» — set what one laundry pays.
+
+             A plain form, deliberately without `needs-validation`: that class is
+             what form-validation.js binds its background submit to, and there is
+             nothing typed here worth preserving across a failure. It posts, it
+             redirects, the row shows the new rate. --}}
+        <div class="modal fade" id="commissionModal" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered">
+                <form method="POST" id="commissionForm">
+                    @csrf
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title">{{ __('Commission') }}</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal"
+                                aria-label="{{ __('Close') }}"></button>
+                        </div>
+                        <div class="modal-body">
+                            <p class="text-muted small mb-3" id="commissionLaundryName"></p>
+
+                            <label class="form-label">{{ __('Charges that apply') }}</label>
+
+                            @php $attachable = \App\Modules\Payment\Controllers\CommissionRuleController::attachableRules(); @endphp
+
+                            @forelse ($attachable as $rule)
+                                <div class="form-check">
+                                    <input class="form-check-input js-commission-rule" type="checkbox"
+                                        name="commission_rule_ids[]" value="{{ $rule->id }}"
+                                        id="commission-rule-{{ $rule->id }}">
+                                    <label class="form-check-label" for="commission-rule-{{ $rule->id }}">
+                                        {{ getLocalizedValueDashboard($rule, 'name') }}
+                                        <span class="text-muted">— {{ $rule->explain() }}</span>
+                                    </label>
+                                </div>
+                            @empty
+                                <p class="text-muted small mb-0">
+                                    {{ __('No charges exist yet.') }}
+                                    <a href="{{ route('admin.commission_rule.index') }}">{{ __('Commissions') }}</a>
+                                </p>
+                            @endforelse
+
+                            <div class="form-text mt-2">
+                                {{ __('Ticked charges add together and are credited to the super admin wallet; the rest goes to this laundry.') }}
+                                <strong>{{ __('Tick nothing to follow the general rate') }}</strong>
+                                ({{ rtrim(rtrim(number_format((float) (getSettingValue('Commission_Rate') ?? 0), 2), '0'), '.') }}%).
+                                {{ __('To charge this laundry nothing, put it on a charge of 0.') }}
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                                {{ __('Cancel') }}
+                            </button>
+                            <button type="submit" class="btn btn-primary">{{ __('Save') }}</button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    @endif
 @endsection
 
 @push('scripts')
@@ -88,6 +149,37 @@
                 // markup here.
                 errorHtml: '<div class="stack-empty text-danger">Error during search</div>'
             });
+
+            @if (canDo('setting.update'))
+            // Delegated, not bound to the buttons directly. setupAjaxSearch
+            // replaces the whole row container on every keystroke, so a handler
+            // attached to the buttons themselves works until somebody searches
+            // and then silently stops — the same trap .toggle-status avoids.
+            //
+            // Gated like the button and the modal it opens. A handler shipped to
+            // somebody who is never shown the button is dead code, and it makes
+            // the page claim a capability the routes refuse.
+            $(document).on('click', '.js-commission-btn', function () {
+                const $btn = $(this);
+
+                $('#commissionForm').attr('action', $btn.data('action'));
+                $('#commissionLaundryName').text($btn.data('name'));
+
+                // Exactly what this laundry already carries, and nothing
+                // pre-ticked otherwise: opening the dialog and pressing Save
+                // would then pin a laundry that follows the general rate onto
+                // today's value of it.
+                const attached = String($btn.attr('data-rules') || '')
+                    .split(',')
+                    .filter(Boolean);
+
+                $('.js-commission-rule').each(function () {
+                    $(this).prop('checked', attached.includes($(this).val()));
+                });
+
+                bootstrap.Modal.getOrCreateInstance(document.getElementById('commissionModal')).show();
+            });
+            @endif
         });
     </script>
 @endpush

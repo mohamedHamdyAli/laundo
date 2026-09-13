@@ -9,6 +9,8 @@ use App\Modules\Country\Models\Country;
 use App\Modules\Coupon\Models\Coupon;
 use App\Modules\Driver\Models\Driver;
 use App\Modules\Driver\Models\DriverApplication;
+use App\Modules\Driver\Models\DriverBonusAward;
+use App\Modules\Driver\Models\DriverBonusRule;
 use App\Modules\Faq\Models\Faq;
 use App\Modules\Intro\Models\intro;
 use App\Modules\Item\Models\Item;
@@ -25,7 +27,9 @@ use App\Modules\Order\Models\Order;
 use App\Modules\Order\Models\OrderRating;
 use App\Modules\Order\Models\OrderRecurrence;
 use App\Modules\Order\Models\OrderTask;
+use App\Modules\Payment\Models\CommissionRule;
 use App\Modules\Payment\Models\DriverEarning;
+use App\Modules\Payment\Models\OrderSettlement;
 use App\Modules\Payment\Models\Payment;
 use App\Modules\Payment\Models\Refund;
 use App\Modules\Pricing\Models\ItemPrice;
@@ -60,6 +64,8 @@ return [
         LaundryZone::class,
         Driver::class,
         DriverApplication::class,
+        DriverBonusRule::class,
+        DriverBonusAward::class,
         Order::class,
         // The dispatch board. Its own permission so the board can be granted
         // without full order access, and so it appears in the sidebar at all.
@@ -77,5 +83,7 @@ return [
         Complaint::class,
         Payment::class,
         DriverEarning::class,
+        OrderSettlement::class,
+        CommissionRule::class,
     ],
 ];

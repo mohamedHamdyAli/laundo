@@ -96,6 +96,13 @@ class OrderController extends Controller
             // delivery fee. The customer can remove it by paying another way, and
             // a charge you cannot see is a charge you cannot avoid.
             'cash_surcharge' => $quote['cash_surcharge'],
+            // «ضريبة الدولة». The rate as well as the amount, so the app can
+            // label the line «ضريبة 10%» rather than an unexplained number, and
+            // `pre_tax_total` so the two halves are checkable against the total
+            // without the client doing the subtraction itself.
+            'pre_tax_total' => $quote['pre_tax_total'],
+            'tax_rate' => $quote['tax_rate'],
+            'tax' => $quote['tax'],
             'total' => $quote['total'],
             'unpriced_item_ids' => $quote['unpriced'],
             'laundry' => $quote['laundry'],
@@ -375,10 +382,20 @@ class OrderController extends Controller
                 // Its own line here as well as in the quote. A total carrying a
                 // fee that appears nowhere is a fee the customer cannot check.
                 'cash_surcharge' => (float) $order->cash_surcharge,
+                // The order's OWN rate, not the setting's. An order placed at
+                // 10% keeps 10% when the rate moves, so an app re-opening an old
+                // order shows the tax that was actually charged.
+                'tax_rate' => $order->taxRate(),
+                'estimated_tax' => (float) $order->estimated_tax,
                 'estimated_total' => (float) $order->estimated_total,
                 // Null until the laundry has counted the pieces in P7.
                 'final_subtotal' => $order->final_subtotal !== null ? (float) $order->final_subtotal : null,
+                'final_tax' => $order->final_tax !== null ? (float) $order->final_tax : null,
                 'final_total' => $order->final_total !== null ? (float) $order->final_total : null,
+                // The pair that actually applies, so a client rendering a bill
+                // does not have to know whether the pieces have been counted yet.
+                'payable_tax' => $order->payableTax(),
+                'payable_total' => $order->payableTotal(),
             ],
             'items' => $items,
             'photos' => $photos,

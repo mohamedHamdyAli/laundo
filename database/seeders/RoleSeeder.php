@@ -82,6 +82,17 @@ class RoleSeeder extends Seeder
             // Tenant-safe: OrderRating carries a laundry_id and uses
             // BelongsToLaundry, so an owner reads only its own verdicts.
             'order_rating.view',
+            // What it is owed and what the platform took, order by order. Same
+            // tenant guarantee: OrderSettlement uses BelongsToLaundry, so this
+            // shows its own rows and no other laundry's. There is deliberately
+            // no `.update` — a settlement is produced by an order completing and
+            // is not something either party edits.
+            //
+            // Note this does NOT come with `wallet.view`, which is the right to
+            // read every balance on the platform. An owner reads its own balance
+            // through «محفظتي», which has no permission because it resolves the
+            // wallet from the signed-in user.
+            'order_settlement.view',
         ]);
 
         $this->syncPermissions($laundryStaff, [

@@ -5,6 +5,7 @@ namespace App\Modules\Laundry\Models;
 use App\Modules\City\Models\City;
 use App\Modules\LaundryService\Models\LaundryService;
 use App\Modules\LaundryZone\Models\LaundryZone;
+use App\Modules\Payment\Models\CommissionRule;
 use App\Modules\User\Models\User;
 use App\Support\LaundryContext;
 use App\Trait\DashboardModel;
@@ -13,6 +14,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Carbon;
@@ -65,6 +67,17 @@ class Laundry extends Model
         'rejection_reason',
     ];
 
+    /*
+     * There is no commission column here any more.
+     *
+     * It was `commission_rate`, a single nullable percentage, deliberately kept
+     * out of `$fillable` so a laundry owner — who holds `laundry.update` by
+     * design — could not set what they themselves pay. That boundary still
+     * holds and is now structural rather than a convention: the charges live in
+     * `commission_rules`, attached through a pivot, and the only route that
+     * writes the pivot is gated on `setting.update`.
+     */
+
     /**
      * The coordinates the delivery fee is measured from. Nullable: a laundry
      * added before P6 has none, and DeliveryFeeCalculator says so explicitly
@@ -77,6 +90,10 @@ class Laundry extends Model
         return [
             'lat' => 'decimal:7',
             'lng' => 'decimal:7',
+            // Cast so the two databases agree. PHPUnit runs on SQLite and the
+            // app on MySQL, and an uncast decimal column comes back as a float
+            // from one and a string from the other — which is how a rate reads
+            // as 12.5 in a test and '12.50' in production.
             'approved_at' => 'datetime',
             'rejected_at' => 'datetime',
         ];
@@ -210,5 +227,34 @@ class Laundry extends Model
     public function hasCoordinates(): bool
     {
         return $this->lat !== null && $this->lng !== null;
+    }
+
+    /**
+     * The charges the platform makes on this laundry's orders.
+     *
+     * Several, and **they add together** — the owner's decision. It replaces the
+     * single `commission_rate` column this model used to carry: one number could
+     * only ever express one agreement, and a real contract is «10% of the order,
+     * plus 5 EGP a job».
+     *
+     * **Nothing attached is not the same as nothing charged.** A laundry with no
+     * rules falls back to the general rate in Settings; a laundry that genuinely
+     * pays nothing carries a rule of 0. Same distinction the old nullable column
+     * drew between null and 0, and the reason the migration that retired it
+     * carried a stored 0 across rather than dropping it.
+     *
+     * @return BelongsToMany<CommissionRule, $this>
+     */
+    public function commissionRules(): BelongsToMany
+    {
+        return $this->belongsToMany(CommissionRule::class, 'commission_rule_laundry')->withTimestamps();
+    }
+
+    /**
+     * True when somebody has chosen this laundry's terms explicitly.
+     */
+    public function hasOwnCommission(): bool
+    {
+        return $this->commissionRules()->where('status', 'active')->exists();
     }
 }

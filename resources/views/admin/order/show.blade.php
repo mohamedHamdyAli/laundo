@@ -220,6 +220,78 @@
                     </div>
                 </div>
 
+                @php $settlement = $row->settlement?->load('lines'); @endphp
+                @if ($settlement && canDo('order_settlement.view'))
+                    {{-- «التسوية» — who got what. Shown on the order rather than
+                         only on its own screen because this is where the question
+                         is asked: an operator looking at a disputed order should
+                         not have to go and find the settlement that belongs to
+                         it. The model is tenant-scoped, so a laundry reading its
+                         own order sees its own split and no rate but its own. --}}
+                    <div class="card mb-3">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h6 class="mb-0">{{ __('Settlement') }}</h6>
+                            @if ($settlement->status === \App\Modules\Payment\Models\OrderSettlement::SETTLED)
+                                <span class="status-pill tone-ok">{{ __('Settled') }}</span>
+                            @elseif ($settlement->status === \App\Modules\Payment\Models\OrderSettlement::CANCELLED)
+                                <span class="status-pill tone-bad">{{ __('Cancelled') }}</span>
+                            @else
+                                <span class="status-pill tone-warn">{{ __('Pending') }}</span>
+                            @endif
+                        </div>
+                        <div class="card-body">
+                            <table class="table table-sm table-borderless mb-0">
+                                <tr>
+                                    <td>{{ __('Basis') }}</td>
+                                    <td class="text-end">{{ moneyFormat($settlement->basis) }}</td>
+                                </tr>
+                                @forelse ($settlement->lines as $line)
+                                    {{-- One row per charge. A laundry disputing
+                                         its payout is shown the arithmetic, not
+                                         a blended figure it cannot reproduce. --}}
+                                    <tr>
+                                        <td class="ps-3 text-muted">
+                                            {{ getLocalizedValueDashboard($line, 'name') }}
+                                            <small>({{ $line->explain() }})</small>
+                                        </td>
+                                        <td class="text-end text-muted">{{ moneyFormat($line->amount) }}</td>
+                                    </tr>
+                                @empty
+                                @endforelse
+                                <tr>
+                                    <td>
+                                        {{ __('Commission') }}
+                                        @if ($settlement->lines->count() > 1)
+                                            <small class="text-muted">
+                                                ({{ rtrim(rtrim(number_format((float) $settlement->commission_rate, 2), '0'), '.') }}%
+                                                {{ __('effective') }})
+                                            </small>
+                                        @endif
+                                    </td>
+                                    <td class="text-end">{{ moneyFormat($settlement->commission_amount) }}</td>
+                                </tr>
+                                <tr class="border-top">
+                                    <td><strong>{{ __('Laundry share') }}</strong></td>
+                                    <td class="text-end">
+                                        <strong>{{ moneyFormat($settlement->laundry_amount) }}</strong>
+                                    </td>
+                                </tr>
+                                @if ((float) $settlement->tax_amount > 0)
+                                    <tr>
+                                        <td class="text-muted">
+                                            {{ __('Tax') }}
+                                            <small>{{ __('(not divided)') }}</small>
+                                        </td>
+                                        <td class="text-end text-muted">
+                                            {{ moneyFormat($settlement->tax_amount) }}
+                                        </td>
+                                    </tr>
+                                @endif
+                            </table>
+                        </div>
+                    </div>
+                @endif
+
                 <div class="card mb-3">
                     <div class="card-header"><h6 class="mb-0">{{ __('Pricing') }}</h6></div>
                     <div class="card-body">
@@ -238,12 +310,43 @@
                                     <td class="text-end">- {{ moneyFormat($row->discount_total) }}</td>
                                 </tr>
                             @endif
+                            @if ((float) $row->cash_surcharge > 0)
+                                <tr>
+                                    <td>{{ __('Cash handling fee') }}</td>
+                                    <td class="text-end">{{ moneyFormat($row->cash_surcharge) }}</td>
+                                </tr>
+                            @endif
+                            @if ((float) $row->estimated_tax > 0)
+                                {{-- The rate beside the amount. An operator
+                                     reading an old order needs to see what it was
+                                     charged at, which is not necessarily what the
+                                     settings say today. --}}
+                                <tr>
+                                    <td>
+                                        {{ __('Tax') }}
+                                        <small class="text-muted">
+                                            ({{ rtrim(rtrim(number_format($row->taxRate(), 2), '0'), '.') }}%)
+                                        </small>
+                                    </td>
+                                    <td class="text-end">{{ moneyFormat($row->estimated_tax) }}</td>
+                                </tr>
+                            @endif
                             <tr class="border-top">
                                 <td><strong>{{ __('Estimated total') }}</strong></td>
                                 <td class="text-end"><strong>{{ moneyFormat($row->estimated_total) }}</strong></td>
                             </tr>
                             @if ($row->hasFinalPrice())
-                                <tr class="border-top text-primary">
+                                <tr class="border-top">
+                                    <td class="text-muted">{{ __('Final subtotal') }}</td>
+                                    <td class="text-end text-muted">{{ moneyFormat($row->final_subtotal) }}</td>
+                                </tr>
+                                @if ((float) $row->final_tax > 0)
+                                    <tr>
+                                        <td class="text-muted">{{ __('Tax') }}</td>
+                                        <td class="text-end text-muted">{{ moneyFormat($row->final_tax) }}</td>
+                                    </tr>
+                                @endif
+                                <tr class="text-primary">
                                     <td><strong>{{ __('Final total') }}</strong></td>
                                     <td class="text-end"><strong>{{ moneyFormat($row->final_total) }}</strong></td>
                                 </tr>

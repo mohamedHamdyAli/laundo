@@ -14,6 +14,22 @@
                     <small class="text-muted">
                         {{ __('This month') }} {{ moneyFormat($summary['captured_month']) }}
                     </small>
+                    @if ($summary['captured_today'] <= 0)
+                        {{-- Only when today is empty. A zero above a table full
+                             of payments is the commonest way this screen gets
+                             reported as broken: the figure is windowed by day,
+                             and a quiet morning looks exactly like a page that
+                             has stopped working. --}}
+                        <small class="d-block text-muted mt-1">
+                            @if ($summary['last_captured'])
+                                {{ __('Last taken') }}:
+                                {{ humanDate($summary['last_captured']->created_at, 'Y-m-d') }}
+                                · {{ moneyFormat($summary['last_captured']->amount) }}
+                            @else
+                                {{ __('Nothing has been taken yet') }}
+                            @endif
+                        </small>
+                    @endif
                 </div></div>
             </div>
             <div class="col-md-3">

@@ -13,12 +13,12 @@ class DriverRepository
 {
     public function getAllPaginated($perPage = 15)
     {
-        return Driver::with(['profile', 'zones'])->latest()->paginate($perPage);
+        return Driver::with(['profile.bonusRule', 'zones'])->latest()->paginate($perPage);
     }
 
     public function search($query, $perPage = 15)
     {
-        return Driver::with(['profile', 'zones'])
+        return Driver::with(['profile.bonusRule', 'zones'])
             ->search($query, [
                 'name', 'phone', 'email',
                 // The VEHICLE column on the list screen.
@@ -32,7 +32,7 @@ class DriverRepository
 
     public function findById($id)
     {
-        return Driver::with(['profile', 'zones'])->findOrFail($id);
+        return Driver::with(['profile.bonusRule', 'zones'])->findOrFail($id);
     }
 
     public function create(array $data)

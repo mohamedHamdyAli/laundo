@@ -276,10 +276,38 @@
     <div class="col-md-6">
         <div class="form-group">
             <label for="setting-tax" class="form-label">{{ __('App Tax') }}</label>
-            <div class="controls">
-                <input type="text" name="Tax" id="setting-tax" class="form-control"
-                    placeholder="{{ __('Enter App Tax') }}"
-                    value="{{ getSettingValue('Tax') }}" {{ Route::is('*.create') ? 'required' : '' }}>
+            <div class="input-group">
+                <input type="number" step="0.01" min="0" max="100" name="Tax" id="setting-tax"
+                    class="form-control" placeholder="{{ __('Enter App Tax') }}"
+                    value="{{ getSettingValue('Tax') }}">
+                <span class="input-group-text">%</span>
+            </div>
+            <div class="form-text">
+                {{ __('Added on the order total and shown as its own line on the invoice.') }}
+                {{ __('An order keeps the rate it was placed under, so changing this never restates an invoice already issued.') }}
+            </div>
+        </div>
+    </div>
+</div>
+
+{{-- «عمولة المنصة» --}}
+<div class="row g-3 border rounded p-3 mb-3">
+    <h5 class="mb-3">{{ __('Platform commission') }}</h5>
+    <p class="text-muted small">
+        {{ __('What the platform takes from a laundry on each completed order, as a percentage of the order total before tax. The commission is credited to the super admin wallet and the rest to the laundry wallet.') }}
+        {{ __('A laundry that negotiated its own rate overrides this from the laundries list.') }}
+    </p>
+    <div class="col-md-6">
+        <div class="form-group">
+            <label for="setting-commission" class="form-label">{{ __('General commission rate') }}</label>
+            <div class="input-group">
+                <input type="number" step="0.01" min="0" max="100" name="Commission_Rate" id="setting-commission"
+                    class="form-control" placeholder="{{ __('e.g. 15') }}"
+                    value="{{ getSettingValue('Commission_Rate') }}">
+                <span class="input-group-text">%</span>
+            </div>
+            <div class="form-text">
+                {{ __('Leave empty or zero to take no commission.') }}
             </div>
         </div>
     </div>

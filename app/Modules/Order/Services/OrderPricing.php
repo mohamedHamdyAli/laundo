@@ -47,6 +47,9 @@ class OrderPricing
      *     delivery_fee_reason: string|null,
      *     discount: float,
      *     cash_surcharge: float,
+     *     tax_rate: float,
+     *     tax: float,
+     *     pre_tax_total: float,
      *     total: float,
      *     unpriced: array<int, int>
      * }
@@ -112,10 +115,13 @@ class OrderPricing
 
         $surcharge = $this->cashSurcharge($paymentMethod);
 
-        // Added after the discount, deliberately. A coupon discounts the washing,
-        // not the cost of handling cash — discounting the surcharge would mean a
-        // large enough coupon paid the customer to use notes.
-        $total = round($subtotal + (float) ($fee['fee'] ?? 0) - $discount + $surcharge, 2);
+        $money = $this->compose(
+            $subtotal,
+            (float) ($fee['fee'] ?? 0),
+            $discount,
+            $surcharge,
+            $this->taxRate(),
+        );
 
         return [
             'lines' => $lines,
@@ -129,9 +135,88 @@ class OrderPricing
             // remove it by paying another way, and a charge you cannot see is a
             // charge you cannot avoid.
             'cash_surcharge' => $surcharge,
-            'total' => max($total, 0.0),
+            'tax_rate' => $money['tax_rate'],
+            'tax' => $money['tax'],
+            'pre_tax_total' => $money['pre_tax_total'],
+            'total' => $money['total'],
             'unpriced' => $unpriced,
         ];
+    }
+
+    /**
+     * Add a set of lines up. **The only place an order total is arrived at.**
+     *
+     * Both totals an order carries go through here — the estimate at placement
+     * and the final figure once the laundry has counted the pieces — because
+     * they were assembled in two places and had already drifted: the estimate
+     * added `cash_surcharge` and the final one silently dropped it, so a cash
+     * customer's handling fee disappeared the moment their order was reviewed.
+     * Two expressions of one rule is one expression too many.
+     *
+     * The order of operations, and each step is a decision:
+     *
+     *   subtotal - discount        a coupon discounts the washing
+     *   + delivery fee             measured from the laundry, never discounted
+     *   + cash surcharge           added after the discount, deliberately: a
+     *                              coupon large enough would otherwise pay the
+     *                              customer to use notes
+     *   = pre-tax total
+     *   + tax                      «ضريبة الدولة بتضاف على الإجمالي» — on the
+     *                              whole supply, which is what makes the invoice
+     *                              readable top to bottom: every line, then the
+     *                              tax, then the total
+     *
+     * `$rate` is passed in rather than read here. A placed order carries the
+     * rate that was in force when it was placed, and re-reading the setting at
+     * review time would retax an agreed order at next quarter's rate.
+     *
+     * @return array{pre_tax_total: float, tax_rate: float, tax: float, total: float}
+     */
+    public function compose(
+        float $subtotal,
+        float $deliveryFee,
+        float $discount,
+        float $surcharge,
+        float $rate,
+    ): array {
+        $preTax = round($subtotal + $deliveryFee - $discount + $surcharge, 2);
+
+        // Floored before the tax is taken, not after. A negative base would hand
+        // the customer tax back, and a total that cannot go below zero must not
+        // reach zero by way of a credit from the treasury.
+        $preTax = max($preTax, 0.0);
+
+        $tax = round($preTax * $rate / 100, 2);
+
+        return [
+            'pre_tax_total' => $preTax,
+            'tax_rate' => $rate,
+            'tax' => $tax,
+            'total' => round($preTax + $tax, 2),
+        ];
+    }
+
+    /**
+     * The configured tax, as a percentage.
+     *
+     * `Tax` has been on the settings form, validated and stored since P9 and read
+     * by nothing at all — the same fault `Cash_Surcharge` had. An invoice with no
+     * tax line is an invoice that cannot be filed.
+     *
+     * Unset means none. Egypt's VAT is not something to assume on an install
+     * whose operator has not said so.
+     */
+    public function taxRate(): float
+    {
+        $configured = getSettingValue('Tax');
+
+        if ($configured === null || $configured === '') {
+            return 0.0;
+        }
+
+        // Clamped rather than trusted: the settings column is a string and a
+        // fat-fingered 1000 would triple every invoice in the country.
+        return round(max(min((float) $configured, 100.0), 0.0), 2);
     }
 
     /**

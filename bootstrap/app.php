@@ -9,6 +9,7 @@ use App\Http\Middleware\EnsureDashboardRole;
 use App\Http\Middleware\ResolveCloudflareScheme;
 use App\Http\Middleware\SetLocale;
 use App\Http\Middleware\SetTimezone;
+use App\Modules\Driver\Console\CloseDriverBonusMonth;
 use App\Modules\Notification\Console\AlertSilentPriceConfirmations;
 use App\Modules\Notification\Console\AlertStuckTasks;
 use App\Modules\Order\Console\DispatchQueuedTasks;
@@ -44,6 +45,7 @@ return Application::configure(basePath: dirname(__DIR__))
         AlertStuckTasks::class,
         AlertSilentPriceConfirmations::class,
         SendWeeklyReports::class,
+        CloseDriverBonusMonth::class,
         // This one does live in app/Console/Commands and so would be discovered
         // anyway. Listed with the others because a schedule that references a
         // command registered somewhere else is the kind of thing that breaks

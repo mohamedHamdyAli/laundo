@@ -1,6 +1,114 @@
 # Changelog
 
+## 2026-09-13
+
+### Fix
+
+- **The commonest validation error on 21 create screens never appeared beside its field.** `form-validation.js` matched a field by exact name, and the rule «a name in at least one language» can only fail under the bare key `name` while the input is `name[en]` — no single language is at fault, so no single language is named. The message fell through to the banner at the top of the form, which is the opposite of what this file exists to do. `findField()` now falls back to a prefix match, and matches by prefix rather than by guessing `en` because the default language decides which input exists (JS).
+
+### Tests
+
+- `add-forms.spec.js` (17 browser) — **the «إضافة» screens, driven rather than merely rendered.** The existing coverage proved a create form appears; nothing submitted one. These prove what only a browser can: the page does **not** reload when a save fails, the message lands **beside its own field**, **what you typed is still there** afterwards — three quality gates and two tier rows survive a refused save — the previous message is cleared rather than stacked on a second attempt, the value box follows the basis, correcting the error and resubmitting actually saves, an Arabic-only name round-trips without escapes, and both forms render RTL. The fix above was verified by reverting it and watching the test fail (Tests).
+
+### Feature
+
+- **A commission is a named charge now, and a laundry can carry several.** `CommissionRule` replaces `laundries.commission_rate` — one nullable percentage that could only ever express one agreement, when a real contract is «10% of the order, plus 5 EGP a job». Each charge is a percentage or a flat amount, attached to as many laundries as it applies to, and **their results add together** (Module / Migration / Enum).
+- **Every charge lands as its own line on the settlement.** `order_settlement_lines` stores the name and terms **copied, not referenced**, so renaming a charge or moving it from 10% to 12% next quarter cannot restate what a laundry was already billed. «العمولة ٣١ ج» is a number a laundry can only accept or argue with; «١٠٪ = ٢٠ ج، زائد رسوم منصة ٥ ج، زائد ٣٪ = ٦ ج» is one it can check (Migration / Service / Blade).
+- The laundry row's «العمولة» button is a multi-select now, and the row shows every charge rather than a blended figure. `sync()` on save, so a charge the operator unticked comes off — a charge nobody can remove is the worst kind (Controller / Blade).
+- `/admin/commission-rule` — full CRUD, in the Money group beside the settlements it produces (Controller / Routes / Menu).
+
+### Migration
+
+- `laundries.commission_rate` is carried into a per-laundry rule and **the column is dropped**. Two places that answer «what does this laundry pay» is one too many, and the one left behind is the one somebody eventually edits. **A stored 0 becomes a 0% rule, not an absence of rules** — under the new model nothing attached falls back to the general rate, so dropping a 0 as «nothing to migrate» would have silently started charging a laundry that had negotiated its way out entirely (Database).
+
+### Improvement
+
+- The stacked total is **capped at the order**, and each charge is measured against what is left rather than the original basis. Three charges could otherwise sum past the order and hand the laundry a negative payout — a bill for having done the work (Service).
+- `Commission_Rate` is still read, in exactly one place: as the fallback for a laundry with nothing attached. It keeps the behaviour every existing laundry already had (Service).
+
+### Tests
+
+- `OrderMoneyCycleTest` (8) — **the full cycle, end to end.** One order walked from placement through all four legs to completion, asserting that the customer's total is the sum of its own lines, the settlement basis is that total less the tax, commission and laundry share add back to the basis, every wallet reconciles against its own ledger, and each side holds a transaction naming the order. Plus the paths where money must **not** move: a cancelled order, a returned one whose driver's held bonus evaporates, an unassigned one left pending, a replayed completion paying nobody twice, and a 0% charge paying the laundry everything. Also pins that cancelling after the pieces are collected is refused (Tests).
+- `CommissionSettlementTest` — rewritten off the single rate: charges adding together, a charge of 0 being a deal while an empty list is not, an inactive charge billing nothing, the stacked cap, a flat charge larger than the order, and a line keeping the terms it was charged at after the rule is renamed and re-rated (Tests).
+- `commission-rules.spec.js` (6 browser): the percentage and amount boxes never both on screen, a charge created through the UI showing its terms and laundry count, the dialog naming what ticking nothing means, two charges ticking on and stacking on the row and ticking back off, nothing pre-ticked when nothing is attached, and the button still opening after an AJAX search redraws the row (Tests).
+
+## 2026-09-11
+
+### Feature
+
+- **A driver's bonus is now per driver, and configurable.** `DriverBonusRule` — a named, shared set of terms carrying an immediate basis (a flat amount per order, a flat amount per journey, or a share of the delivery fee), monthly targets, and three quality conditions. A driver points at a rule; **a driver on no rule earns no bonus** (Module / Migration / Enum).
+- **Monthly performance bonuses.** `MonthlyBonusService` measures what a driver actually did in a calendar month — orders delivered, on-time rate, average delivery rating and failed journeys — and pays the **highest target reached, never the sum**. All three measurements come from columns the application has always written and nothing had ever read: `order_tasks.due_at`, `order_ratings.delivery`, and the failed-task count (Service / Migration).
+- **The quality conditions are the point.** A bonus paid on volume alone pays a driver to rush, and rushing is damaged clothes and wrong addresses. A driver who misses a condition keeps their per-order bonus and loses the monthly one (Service / Blade).
+- **Nothing pays itself.** A month is computed to `due` and moves no money; an operator approves it and the wallet is credited with a new `TransactionReason::Bonus`. Same rule as refunds — a monthly payout that runs on a schedule is a wrong payment made in the month nobody was looking. Declining records a reason rather than deleting the row, because «ليه مخدتش المكافأة» has to have an answer (Service / Controller).
+- Two screens: «قواعد البونس» (`/admin/driver-bonus-rule`, full CRUD with tiers edited inline) and «مكافآت الشهر» (`/admin/driver-bonus`, which recomputes any open month on every visit and freezes an approved one) (Controller / Blade / Routes).
+- Assigning a rule is a **button on the driver's row**, gated on `setting.update` rather than `driver.update`: an operator holds the latter to keep licences and shifts current, and what a driver is paid is a money term. It also sidesteps `profilePayload()`'s `array_filter`, which drops nulls — a rule assigned through the driver form could never have been un-assigned (Controller / Blade).
+- **No salary anywhere.** By the owner's decision salaries are paid entirely outside this system — «ملناش دعوة بيه خالص» — so nothing records, holds or pays one, and `TransactionReason` deliberately has no case for one.
+
+### Fix
+
+- **Every driver was being paid a hardcoded 20% of every delivery fee.** `EarningService::DEFAULT_RATE` was a constant behind `Driver_Earning_Rate`, a setting that was validated in `GeneralSettingRequest` and had **no field on the settings form and no seeder row** — so the validation guarded nothing, the value could never be set, and the fallback paid out on every completed journey. Worse, clearing the value would have given 20%, not 0: the only way to stop it was typing a literal `0` into a box that did not exist. The rate is now the driver's own rule, and the unreachable setting is gone rather than left as decoration (Service / Request).
+- `DriverEarning::explain()` rendered «EGP 20.00 x 100%» on a flat bonus, and it is called unconditionally by both the admin ledger and the driver app. It now branches on the rate (Model).
+
+### Improvement
+
+- **The month closes itself and says so.** `drivers:close-bonus-month`, scheduled on the 1st at 07:00, works out the month that has just ended and raises **one** notification to operations. It computes and it notifies; it **never approves** — a payout that ran on a schedule would be a wrong payment made in the month nobody was looking. Raised once per period, ever: an alert that repeats daily teaches people to dismiss it, and then the one that mattered is dismissed too (Console / Schedule / Notification).
+- A sidebar badge beside «مكافآت الشهر», counting only months that would actually pay. A driver who missed every target has nothing to decide, and counting them would put a number beside a screen with no work on it — the same rule the rest of `MenuBadges` follows (Service).
+
+### Tests
+
+- `CloseDriverBonusMonthTest` (11): it closes last month rather than the one still running, it never approves anything, a nonsense `--period` is refused, the alert fires once per period and not once per run, a month where nobody earned anything raises nothing, and the badge counts what is waiting and drops to nothing when a month is approved (Tests).
+- `DriverBonusTest` (29): orders counted rather than journeys, the on-time rate from `due_at`, the delivery score and never the overall one, another driver's work excluded, last month excluded, the highest tier and not the sum, each of the three gates blocking, **a missing measurement never failing a gate**, a gate of zero being a real rule, computing moving no money, approving crediting exactly once, an approved month never recomputed while an open one is, a zero month refusing approval, and the permission boundary on assigning a rule (Tests).
+- `RefundAndEarningTest`: seven methods rewritten off the hardcoded 20% onto a rule, plus four new ones — a driver on no rule earns nothing, an inactive rule pays nothing, a flat per-order rule pays once and not four times, and a per-journey rule pays all four (Tests).
+- `driver-bonus.spec.js` (7 browser): the amount and percentage boxes never both on screen, tier rows added and removed with the last one never disappearing, a rule created and deleted end to end, and the assign dialog **still opening after an AJAX search has redrawn its row** (Tests).
+
 ## 2026-09-10
+
+### Feature
+
+- **The wallets list splits by who owns the wallet.** One wallets table serves everybody — a driver's earnings and a customer's refund are the same mechanism pointed at different people — which is right for the ledger and wrong for the screen: «كام عند المغاسل» and «كام عند السواقين» are different questions and the unfiltered list answered neither. A group filter (Customers / Drivers / Laundries / Laundry staff / Platform) plus a type badge on every row, so the list is readable unfiltered too (Controller / Enum / Blade).
+- `WalletOwnerType` maps groups to role slugs rather than exposing the slugs: the two do not map one to one — `super_admin` and `admin` are both the platform's own money. An unrecognised role resolves to **null, not a default**, so a role added later shows as unclassified instead of being quietly folded into the customer totals (Enum).
+- **The list's three cards follow the filter.** Platform-wide totals sitting above a list of eight drivers is a figure nobody can reconcile against what they are looking at, and a «Total held» that never moves when you filter reads as a broken filter (Controller).
+- Two new pill tones, `tone-neutral` and `tone-brand`, in light and dark. The group badge has five audiences and the four status tones were down to three usable ones — `tone-bad` is red, which here would read as «act on this» rather than «this is a member of staff» (CSS).
+
+### Fix
+
+- The commission button on the laundries list was a `btn-outline-secondary` — a Bootstrap pill of its own width and border sitting beside three `action-btn` squares. It now uses the panel's own action-button styling and Font Awesome like its three neighbours; two icon fonts side by side share neither a baseline nor a stroke weight (Blade / CSS).
+
+### Improvement
+
+- **The unfiltered wallets list still hides empty wallets; a filtered one shows them.** The asymmetry is deliberate and the screen now says which rule it is applying: unfiltered it answers «where is the money», and a page of empty customer wallets buries the rows holding any; filtered, the operator asked «show me the laundries», and answering with only those holding a balance today is how somebody concludes a laundry has no wallet at all (Controller / Blade).
+
+### Tests
+
+- `WalletFilterTest` (13): every role in use maps to a group and an unknown one resolves to null, **every group's pill tone has a matching rule in theme.css**, the unfiltered list hides empties while a filtered one shows them, each group returns only its own, an unknown group falls back to the whole list rather than an empty screen, the totals follow the filter, the search respects the group and still finds an empty wallet within it, and a laundry owner is still refused the list (Tests).
+
+### Feature
+
+- **App Tax reaches the invoice.** The `Tax` setting had been on the settings form, validated and stored since P9 and **read by nothing at all** — exactly the fault `Cash_Surcharge` had, so a configured tax changed no price and appeared on no document. It is now a percentage added on the order total, per the owner's instruction, and it renders as its own line on the invoice with the rate named beside it: an invoice that says «ضريبة» and a number is one an accountant has to reverse-engineer before they can file it (Service / Blade / Migration / API).
+- `orders.tax_rate`, `estimated_tax` and `final_tax`. Three columns rather than one, and the rate is the reason: tax is charged at the rate in force on the day, so it travels with the order exactly as unit prices do. A state that raises 10% to 14% next quarter must not restate an invoice already in a customer's hands (Migration / Model).
+- **`OrderPricing::compose()` is now the only place an order total is arrived at.** Both totals go through it — the estimate at placement and the final figure after the pieces are counted — and so does the recompute when a laundry is assigned late (Service).
+- **A super-admin commission on every completed order.** «لو الطلب كله ب 100 وبياخد من الفيندور 10 ف ميه يبقا هيدخل ف حسابه 10 والمغسله 90». The basis is the order total with the tax taken back out — tax is the state's money passing through on its way to the treasury, so splitting it would have both parties drawing on a sum neither is owed. The commission credits the super admin's wallet and the remainder the laundry owner's, both in one transaction (Service / Model / Migration).
+- `order_settlements` — one row per order, uniquely keyed so a replayed completion cannot pay a laundry twice. **Every component is stored, not just the answer**: basis, rate, commission, the laundry's share and the tax that was not divided, so the arithmetic can be checked without knowing what the settings said that month. Recorded `pending` when the price is agreed, settled when the order completes, cancelled if it never does (Migration / Model / Service).
+- `laundries.commission_rate`, settable from a «العمولة» button on each row of the laundries list, plus a general `Commission_Rate` in the settings. **Null is not zero**: it means «follow the general rate», which is what almost every laundry does and what has to keep being true when the general rate moves; 0 is a laundry that negotiated its way out of the commission (Migration / Controller / Blade).
+- **Order Settlements**, a tenant-scoped screen in the Money group. Unlike payments and driver earnings beside it, `OrderSettlement` uses `BelongsToLaundry` — the laundry is one of the two parties and has to read its own rows, so they are filtered rather than merely gated. A laundry sees one column fewer: its own name on every line carries no information (Controller / Blade / Routes).
+- **«محفظتي»**, in the user menu, showing the signed-in user's own balance and transactions. It carries **no permission** on purpose: `wallet.view` is the right to read every balance on the platform because the wallets list is not tenant-scoped, and reading your own is a different capability. It resolves the wallet from `$request->user()`, so there is no id to tamper with (Controller / Blade / Routes).
+- `TransactionReason::Commission` and `::LaundryPayout`, kept apart from the driver's `Earning` so «what did this laundry earn» is answerable from the ledger alone (Enum).
+- The order screen shows how each order was divided, beside its pricing — an operator looking at a disputed order should not have to go and find the settlement that belongs to it (Blade).
+
+### Fix
+
+- **The final total dropped the cash surcharge.** `OrderReviewService` added the figures up itself and omitted `cash_surcharge`, so a cash customer's handling fee was charged on the estimate and vanished the moment their pieces were counted. The same omission was in the recompute when a laundry is assigned late. Both now go through `OrderPricing::compose()` (Service).
+- The invoice showed neither the cash surcharge nor the tax, though both were inside the total it printed. A charge the customer cannot find on the invoice is a charge they will phone about (Blade).
+- `Tax` was validated `min:0` with **no ceiling**; a fat-fingered 1000 would have multiplied every invoice in the country by eleven. Capped at 100 in the request and clamped again where it is read (Request / Service).
+- `laundries.commission_rate` is cast `decimal:2`. An uncast decimal column comes back as a float from SQLite and a string from MySQL, which is how a rate reads as 12.5 in a test and '12.50' in production (Model).
+- The driver list rendered `vehicle_type` raw, so it showed the slug `motorcycle` while the edit form beside it has rendered the translated label since `VehicleType` was introduced. Unrelated to the above; found by the browser suite (Blade).
+
+### Tests
+
+- `AppTaxTest` (14): the tax is a percentage of everything above it, the delivery fee and the cash surcharge are both in the base, an order keeps the rate it was placed under when the setting moves, the review taxes the final price at the order's own rate, the final total keeps the surcharge, an absurd rate is clamped, and the invoice draws the line and the rate — and draws nothing when there is no tax (Tests).
+- `CommissionSettlementTest` (23): the owner's 100/10/90 example as a literal assertion, the two halves always add back to the basis at a rate that does not divide evenly, tax is never divided, confirming records without moving money, completing credits both wallets with a transaction naming the order, a replayed completion cannot pay twice, a settled row is not restated when the rate changes, an install with no super admin leaves the settlement pending rather than half-paid, the oldest super admin holds the platform wallet, a laundry owner cannot set its own commission and cannot mass-assign it, and a laundry sees its own settlements and no other laundry's (Tests).
+- `commission.spec.js` (10 browser): the modal opens, still opens **after an AJAX search has redrawn the row it belongs to**, a rate set there shows on the row and clearing it returns to the general rate — restored in a `finally`; a laundry owner reaches «محفظتي» and is refused the wallets list (Tests).
+- `drivers.spec.js`: three assertions updated from `input` to `select[name="vehicle_type"]`, stale since the field became an enum (Tests).
 
 ### Fix
 

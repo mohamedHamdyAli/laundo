@@ -40,6 +40,7 @@ class OrderReviewService
     public function __construct(
         private readonly OrderStateMachine $machine,
         private readonly TaskGenerator $tasks,
+        private readonly OrderPricing $pricing,
     ) {}
 
     /**
@@ -83,14 +84,28 @@ class OrderReviewService
                 OrderItem::create($line + ['order_id' => $order->id, 'phase' => 'final']);
             }
 
+            // Delivery, discount, the cash surcharge and the tax rate are all
+            // carried over rather than recomputed — the pieces are what the
+            // review changes, and nothing else about the order moves.
+            //
+            // Through OrderPricing::compose(), which is the fix to a real bug:
+            // this line used to add the figures up itself and **omitted
+            // `cash_surcharge`**, so a cash customer's handling fee was charged
+            // on the estimate and silently dropped the moment their order was
+            // reviewed. Two places that add an order up is one too many.
+            $money = $this->pricing->compose(
+                $subtotal,
+                (float) $order->delivery_fee,
+                (float) $order->discount_total,
+                (float) $order->cash_surcharge,
+                $order->taxRate(),
+            );
+
             $order->update([
                 'final_items_count' => $count,
                 'final_subtotal' => $subtotal,
-                // Delivery and discount are carried over, not recomputed.
-                'final_total' => round(
-                    $subtotal + (float) $order->delivery_fee - (float) $order->discount_total,
-                    2
-                ),
+                'final_tax' => $money['tax'],
+                'final_total' => $money['total'],
                 'review_note' => $note,
                 'reviewed_at' => now(),
                 'review_round' => $order->review_round + 1,
@@ -222,17 +237,25 @@ class OrderReviewService
             'estimated' => [
                 'items_count' => $order->estimated_items_count,
                 'subtotal' => (float) $order->estimated_subtotal,
+                'tax' => (float) $order->estimated_tax,
                 'total' => (float) $order->estimated_total,
                 'lines' => $this->presentLines($order, 'estimated'),
             ],
             'final' => $order->final_total === null ? null : [
                 'items_count' => $order->final_items_count,
                 'subtotal' => (float) $order->final_subtotal,
+                'tax' => (float) $order->final_tax,
                 'total' => (float) $order->final_total,
                 'lines' => $this->presentLines($order, 'final'),
             ],
             'delivery_fee' => (float) $order->delivery_fee,
             'discount' => (float) $order->discount_total,
+            'cash_surcharge' => (float) $order->cash_surcharge,
+            // The rate as well as the amount: a customer asking why the total
+            // moved needs to see what it was charged at, not only what it came
+            // to.
+            'tax_rate' => $order->taxRate(),
+            'tax' => $order->payableTax(),
             'note' => $order->review_note,
             'reviewed_at' => $order->reviewed_at ? humanDate($order->reviewed_at) : null,
             'review_round' => $order->review_round,

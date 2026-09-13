@@ -1652,3 +1652,224 @@ table's own baseline and never mine.
 still reachable. And before "fixing" the last few pixels, neutralise your change
 in the DOM and re-measure — otherwise you tune against something you did not
 cause.
+
+---
+
+## A settings field nobody reads is the most complete silent failure there is
+
+`Cash_Surcharge` sat on the settings form, validated and stored, for a whole
+phase before anything read it. `Tax` sat there for longer — and the API even
+carried a comment explaining why the apps are not allowed to read it, next to a
+server that was not applying it either. In both cases the settings screen said
+the feature was working. Nothing errored, no test failed, and the only way to
+find out was to price an order by hand and notice the number had not moved.
+
+This is a different bug from «a column added without a way to set it». That one
+is always null; this one has a value, and a person typed it.
+
+**Rule:** a settings key is not shipped until something reads it *and* a test
+asserts the read. When adding a key, grep for it immediately afterwards — if the
+only hits are the request, the seeder and the Blade input, it is decoration.
+Walk the existing keys the same way at the end of a phase.
+
+---
+
+## Two places that add the same money up will drift, and the quiet one wins
+
+The order total was assembled in three places: `OrderPricing::quote()` at
+placement, `OrderReviewService` after the pieces were counted, and
+`OrderService::assignLaundry()` when a fee was derived late. The first added
+`cash_surcharge`; the other two did not. So a cash customer was charged the
+handling fee on the estimate and had it silently removed the moment their order
+was reviewed — the customer never complains about that one, which is exactly why
+it survived.
+
+Nothing caught it, because each expression was individually correct and the tests
+asserted each against its own formula rather than against the other two.
+
+**Rule:** money is added up in one function, and every caller goes through it.
+When a test asserts a total, assert it against the *other* phase's total as well
+— «the final total differs from the estimate only by the pieces» is the
+assertion that would have caught this, and restating the formula is the
+assertion that did not.
+
+---
+
+## `canDo()` returns true for a super admin, so narrowing that role proves nothing
+
+A test granted the super admin only `laundry.view` and asserted a
+`setting.update` button was absent. It was present, because `canDo()`
+short-circuits on `role.slug === 'super_admin'` before it looks at any
+permission — as do `CheckPermission` and `MenuBuilder`.
+
+**Rule:** any test about a *missing* permission has to act as somebody who is not
+a super admin. The laundry owner is usually the honest case anyway, because it is
+the role the gate actually exists to stop.
+
+Related, from the same change: a tenant's permission set is not a safe way to
+reason about what they may edit. A laundry owner holds `laundry.update` so they
+can edit their own record — so anything on a laundry that the laundry must *not*
+control (its commission) needs a different permission and a column kept out of
+`$fillable`, not a validation rule that happens to omit it.
+
+---
+
+## An uncast decimal column reads as a float in tests and a string in production
+
+`laundries.commission_rate` came back as `12.5` under PHPUnit's SQLite and would
+have been `'12.50'` on the app's MySQL. The test that caught it was asserting the
+production shape and failing locally, which is the lucky direction; the unlucky
+direction is a test that passes on SQLite and a comparison that fails on MySQL.
+
+**Rule:** every `decimal` column gets a `decimal:n` cast when it is added. It is
+the only thing that makes the two databases agree, and `phpunit.xml` guarantees
+they are different.
+
+---
+
+## A delegated handler is not optional on a list screen
+
+`setupAjaxSearch` replaces the entire row container on every keystroke. A click
+handler bound to buttons inside it works exactly until somebody types in the
+search box, and then stops — with no error, on a screen that looked tested.
+
+**Rule:** on any list screen, bind from `$(document)`, and write the browser test
+that searches first and clicks second. `page.type()`, never `page.fill()` — the
+helper binds `keyup`.
+
+And gate the handler with the same `canDo()` as the button it drives. An
+ungated script is dead code shipped to somebody who is never shown the control,
+and it makes `assertDontSee` on the class name find the handler instead of the
+button.
+
+---
+
+## A default that spends money must be the safe one
+
+`EarningService::DEFAULT_RATE = 0.20` paid every driver on the platform a fifth
+of every delivery fee. It was a fallback for `Driver_Earning_Rate`, a setting
+that was validated in `GeneralSettingRequest` and had **no field on the settings
+form and no seeder row** — so the validation rule guarded nothing, the value
+could never be set, and the fallback was not a fallback at all. It was the
+behaviour.
+
+The sharpest part: **clearing the value would have given 20%, not 0.** The only
+way to stop the payment was to type a literal `0` into a box that did not exist.
+
+Three separate faults, and each on its own looks reasonable in review: a
+conservative constant, a validated setting, an unwritten form field.
+
+**Rule:** when a constant decides what leaves the bank, its default is the one
+that spends nothing. «Unset» means «nobody has agreed to this yet», and nobody
+having agreed is not a reason to pay. Same for `Commission_Rate`, seeded at 0 for
+exactly this reason.
+
+---
+
+## The count of rows is not the count of things that happened
+
+A test asserted one notification produced one `notification_logs` row. It
+produces one **per channel** — `NotificationEvent::channels()` returns database
+and push — so it produced two, and the test read that as the alert having fired
+twice.
+
+The test was measuring the channel list while claiming to measure the send.
+
+**Rule:** when asserting «this happened once», measure a delta across the second
+attempt rather than a literal count. `$before = count(); act(); act();
+assertSame($before, count())` says exactly what is meant and survives somebody
+adding an email channel.
+
+---
+
+## Read the table before keying a lookup on a column
+
+The once-per-period guard was written as `where('data->period', $period)`.
+`notification_logs` has **no `data` column** — the payload reaches the push
+channel and is never stored. The lookup would have matched nothing, forever, and
+the "once ever" alert would have fired every single day.
+
+It would not have thrown. It would just have been wrong, daily, until somebody
+complained about the noise.
+
+**Rule:** a JSON-path `where` on a column you have not read the migration for is
+a guess. Check the schema, and prefer keying on something the table actually
+indexes — here `subject_type`/`subject_id`, which the log has had all along.
+
+---
+
+## Never run the browser suite against a server whose code you are editing
+
+A full Playwright run was started in the background, and while it worked through
+200 specs the code and the schema under it were being changed: `laundries.commission_rate`
+was dropped by a migration and `_laundry_table_body.blade.php` was rewritten.
+
+Seven tests failed, all of them in `tenancy.spec.js`, all of them about the
+laundry list. Every one was an artifact of the edit, not a regression — but the
+run was worthless either way, because there is no way to tell the two apart
+afterwards without re-running it.
+
+Worse, the compound command reported exit 0: `npx playwright test > log; tail log`
+exits with `tail`'s status, so the failures were invisible from the exit code and
+only surfaced by grepping the log for `^  x `.
+
+**Rule:** a browser suite is a read of a running system. Start it when the tree is
+still, or do not start it. And when a background run's result matters, grep the
+log for failures rather than trusting the exit status of a pipeline whose last
+command is `tail`.
+
+---
+
+## One nullable number is one agreement, and contracts are not one number
+
+`laundries.commission_rate` held a single percentage. The moment the owner said
+«اقدر اختار للمغسله كوميشين واحد او اكتر» the column could not express the answer,
+because a real contract is «10% of the order, plus 5 EGP a job» and there is no
+percentage that is also a flat fee.
+
+The migration out of it had one trap worth naming: **a stored 0 had to become a
+0% rule, not an absence of rules.** Under the old model null meant «follow the
+general rate» and 0 meant «free of charge». Under the new one *nothing attached*
+means «follow the general rate». Dropping the 0 as «nothing to migrate» would
+have silently started billing a laundry that had negotiated its way out.
+
+**Rule:** when a nullable column becomes a relation, write down what null meant
+and what zero meant before migrating, and check the new model can still say both.
+The value that carries no data is not always the value that carries no meaning.
+
+---
+
+## A test written against broken behaviour enshrines it
+
+Writing browser tests for the Add screens turned up that the «at least one
+language» error never landed beside the name box — it fell into the banner at the
+top, on **all 21 translatable create forms**, because `findField()` matched by
+exact name and the error key is the bare `name` while the input is `name[en]`.
+
+The tempting move was to assert what the code did: «the message appears in the
+banner». That test would have passed, looked thorough, and permanently fixed the
+defect in place — nobody re-reads a green test to ask whether it is asserting the
+right thing.
+
+**Rule:** when a test you are writing makes you discover behaviour that
+contradicts the documented contract, assert the contract and fix the code. And
+then **prove the test can fail**: revert the fix, watch it go red, restore it.
+A test that has never failed has never been shown to test anything.
+
+---
+
+## Verify a subagent's finding before acting on it
+
+Four survey agents read the add-flow machinery and one reported that
+`findField()` could not resolve a bare key to a bracketed input, with a file and
+line. It was right — but the fix touched JavaScript that 41 forms depend on, so
+the claim was re-read at the source first and then demonstrated with a failing
+test before and a passing one after.
+
+The agent also reported that the success flash is probably consumed by the
+hidden `fetch` before the visible navigation. That one was NOT acted on: it was
+hedged («almost certainly»), and nothing in the suite proves it either way.
+
+**Rule:** a subagent's finding is a lead, not a fact. Re-read the source for
+anything you are about to change, and leave the hedged claims alone until
+something demonstrates them.

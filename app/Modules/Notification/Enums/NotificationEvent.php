@@ -77,6 +77,18 @@ enum NotificationEvent: string
     case OrderAssignedToLaundry = 'order_assigned_to_laundry';
 
     /**
+     * Last month's driver bonuses are worked out and waiting on a person.
+     *
+     * Aimed at operations, and raised **once per period**. The screen already
+     * recomputes an open month on every visit, so this is not what makes the
+     * figures right — it is what makes them noticed. Nothing about it approves
+     * anything: a driver chasing last month's money is the cheapest way to lose
+     * them, and a payout that ran on a schedule is a wrong payment made in the
+     * month nobody was looking.
+     */
+    case DriverBonusReady = 'driver_bonus_ready';
+
+    /**
      * Whether silence would stall something.
      */
     public function isTransactional(): bool
@@ -136,6 +148,7 @@ enum NotificationEvent: string
             self::PriceConfirmationSilent => 'Price confirmation overdue',
             self::RescheduleNeeded => 'New time needed',
             self::OrderAssignedToLaundry => 'Order assigned to your laundry',
+            self::DriverBonusReady => 'Driver bonuses ready',
         };
     }
 

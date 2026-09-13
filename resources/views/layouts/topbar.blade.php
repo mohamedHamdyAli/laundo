@@ -136,6 +136,18 @@
                         <span class="topbar-user-name">{{ Auth::user()->name }}</span>
                     </button>
                     <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="topbarUserDropdown">
+                        {{-- «محفظتي». Here rather than in the sidebar because
+                             MenuBuilder derives the sidebar from `*.view`
+                             permissions and this screen deliberately has none —
+                             it resolves the wallet from the signed-in user, so
+                             there is nothing to authorise. It is also the right
+                             shelf for it: this is your own money, next to your
+                             own password. --}}
+                        <li>
+                            <a class="dropdown-item" href="{{ route('admin.wallet.mine') }}">
+                                <i class="icon-mid bi bi-wallet2 me-2"></i>{{ __('My Wallet') }}
+                            </a>
+                        </li>
                         <li>
                             <a class="dropdown-item" href="{{ route('change-password.index') }}">
                                 <i class="icon-mid bi bi-gear me-2"></i>{{ __('Change Password') }}

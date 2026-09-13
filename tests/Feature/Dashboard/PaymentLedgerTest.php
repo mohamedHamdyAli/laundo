@@ -218,6 +218,55 @@ class PaymentLedgerTest extends TestCase
         $this->assertEquals(600.0, $summary['captured_month']);
     }
 
+    #[Test]
+    public function a_quiet_day_says_when_the_last_payment_landed(): void
+    {
+        $this->travelTo(now()->startOfMonth()->addDays(14)->setTime(12, 0));
+
+        // Captured, but not today. «Taken today: EGP 0.00» above a table full of
+        // payments is the commonest way this screen gets reported as broken —
+        // the figure is windowed by day, and a quiet morning looks exactly like
+        // a page that has stopped working.
+        $old = $this->payment(PaymentStatus::Captured, 250);
+        $old->forceFill(['created_at' => now()->subDays(9)])->save();
+
+        $response = $this->actingAs($this->superAdmin())->get('/admin/payment')->assertOk();
+
+        $summary = $response->viewData('summary');
+        $this->assertEquals(0.0, $summary['captured_today']);
+        $this->assertNotNull($summary['last_captured']);
+
+        $response->assertSee(__('Last taken'), false);
+        $response->assertSee(now()->subDays(9)->format('Y-m-d'), false);
+    }
+
+    #[Test]
+    public function a_day_with_takings_does_not_look_backwards(): void
+    {
+        $this->travelTo(now()->startOfMonth()->addDays(14)->setTime(12, 0));
+
+        $this->payment(PaymentStatus::Captured, 100);
+
+        // The hint is for an empty figure only. Printing it beside a real one
+        // would be two numbers competing for the same glance.
+        $this->actingAs($this->superAdmin())
+            ->get('/admin/payment')->assertOk()
+            ->assertDontSee(__('Last taken'), false);
+    }
+
+    #[Test]
+    public function a_platform_that_has_never_taken_a_payment_says_so(): void
+    {
+        // Different from «nothing today»: there is no history to point at, and
+        // pointing at none would be worse than saying none.
+        $this->payment(PaymentStatus::Failed, 100);
+
+        $response = $this->actingAs($this->superAdmin())->get('/admin/payment')->assertOk();
+
+        $this->assertNull($response->viewData('summary')['last_captured']);
+        $response->assertSee(__('Nothing has been taken yet'), false);
+    }
+
     // ------------------------------------------------------------------ earnings
 
     #[Test]

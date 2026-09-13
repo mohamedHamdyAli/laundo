@@ -13,17 +13,17 @@ class LaundryRepository
 {
     public function getAllPaginated($perPage = 10)
     {
-        return Laundry::with('city')->latest()->paginate($perPage);
+        return Laundry::with(['city', 'commissionRules'])->latest()->paginate($perPage);
     }
 
     public function search($query, $perPage = 10)
     {
-        return Laundry::with('city')->search($query, ['name', 'phone', 'email', 'city.name'])->latest()->paginate($perPage);
+        return Laundry::with(['city', 'commissionRules'])->search($query, ['name', 'phone', 'email', 'city.name'])->latest()->paginate($perPage);
     }
 
     public function findById($id)
     {
-        return Laundry::with(['city', 'users'])->findOrFail($id);
+        return Laundry::with(['city', 'users', 'commissionRules'])->findOrFail($id);
     }
 
     public function create(array $data)

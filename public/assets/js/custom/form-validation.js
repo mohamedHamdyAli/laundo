@@ -38,6 +38,18 @@
      *
      * Also tried without the trailing `[]`, because a checkbox group posts as
      * `zones[]` and comes back keyed simply `zones`.
+     *
+     * The last attempt is the one that matters most in this panel. A
+     * translatable field is rendered as `name[en]`, and the rule that governs
+     * it — «a name in at least one language» — can only fail under the bare key
+     * `name`, because no single language is the one at fault. None of the exact
+     * lookups above can bridge that, so the commonest error on twenty-one create
+     * screens used to fall through to the banner at the top of the form instead
+     * of landing beside the box it is about.
+     *
+     * Matched by prefix rather than by guessing a language code: the default
+     * language decides which input exists, and a lookup for `name[en]` would
+     * find nothing on an install whose default is Arabic.
      */
     function findField(form, key) {
         var bracketed = key.replace(/\.(\w+)/g, '[$1]');
@@ -45,7 +57,8 @@
         return form.querySelector('[name="' + bracketed + '"]')
             || form.querySelector('[name="' + bracketed + '[]"]')
             || form.querySelector('[name="' + key + '"]')
-            || form.querySelector('[name="' + key + '[]"]');
+            || form.querySelector('[name="' + key + '[]"]')
+            || form.querySelector('[name^="' + key + '["]');
     }
 
     /**

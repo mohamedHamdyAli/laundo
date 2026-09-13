@@ -169,6 +169,11 @@ class OrderService
                 'delivery_fee' => $quote['delivery_fee'] ?? 0,
                 'discount_total' => $quote['discount'],
                 'cash_surcharge' => $quote['cash_surcharge'],
+                // Copied onto the order for the same reason the unit prices are:
+                // tax is charged at the rate in force on the day, and a state
+                // that raises it next quarter must not restate this invoice.
+                'tax_rate' => $quote['tax_rate'],
+                'estimated_tax' => $quote['tax'],
                 'estimated_total' => $quote['total'],
                 // The code that actually applied, not the one that was typed.
                 'coupon_code' => $coupon?->code,
@@ -271,13 +276,40 @@ class OrderService
             $fee = $this->pricing->deliveryFeeFor($laundry, $pickup, $order->deliveryAddress);
 
             if ($fee['fee'] !== null) {
+                // Through the one assembler, at the order's OWN stored rate.
+                // Adding the fee by hand here is how the cash surcharge came to
+                // be dropped from a reassigned order's total, and re-reading the
+                // tax setting would retax an agreed order at today's rate.
+                $money = $this->pricing->compose(
+                    (float) $order->estimated_subtotal,
+                    (float) $fee['fee'],
+                    (float) $order->discount_total,
+                    (float) $order->cash_surcharge,
+                    $order->taxRate(),
+                );
+
                 $order->update([
                     'delivery_fee' => $fee['fee'],
-                    'estimated_total' => round(
-                        (float) $order->estimated_subtotal + $fee['fee'] - (float) $order->discount_total,
-                        2
-                    ),
+                    'estimated_tax' => $money['tax'],
+                    'estimated_total' => $money['total'],
                 ]);
+
+                // The final figure, if the pieces have already been counted, is
+                // measured from the same fee and moves with it.
+                if ($order->hasFinalPrice()) {
+                    $final = $this->pricing->compose(
+                        (float) $order->final_subtotal,
+                        (float) $fee['fee'],
+                        (float) $order->discount_total,
+                        (float) $order->cash_surcharge,
+                        $order->taxRate(),
+                    );
+
+                    $order->update([
+                        'final_tax' => $final['tax'],
+                        'final_total' => $final['total'],
+                    ]);
+                }
             }
 
             $this->machine->note($order, "Assigned to laundry #{$laundryId}.", 'admin', $actor);

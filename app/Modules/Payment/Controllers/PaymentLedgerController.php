@@ -114,6 +114,22 @@ class PaymentLedgerController extends Controller
                 ->count(),
 
             'failed_today' => (clone $today)->where('status', PaymentStatus::Failed->value)->count(),
+
+            /*
+             * The last payment that actually landed, whenever that was.
+             *
+             * «Taken today: EGP 0.00» above a table full of payments reads as a
+             * broken screen, and it is the commonest way this page is
+             * misreported — the figures are windowed by day and by month, and a
+             * quiet morning looks identical to a page that has stopped working.
+             * Naming the last one settles it without weakening the figure above.
+             *
+             * Null when nothing has ever been captured, which is a different
+             * statement and the card says so.
+             */
+            'last_captured' => Payment::where('status', PaymentStatus::Captured->value)
+                ->latest('created_at')
+                ->first(['amount', 'created_at']),
         ];
     }
 

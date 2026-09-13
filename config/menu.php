@@ -110,6 +110,9 @@ return [
                 // a queue of couriers who took another job.
                 'driver_application' => 3,
                 'driver_earning' => 4,
+                // The terms, then what those terms came to this month.
+                'driver_bonus_rule' => 5,
+                'driver_bonus_award' => 6,
             ],
         ],
 
@@ -156,6 +159,13 @@ return [
                 'payment' => 1,
                 'refund' => 2,
                 'wallet' => 3,
+                // First of the pair a laundry owner can see, and the only item
+                // in this group they hold a permission for — so on their sidebar
+                // «Money» is a dropdown of one, which is exactly right: it is
+                // the screen that says what they are owed.
+                'order_settlement' => 4,
+                // The terms, beside the settlements they produce.
+                'commission_rule' => 5,
             ],
         ],
 
@@ -228,6 +238,10 @@ return [
         'driver_application' => 'bi bi-person-plus',
         // Was `bi bi-cash-stack`, which is now the Money group's own icon.
         'driver_earning' => 'bi bi-coin',
+        'driver_bonus_rule' => 'bi bi-sliders2',
+        'driver_bonus_award' => 'bi bi-trophy',
+        'order_settlement' => 'bi bi-pie-chart-fill',
+        'commission_rule' => 'bi bi-percent',
 
         'user' => 'bi bi-people',
 
@@ -277,6 +291,10 @@ return [
         'driver' => 'Drivers',
         'driver_application' => 'Applicants',
         'driver_earning' => 'Driver Earnings',
+        'driver_bonus_rule' => 'Bonus Rules',
+        'driver_bonus_award' => 'Monthly Bonuses',
+        'order_settlement' => 'Order Settlements',
+        'commission_rule' => 'Commissions',
 
         'user' => 'Users',
 
@@ -326,6 +344,10 @@ return [
         'driver' => 'admin.driver.index',
         'driver_application' => 'admin.driver_application.index',
         'driver_earning' => 'admin.earning.index',
+        'driver_bonus_rule' => 'admin.driver_bonus_rule.index',
+        'driver_bonus_award' => 'admin.driver_bonus.index',
+        'order_settlement' => 'admin.settlement.index',
+        'commission_rule' => 'admin.commission_rule.index',
 
         'user' => 'admin.user.index',
 

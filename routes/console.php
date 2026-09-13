@@ -94,3 +94,21 @@ Schedule::command('orders:alert-silent-confirmations')
 Schedule::command('laundo:weekly-reports')
     ->weeklyOn(0, '08:00')
     ->withoutOverlapping();
+
+/*
+| Last month's driver bonuses.
+|
+| The screen recomputes any open month every time it is opened, so this is not
+| what makes the figures right — it is what makes them noticed. A bonus nobody
+| is reminded of is a bonus paid late, and a driver chasing last month's money
+| is the cheapest possible way to lose them.
+|
+| The 1st at 07:00, covering the month that has just ended — so the figures are
+| about a month that is over, never one still in progress. It computes and it
+| raises one notification; it **never approves**. Approving is a person's act by
+| design, and a payout that ran on a schedule would be a wrong payment made in
+| the month nobody was looking.
+*/
+Schedule::command('drivers:close-bonus-month')
+    ->monthlyOn(1, '07:00')
+    ->withoutOverlapping();

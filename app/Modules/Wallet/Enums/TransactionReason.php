@@ -19,12 +19,41 @@ enum TransactionReason: string
     case Adjustment = 'adjustment';
 
     /**
+     * The platform's cut of an order, credited to the super admin.
+     */
+    case Commission = 'commission';
+
+    /**
+     * What is left of an order after the commission, credited to the laundry.
+     *
+     * A separate reason from `Earning`, which is the driver's. Both are money the
+     * platform owes for work done on an order, and folding them together would
+     * make «what did this laundry earn» unanswerable from the ledger — which is
+     * the one question this reason exists to answer.
+     */
+    case LaundryPayout = 'laundry_payout';
+
+    /**
+     * A driver's monthly performance bonus.
+     *
+     * Separate from `Earning`, which is the per-journey half. They are paid at
+     * different moments, decided by different rules and approved by different
+     * people — and «كام أخد بونس آخر الشهر» is a question the ledger has to be
+     * able to answer without also counting every leg he drove.
+     *
+     * There is deliberately no reason for a **salary**: the owner's decision is
+     * that salaries are paid entirely outside this system, so no wallet ever
+     * holds one and no transaction can claim to.
+     */
+    case Bonus = 'bonus';
+
+    /**
      * Which of the design's four tabs this belongs under.
      */
     public function group(): string
     {
         return match ($this) {
-            self::TopUp, self::Earning => 'additions',
+            self::TopUp, self::Earning, self::Commission, self::LaundryPayout, self::Bonus => 'additions',
             self::OrderPayment, self::Withdrawal => 'payments',
             self::Refund => 'refunds',
             self::Adjustment => 'adjustments',
@@ -40,6 +69,9 @@ enum TransactionReason: string
             self::Withdrawal => 'Withdrawal',
             self::Earning => 'Delivery earning',
             self::Adjustment => 'Adjustment',
+            self::Commission => 'Platform commission',
+            self::LaundryPayout => 'Laundry share of an order',
+            self::Bonus => 'Monthly bonus',
         };
     }
 

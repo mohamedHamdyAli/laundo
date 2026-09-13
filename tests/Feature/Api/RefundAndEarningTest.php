@@ -2,7 +2,10 @@
 
 namespace Tests\Feature\Api;
 
+use App\Modules\Driver\Enums\BonusBasis;
 use App\Modules\Driver\Models\Driver;
+use App\Modules\Driver\Models\DriverBonusRule;
+use App\Modules\Driver\Models\DriverProfile;
 use App\Modules\Order\Enums\OrderStatus;
 use App\Modules\Order\Enums\TaskType;
 use App\Modules\Order\Models\Order;
@@ -22,7 +25,6 @@ use App\Modules\Wallet\Enums\TransactionReason;
 use App\Modules\Wallet\Services\WalletService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
-use Illuminate\Support\Facades\Cache;
 use Laravel\Sanctum\Sanctum;
 use PHPUnit\Framework\Attributes\Test;
 use RuntimeException;
@@ -238,7 +240,7 @@ class RefundAndEarningTest extends TestCase
         $earning = DriverEarning::firstOrFail();
         $fee = (float) $order->fresh()->delivery_fee;
 
-        // The fee split across the four legs, times the configured share.
+        // The fee split across the four legs, times the driver's own share.
         $this->assertEquals(round($fee / 4, 2), (float) $earning->basis);
         $this->assertEquals(round(($fee / 4) * 0.20, 2), (float) $earning->amount);
         $this->assertSame(DriverEarning::PENDING, $earning->status);
@@ -250,20 +252,96 @@ class RefundAndEarningTest extends TestCase
     }
 
     #[Test]
-    public function the_share_comes_from_a_setting_not_from_code(): void
+    public function the_share_comes_from_the_drivers_own_rule(): void
     {
-        Setting::create(['key' => 'Driver_Earning_Rate', 'value' => '35']);
-        Cache::forget('setting_Driver_Earning_Rate');
-
-        $this->assertEquals(0.35, app(EarningService::class)->rate());
-
-        $driver = $this->eligibleDriver();
+        // It used to come from a platform-wide setting that had no field on the
+        // settings form and no seeder row, so it never came from anywhere but
+        // the hardcoded DEFAULT_RATE. Terms are per driver now.
+        $driver = $this->eligibleDriver(35.0);
         $order = $this->placedOrder();
         $this->walk($order, TaskType::PickupFromCustomer, $driver, signed: true);
 
         $earning = DriverEarning::firstOrFail();
         $this->assertEquals(0.35, (float) $earning->rate);
         $this->assertEquals(round((float) $earning->basis * 0.35, 2), (float) $earning->amount);
+    }
+
+    #[Test]
+    public function a_driver_on_no_rule_earns_nothing_at_all(): void
+    {
+        // The safe default, and the reason the hardcoded 20% had to go: a bonus
+        // nobody agreed to is money quietly leaving. No row, and no pending
+        // wallet credit either.
+        $driver = $this->driverUser('+201044440009', zoneIds: [$this->geo['zones'][0]->id]);
+        $order = $this->placedOrder();
+
+        $this->walk($order, TaskType::PickupFromCustomer, $driver, signed: true);
+
+        $this->assertSame(0, DriverEarning::count());
+        $this->assertSame('0.00', app(WalletService::class)->forUser($driver)->fresh()->pending_balance);
+    }
+
+    #[Test]
+    public function an_inactive_rule_pays_nothing(): void
+    {
+        // Switching a rule off is how an operator stops paying under it without
+        // walking every driver on it. «Inactive but still paying» would make the
+        // toggle a lie.
+        $driver = $this->eligibleDriver();
+        DriverBonusRule::query()->update(['status' => 'inactive']);
+
+        $order = $this->placedOrder();
+        $this->walk($order, TaskType::PickupFromCustomer, $driver, signed: true);
+
+        $this->assertSame(0, DriverEarning::count());
+    }
+
+    #[Test]
+    public function a_flat_per_order_rule_pays_once_not_four_times(): void
+    {
+        $driver = $this->driverUser('+201044440007', zoneIds: [$this->geo['zones'][0]->id]);
+
+        $rule = DriverBonusRule::create([
+            'name' => json_encode(['en' => 'Flat', 'ar' => 'ثابتة'], JSON_UNESCAPED_UNICODE),
+            'basis' => BonusBasis::PerOrder->value,
+            'amount' => 20,
+            'status' => 'active',
+        ]);
+        DriverProfile::where('user_id', $driver->id)->update(['bonus_rule_id' => $rule->id]);
+
+        $order = $this->deliveredOrder($driver);
+
+        // An order has four journeys. A flat «per order» amount paid on each of
+        // them pays the order four times over.
+        $this->assertSame(1, DriverEarning::count());
+        $this->assertEquals(20.0, (float) DriverEarning::firstOrFail()->amount);
+
+        // And the audit line does not read «EGP 20.00 x 100%».
+        $this->assertSame(moneyFormat(20), DriverEarning::firstOrFail()->explain());
+
+        $this->assertSame(
+            TaskType::DeliverToCustomer->value,
+            DriverEarning::firstOrFail()->task->type->value
+        );
+    }
+
+    #[Test]
+    public function a_flat_per_task_rule_pays_every_journey(): void
+    {
+        $driver = $this->driverUser('+201044440008', zoneIds: [$this->geo['zones'][0]->id]);
+
+        $rule = DriverBonusRule::create([
+            'name' => json_encode(['en' => 'Per leg', 'ar' => 'لكل رحلة'], JSON_UNESCAPED_UNICODE),
+            'basis' => BonusBasis::PerTask->value,
+            'amount' => 5,
+            'status' => 'active',
+        ]);
+        DriverProfile::where('user_id', $driver->id)->update(['bonus_rule_id' => $rule->id]);
+
+        $this->deliveredOrder($driver);
+
+        $this->assertSame(4, DriverEarning::count());
+        $this->assertEquals(20.0, (float) DriverEarning::sum('amount'));
     }
 
     #[Test]
@@ -276,9 +354,8 @@ class RefundAndEarningTest extends TestCase
         $before = DriverEarning::firstOrFail();
         $amount = (float) $before->amount;
 
-        // The rate moves next month. Last month's earnings must not.
-        Setting::create(['key' => 'Driver_Earning_Rate', 'value' => '90']);
-        Cache::forget('setting_Driver_Earning_Rate');
+        // The terms move next month. Last month's earnings must not.
+        DriverBonusRule::query()->update(['rate' => 90]);
 
         $this->assertEquals($amount, (float) $before->fresh()->amount);
         $this->assertEquals(0.20, (float) $before->fresh()->rate);
@@ -374,9 +451,38 @@ class RefundAndEarningTest extends TestCase
 
     // ------------------------------------------------------------------ helpers
 
-    private function eligibleDriver(): Driver
+    /**
+     * A driver who can be dispatched AND is on bonus terms.
+     *
+     * The rule is explicit now, because a driver on none earns nothing at all:
+     * `DEFAULT_RATE = 0.20` is gone, and «no rule means no bonus» is the whole
+     * point of the change. A test that forgot it would be asserting against a
+     * driver the platform does not pay.
+     */
+    private function eligibleDriver(float $rate = 20.0): Driver
     {
-        return $this->driverUser('+201044440001', zoneIds: [$this->geo['zones'][0]->id]);
+        $driver = $this->driverUser('+201044440001', zoneIds: [$this->geo['zones'][0]->id]);
+
+        $this->putOnRule($driver, $rate);
+
+        return $driver;
+    }
+
+    /**
+     * Put a driver on a share-of-the-delivery-fee rule.
+     */
+    private function putOnRule(Driver $driver, float $rate): DriverBonusRule
+    {
+        $rule = DriverBonusRule::create([
+            'name' => json_encode(['en' => 'Standard', 'ar' => 'القياسية'], JSON_UNESCAPED_UNICODE),
+            'basis' => BonusBasis::PercentDeliveryFee->value,
+            'rate' => $rate,
+            'status' => 'active',
+        ]);
+
+        DriverProfile::where('user_id', $driver->id)->update(['bonus_rule_id' => $rule->id]);
+
+        return $rule;
     }
 
     private function placedOrder(): Order

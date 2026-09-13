@@ -60,6 +60,8 @@ test.describe('every page renders for a super admin', () => {
     ['/admin/moderator', /Moderators/i],
     ['/admin/banner', /Banners/i],
     ['/admin/intro', /Intros/i],
+    ['/admin/settlement', /Order Settlements|تسويات الطلبات/i],
+    ['/admin/my-wallet', /My Wallet|محفظتي/i],
     ['/admin/generalSetting', /Setting/i],
   ];
 

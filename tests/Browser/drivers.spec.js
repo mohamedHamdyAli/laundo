@@ -72,7 +72,9 @@ test.describe('driver management', () => {
     await expect(body).toContainText(/Working Hours/i);
     await expect(body).toContainText(/Service Areas/i);
 
-    await expect(page.locator('input[name="vehicle_type"]')).toBeVisible();
+    // A <select> backed by VehicleType, not the free-text box this screen
+    // shipped with.
+    await expect(page.locator('select[name="vehicle_type"]')).toBeVisible();
     await expect(page.locator('input[name="license_expiry"]')).toBeVisible();
     await expect(page.locator('input[name="shift_start"]')).toBeVisible();
     await expect(page.locator('input[name="is_available"]')).toBeVisible();
@@ -100,7 +102,9 @@ test.describe('driver management', () => {
 
     await page.goto(href);
 
-    await expect(page.locator('input[name="vehicle_type"]')).toHaveValue('Motorcycle');
+    // The option's value is the enum case; the label beside it is what a person
+    // reads.
+    await expect(page.locator('select[name="vehicle_type"]')).toHaveValue('motorcycle');
     await expect(page.locator('input[name="plate_number"]')).toHaveValue('QRS 4821');
     await expect(page.locator('input[name="license_number"]')).toHaveValue('DL-55210');
     await expect(page.locator('input[name="shift_start"]')).toHaveValue('09:00');

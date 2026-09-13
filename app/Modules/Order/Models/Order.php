@@ -5,7 +5,9 @@ namespace App\Modules\Order\Models;
 use App\Modules\Address\Models\Address;
 use App\Modules\Coupon\Services\ReferralService;
 use App\Modules\Laundry\Models\Laundry;
+use App\Modules\Offer\Models\Offer;
 use App\Modules\Order\Enums\OrderStatus;
+use App\Modules\Payment\Models\OrderSettlement;
 use App\Modules\Payment\Models\Payment;
 use App\Modules\Service\Models\Service;
 use App\Modules\TimeSlot\Models\TimeSlot;
@@ -18,6 +20,7 @@ use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Str;
 
@@ -53,6 +56,9 @@ use Illuminate\Support\Str;
  * @property int|null $final_items_count
  * @property string|null $final_subtotal
  * @property string|null $final_total
+ * @property string|null $tax_rate
+ * @property string $estimated_tax
+ * @property string|null $final_tax
  * @property string|null $review_note
  * @property int $review_round
  * @property Carbon|null $reviewed_at
@@ -90,8 +96,8 @@ class Order extends Model
         'delivery_method', 'pickup_method', 'offer_id',
         'driver_note', 'special_instructions', 'review_terms_accepted_at',
         'estimated_items_count', 'estimated_subtotal', 'delivery_fee',
-        'discount_total', 'cash_surcharge', 'estimated_total',
-        'final_items_count', 'final_subtotal', 'final_total', 'review_note', 'reviewed_at',
+        'discount_total', 'cash_surcharge', 'tax_rate', 'estimated_tax', 'estimated_total',
+        'final_items_count', 'final_subtotal', 'final_tax', 'final_total', 'review_note', 'reviewed_at',
         'review_round', 'confirmed_at',
         'coupon_code', 'payment_method', 'payment_status', 'paid_at',
         'qr_token', 'recurrence_id',
@@ -111,8 +117,11 @@ class Order extends Model
             'delivery_fee' => 'decimal:2',
             'discount_total' => 'decimal:2',
             'cash_surcharge' => 'decimal:2',
+            'tax_rate' => 'decimal:2',
+            'estimated_tax' => 'decimal:2',
             'estimated_total' => 'decimal:2',
             'final_subtotal' => 'decimal:2',
+            'final_tax' => 'decimal:2',
             'final_total' => 'decimal:2',
         ];
     }
@@ -180,7 +189,7 @@ class Order extends Model
      */
     public function offer(): BelongsTo
     {
-        return $this->belongsTo(\App\Modules\Offer\Models\Offer::class, 'offer_id');
+        return $this->belongsTo(Offer::class, 'offer_id');
     }
 
     /**
@@ -278,6 +287,20 @@ class Order extends Model
     }
 
     /**
+     * How this order was divided between the platform and the laundry.
+     *
+     * A hasOne rather than a hasMany: the unique key on `order_settlements
+     * .order_id` is what stops a replayed completion paying a laundry twice, and
+     * the relation says so.
+     *
+     * @return HasOne<OrderSettlement, $this>
+     */
+    public function settlement(): HasOne
+    {
+        return $this->hasOne(OrderSettlement::class, 'order_id');
+    }
+
+    /**
      * «ادعُ أصدقاءك» is paid here rather than at the two places that settle
      * payment.
      *
@@ -338,6 +361,65 @@ class Order extends Model
     public function payableTotal(): float
     {
         return (float) ($this->final_total ?? $this->estimated_total);
+    }
+
+    /**
+     * The tax on the figure that actually applies.
+     */
+    public function payableTax(): float
+    {
+        return (float) ($this->hasFinalPrice() ? $this->final_tax : $this->estimated_tax);
+    }
+
+    /**
+     * What the two parties divide: the payable total with the tax taken back out.
+     *
+     * Tax is the state's money. It passes through the platform on its way to the
+     * treasury, so counting it as revenue would have the platform and the laundry
+     * splitting a sum neither of them is owed.
+     */
+    public function preTaxTotal(): float
+    {
+        return round(max($this->payableTotal() - $this->payableTax(), 0.0), 2);
+    }
+
+    /**
+     * What the laundry actually earned: the washing, after any discount.
+     *
+     * **Not the same as `preTaxTotal()`**, and the difference is the whole of
+     * how an order is divided. The customer's pre-tax total also carries the
+     * delivery fee and the cash handling fee, and neither of those is the
+     * laundry's work:
+     *
+     *   - the **delivery fee** is the platform's, and the platform pays the
+     *     driver out of it. Sharing it with the laundry as well meant paying for
+     *     the same journey twice — on a 10% commission the platform booked a
+     *     tenth of the fee and paid out a fifth of it.
+     *   - the **cash handling fee** is what it costs the platform to take notes.
+     *
+     * The discount comes off, because a coupon reduces what was collected for
+     * the washing and `OrderPricing` already caps it at the subtotal — so this
+     * can never go negative.
+     *
+     * Final if the pieces have been counted, the estimate until then, the same
+     * rule every other figure on this order follows.
+     */
+    public function cleaningRevenue(): float
+    {
+        $subtotal = (float) ($this->hasFinalPrice() ? $this->final_subtotal : $this->estimated_subtotal);
+
+        return round(max($subtotal - (float) $this->discount_total, 0.0), 2);
+    }
+
+    /**
+     * The tax rate this order was placed under, as a percentage.
+     *
+     * The order's own, never the setting's. An order agreed at 10% stays at 10%
+     * when the rate moves — the same rule that copies unit prices onto the order.
+     */
+    public function taxRate(): float
+    {
+        return (float) ($this->tax_rate ?? 0);
     }
 
     /**
