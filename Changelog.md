@@ -8,9 +8,14 @@
 - The guard is asked twice, differently. The list can only afford its **status** half — the full check is five existence queries and a page holds fifteen rows — so the button is drawn on status alone and `deleteRecord()` applies the money half inside the transaction when one is actually pressed. The detail screen has one order in hand and asks properly, showing the reason in place of the button. The gap between them is a rare refusal with an explanation on it, which is the behaviour anyway for a screen that has been open a while.
 - `wallet_transactions` is in the guard for the opposite reason to the rest: it is the one table that would **not** cascade. It names its source polymorphically with no foreign key, so deleting the order would leave a ledger entry pointing at a row that no longer exists — money moved, and the record of why it moved gone.
 
+### Improvement
+
+- **The log is one file per day now, not one file for ever.** `LOG_STACK` was `single`, so every line since March went into one `storage/logs/laravel.log` — 4.3 MB and 10,858 of its ~10,970 lines written by test runs, which is what made the 114 real entries hard to find. It is `daily` now, writing `laravel-YYYY-MM-DD.log` and keeping 14 days (`LOG_DAILY_DAYS`). The existing `laravel.log` is left in place as the archive of everything before today (Infrastructure).
+
 ### Refactor
 
 - **The orders list moved from stack shape 1 to shape 2.** It was the only screen using shape 1 — the row itself an `<a>`, the whole card the link — which was correct while «open me» was the only action a reader of that list had. `order.delete` gave it a second one, and a link cannot contain a button. The row is now a `<div>`, the order code carries the link, and the actions sit in `.stack-actions` beside the chevron. The shape note in `theme.css` said orders was the one-action case; it now says nothing uses that shape and why the rules are kept (Blade / CSS).
+- **`orders.spec.js` asserted the absence of the thing that was just built.** «there is no create or delete control for orders» encoded the old decision as a browser assertion, so the delete failed it the moment it rendered — correctly: the test was right about the rule it was written for. It is now two tests. Create stays forbidden outright; delete is checked **per row against its status pill**, offered on the three statuses `isInCustody()` excludes and withheld on every other, with a floor assertion so a run where nothing was offered fails rather than passing vacuously (Browser test).
 - Orders cannot use the shared `x-action-buttons` component: it draws View, Edit and Delete, and this module has no edit route — it would throw on `route('admin.order.edit')` before rendering anything. `admin/order/shared/controlBut.blade.php` is the module's own, with a compact variant for the detail screen's header (Blade).
 
 ### Fix

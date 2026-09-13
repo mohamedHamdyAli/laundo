@@ -126,13 +126,49 @@ test.describe('Orders — super admin', () => {
     expect(body).toMatch(/agreed when the order was placed|not current prices|المتفق عليها/i);
   });
 
-  test('there is no create or delete control for orders', async ({ page }) => {
+  test('an order cannot be invented from here', async ({ page }) => {
     await page.goto('/admin/order');
 
-    // An order is a customer's agreement. An operator must not be able to invent
-    // or erase one from here.
+    // An order is a customer's agreement. There is no create, and there is no
+    // route behind one either.
     await expect(page.locator('a[href*="/admin/order/create"]')).toHaveCount(0);
-    await expect(page.locator('form[action*="/admin/order/delete"]')).toHaveCount(0);
+  });
+
+  test('delete is offered on the rows the guard allows and withheld on the rest', async ({ page }) => {
+    await page.goto('/admin/order');
+
+    // The counterpart to the create rule. Erasing an order is allowed, but only
+    // while nobody is holding the clothes and no money has moved — so the check
+    // is not «no delete anywhere», it is «a delete exactly where the row is
+    // still deletable». The status pill is what the list decides on, so it is
+    // what this reads.
+    const rows = page.locator('.stack-row');
+    const count = await rows.count();
+    expect(count).toBeGreaterThan(0);
+
+    // `isInCustody()` is false for exactly these three, and the list draws the
+    // button on that half of the guard alone.
+    const deletable = /Awaiting pickup|Driver on way|Cancelled|بانتظار الاستلام|السائق في الطريق|ملغي/i;
+
+    let offered = 0;
+
+    for (let i = 0; i < count; i++) {
+      const row = rows.nth(i);
+      const status = (await row.locator('.status-pill').innerText()).trim();
+      const hasDelete = await row.locator('form[action*="/admin/order/delete"]').count();
+
+      if (deletable.test(status)) {
+        expect(hasDelete, `«${status}» should offer a delete`).toBe(1);
+        offered++;
+      } else {
+        expect(hasDelete, `«${status}» should not offer a delete`).toBe(0);
+      }
+    }
+
+    // The install always carries pickup-waiting orders, so a run where nothing
+    // was offered means the button stopped rendering rather than that the data
+    // moved on.
+    expect(offered).toBeGreaterThan(0);
   });
 });
 

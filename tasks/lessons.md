@@ -1962,3 +1962,41 @@ json.dumps(json.load(open(p)), ensure_ascii=False, indent=2) + '
 serialisation first and prove it byte-identical. Then make the edit, and check
 `git diff --stat` says roughly what you changed.
 
+
+---
+
+## Read a file before writing over it, even a working note
+
+`tasks/todo.md` was 3,667 lines of accumulated plans and reviews. I wrote this
+task's plan into it with a single overwrite and destroyed all of it — the diff
+said `3690 deletions` and I only noticed because I ran `git diff --stat` at the
+end for an unrelated reason.
+
+It was recoverable because the file was committed. Nothing about the way I wrote
+it depended on that.
+
+**Rule:** a file the project maintains by hand is append-only until proven
+otherwise. `cat >> file` for a new section, and `git diff --stat` after writing
+to any file I did not read first — the line counts are the only thing that would
+have caught this.
+
+---
+
+## The PHP suite is not the whole suite
+
+I reported a feature done and verified on 1,202 green PHPUnit tests, PHPStan and
+Pint. Playwright then failed on the first run: `orders.spec.js` asserted
+`form[action*="/admin/order/delete"]` had count 0, because the old decision
+«orders cannot be deleted» had been written down as a browser assertion as well
+as a comment.
+
+The PHP tests could not have caught it. They assert what the new code does; that
+spec asserted what the old code *refused* to do, and nothing in `tests/Feature`
+is written in that shape.
+
+**Rule:** a change that alters what a screen renders is not verified until
+`npx playwright test tests/Browser/<area>.spec.js` has run. And before adding a
+control to a screen, grep the browser specs for `toHaveCount(0)` on that area —
+an absence assertion is how this codebase records a deliberate omission, and
+building the thing it forbids is exactly when it should be reconsidered rather
+than deleted.
