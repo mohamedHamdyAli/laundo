@@ -12,6 +12,7 @@ use App\Modules\Order\Models\Order;
 use App\Modules\Order\Models\OrderMedia;
 use App\Modules\Order\Models\RecurrencePrompt;
 use App\Modules\Order\Services\OrderService;
+use App\Modules\Order\Services\OrderTimeline;
 use App\Modules\Order\Services\RecurrenceService;
 use App\Modules\Order\Services\RescheduleService;
 use App\Modules\TimeSlot\Models\TimeSlot;
@@ -172,24 +173,12 @@ class OrderController extends Controller
      */
     public function track(Request $request, $id): JsonResponse
     {
-        $order = $request->user()->orders()->with('statusLogs')->find($id);
+        // `tasks` as well as the logs: the timeline's «on the way to you» step is
+        // read off the third leg, and without this it is a query per request.
+        $order = $request->user()->orders()->with(['statusLogs', 'tasks'])->find($id);
 
         if (! $order) {
             return failReturnNotFound(__('Order not found.'));
-        }
-
-        $reached = $order->statusLogs->pluck('to_status')->all();
-        $steps = [];
-
-        foreach (OrderStatus::trackingSteps() as $step) {
-            $log = $order->statusLogs->firstWhere('to_status', $step->value);
-
-            $steps[] = [
-                'status' => $step->value,
-                'label' => __($step->label()),
-                'reached' => in_array($step->value, $reached, true),
-                'at' => $log ? humanDate($log->created_at) : null,
-            ];
         }
 
         return successReturnData([
@@ -202,7 +191,10 @@ class OrderController extends Controller
             // anybody is assigned, which the design already draws as an empty
             // card rather than a missing one.
             'driver' => $this->driverCard->forOrder($order),
-            'steps' => $steps,
+            // Eight steps, not the landing page's six. `OrderStatus::trackingSteps()`
+            // is the marketing journey and stays that; a customer waiting at home
+            // needs the two «on the way» states it leaves out. See OrderTimeline.
+            'steps' => app(OrderTimeline::class)->for($order),
         ]);
     }
 

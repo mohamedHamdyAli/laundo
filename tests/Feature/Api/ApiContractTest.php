@@ -3,6 +3,7 @@
 namespace Tests\Feature\Api;
 
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Tests\TestCase;
 
 /**
@@ -145,6 +146,37 @@ class ApiContractTest extends TestCase
         foreach ([400, 401, 403, 404, 422, 429, 500] as $bad) {
             $this->assertSame('error', apiResponseStatus($bad), "code {$bad}");
         }
+    }
+
+    public function test_a_paginated_list_sends_page_info_and_never_markup_in_the_message(): void
+    {
+        // A paginator stringifies itself by *rendering the Blade pagination
+        // view*. Put one in the message slot — which every call site in this API
+        // did — and the response is a page of Bootstrap `<nav>` markup where a
+        // client expects a sentence, with `meta` empty and nothing in the log.
+        $paginator = new LengthAwarePaginator([['id' => 1], ['id' => 2]], 30, 15, 1);
+
+        $body = successReturnPaginated([['id' => 1], ['id' => 2]], $paginator)->getData(true);
+
+        $this->assertSame('', $body['msg']);
+        $this->assertSame([
+            'current_page' => 1,
+            'per_page' => 15,
+            'has_more' => true,
+            'total' => 30,
+            'last_page' => 2,
+        ], $body['meta']);
+        $this->assertCount(2, $body['data']);
+    }
+
+    public function test_a_paginator_on_its_own_sends_its_own_items(): void
+    {
+        // The short form, for a list that needs no presenter.
+        $body = successReturnPaginated(new LengthAwarePaginator([['id' => 7]], 1, 15, 1))->getData(true);
+
+        $this->assertSame([['id' => 7]], $body['data']);
+        $this->assertSame(1, $body['meta']['total']);
+        $this->assertFalse($body['meta']['has_more']);
     }
 
     public function test_the_envelope_status_does_not_shadow_a_status_inside_data(): void

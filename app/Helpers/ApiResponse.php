@@ -147,9 +147,32 @@ if (! function_exists('successReturnCreated')) {
 if (! function_exists('successReturnPaginated')) {
     /**
      * Success for a paginated list. Items land in `data`, page info in `meta`.
+     *
+     * Call it with what you are sending and the paginator it came from:
+     *
+     *     return successReturnPaginated($payload, $rows);
+     *
+     * The items come first because a controller almost never sends the models
+     * straight out — it sends a `present*()` array built from `$rows->items()`,
+     * and the paginator tags along only for its page numbers. Passing the
+     * paginator on its own works too, and sends its own items.
+     *
+     * The paginator must never land in `$msg`. It carries a `__toString()` that
+     * renders the Blade pagination *view*, so a call with the arguments the
+     * other way round answered with a page of Bootstrap `<nav>` markup in the
+     * message field and an empty `meta` — valid JSON, 200 OK, nothing in the
+     * log. Every call site in this API was written that way.
      */
-    function successReturnPaginated($paginator, string $msg = ''): JsonResponse
+    function successReturnPaginated($items, $paginator = null, string $msg = ''): JsonResponse
     {
+        if ($paginator === null && $items instanceof Paginator) {
+            $paginator = $items;
+        }
+
+        if ($items instanceof Paginator) {
+            $items = $items->items();
+        }
+
         $meta = [];
 
         if ($paginator instanceof Paginator) {
@@ -171,7 +194,7 @@ if (! function_exists('successReturnPaginated')) {
             apiResponseCode('SUCCESS', 200),
             $msg,
             [
-                'data' => $paginator instanceof Paginator ? $paginator->items() : $paginator,
+                'data' => $items,
                 'meta' => $meta,
             ]
         );

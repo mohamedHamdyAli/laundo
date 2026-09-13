@@ -25,9 +25,9 @@ use Illuminate\Support\Facades\DB;
  * costing.
  *
  * So it is gated exactly as the live location is — an `Assigned` or `Started`
- * task on one of the two legs that end at the customer — and it disappears the
- * moment that leg finishes. A driver's number is reachable for the twenty
- * minutes they are at somebody's door, not for ever.
+ * task on one of the **three** legs the customer is waiting on — and it
+ * disappears the moment that leg finishes. A driver's number is reachable while
+ * they are handling this customer's clothes, not for ever.
  *
  * A masked proxy number would be better than either and needs a telephony
  * provider; none is wired yet, and neither is SMS.
@@ -80,27 +80,40 @@ class DriverCard
     private const FRESH_FOR_SECONDS = 120;
 
     /**
-     * Where the driver is — but only while they are coming to this customer.
-     *
-     * Legs two and three run between the laundry and back, and the customer is
-     * not waiting at either end of them. Showing a driver's live position for a
-     * journey nobody is waiting on is surveillance with no purpose, so the map
-     * is limited to the two legs that end at the customer's door.
-     *
-     * @return array<string, mixed>|null
-     */
-    /**
      * Whether this leg is one the customer is currently waiting on.
      *
-     * The two legs between the laundry and us are none of the customer's
-     * business — they are not waiting at the laundry's door — and a task that
-     * is finished or not yet assigned is not «right now».
+     * **Three of the four legs, not two.** It was two — the ones that end at the
+     * customer's door — on the reasoning that a journey nobody is waiting at
+     * either end of does not justify a live map.
+     *
+     * That reasoning held for leg two, the run from the customer's door to the
+     * laundry, and it was wrong for leg three. Both return journeys are assigned
+     * to a driver **at the same moment**, the instant the laundry marks an order
+     * ready. So the card reported «collecting from the laundry» with no number
+     * and no map for the whole way back, and the customer standing at home saw a
+     * screen that had not moved since the clothes were washed. The journey they
+     * are most obviously waiting on was the one the card went quiet for.
+     *
+     * Leg two stays out. That one really is none of the customer's business:
+     * their clothes are going away from them, and there is nothing they would
+     * ring a driver about.
      */
     private function reachableWhileLive(OrderTask $task): bool
     {
-        return in_array($task->type, [TaskType::PickupFromCustomer, TaskType::DeliverToCustomer], true)
+        return in_array($task->type, [
+            TaskType::PickupFromCustomer,
+            TaskType::CollectFromLaundry,
+            TaskType::DeliverToCustomer,
+        ], true)
             && in_array($task->status, [TaskStatus::Assigned, TaskStatus::Started], true);
     }
+
+    /**
+     * Where the driver is — but only while they are handling this order for the
+     * customer, and only while the reading is fresh.
+     *
+     * @return array<string, mixed>|null
+     */
 
     private function location(OrderTask $task): ?array
     {

@@ -1873,3 +1873,29 @@ hedged («almost certainly»), and nothing in the suite proves it either way.
 **Rule:** a subagent's finding is a lead, not a fact. Re-read the source for
 anything you are about to change, and leave the hedged claims alone until
 something demonstrates them.
+
+---
+
+## A `string` parameter swallows anything with `__toString()`
+
+`successReturnPaginated()` was declared `($paginator, string $msg = '')`. All
+five call sites in the API were written `($payload, $rows)` — the presented
+array first, the paginator second, which is the order that reads correctly at a
+call site. PHP's coercive mode obliged: the paginator has a `__toString()` that
+**renders the Blade pagination view**, so it became the message, and
+`/api/v1/notifications` answered `msg: "<nav class=\"d-flex…"` with an empty
+`meta`. 200 OK, valid JSON, nothing in the log, for the life of the API.
+
+It hid because the *other* two fields covered for it. `data` was right by
+accident — the array is not a `Paginator`, so the helper passed it straight
+through — and `meta` is only silently empty. `msg` only shows the markup when
+the list has more than one page, because Laravel's paginator renders nothing
+when `hasPages()` is false; on a short list it is merely blank.
+
+**Rule:** when a helper takes both a payload and a descriptor, do not let a
+scalar type be the only thing standing between them — a stringable object
+satisfies `string` without a murmur. Put the untyped parameter where the object
+belongs and the typed one last, and **assert the fields nobody looks at**: a
+response shape with three fields needs three assertions, or the two you skipped
+are where the bug will live.
+

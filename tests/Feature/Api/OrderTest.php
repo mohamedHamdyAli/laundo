@@ -15,6 +15,7 @@ use App\Modules\Pricing\Models\ItemPrice;
 use App\Modules\TimeSlot\Models\TimeSlot;
 use App\Modules\User\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Laravel\Sanctum\Sanctum;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
@@ -275,7 +276,10 @@ class OrderTest extends TestCase
 
         Sanctum::actingAs($customer);
 
-        $this->assertCount(3, $this->getJson('/api/v1/orders?tab=all', $this->apiHeaders())->json('data'));
+        $all = $this->getJson('/api/v1/orders?tab=all', $this->apiHeaders());
+        $this->assertCount(3, $all->json('data'));
+        $this->assertSame(3, $all->json('meta.total'));
+        $this->assertStringNotContainsString('<', (string) $all->json('msg'));
         $this->assertCount(1, $this->getJson('/api/v1/orders?tab=active', $this->apiHeaders())->json('data'));
         $this->assertCount(1, $this->getJson('/api/v1/orders?tab=completed', $this->apiHeaders())->json('data'));
         $this->assertCount(1, $this->getJson('/api/v1/orders?tab=cancelled', $this->apiHeaders())->json('data'));
@@ -325,13 +329,20 @@ class OrderTest extends TestCase
 
         $response = $this->getJson("/api/v1/orders/{$order->id}/track", $this->apiHeaders());
 
+        // Eight steps, not the landing page's six. `OrderStatus::trackingSteps()`
+        // is the marketing journey and keeps its six; the tracking screen adds
+        // the two «on the way» states, because between «ready» and «delivered»
+        // the screen used to sit unchanged for the whole journey home.
         $response->assertOk()
             ->assertJsonPath('data.status', 'picked_up')
             ->assertJsonPath('data.can_cancel', false)
-            ->assertJsonCount(6, 'data.steps')
-            ->assertJsonPath('data.steps.0.status', 'picked_up')
+            ->assertJsonCount(8, 'data.steps')
+            ->assertJsonPath('data.steps.0.status', 'driver_on_way')
             ->assertJsonPath('data.steps.0.reached', true)
-            ->assertJsonPath('data.steps.1.reached', false);
+            ->assertJsonPath('data.steps.1.status', 'picked_up')
+            ->assertJsonPath('data.steps.1.reached', true)
+            // Nothing past the pickup has happened yet.
+            ->assertJsonPath('data.steps.2.reached', false);
     }
 
     #[Test]
@@ -405,13 +416,13 @@ class OrderTest extends TestCase
 
         Sanctum::actingAs($customer);
 
-        \Illuminate\Support\Facades\DB::enableQueryLog();
+        DB::enableQueryLog();
         $this->withHeaders($this->apiHeaders())
             ->getJson('/api/v1/orders')
             ->assertOk()
             ->assertJsonCount(5, 'data');
-        $queries = count(\Illuminate\Support\Facades\DB::getQueryLog());
-        \Illuminate\Support\Facades\DB::disableQueryLog();
+        $queries = count(DB::getQueryLog());
+        DB::disableQueryLog();
 
         // Five orders must not mean five slot queries. The ceiling is loose on
         // purpose — it is guarding the shape, not a specific count.

@@ -195,6 +195,8 @@ class WalletTest extends TestCase
         $all = $this->getJson('/api/v1/wallet/transactions', $this->apiHeaders());
         $all->assertOk();
         $this->assertCount(3, $all->json('data'));
+        $this->assertSame(3, $all->json('meta.total'));
+        $this->assertStringNotContainsString('<', (string) $all->json('msg'));
 
         // «+100 ج.م» / «-150 ج.م» — signed for display, unsigned in store.
         // Cast before comparing: PHP encodes a whole float as `100`, so the

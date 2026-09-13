@@ -590,7 +590,14 @@ class DriverTaskTest extends TestCase
 
         Sanctum::actingAs($driver);
 
-        $this->assertCount(4, $this->getJson('/api/v1/driver/tasks', $this->apiHeaders())->json('data'));
+        $all = $this->getJson('/api/v1/driver/tasks', $this->apiHeaders());
+        $this->assertCount(4, $all->json('data'));
+        // The page info the app's infinite scroll reads; `msg` is a sentence, never
+        // the rendered pagination view.
+        $this->assertSame(4, $all->json('meta.total'));
+        $this->assertFalse($all->json('meta.has_more'));
+        $this->assertStringNotContainsString('<', (string) $all->json('msg'));
+
         $this->assertCount(2, $this->getJson('/api/v1/driver/tasks?kind=collection', $this->apiHeaders())->json('data'));
         $this->assertCount(2, $this->getJson('/api/v1/driver/tasks?kind=delivery', $this->apiHeaders())->json('data'));
         $this->assertCount(4, $this->getJson('/api/v1/driver/tasks?state=new', $this->apiHeaders())->json('data'));

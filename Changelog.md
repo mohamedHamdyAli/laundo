@@ -4,9 +4,13 @@
 
 ### Fix
 
+- **Every paginated endpoint answered with a page of HTML in `msg` and no page info at all.** `successReturnPaginated()` took `($paginator, $msg)` while all five call sites passed `($items, $paginator)` — so the paginator landed in the message slot, PHP coerced it through `AbstractPaginator::__toString()`, which *renders the Blade pagination view*, and `/api/v1/notifications` replied `msg: "<nav class=\"d-flex justify-items-center…"`. `meta` was `[]` on every list in the API, because the paginator never reached the parameter that fills it. Nothing failed loudly: 200 OK, valid JSON, clean log. The helper now takes `($items, $paginator, $msg)` — the order every call site was already written in — and still accepts a paginator on its own (API / Helper).
+
 - **The commonest validation error on 21 create screens never appeared beside its field.** `form-validation.js` matched a field by exact name, and the rule «a name in at least one language» can only fail under the bare key `name` while the input is `name[en]` — no single language is at fault, so no single language is named. The message fell through to the banner at the top of the form, which is the opposite of what this file exists to do. `findField()` now falls back to a prefix match, and matches by prefix rather than by guessing `en` because the default language decides which input exists (JS).
 
 ### Tests
+
+- **The pagination envelope, at the helper and on four live endpoints.** `ApiContractTest` asserts both call forms and that `msg` comes back empty rather than rendered; the notifications, orders, wallet-history and driver-task list tests each assert their `meta` and that no `<` reaches `msg`. The bug survived this long because `data` was right by accident and nothing had ever asserted the other two fields. Verified by reverting the helper and watching them fail (Tests).
 
 - `add-forms.spec.js` (17 browser) — **the «إضافة» screens, driven rather than merely rendered.** The existing coverage proved a create form appears; nothing submitted one. These prove what only a browser can: the page does **not** reload when a save fails, the message lands **beside its own field**, **what you typed is still there** afterwards — three quality gates and two tier rows survive a refused save — the previous message is cleared rather than stacked on a second attempt, the value box follows the basis, correcting the error and resubmitting actually saves, an Arabic-only name round-trips without escapes, and both forms render RTL. The fix above was verified by reverting it and watching the test fail (Tests).
 

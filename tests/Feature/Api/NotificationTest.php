@@ -397,6 +397,25 @@ class NotificationTest extends TestCase
     }
 
     #[Test]
+    public function the_list_answers_page_info_not_a_rendered_pagination_bar(): void
+    {
+        $this->placedOrder();
+
+        Sanctum::actingAs($this->customer);
+
+        $list = $this->getJson('/api/v1/notifications?per_page=15', $this->apiHeaders())->assertOk();
+
+        // It used to answer `msg` with the Blade pagination *view* — a page of
+        // `<nav class="d-flex justify-items-center…` markup — and an empty
+        // `meta`, because the paginator was being passed where the message goes.
+        $this->assertStringNotContainsString('<', (string) $list->json('msg'));
+        $this->assertSame(1, $list->json('meta.current_page'));
+        $this->assertSame(15, $list->json('meta.per_page'));
+        $this->assertSame(1, $list->json('meta.total'));
+        $this->assertFalse($list->json('meta.has_more'));
+    }
+
+    #[Test]
     public function a_customer_cannot_read_another_customers_notifications(): void
     {
         $this->placedOrder();
