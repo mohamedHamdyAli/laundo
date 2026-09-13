@@ -1,0 +1,1258 @@
+<title>دورة الطلب بالكامل — Laundo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Readex+Pro:wght@400;500;600&display=swap">
+
+<style>
+/* ------------------------------------------------------------------
+   دليل اختبار لوحة Laundo
+   لوحة التحكم نفسها كحلة بحرية داكنة، فالمستند مبني على نفس العائلة:
+   أزرق بحري عميق كلون أساسي، ورمادي مائل للأزرق كحياد (مش رمادي محايد
+   افتراضي)، وثلاثة ألوان دلالية منفصلة تماماً عن لون الهوية.
+   ------------------------------------------------------------------ */
+
+:root {
+  /* الأرضيات والحبر */
+  --ground:      #F4F6F9;
+  --surface:     #FFFFFF;
+  --surface-2:   #EDF1F6;
+  --ink:         #101A26;
+  --ink-2:       #35455A;
+  --muted:       #667A93;
+  --line:        #DBE3ED;
+  --line-strong: #C2CFDE;
+
+  /* الهوية — أزرق بحري */
+  --brand:       #0E4C75;
+  --brand-soft:  #E4EEF6;
+  --brand-ink:   #0A3855;
+
+  /* دلالية — منفصلة عن الهوية */
+  --good:        #146B47;
+  --good-soft:   #E1F1E9;
+  --warn:        #8A5A00;
+  --warn-soft:   #FAEEDA;
+  --crit:        #A32218;
+  --crit-soft:   #FBE6E4;
+
+  --radius:      10px;
+  --shadow:      0 1px 2px rgba(16,26,38,.06), 0 8px 24px -18px rgba(16,26,38,.35);
+
+  --f-body: "IBM Plex Sans Arabic", "Segoe UI", Tahoma, sans-serif;
+  --f-disp: "Readex Pro", "IBM Plex Sans Arabic", "Segoe UI", sans-serif;
+  --f-mono: "IBM Plex Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --ground:      #0B121B;
+    --surface:     #121C28;
+    --surface-2:   #182533;
+    --ink:         #E8EEF5;
+    --ink-2:       #BCCBDB;
+    --muted:       #8699AF;
+    --line:        #24344757;
+    --line-strong: #2E4257;
+
+    --brand:       #6FB3DE;
+    --brand-soft:  #16293A;
+    --brand-ink:   #A8D2ED;
+
+    --good:        #63C296;
+    --good-soft:   #12261D;
+    --warn:        #DFAE5E;
+    --warn-soft:   #2A2113;
+    --crit:        #F08279;
+    --crit-soft:   #2B1614;
+
+    --shadow: 0 1px 2px rgba(0,0,0,.4), 0 10px 30px -20px rgba(0,0,0,.9);
+  }
+}
+
+:root[data-theme="dark"] {
+  --ground:      #0B121B;
+  --surface:     #121C28;
+  --surface-2:   #182533;
+  --ink:         #E8EEF5;
+  --ink-2:       #BCCBDB;
+  --muted:       #8699AF;
+  --line:        #24344757;
+  --line-strong: #2E4257;
+
+  --brand:       #6FB3DE;
+  --brand-soft:  #16293A;
+  --brand-ink:   #A8D2ED;
+
+  --good:        #63C296;
+  --good-soft:   #12261D;
+  --warn:        #DFAE5E;
+  --warn-soft:   #2A2113;
+  --crit:        #F08279;
+  --crit-soft:   #2B1614;
+
+  --shadow: 0 1px 2px rgba(0,0,0,.4), 0 10px 30px -20px rgba(0,0,0,.9);
+}
+
+* { box-sizing: border-box; }
+
+/* الاتجاه في CSS كمان مش في الـ JS بس: Chrome بيرندر الملف ده بـ
+   --print-to-pdf، وما ينفعش اتجاه الصفحة كله يعتمد على سكربت يلحق يشتغل. */
+html { direction: rtl; }
+
+body {
+  margin: 0;
+  direction: rtl;
+  background: var(--ground);
+  color: var(--ink);
+  font-family: var(--f-body);
+  font-size: 15px;
+  line-height: 1.75;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ---------- الهيكل ---------- */
+
+.shell {
+  max-width: 1240px;
+  margin: 0 auto;
+  padding: 0 20px 96px;
+  display: grid;
+  grid-template-columns: 244px minmax(0, 1fr);
+  gap: 48px;
+  align-items: start;
+}
+@media (max-width: 940px) {
+  .shell { grid-template-columns: minmax(0, 1fr); gap: 0; }
+  .toc { position: static; margin-bottom: 32px; }
+}
+
+/* ---------- الترويسة ---------- */
+
+.masthead {
+  border-bottom: 1px solid var(--line-strong);
+  background: var(--surface);
+  margin-bottom: 40px;
+}
+.masthead-in {
+  max-width: 1240px;
+  margin: 0 auto;
+  padding: 40px 20px 32px;
+}
+.eyebrow {
+  font-family: var(--f-mono);
+  font-size: 11.5px;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--brand);
+  margin: 0 0 12px;
+}
+h1 {
+  font-family: var(--f-disp);
+  font-weight: 600;
+  font-size: clamp(30px, 4.6vw, 44px);
+  line-height: 1.25;
+  letter-spacing: -.01em;
+  margin: 0 0 14px;
+  text-wrap: balance;
+}
+.lede {
+  font-size: 17px;
+  color: var(--ink-2);
+  max-width: 62ch;
+  margin: 0;
+}
+.stamp {
+  margin-top: 26px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 28px;
+  font-family: var(--f-mono);
+  font-size: 12px;
+  color: var(--muted);
+}
+.stamp b { color: var(--ink-2); font-weight: 600; }
+
+/* ---------- الفهرس ---------- */
+
+.toc {
+  position: sticky;
+  top: 20px;
+  font-size: 13.5px;
+}
+.toc h2 {
+  font-family: var(--f-mono);
+  font-size: 11px;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin: 0 0 12px;
+  font-weight: 500;
+}
+.toc ol { list-style: none; margin: 0; padding: 0; }
+.toc li { margin-bottom: 2px; }
+.toc a {
+  display: block;
+  padding: 5px 10px;
+  border-radius: 6px;
+  color: var(--ink-2);
+  text-decoration: none;
+  border-right: 2px solid transparent;
+}
+.toc a:hover { background: var(--surface-2); color: var(--ink); border-right-color: var(--brand); }
+.toc a:focus-visible { outline: 2px solid var(--brand); outline-offset: 1px; }
+.toc .sub { padding-right: 22px; font-size: 12.5px; color: var(--muted); }
+
+/* ---------- الأقسام ---------- */
+
+section { scroll-margin-top: 20px; margin-bottom: 64px; }
+
+.sec-head { margin-bottom: 22px; }
+.sec-num {
+  font-family: var(--f-mono);
+  font-size: 12px;
+  color: var(--brand);
+  letter-spacing: .1em;
+  display: block;
+  margin-bottom: 4px;
+}
+h2.sec-title {
+  font-family: var(--f-disp);
+  font-weight: 600;
+  font-size: 26px;
+  line-height: 1.35;
+  margin: 0 0 8px;
+  padding-bottom: 12px;
+  border-bottom: 2px solid var(--ink);
+  text-wrap: balance;
+}
+h3 {
+  font-family: var(--f-disp);
+  font-weight: 500;
+  font-size: 18px;
+  margin: 32px 0 10px;
+  color: var(--ink);
+}
+h4 {
+  font-size: 15px;
+  font-weight: 600;
+  margin: 22px 0 8px;
+}
+p { margin: 0 0 14px; max-width: 70ch; }
+ul, ol { margin: 0 0 14px; padding-right: 20px; max-width: 72ch; }
+li { margin-bottom: 6px; }
+strong { font-weight: 600; color: var(--ink); }
+
+/* ---------- كود ومعرّفات ---------- */
+
+code, .mono {
+  font-family: var(--f-mono);
+  font-size: .88em;
+  direction: ltr;
+  unicode-bidi: isolate;
+  display: inline-block;
+}
+code {
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: .5px 5px;
+  color: var(--brand-ink);
+}
+/* ---------- الجداول ---------- */
+
+.scroll { overflow-x: auto; margin: 0 0 18px; border-radius: var(--radius); border: 1px solid var(--line); }
+table { border-collapse: collapse; width: 100%; font-size: 13.5px; background: var(--surface); }
+th, td { text-align: right; padding: 9px 13px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th {
+  background: var(--surface-2);
+  font-weight: 600;
+  font-size: 11.5px;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--muted);
+  white-space: nowrap;
+}
+tbody tr:last-child td { border-bottom: 0; }
+td.num { font-variant-numeric: tabular-nums; }
+
+/* ---------- بطاقة شاشة ---------- */
+
+.screen {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 18px 20px 8px;
+  margin-bottom: 14px;
+  box-shadow: var(--shadow);
+}
+.screen > header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px 12px;
+  margin-bottom: 12px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--line);
+}
+.screen h4 { margin: 0; font-family: var(--f-disp); font-size: 17px; font-weight: 500; }
+.screen header .path {
+  font-family: var(--f-mono);
+  font-size: 12px;
+  color: var(--muted);
+  direction: ltr;
+  unicode-bidi: isolate;
+}
+
+/* شبكة الحقائق داخل البطاقة */
+.facts { display: grid; grid-template-columns: 92px minmax(0, 1fr); gap: 2px 14px; font-size: 14px; }
+@media (max-width: 620px) { .facts { grid-template-columns: minmax(0,1fr); gap: 0 0; } }
+.facts dt {
+  font-family: var(--f-mono);
+  font-size: 11px;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+  color: var(--muted);
+  padding-top: 5px;
+}
+.facts dd { margin: 0 0 10px; }
+.facts dd p { margin: 0 0 6px; }
+.facts dd ul { margin: 0; padding-right: 18px; }
+
+/* ---------- شارات ---------- */
+
+.tag {
+  display: inline-block;
+  font-family: var(--f-mono);
+  font-size: 11px;
+  line-height: 1.7;
+  padding: 0 7px;
+  border-radius: 4px;
+  border: 1px solid transparent;
+  direction: ltr;
+  unicode-bidi: isolate;
+  white-space: nowrap;
+}
+.t-brand { background: var(--brand-soft); color: var(--brand-ink); border-color: var(--brand); }
+.t-good  { background: var(--good-soft); color: var(--good); border-color: var(--good); }
+.t-warn  { background: var(--warn-soft); color: var(--warn); border-color: var(--warn); }
+.t-crit  { background: var(--crit-soft); color: var(--crit); border-color: var(--crit); }
+.t-mute  { background: var(--surface-2); color: var(--muted); border-color: var(--line-strong); }
+
+/* ---------- شريط المستوى ---------- */
+
+.level {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin: 34px 0 14px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--line-strong);
+}
+.level .n {
+  font-family: var(--f-mono);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--surface);
+  background: var(--brand);
+  border-radius: 4px;
+  padding: 1px 8px;
+  flex: none;
+}
+.level h3 { margin: 0; font-size: 19px; }
+.level .why { font-size: 13px; color: var(--muted); margin-right: auto; }
+
+/* ---------- تنبيهات ---------- */
+
+.note {
+  border-radius: var(--radius);
+  padding: 13px 16px;
+  margin: 0 0 18px;
+  font-size: 14px;
+  border: 1px solid;
+  border-right-width: 3px;
+}
+.note p:last-child { margin-bottom: 0; }
+.note-t { font-weight: 600; display: block; margin-bottom: 3px; }
+.n-warn { background: var(--warn-soft); border-color: var(--warn); color: var(--ink); }
+.n-crit { background: var(--crit-soft); border-color: var(--crit); color: var(--ink); }
+.n-info { background: var(--brand-soft); border-color: var(--brand); color: var(--ink); }
+
+/* ---------- خط الأنابيب (دورة حياة الطلب) ---------- */
+
+.pipe { display: flex; flex-wrap: wrap; gap: 7px; align-items: center; margin: 0 0 8px; }
+.stage {
+  font-family: var(--f-mono);
+  font-size: 11.5px;
+  padding: 4px 9px;
+  border-radius: 5px;
+  background: var(--surface);
+  border: 1px solid var(--line-strong);
+  direction: ltr;
+  unicode-bidi: isolate;
+  white-space: nowrap;
+}
+.stage b { display: block; font-family: var(--f-body); font-size: 12px; font-weight: 500; direction: rtl; color: var(--muted); }
+.stage.s-live { border-color: var(--brand); background: var(--brand-soft); color: var(--brand-ink); }
+.stage.s-end  { border-color: var(--good); background: var(--good-soft); color: var(--good); }
+.stage.s-stop { border-color: var(--crit); background: var(--crit-soft); color: var(--crit); }
+.stage.s-wait { border-color: var(--warn); background: var(--warn-soft); color: var(--warn); }
+.arrow { color: var(--muted); font-family: var(--f-mono); flex: none; }
+
+/* ---------- شبكة الأرقام ---------- */
+
+.figures {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(148px, 1fr));
+  gap: 1px;
+  background: var(--line);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  overflow: hidden;
+  margin-bottom: 22px;
+}
+.fig { background: var(--surface); padding: 14px 16px; }
+.fig .v {
+  font-family: var(--f-mono);
+  font-size: 25px;
+  font-weight: 600;
+  line-height: 1.2;
+  color: var(--brand);
+  font-variant-numeric: tabular-nums;
+}
+.fig .k { font-size: 12.5px; color: var(--muted); margin-top: 2px; }
+
+/* ---------- متنوع ---------- */
+
+hr { border: 0; border-top: 1px solid var(--line); margin: 34px 0; }
+a { color: var(--brand); }
+a:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; border-radius: 3px; }
+.foot {
+  border-top: 1px solid var(--line-strong);
+  padding-top: 18px;
+  font-size: 13px;
+  color: var(--muted);
+  max-width: 72ch;
+}
+@media (prefers-reduced-motion: reduce) {
+  * { animation: none !important; transition: none !important; }
+}
+
+/* ------------------------------------------------------------------
+   الطباعة / PDF
+   نفس الملف بيخدم الصفحة والـ PDF — Chrome بيرندره بـ --print-to-pdf،
+   فالطباعة متعاد تعريفها هنا بمقاس الورق بدل نسخة تانية تفضل تفرق.
+   ------------------------------------------------------------------ */
+
+@page { size: A4; margin: 14mm 12mm 16mm; }
+
+@media print {
+  /* التلاتة مع بعض: بلوك الوضع الداكن بتاع الشاشة نوعيته (0,2,0) قدام
+     :root المجردة (0,1,0)، فكان هيكسب على الورق مهما كان ترتيب المصدر.
+     مساواة وزنه هنا هي اللي بتفرض الحبر الفاتح فعلاً. */
+  :root,
+  :root:not([data-theme="light"]),
+  :root[data-theme="dark"] {
+    --ground:      #FFFFFF;
+    --surface:     #FFFFFF;
+    --surface-2:   #F1F4F8;
+    --ink:         #0C1622;
+    --ink-2:       #333F52;
+    --muted:       #5E6E85;
+    --line:        #D3DCE7;
+    --line-strong: #B4C2D2;
+
+    --brand:       #0B3F63;
+    --brand-soft:  #EAF1F7;
+    --brand-ink:   #08334F;
+
+    --good:        #0F5636;
+    --good-soft:   #E7F3EC;
+    --warn:        #6F4700;
+    --warn-soft:   #FBF1DE;
+    --crit:        #8C1B12;
+    --crit-soft:   #FCE9E7;
+
+    --shadow: none;
+  }
+
+  * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+
+  body { font-size: 9.4pt; line-height: 1.62; background: #fff; }
+
+  /* الفهرس الجانبي ملهوش معنى على الورق — الـ PDF ليه فهرسه. */
+  .toc { display: none; }
+  .shell { display: block; max-width: none; padding: 0; }
+
+  .masthead { border-bottom-width: 2px; margin-bottom: 10mm; break-after: avoid; }
+  .masthead-in { padding: 0 0 6mm; max-width: none; }
+  h1 { font-size: 23pt; }
+  .lede { font-size: 11pt; max-width: none; }
+  .stamp { margin-top: 5mm; font-size: 8.4pt; }
+
+  p, ul, ol, .facts { max-width: none; }
+
+  /* عناوين ما تتيتّمش في آخر صفحة. */
+  section { break-inside: auto; margin-bottom: 9mm; }
+  .sec-head { break-after: avoid; break-inside: avoid; }
+  h2.sec-title { font-size: 16.5pt; }
+  h3, h4 { break-after: avoid; }
+  .level { break-after: avoid; break-inside: avoid; margin-top: 8mm; }
+
+  /* بطاقة الشاشة وحدة واحدة — ما تتقسمش على صفحتين. */
+  .screen {
+    break-inside: avoid;
+    box-shadow: none;
+    border-color: var(--line-strong);
+    padding: 4mm 5mm 1mm;
+    margin-bottom: 3.5mm;
+  }
+  .screen h4 { font-size: 12pt; }
+
+  .note { break-inside: avoid; }
+  .figures { break-inside: avoid; }
+  .pipe { break-inside: avoid; }
+
+  /* الجداول بتتقسم بس مع تكرار الترويسة. */
+  .scroll { overflow: visible; break-inside: auto; }
+  table { font-size: 8.5pt; }
+  thead { display: table-header-group; }
+  tr { break-inside: avoid; }
+  th, td { padding: 2.2mm 2.6mm; }
+
+  a { color: var(--brand-ink); text-decoration: none; }
+  code { background: var(--surface-2); border-color: var(--line); }
+}
+</style>
+
+<script>
+  document.documentElement.setAttribute('dir', 'rtl');
+  document.documentElement.setAttribute('lang', 'ar');
+</script>
+
+<header class="masthead">
+  <div class="masthead-in">
+    <p class="eyebrow">Order Cycle · Laundo</p>
+    <h1>دورة الطلب بالكامل</h1>
+    <p class="lede">
+      من أول ما العميل يعمل طلب لحد ما السائق يسلّمه الهدوم نضيفة — بالترتيب، وبالسبب.
+      وتركيز خاص على الحتتين اللي بيتلخبطوا: <b>مراجعة السعر النهائي</b>،
+      و<b>الجدولة المتكررة</b>، والفرق بينها وبين <b>تأجيل موعد</b>.
+    </p>
+    <div class="stamp">
+      <span>اتكتب من <b>الكود</b> مباشرة، مش من الديزاين</span>
+      <span>آخر تحديث <b>١٣ سبتمبر ٢٠٢٦</b></span>
+      <span>المرجع السريع للحالات: <b>order-lifecycle.md</b></span>
+    </div>
+  </div>
+</header>
+
+<div class="shell">
+
+<nav class="toc">
+  <h2>المحتويات</h2>
+  <ol>
+    <li><a href="#s1">١ · الصورة الكبيرة</a></li>
+    <li><a href="#s2">٢ · السايكل خطوة بخطوة</a></li>
+    <li><a href="#s3">٣ · مراجعة السعر النهائي</a></li>
+    <li><a class="sub" href="#s3-mabda">المبدأ</a></li>
+    <li><a class="sub" href="#s3-steps">الخطوات الخمسة</a></li>
+    <li><a href="#s4">٤ · الجدولة المتكررة</a></li>
+    <li><a class="sub" href="#s4-three">التلات حاجات</a></li>
+    <li><a href="#s5">٥ · الفرق بين الاتنين</a></li>
+    <li><a href="#s6">٦ · أمثلة كاملة</a></li>
+  </ol>
+</nav>
+
+<main>
+
+<!-- ============================================================ 1 -->
+<section id="s1">
+  <div class="sec-head">
+    <p class="sec-num">القسم ١</p>
+    <h2>الصورة الكبيرة</h2>
+  </div>
+
+<style>
+/* مخطط التدفق — HTML مش ASCII.
+   الرسم بالمحارف بيتكسر مع العربي: الـbidi بيعيد ترتيب كل سطر فيه عربي وإنجليزي
+   مع بعض، فالأعمدة ما بتقفش فوق بعضها. الجدول ده بيرسم نفس الحاجة وبيشتغل صح
+   في الاتجاهين وعلى الورق. */
+.flow { border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; background: var(--surface); }
+.flow-row { display: grid; grid-template-columns: 78px minmax(0,1fr) 178px; gap: 0; border-bottom: 1px solid var(--line); }
+.flow-row:last-child { border-bottom: 0; }
+.flow-who {
+  padding: 11px 12px; font-size: 12px; font-weight: 600;
+  background: var(--surface-2); color: var(--ink-2);
+  border-inline-end: 1px solid var(--line); display: flex; align-items: center;
+}
+.flow-what { padding: 11px 14px; font-size: 14px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.flow-what .sub { color: var(--muted); font-size: 12.5px; }
+.flow-to {
+  padding: 11px 12px; border-inline-start: 1px solid var(--line);
+  font-family: var(--f-mono); font-size: 11.5px; display: flex; align-items: center;
+}
+.flow-row.is-fork { background: var(--brand-soft); }
+.flow-row.is-money { background: var(--good-soft); }
+.w-cust { color: var(--brand); }
+.w-drv  { color: var(--warn); }
+.w-lau  { color: var(--good); }
+.w-sys  { color: var(--muted); }
+@media print { .flow-row { break-inside: avoid; } }
+</style>
+
+  <div class="flow">
+    <div class="flow-row">
+      <div class="flow-who w-cust">العميل</div>
+      <div class="flow-what">يعمل طلب
+        <span class="sub">سعر تقديري + موافقة على المراجعة · ٤ رحلات بتتخلق</span></div>
+      <div class="flow-to"><span class="tag t-mute">awaiting_pickup</span></div>
+    </div>
+
+    <div class="flow-row">
+      <div class="flow-who w-drv">السائق</div>
+      <div class="flow-what">رحلة ١ — يستلم من العميل <span class="sub">+ إمضاء</span></div>
+      <div class="flow-to"><span class="tag t-brand">picked_up</span></div>
+    </div>
+
+    <div class="flow-row">
+      <div class="flow-who w-drv">السائق</div>
+      <div class="flow-what">رحلة ٢ — يسلّم للمغسلة <span class="sub">+ عدّ القطع</span></div>
+      <div class="flow-to"><span class="sub">ما بتحركش</span></div>
+    </div>
+
+    <div class="flow-row">
+      <div class="flow-who w-lau">المغسلة</div>
+      <div class="flow-what">تعدّ القطع وتحدّد السعر النهائي
+        <span class="sub">إشعار للعميل: السعر جاهز</span></div>
+      <div class="flow-to"><span class="tag t-warn">reviewed</span></div>
+    </div>
+
+    <div class="flow-row is-fork">
+      <div class="flow-who w-cust">العميل</div>
+      <div class="flow-what"><b>«تأكيد السعر»</b></div>
+      <div class="flow-to"><span class="tag t-good">confirmed</span></div>
+    </div>
+    <div class="flow-row is-fork">
+      <div class="flow-who w-cust">العميل</div>
+      <div class="flow-what"><b>«طلب مراجعة إضافية»</b> <span class="sub">يرجع للمغسلة تعدّ تاني</span></div>
+      <div class="flow-to"><span class="tag t-warn">review_disputed</span></div>
+    </div>
+    <div class="flow-row is-fork">
+      <div class="flow-who w-cust">العميل</div>
+      <div class="flow-what"><b>«لدي استفسار عن السعر»</b></div>
+      <div class="flow-to"><span class="sub">الحالة ما بتتغيّرش</span></div>
+    </div>
+
+    <div class="flow-row">
+      <div class="flow-who w-lau">المغسلة</div>
+      <div class="flow-what">تغسل</div>
+      <div class="flow-to"><span class="tag t-mute">cleaning</span></div>
+    </div>
+    <div class="flow-row">
+      <div class="flow-who w-lau">المغسلة</div>
+      <div class="flow-what">خلصت</div>
+      <div class="flow-to"><span class="tag t-mute">ready_for_delivery</span></div>
+    </div>
+
+    <div class="flow-row">
+      <div class="flow-who w-drv">السائق</div>
+      <div class="flow-what">رحلة ٣ — يستلم من المغسلة <span class="sub">+ عدّ القطع</span></div>
+      <div class="flow-to"><span class="sub">ما بتحركش</span></div>
+    </div>
+    <div class="flow-row">
+      <div class="flow-who w-drv">السائق</div>
+      <div class="flow-what">رحلة ٤ — يسلّم للعميل
+        <span class="sub">+ إمضاء · وتحصيل الكاش لو COD</span></div>
+      <div class="flow-to"><span class="tag t-good">delivered</span></div>
+    </div>
+
+    <div class="flow-row is-money">
+      <div class="flow-who w-sys">النظام</div>
+      <div class="flow-what"><b>الفلوس بتتقسّم</b>
+        <span class="sub">بونس السائق يتحرر · العمولة للسوبر أدمن · الباقي للمغسلة</span></div>
+      <div class="flow-to"><span class="tag t-good">completed</span></div>
+    </div>
+  </div>
+
+  <div class="note n-crit">
+    <span class="note-t">قاعدة واحدة فوق كل حاجة</span>
+    <p>أي تغيير حالة بيمرّ من <code>OrderStateMachine::transition()</code> وبس. أي كود
+    بيكتب <code>$order-&gt;status</code> على طول بيتخطّى التحقق وبيسيب سجل
+    <code>order_status_logs</code> ناقص — وشاشة التتبّع بتتبني من السجل ده مش من الحالة
+    الحالية.</p>
+  </div>
+</section>
+
+<!-- ============================================================ 2 -->
+<section id="s2">
+  <div class="sec-head">
+    <p class="sec-num">القسم ٢</p>
+    <h2>السايكل خطوة بخطوة</h2>
+  </div>
+
+  <div class="level"><span class="n">١</span><h3>العميل بيعمل الطلب</h3>
+    <span class="why">POST /api/v1/orders</span></div>
+
+  <p>كل ده بيحصل جوه <b>transaction واحدة</b>:</p>
+
+  <div class="scroll">
+  <table>
+    <thead><tr><th>#</th><th>الخطوة</th><th>التفاصيل</th></tr></thead>
+    <tbody>
+      <tr><td>١</td><td>التسعير</td><td><code>OrderPricing::quote()</code> بيقرا أسعار القطع <b>مرة واحدة</b> وبينسخها على الطلب</td></tr>
+      <tr><td>٢</td><td>الكوبون/العرض</td><td>واحد بس — العرض بيكسب، والكود اللي جنبه <b>بيترفض برسالة</b> مش بيتجاهل</td></tr>
+      <tr><td>٣</td><td>المغسلة</td><td><code>LaundryAssigner</code> بيدوّر على مغسلة بتغطي المنطقة وبتقدّم الخدمة</td></tr>
+      <tr><td>٤</td><td>المواعيد</td><td><code>SlotCapacity::claim()</code> <b>جوه</b> الـtransaction — الشباك اللي بيتشيّك قبل الكتابة شباك عميلين يعدّوا منه</td></tr>
+      <tr><td>٥</td><td>الطلب</td><td>الحالة الابتدائية <code>awaiting_pickup</code></td></tr>
+      <tr><td>٦</td><td>القطع</td><td>صف لكل قطعة بـ<code>phase = 'estimated'</code></td></tr>
+      <tr><td>٧</td><td>الرحلات الأربع</td><td>بتتخلق <b>دلوقتي</b>، مش عند التأكيد</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <div class="note n-info">
+    <span class="note-t">ليه الرحلات بتتخلق من البداية؟</span>
+    <p>لأن أول حاجة لازم تحصل لطلب جديد إن حد يروح يجيبه. لو اتخلقت بعدين كانت هتتخلق
+    <b>بعد</b> الرجل اللي المفروض تجدولها.</p>
+  </div>
+
+  <div class="note n-warn">
+    <span class="note-t">نقطتين</span>
+    <p><b>الطلب بيتقبل حتى لو مفيش مغسلة تغطي المنطقة.</b> بينزل <code>laundry_id = null</code>
+    والعمليات بتوزّعه. الرفض على الباب كان هيخسر الطلب.</p>
+    <p><b>السعر تقديري، والعميل بيوافق على ده صراحةً.</b> تشييك إجباري في الويزرد:
+    «أوافق على مراجعة القطع وتحديد السعر النهائي قبل بدء التنظيف» — وبيتسجّل في
+    <code>orders.review_terms_accepted_at</code>. التاريخ ده هو الجزء اللي بيهم في أي خلاف.</p>
+  </div>
+
+  <div class="level"><span class="n">٢</span><h3>السائق بيستلم</h3>
+    <span class="why">٤ رحلات، ترتيبها مقفول</span></div>
+
+  <p>كل رحلة مقفولة على اللي قبلها (<code>predecessorComplete()</code>):</p>
+
+  <div class="scroll">
+  <table>
+    <thead><tr><th>#</th><th>الرحلة</th><th>إمضاء؟</th><th>عدّ قطع؟</th><th>بتحرّك الطلب لـ</th></tr></thead>
+    <tbody>
+      <tr><td>١</td><td>استلام من العميل</td><td>✅</td><td>✅</td><td><span class="tag t-brand">picked_up</span></td></tr>
+      <tr><td>٢</td><td>تسليم للمغسلة</td><td>—</td><td>✅</td><td><span class="tag t-mute">ما بتحركش</span></td></tr>
+      <tr><td>٣</td><td>استلام من المغسلة</td><td>—</td><td>✅</td><td><span class="tag t-mute">ما بتحركش</span></td></tr>
+      <tr><td>٤</td><td>تسليم للعميل</td><td>✅</td><td>—</td><td><span class="tag t-good">delivered</span></td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <p>القاعدتين في الكود مكتوبين كده بالظبط:</p>
+  <ul>
+    <li><b>الإمضاء</b> = <code>involvesCustomer()</code> — الرحلتين اللي فيهم تسليم
+      <b>لشخص</b>، أول وآخر واحدة. التسليم لإنسان بيثبته الإنسان نفسه.</li>
+    <li><b>عدّ القطع</b> = كل الرحلات <b>ما عدا</b> التسليم الأخير للعميل. القطع بتتعدّ
+      عند كل انتقال حيازة — من العميل، وعند المغسلة، ومن المغسلة — فأي نقص يبان عند أي
+      حلقة. آخر رحلة مش محتاجة لأن العميل نفسه بيستلم وبيمضي.</li>
+  </ul>
+
+  <div class="note n-crit">
+    <span class="note-t">الإلغاء بيقف عند الاستلام</span>
+    <p><code>awaiting_pickup</code> و<code>driver_on_way</code> بس هما اللي منهم
+    <code>cancelled</code>. أول ما القطع تبقى في إيدينا الطلب بيمشي لآخره — والمخرج
+    الوحيد بعد كده هو <code>returned</code>، واللي <b>مش إلغاء</b>: القطع بترجع بس رسوم
+    التوصيل لسه مستحقة.</p>
+  </div>
+
+  <div class="level"><span class="n">٣</span><h3>المغسلة بتعدّ وبتسعّر</h3>
+    <span class="why">القسم ٣ تحت</span></div>
+
+  <div class="level"><span class="n">٤</span><h3>الغسيل والتسليم</h3>
+    <span class="why">والفلوس بتتحرك</span></div>
+
+  <div class="pipe">
+    <span class="stage s-live">confirmed</span><span class="arrow">←</span>
+    <span class="stage">cleaning</span><span class="arrow">←</span>
+    <span class="stage">ready_for_delivery</span><span class="arrow">←</span>
+    <span class="stage s-good">delivered</span><span class="arrow">←</span>
+    <span class="stage s-end">completed</span>
+  </div>
+
+  <p>عند <b>delivered</b> بيحصل تحصيل الكاش لو الدفع عند الاستلام.
+     عند <b>completed</b> <u>بس</u> بتتحرك الفلوس:</p>
+  <ul>
+    <li>بونس السائق المعلّق <b>يتحرر</b> لرصيده الحقيقي</li>
+    <li>التسوية <b>تتنفّذ</b>: العمولة لمحفظة السوبر أدمن والباقي لمحفظة المغسلة</li>
+  </ul>
+
+  <div class="note n-info">
+    <span class="note-t">ليه عند الاكتمال مش عند التسليم؟</span>
+    <p>لأن الطلب لسه ممكن يرجع. الدفع لمغسلة عن طلب اترجع بعد كده معناه إنك تسحب فلوس
+    من محفظة ممكن تكون اتسحبت منها أصلاً.</p>
+  </div>
+</section>
+
+<!-- ============================================================ 3 -->
+<section id="s3">
+  <div class="sec-head">
+    <p class="sec-num">القسم ٣</p>
+    <h2>مراجعة السعر النهائي</h2>
+  </div>
+
+  <div class="note n-warn">
+    <span class="note-t">المشكلة اللي بتحلها</span>
+    <p>العميل بيطلب وهو بيعدّ هدومه بنفسه. بيقول «٨ قطع». المغسلة بتفتح الشنطة تلاقي
+    <b>٩</b>. مين يدفع فرق القطعة؟ ومين يقرر؟</p>
+  </div>
+
+  <h3 id="s3-mabda">المبدأ</h3>
+  <p><b>الطلب بيحمل مجموعتين أسعار، مش واحدة.</b></p>
+
+  <div class="scroll">
+  <table>
+    <thead><tr><th></th><th><code>estimated</code></th><th><code>final</code></th></tr></thead>
+    <tbody>
+      <tr><td>مين عدّ</td><td>العميل</td><td>المغسلة</td></tr>
+      <tr><td>إمتى</td><td>وقت الطلب</td><td>بعد ما القطع توصل</td></tr>
+      <tr><td>بيتغيّر؟</td><td><b>أبداً</b></td><td>ممكن يتعاد</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <p>الصفوف القديمة <b>ما بتتمسحش</b>. جدول <code>order_items</code> فيه عمود
+  <code>phase</code>، والمراجعة بتضيف مجموعة جديدة جنب القديمة. يعني «مقارنة القطع» —
+  ٨ قطعة وقت الطلب مقابل ٩ بعد العدّ — تفضل <b>قابلة لإعادة البناء في أي وقت، بما فيه
+  وقت الخلاف</b>.</p>
+
+  <h3 id="s3-steps">الخطوات</h3>
+
+  <div class="level"><span class="n">١</span><h3>المغسلة بتفتح شاشة المراجعة</h3></div>
+  <p>الشاشة بتظهر بس لما <code>isReviewable()</code> تكون <code>true</code> — يعني الحالة
+  <code>picked_up</code> أو <code>review_disputed</code>. الفورم <b>بييجي مليان بكلام
+  العميل</b>، مش فاضي:</p>
+
+  <div class="scroll">
+<pre style="margin:0;padding:16px;font-family:var(--f-mono);font-size:12px;line-height:1.9;background:var(--surface);unicode-bidi:plaintext;">
+القطعة        قال العميل    العدد الفعلي    سعر الوحدة    الإجمالي
+قميص              ٥            [  ]           ١٧           ٨٥
+بنطلون            ٣            [  ]           ٢٣           ٦٩
+──────────────────────────────────────────────────────────────
+▸ إضافة قطعة لم تكن في الطلب
+</pre>
+  </div>
+
+  <div class="note n-info">
+    <span class="note-t">ليه مليان؟</span>
+    <p>لأن الشغلانة هي <b>تصحيح قايمة</b>، مش بناء واحدة من الصفر. ولأن شوفان الرقم
+    الأصلي جنب الخانة هو اللي بيخلي الاختلاف واضح. والشاشة بتعرض <b>كل</b> القطع اللي
+    الخدمة مسعّرة ليها — لأن «تم العثور على قطعة إضافية أثناء المراجعة» هي الحالة اللي
+    الشاشة دي موجودة عشانها أصلاً.</p>
+  </div>
+
+  <div class="level"><span class="n">٢</span><h3>المغسلة بتبعت</h3>
+    <span class="why">POST /admin/order/review/{id}</span></div>
+
+  <p>فيه <b>٤ رفضات قبل أي كتابة</b>:</p>
+  <div class="scroll">
+  <table>
+    <thead><tr><th>الرفض</th><th>يعني</th></tr></thead>
+    <tbody>
+      <tr><td><code>not_reviewable</code></td><td>الطلب مش في مرحلة تسمح بالمراجعة</td></tr>
+      <tr><td><code>service_not_found</code></td><td>الطلب ملوش خدمة</td></tr>
+      <tr><td><code>unpriced_items</code></td><td>قطعة الخدمة دي مش مسعّرة ليها</td></tr>
+      <tr><td><code>empty_review</code></td><td>العدّ الكلي أقل من ١</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p class="muted-note"><b>empty_review</b>: «المراجعة اللي مالقتش حاجة مش مراجعة — القطع
+  موجودة فعلياً، حد بس ما دخّلش أرقام.» والقطعة اللي ما وصلتش بتتعدّ <b>صفر</b> مش بتتشال.</p>
+
+  <div class="level"><span class="n">٣</span><h3>اللي بيتكتب</h3></div>
+  <div class="scroll">
+<pre style="margin:0;padding:16px;font-family:var(--f-mono);font-size:12px;line-height:1.9;direction:ltr;text-align:left;background:var(--surface);">
+final_subtotal   ← من العدّ الجديد
+final_tax        ← بنسبة الضريبة المخزّنة على الطلب، مش الحالية
+final_total      ← عن طريق OrderPricing::compose()
+reviewed_at      ← دلوقتي
+review_round     ← +١
+status           ← reviewed
+</pre>
+  </div>
+  <p><b>بيتحمل زي ما هو ومش بيتحسب تاني:</b> رسوم التوصيل، الخصم، رسوم الكاش، ونسبة
+  الضريبة. المراجعة بتغيّر <b>القطع</b> وبس.</p>
+
+  <div class="note n-crit">
+    <span class="note-t">باگ اتصلّح هنا</span>
+    <p>الإجمالي النهائي كان بيتحسب في مكان تاني وكان <b>بينسى رسوم الكاش</b>. يعني عميل
+    بيدفع كاش يتحاسب على الرسوم في التقدير وتختفي أول ما القطع تتعدّ. دلوقتي المكانين
+    بيمرّوا من <code>OrderPricing::compose()</code> — دالة واحدة بتجمع أي طلب.</p>
+  </div>
+
+  <div class="level"><span class="n">٤</span><h3>العميل بيرد — ٣ اختيارات</h3></div>
+  <div class="scroll">
+  <table>
+    <thead><tr><th>الزرار</th><th>الريكوست</th><th>بيعمل إيه</th></tr></thead>
+    <tbody>
+      <tr><td><span class="tag t-good">تأكيد السعر</span></td>
+          <td><code>POST /orders/{id}/confirm</code></td>
+          <td><code>confirmed_at</code> يتكتب، الحالة <code>confirmed</code>،
+              <b>الغسيل يبدأ</b>. مفيش فلوس بتتاخد دلوقتي</td></tr>
+      <tr><td><span class="tag t-warn">مراجعة إضافية</span></td>
+          <td><code>POST /orders/{id}/dispute</code></td>
+          <td>الحالة <code>review_disputed</code>، يرجع للمغسلة تعدّ تاني،
+              و<code>review_round</code> فاكرة الرقم</td></tr>
+      <tr><td><span class="tag t-brand">عندي استفسار</span></td>
+          <td><code>POST /orders/{id}/queries</code></td>
+          <td>صف في <code>order_price_queries</code> — <b>والطلب ما بيتحركش</b></td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <div class="note n-info">
+    <span class="note-t">الفرق بين اعتراض واستفسار</span>
+    <p><b>اعتراض</b> = «عدّوا تاني». الطلب بيرجع خطوة.<br>
+       <b>استفسار</b> = «اشرحولي ليه». الطلب واقف مكانه مستني رد بشري.</p>
+  </div>
+
+  <div class="note n-warn">
+    <span class="note-t">مفيش زرار رفض للعميل</span>
+    <p><code>returned</code> موجودة في جدول الانتقالات لكن كمخرج <b>للعمليات بس</b> —
+    لخلاف مش هينتهي بإعادة العدّ. وهي مش إلغاء: القطع بترجع ورسوم التوصيل لسه مستحقة،
+    ولو سمّيناها <code>cancelled</code> كنا هنخسر المعلومة دي.</p>
+  </div>
+
+  <div class="level"><span class="n">٥</span><h3>لو العميل ما ردّش خالص</h3></div>
+  <div class="note n-crit">
+    <span class="note-t">مفيش حاجة بتتأكد أوتوماتيك. أبداً.</span>
+    <p>الطلب بيفضل في <code>reviewed</code> للأبد. الثمن إن الهدوم قاعدة في المغسلة واخدة
+    مكان — فأمر <code>orders:alert-silent-confirmations</code> بيشتغل <b>كل ساعة</b>، وبعد
+    <b>٢٤ ساعة</b> سكوت بينبّه العميل والعمليات <b>مرة واحدة للطلب مدى الحياة</b>.</p>
+    <p>التنبيه اللي بيتكرر كل ساعة بيعلّم الناس تتجاهله، وبعدين اللي مهم بيتتجاهل معاه.
+    والسبب الأصلي: «الموافقة على سعر نيابة عن حد تاني خلاف مستني يحصل.»</p>
+  </div>
+</section>
+
+<!-- ============================================================ 4 -->
+<section id="s4">
+  <div class="sec-head">
+    <p class="sec-num">القسم ٤</p>
+    <h2>الجدولة المتكررة</h2>
+  </div>
+
+  <div class="note n-crit">
+    <span class="note-t">القاعدة اللي بتحكم كل حاجة هنا، بالنص من الكود</span>
+    <p style="font-size:17px;"><b>«الجدولة عمرها ما بتعمل طلب.»</b></p>
+  </div>
+
+  <p>في يومها، الجدولة <b>بتسأل</b> العميل «محتاج تغسل النهاردة؟» — وبتستنى.</p>
+  <ul>
+    <li><b>«أيوه»</b> → بتفتح <b>الويزرد العادي</b> بسلة مليانة مسبقاً. العميل يراجع
+      القطع، يختار الميعاد، يختار طريقة الدفع. <b>الطلب اللي بيطلع من الويزرد</b> هو
+      اللي بيقفل السؤال.</li>
+    <li><b>«مش محتاج»</b> → الدورة دي بس بتتخطّى، والجدولة تفضل شغالة.</li>
+    <li><b>ما ردّش</b> → نفس الحاجة. الدورة تعدّي، والجدولة عايشة.</li>
+  </ul>
+
+  <div class="note n-info">
+    <span class="note-t">ليه مش بتشتري على طول؟</span>
+    <p>«العميل بيتسأل هل يغسل النهاردة، مش بيتطلب منه يشتري سلة اتفق عليها من شهور
+    بأسعار محدش وراهاله من ساعتها.»</p>
+  </div>
+
+  <h3 id="s4-three">تلات حاجات مختلفة — متخلطش بينهم</h3>
+  <div class="scroll">
+  <table>
+    <thead><tr><th></th><th>إيه هي</th><th>الجدول</th><th>بتعيش قد إيه</th></tr></thead>
+    <tbody>
+      <tr><td><b>الجدولة</b></td><td>الاتفاق الدائم: «كل أسبوع يوم الاتنين»</td>
+          <td><code>order_recurrences</code></td><td>لحد ما توقفها</td></tr>
+      <tr><td><b>السؤال</b></td><td>سؤال دورة واحدة</td>
+          <td><code>recurrence_prompts</code></td><td>دورة واحدة</td></tr>
+      <tr><td><b>الطلب</b></td><td>الشغل الحقيقي</td>
+          <td><code>orders</code></td><td>لحد ما يكتمل</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <div class="note n-warn">
+    <span class="note-t">ليه جدول للأسئلة أصلاً؟</span>
+    <p><code>recurrence_prompts</code> فيه مفتاح فريد على
+    <code>(recurrence_id, prompted_for)</code> — ده اللي بيخلي التشغيل
+    <b>idempotent</b>: الأمر لو اشتغل مرتين في نفس اليوم، التانية ما بتعملش حاجة.</p>
+    <p>من غير صف لكل دورة، النظام ما كانش هيعرف يفرّق بين «لسه ما سألناش» و«سألنا وماحدش
+    رد» — فكان يا إما يزنّ على العميل كل تشغيلة، يا إما يتخطاه للأبد.</p>
+  </div>
+
+  <h3>التكرارات والمسارات</h3>
+  <div class="scroll">
+  <table>
+    <thead><tr><th>التكرار</th><th>المعنى</th></tr></thead>
+    <tbody>
+      <tr><td><code>weekly</code></td><td>كل أسبوع في نفس اليوم</td></tr>
+      <tr><td><code>biweekly</code></td><td>كل أسبوعين</td></tr>
+      <tr><td><code>monthly</code></td><td>كل شهر</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <div class="scroll">
+<pre style="margin:0;padding:16px;font-family:var(--f-mono);font-size:12px;line-height:1.9;direction:ltr;text-align:left;background:var(--surface);">
+الأمر المجدول:  orders:prompt-recurring     يومياً ٩:٠٠ صباحاً
+
+GET    /api/v1/recurrences              الجدولات بتاعتي
+POST   /api/v1/recurrences              اعمل جدولة
+PUT    /api/v1/recurrences/{id}/pause   وقّف مؤقت
+PUT    /api/v1/recurrences/{id}/resume  كمّل
+PUT    /api/v1/recurrences/{id}/items   غيّر السلة الافتراضية
+DELETE /api/v1/recurrences/{id}         ألغِ
+GET    /api/v1/recurrences/prompts      الأسئلة المفتوحة
+</pre>
+  </div>
+
+  <p><b>التقدّم بيتحسب من تاريخ الدورة، مش من النهاردة.</b> لو الجدولة اشتغلت متأخرة يوم،
+  الدورات الجاية ما بتتأخرش معاها — «كل يوم اتنين» لازم تفضل على الاتنين.</p>
+
+  <div class="note n-warn">
+    <span class="note-t">«وقّف مؤقت» فيها لمسة مهمة</span>
+    <p>لما تكمّل بعد شهرين، النظام <b>بيعيد تثبيت</b> الموعد الجاي في المستقبل. من غير كده
+    الجدولة كانت هترجع ومستحقة في الماضي وتضرب على طول.</p>
+    <p>وتغيير السلة الافتراضية بيحصل <b>بإذن العميل بس</b> — «الجدولة اللي بتعيد كتابة
+    نفسها من آخر طلب كانت هتخلي ‹كل أسبوع› تعني حاجة مختلفة كل أسبوع، والعميل مالوش
+    طريقة يشوف ده بيحصل.»</p>
+  </div>
+
+  <p><b>السؤال بيقفل لما طلب يبقى موجود فعلاً.</b> العميل اللي فتح الويزرد وساب في نصه
+  <b>يتسأل تاني</b> — لأن هو ما طلبش.</p>
+</section>
+
+<!-- ============================================================ 5 -->
+<section id="s5">
+  <div class="sec-head">
+    <p class="sec-num">القسم ٥</p>
+    <h2>الفرق بين تأجيل موعد والجدولة المتكررة</h2>
+  </div>
+
+  <div class="scroll">
+  <table>
+    <thead><tr><th></th>
+      <th>تأجيل موعد <code>/reschedule</code></th>
+      <th>الجدولة المتكررة</th></tr></thead>
+    <tbody>
+      <tr><td><b>بيتكلم عن</b></td><td>طلب <b>موجود</b></td><td>اتفاق <b>مستقبلي</b></td></tr>
+      <tr><td><b>السؤال</b></td><td>«الطلب ده يتنقل لإمتى؟»</td><td>«تغسل تاني الأسبوع الجاي؟»</td></tr>
+      <tr><td><b>الجدول</b></td><td><code>order_tasks</code> + <code>orders</code></td>
+          <td><code>order_recurrences</code> + <code>recurrence_prompts</code></td></tr>
+      <tr><td><b>مين بيبدأ</b></td><td><b>السائق</b> بيسجّل «العميل أجّل»</td>
+          <td><b>الأمر المجدول</b> في يوم الدورة</td></tr>
+      <tr><td><b>بيعمل طلب؟</b></td><td>لأ — بيحرّك طلب قايم</td>
+          <td>لأ — بيفتح الويزرد والعميل هو اللي يعمل</td></tr>
+      <tr><td><b>النتيجة</b></td><td>نفس الطلب بميعاد جديد</td>
+          <td><b>طلب جديد تماماً</b>، مربوط بالجدولة</td></tr>
+      <tr><td><b>بيحصل كام مرة</b></td><td>مرة لكل تأجيل</td>
+          <td>كل دورة، للأبد لحد ما توقفها</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <h3>تأجيل موعد — بالتفصيل</h3>
+  <p><b>بيبدأ من السائق.</b> السائق بيروح يستلم، العميل بيقوله «مش دلوقتي». السائق بيسجّل
+  الرحلة <b>فاشلة بسبب <code>customer_postponed</code></b>.</p>
+
+  <div class="scroll">
+<pre style="margin:0;padding:16px;font-family:var(--f-mono);font-size:12px;line-height:1.9;background:var(--surface);unicode-bidi:plaintext;">
+الرحلة تقف      ←  status = failed · reason = customer_postponed
+موعد الطلب يتفضّى
+مفيش توزيع      ←  ولا سائق تاني هياخدها
+</pre>
+  </div>
+
+  <div class="note n-crit">
+    <span class="note-t">ده كان باگ واتصلّح</span>
+    <p>«قبل كده، السائق لما كان بيسجّل تأجيل، الرحلة كانت بترجع الطابور على طول، فالتوزيع
+    كان بيعرض نفس الرحلة على السائق اللي بعده في ثواني. محدش كان مستني حاجة؛ نفس الفشل
+    كان بيحصل تاني بس.»</p>
+    <p><b>والحل: العميل هو اللي يختار.</b></p>
+  </div>
+
+  <div class="scroll">
+<pre style="margin:0;padding:16px;font-family:var(--f-mono);font-size:12px;line-height:1.9;direction:ltr;text-align:left;background:var(--surface);">
+GET  /api/v1/orders/{id}/reschedule   ← المواعيد المتاحة
+POST /api/v1/orders/{id}/reschedule   ← اختار ميعاد
+</pre>
+  </div>
+  <p class="muted-note"><b>الـGET مهمة قد الـPOST:</b> التطبيق لازم يعرف هل يعرض شاشة
+  التأجيل أصلاً ولا لأ.</p>
+
+  <div class="scroll">
+  <table>
+    <thead><tr><th>التحقق</th><th>ليه</th></tr></thead>
+    <tbody>
+      <tr><td>الطلب بتاع العميل ده</td><td>مش بتاع حد تاني</td></tr>
+      <tr><td>فيه رحلة متأجلة فعلاً</td>
+          <td><b>رحلة فشلت بسبب عنوان غلط مش مشكلة مواعيد</b> — والسماح بإعادة حجزها كان
+              هيخبي خطأ بيانات ورا تاريخ جديد</td></tr>
+      <tr><td>الميعاد مناسب للنوع</td><td>ميعاد «تسليم بس» ما ينفعش لاستلام</td></tr>
+      <tr><td>الميعاد مش في الماضي</td>
+          <td>«التاريخ في الماضي مش تأجيل، ده قيمة التوزيع هيتجاهلها في صمت»</td></tr>
+      <tr><td>السعة متاحة</td>
+          <td><b>نفس السقف بتاع الويزرد</b> — من غيره الشباك المليان بيبقى متاح من الباب
+              الخلفي: أجّل، وبعدين احجز فيه</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <div class="note n-info">
+    <span class="note-t">تصفير المحاولات</span>
+    <p>بعد النجاح الرحلة بترجع <code>pending</code> و<code>attempts = 0</code> — <b>محاولة
+    جديدة، مش إعادة للفاشلة</b>. «العميل اللي اختار ميعاد أحسن مش السائق اللي فشل.»
+    من غير كده التأجيل كان هيستهلك محاولات الرحلة ويقرّبها من التصعيد للعمليات.</p>
+  </div>
+
+  <div class="note n-warn">
+    <span class="note-t">ببساطة</span>
+    <p><b>تأجيل موعد</b> = «الطلب ده، بدل بكرة، خليه بعد بكرة.»<br>
+       <b>جدولة متكررة</b> = «كل اتنين، اسألني لو محتاج أغسل.»</p>
+    <p>الأولى بتحرّك حاجة موجودة. التانية بتقترح حاجة جديدة.<br>
+       الأولى بتيجي من السائق. التانية بتيجي من التقويم.<br>
+       الأولى <b>مش</b> بتعمل طلب. التانية <b>كمان</b> مش بتعمل طلب — بتفتح الويزرد وبس.</p>
+  </div>
+</section>
+
+<!-- ============================================================ 6 -->
+<section id="s6">
+  <div class="sec-head">
+    <p class="sec-num">القسم ٦</p>
+    <h2>أمثلة كاملة</h2>
+  </div>
+
+  <div class="level"><span class="n">١</span><h3>الطلب اللي كل حاجة فيه مشيت صح</h3></div>
+  <div class="scroll">
+<pre style="margin:0;padding:16px;font-family:var(--f-mono);font-size:11.5px;line-height:1.95;background:var(--surface);unicode-bidi:plaintext;">
+الأحد ٦:٠٠ م     العميل يطلب: ٥ قمصان، كاش، استلام بكرة ٩–١١ ص
+                  تقديري: ٨٥ غسيل + ٢٠ توصيل + ١٠ رسوم كاش + ١٦.١٠ ضريبة = ١٣١.١٠ ج
+                  awaiting_pickup · ٤ رحلات اتخلقت
+
+الاتنين ٩:٢٠ ص   السائق يبدأ الرحلة ١                → driver_on_way
+الاتنين ٩:٥٠ ص   يستلم + إمضاء                        → picked_up
+الاتنين ١٠:٤٠ ص  يسلّم للمغسلة (عدّ ٥)
+
+الاتنين ١٢:١٥ م  المغسلة تعدّ: ٦ قمصان (واحد زيادة)
+                  نهائي: ١٠٢ + ٢٠ + ١٠ + ١٨.٤٨ = ١٥٠.٤٨ ج
+                  الفرق: +١٩.٣٨ ج                    → reviewed
+
+الاتنين ١٢:٤٠ م  العميل: «تأكيد السعر»                → confirmed
+الاتنين ١:٠٠ م   المغسلة تبدأ                         → cleaning
+الثلاثاء ١٠:٠٠ ص خلصت                                 → ready_for_delivery
+الثلاثاء ٢:٠٠ م  السائق يستلم من المغسلة (عدّ ٦)
+الثلاثاء ٣:١٥ م  يسلّم + إمضاء + يحصّل ١٥٠.٤٨ ج        → delivered
+الثلاثاء ٣:١٦ م                                        → completed
+
+                  دلوقتي بس الفلوس بتتحرك:
+                    الضريبة ١٨.٤٨          → الدولة
+                    التوصيل ٢٠ + كاش ١٠    → المنصة
+                    العمولة (على ١٠٢ بس)   → محفظة السوبر أدمن
+                    الباقي                 → محفظة المغسلة
+                    بونس السائق المعلّق     → رصيده الحقيقي
+</pre>
+  </div>
+
+  <div class="level"><span class="n">٢</span><h3>العميل أجّل</h3></div>
+  <div class="scroll">
+<pre style="margin:0;padding:16px;font-family:var(--f-mono);font-size:11.5px;line-height:1.95;background:var(--surface);unicode-bidi:plaintext;">
+الاتنين ٩:٥٠ ص   السائق على الباب. العميل: «مش دلوقتي، خليها بكرة»
+                  السائق يسجّل: فشل · customer_postponed
+                  → الرحلة تقف · الموعد يتفضّى · مفيش توزيع
+                  → الطلب قاعد. ولا سائق تاني هيتعرض عليه
+
+الاتنين ١٠:٠٥ ص  التطبيق: GET /orders/{id}/reschedule
+                  يعرض المواعيد المتاحة بكرة وبعده
+
+الاتنين ١٠:٠٦ ص  العميل يختار الثلاثاء ٢–٤ م
+                  → السعة تتحجز · الموعد يتحدّث
+                  → attempts = 0  (التأجيل مش فشل للسائق)
+                  → التوزيع يشتغل — للثلاثاء
+
+الثلاثاء ٢:١٠ م  سائق (ممكن تاني خالص) يستلم         → picked_up
+</pre>
+  </div>
+
+  <div class="level"><span class="n">٣</span><h3>العميل اعترض على السعر</h3></div>
+  <div class="scroll">
+<pre style="margin:0;padding:16px;font-family:var(--f-mono);font-size:11.5px;line-height:1.95;background:var(--surface);unicode-bidi:plaintext;">
+الاتنين ١٢:١٥ م  المغسلة: ٦ قمصان (+١)               → reviewed · round = ١
+الاتنين ١٢:٣٠ م  العميل: «مراجعة إضافية»              → review_disputed
+                  «أنا متأكد إني بعت ٥»
+
+الاتنين ١:٠٠ م   المغسلة تعدّ تاني بعناية: ٥ فعلاً
+                  (السادس كان لعميل تاني)
+                  الصفوف النهائية القديمة تتمسح، جديدة مكانها
+                  نهائي: ٨٥ + ٢٠ + ١٠ + ١٦.١٠ = ١٣١.١٠ ج
+                  الفرق: ٠                            → reviewed · round = ٢
+
+الاتنين ١:٠٥ م   العميل: «تأكيد السعر»                → confirmed
+
+⚠ لاحظ: صفوف estimated ما اتلمستش ولا مرة.
+   العدّ الأصلي بتاع العميل لسه موجود ويتقارن بيه.
+</pre>
+  </div>
+
+  <div class="level"><span class="n">٤</span><h3>العميل سكت</h3></div>
+  <div class="scroll">
+<pre style="margin:0;padding:16px;font-family:var(--f-mono);font-size:11.5px;line-height:1.95;background:var(--surface);unicode-bidi:plaintext;">
+الاتنين ١٢:١٥ م  المغسلة تسعّر                        → reviewed · إشعار
+
+الثلاثاء ١٢:١٥ م عدّى ٢٤ ساعة. الأمر اللي كل ساعة يلاقيه:
+                  ├─ إشعار تاني للعميل
+                  └─ تنبيه للعمليات: «حد يكلمه»
+
+                  مرة واحدة بس. مدى الحياة.
+                  الطلب يفضل reviewed للأبد لحد ما إنسان يتصرف.
+
+⚠ مفيش تأكيد أوتوماتيك. أبداً.
+</pre>
+  </div>
+
+  <div class="level"><span class="n">٥</span><h3>جدولة متكررة على مدى شهرين</h3></div>
+  <div class="scroll">
+<pre style="margin:0;padding:16px;font-family:var(--f-mono);font-size:11.5px;line-height:1.95;background:var(--surface);unicode-bidi:plaintext;">
+٦ سبتمبر     جدولة: كل أسبوع · اتنين · ٥ قمصان
+              الموعد الجاي: ١٣ سبتمبر
+              (مش النهاردة — الجدولة المتعملة الصبح ما تسألش بعد الضهر)
+
+١٣ سبتمبر    سؤال ← «أيوه» ← ويزرد ← طلب #10241
+              الجدولة تتقدّم لـ ٢٠ سبتمبر  ← فوراً، مش بعد ما العميل يرد
+
+٢٠ سبتمبر    سؤال ← «مش محتاج»
+              مفيش طلب. تتقدّم لـ ٢٧ سبتمبر
+
+٢٧ سبتمبر    سؤال ← سكت
+              مفيش طلب. تتقدّم لـ ٤ أكتوبر
+
+٢٩ سبتمبر    العميل مسافر → «وقّف مؤقت»
+
+١٠ نوفمبر    العميل رجع → «كمّل»
+              ⚠ الموعد الجاي كان ٤ أكتوبر — في الماضي
+              النظام بيعيد تثبيته لأقرب اتنين جاي: ١٧ نوفمبر
+              من غير كده كانت هتضرب فوراً وتسأل عن دورة فاتت
+</pre>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<section id="s7">
+  <div class="sec-head">
+    <p class="sec-num">الخلاصة</p>
+    <h2>في خمس سطور</h2>
+  </div>
+  <ol style="font-size:15.5px;line-height:2.1;">
+    <li><b>السعر تقديري لحد ما القطع تتعدّ</b>، والعميل موافق على ده مكتوب وقت الطلب.</li>
+    <li><b>المجموعتين بيعيشوا جنب بعض</b> — تقديري ونهائي — عشان الخلاف يتحل بالأرقام.</li>
+    <li><b>مفيش حاجة بتتأكد أوتوماتيك</b>، ومفيش حاجة بتتدفع أوتوماتيك.</li>
+    <li><b>الجدولة بتسأل، ما بتشتريش.</b></li>
+    <li><b>التأجيل بيحرّك طلب قايم؛ الجدولة بتقترح طلب جديد.</b> الاتنين بيحترموا نفس
+        القاعدة: العميل هو اللي يقرر.</li>
+  </ol>
+
+  <div class="note n-info">
+    <p>اتكتب من الكود في ١٣ سبتمبر ٢٠٢٦. لو حاجة هنا اختلفت عن السلوك الفعلي،
+    <b>الكود هو الصح</b> والملف ده هو اللي محتاج يتظبط.</p>
+  </div>
+</section>
+
+</main>
+</div>
