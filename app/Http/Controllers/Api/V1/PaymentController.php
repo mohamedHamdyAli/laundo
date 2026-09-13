@@ -104,6 +104,7 @@ class PaymentController extends Controller
                 'amount' => (float) $payment->amount,
                 'transaction_reference' => $payment->provider_reference,
                 'paid_at' => $payment->captured_at ? humanDate($payment->captured_at) : null,
+                'paid_at_iso' => isoDate($payment->captured_at),
                 'failure_reason' => $payment->failure_reason,
             ];
         }

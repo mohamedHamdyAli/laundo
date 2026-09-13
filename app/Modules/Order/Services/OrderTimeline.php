@@ -67,6 +67,41 @@ class OrderTimeline
                 : $this->fromStatus($order, $key);
         }
 
+        return $this->monotonic($steps);
+    }
+
+    /**
+     * A step behind one that has been reached has been reached.
+     *
+     * Each step decides for itself, off its own row in `order_status_logs`, and
+     * that is right as long as every row exists. When one does not — an order
+     * mended by hand, a row lost, a step added to this list after orders were
+     * already flowing — the step reads unreached **for ever**, including on an
+     * order sitting at «تم التسليم». A line whose eighth lamp is lit and whose
+     * fifth is dark is wrong whatever the reason, and it is wrong in the
+     * direction that matters: the customer reads it as something skipped.
+     *
+     * So the later lamp settles the earlier one. Only `reached` is filled in —
+     * `at` stays null, because the timestamp genuinely is not known and inventing
+     * one would put a time on the screen that never happened.
+     *
+     * Walking backwards, so one pass carries the answer all the way down.
+     *
+     * @param  array<int, array<string, mixed>>  $steps
+     * @return array<int, array<string, mixed>>
+     */
+    private function monotonic(array $steps): array
+    {
+        $laterReached = false;
+
+        foreach (array_reverse(array_keys($steps)) as $i) {
+            if ($steps[$i]['reached']) {
+                $laterReached = true;
+            } elseif ($laterReached) {
+                $steps[$i]['reached'] = true;
+            }
+        }
+
         return $steps;
     }
 
@@ -111,6 +146,7 @@ class OrderTimeline
             'label' => __($status->label()),
             'reached' => $log !== null,
             'at' => $log ? humanDate($log->created_at) : null,
+            'at_iso' => isoDate($log?->created_at),
         ];
     }
 
@@ -135,6 +171,7 @@ class OrderTimeline
             'label' => __('On the way to you'),
             'reached' => $collected !== null,
             'at' => $collected?->completed_at ? humanDate($collected->completed_at) : null,
+            'at_iso' => isoDate($collected?->completed_at),
         ];
     }
 }

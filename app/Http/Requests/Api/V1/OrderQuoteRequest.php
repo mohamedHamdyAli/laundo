@@ -2,10 +2,11 @@
 
 namespace App\Http\Requests\Api\V1;
 
-use App\Modules\Payment\Enums\PaymentMethod;
 use App\Http\Requests\Api\V1\Concerns\OneDiscountPerOrder;
+use App\Modules\Payment\Enums\PaymentMethod;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\Validator;
 
 /**
  * The summary step's price preview.
@@ -16,9 +17,9 @@ use Illuminate\Validation\Rule;
  */
 class OrderQuoteRequest extends FormRequest
 {
-        use OneDiscountPerOrder;
+    use OneDiscountPerOrder;
 
-public function authorize(): bool
+    public function authorize(): bool
     {
         return true;
     }
@@ -57,7 +58,7 @@ public function authorize(): bool
         ];
     }
 
-    public function withValidator(\Illuminate\Validation\Validator $validator): void
+    public function withValidator(Validator $validator): void
     {
         $this->refuseASecondDiscount($validator);
     }

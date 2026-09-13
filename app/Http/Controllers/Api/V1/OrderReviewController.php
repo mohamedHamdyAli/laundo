@@ -45,6 +45,7 @@ class OrderReviewController extends Controller
             'can_confirm' => $order->status->isAwaitingCustomer() && $order->hasFinalPrice(),
             'can_dispute' => $order->status->isAwaitingCustomer(),
             'confirmed_at' => $order->confirmed_at ? humanDate($order->confirmed_at) : null,
+            'confirmed_at_iso' => isoDate($order->confirmed_at),
             'payment_status' => $order->payment_status,
             'open_queries' => $order->priceQueries()->open()->count(),
         ]);
@@ -157,7 +158,9 @@ class OrderReviewController extends Controller
                 'answer' => $query->answer,
                 'answered' => $query->isAnswered(),
                 'asked_at' => humanDate($query->created_at),
+                'asked_at_iso' => isoDate($query->created_at),
                 'answered_at' => $query->answered_at ? humanDate($query->answered_at) : null,
+                'answered_at_iso' => isoDate($query->answered_at),
             ];
         }
 

@@ -27,12 +27,38 @@ use Throwable;
  *     because an order nobody confirms is an order that stops, and the customer
  *     would never learn why.
  *
+ *  2b. **And it silences deliveries, never the record.** The toggle reaches
+ *     `push` and stops there — see `MUTABLE_CHANNELS`. The in-app list is what
+ *     the customer opens *after* a push to read what they were told; a switch
+ *     that empties it answers nobody's wish for less noise.
+ *
  *  3. **Everything is logged, including the skips.** "I never got it" is
  *     otherwise unanswerable, and a token that has been dead for a month is
  *     invisible until somebody can count its failures.
  */
 class NotificationDispatcher
 {
+    /**
+     * The channels a person is allowed to silence.
+     *
+     * `database` is deliberately absent, and that absence is the rule: the in-app
+     * list is a **record**, not a delivery. Silencing it makes nothing quieter —
+     * nothing about it ever made a sound — it only erases the history. What it
+     * actually produces is a push landing on the handset, the customer tapping it,
+     * opening the list, and finding it empty.
+     *
+     * That is not hypothetical. One account muted `database` on 2026-09-10 and
+     * every notification after it arrived by push and was recorded nowhere, while
+     * `final_price_ready` kept appearing because a transactional event ignores the
+     * mute — which is how the fault was finally read off the log.
+     *
+     * It repairs a second, quieter fault too. `overRateLimit()` counts delivered
+     * `database` rows, so for a database-muted user that count was permanently
+     * zero and the per-subject hourly cap never applied to their push at all: the
+     * one user who had asked for less was the only one with no limit.
+     */
+    public const MUTABLE_CHANNELS = ['push'];
+
     public function __construct(private readonly PushSender $push) {}
 
     /**
@@ -129,6 +155,11 @@ class NotificationDispatcher
         // database row, so this counts *messages*; counting all rows would halve
         // the effective limit for a two-channel event, and counting distinct
         // events would let the same event through repeatedly.
+        //
+        // "Exactly one" is only true because `database` cannot be muted. While it
+        // could be, a muted user's count was frozen at zero and this cap silently
+        // did nothing for them — the one person who had asked for fewer messages
+        // was the only one receiving them unlimited. See MUTABLE_CHANNELS.
         $sent = NotificationLog::where('user_id', $user->id)
             ->where('subject_type', $message->subject::class)
             ->where('subject_id', $message->subject->getKey())
@@ -147,6 +178,11 @@ class NotificationDispatcher
      */
     public function allows(User $user, string $channel, NotificationMessage $message): bool
     {
+        if (! in_array($channel, self::MUTABLE_CHANNELS, true)) {
+            // The record is not a delivery. See MUTABLE_CHANNELS.
+            return true;
+        }
+
         if ($message->event->isTransactional()) {
             // Not negotiable: silence here stalls the order.
             return true;

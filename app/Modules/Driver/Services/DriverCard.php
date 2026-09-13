@@ -114,7 +114,6 @@ class DriverCard
      *
      * @return array<string, mixed>|null
      */
-
     private function location(OrderTask $task): ?array
     {
         if (! $this->reachableWhileLive($task)) {

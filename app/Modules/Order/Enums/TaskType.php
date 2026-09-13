@@ -2,6 +2,8 @@
 
 namespace App\Modules\Order\Enums;
 
+use App\Modules\Address\Models\Address;
+use App\Modules\Laundry\Models\Laundry;
 use App\Modules\Order\Models\Order;
 
 /**
@@ -157,6 +159,52 @@ enum TaskType: string
             self::DeliverToCustomer => $order->deliveryAddress?->street,
             default => $order->laundry?->address,
         };
+    }
+
+    /**
+     * The same destination as a point on a map.
+     *
+     * Paired with `destinationFor()` on purpose — a street written for a human
+     * and a coordinate written for a routing app are the same fact, and splitting
+     * them across two places is how one of them ends up describing a different
+     * leg from the other.
+     *
+     * **The laundry legs return real coordinates.** They used to be hardcoded
+     * `null` in the task presenter while `laundries.lat` and `.lng` sat filled in
+     * the table, so a driver could be routed to a customer's door and not to the
+     * laundry — two of the four legs with no map at all.
+     *
+     * Null when nobody has placed the pin. The app must draw the address text
+     * rather than a marker at (0, 0), which is in the Atlantic.
+     *
+     * @return array{lat: float, lng: float}|null
+     */
+    public function coordinatesFor(Order $order): ?array
+    {
+        return $this->pointOf(match ($this) {
+            self::PickupFromCustomer => $order->pickupAddress,
+            self::DeliverToCustomer => $order->deliveryAddress,
+            default => $order->laundry,
+        });
+    }
+
+    /**
+     * One place that decides what «has a pin» means.
+     *
+     * The two sides differ and the difference is in the schema: `addresses.lat`
+     * and `.lng` are NOT NULL — a customer cannot save an address without
+     * dropping the pin — while `laundries.lat` and `.lng` are nullable, because
+     * a laundry is created by an operator from a form that does not insist.
+     *
+     * @return array{lat: float, lng: float}|null
+     */
+    private function pointOf(Address|Laundry|null $point): ?array
+    {
+        if ($point === null || $point->lat === null || $point->lng === null) {
+            return null;
+        }
+
+        return ['lat' => (float) $point->lat, 'lng' => (float) $point->lng];
     }
 
     /**

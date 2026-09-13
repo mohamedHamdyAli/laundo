@@ -123,6 +123,28 @@ class OrderTask extends Model
     }
 
     /**
+     * The driver app's order: soonest first, and **stable**.
+     *
+     * The list was already sorted by `due_at` with the undated legs last. What it
+     * had no answer for was a tie — and ties are the common case here, because
+     * the four legs of one order share a window and a leg loses its `due_at`
+     * entirely when it is postponed or when the order was placed without a
+     * delivery slot. MySQL is free to return tied rows in any order it likes and
+     * does not promise the same one twice, so the tail of the list reshuffled
+     * between requests, and with pagination on top of it a task could arrive on
+     * both page one and page two, or on neither.
+     *
+     * `sequence` then `id` settles it: the legs of an order read in the order
+     * they happen, and two different orders fall back to which was created first.
+     */
+    public function scopeInDueOrder(Builder $query): Builder
+    {
+        return $query->orderByRaw('due_at is null, due_at')
+            ->orderBy('sequence')
+            ->orderBy('id');
+    }
+
+    /**
      * «متأخرة» — the window has passed and the task is not finished.
      */
     public function scopeLate(Builder $query): Builder

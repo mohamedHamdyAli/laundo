@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\V1;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\V1\OrderQuoteRequest;
 use App\Http\Requests\Api\V1\OrderRequest;
+use App\Modules\Address\Models\Address;
 use App\Modules\Driver\Services\DriverCard;
 use App\Modules\Order\Enums\OrderStatus;
 use App\Modules\Order\Enums\TaskType;
@@ -175,7 +176,11 @@ class OrderController extends Controller
     {
         // `tasks` as well as the logs: the timeline's «on the way to you» step is
         // read off the third leg, and without this it is a query per request.
-        $order = $request->user()->orders()->with(['statusLogs', 'tasks'])->find($id);
+        $order = $request->user()->orders()
+            // The two addresses are for the map pins below; without them this is
+            // two extra queries on a screen that polls.
+            ->with(['statusLogs', 'tasks', 'pickupAddress', 'deliveryAddress'])
+            ->find($id);
 
         if (! $order) {
             return failReturnNotFound(__('Order not found.'));
@@ -191,11 +196,37 @@ class OrderController extends Controller
             // anybody is assigned, which the design already draws as an empty
             // card rather than a missing one.
             'driver' => $this->driverCard->forOrder($order),
+            // Where the two handovers happen. The screen already draws a map for
+            // the driver's dot, and it had nothing to anchor that dot against —
+            // a moving marker on an empty map does not tell a customer whether
+            // the van is near their street. `driver.location` is the driver;
+            // these two are the doors.
+            'pickup_location' => $this->point($order->pickupAddress),
+            'delivery_location' => $this->point($order->deliveryAddress),
             // Eight steps, not the landing page's six. `OrderStatus::trackingSteps()`
             // is the marketing journey and stays that; a customer waiting at home
             // needs the two «on the way» states it leaves out. See OrderTimeline.
             'steps' => app(OrderTimeline::class)->for($order),
         ]);
+    }
+
+    /**
+     * An address as a map point, or null when nobody placed the pin.
+     *
+     * Null rather than zeroes: (0, 0) is a spot in the Atlantic and an app that
+     * trusts it draws a marker a thousand miles away instead of drawing none.
+     *
+     * @return array{lat: float, lng: float}|null
+     */
+    private function point(?Address $address): ?array
+    {
+        // `addresses.lat` and `.lng` are NOT NULL — the pin is taken when the
+        // address is saved — so the only way there is no point is no address.
+        if ($address === null) {
+            return null;
+        }
+
+        return ['lat' => (float) $address->lat, 'lng' => (float) $address->lng];
     }
 
     public function cancel(Request $request, $id): JsonResponse
@@ -324,6 +355,7 @@ class OrderController extends Controller
             // the button appears on three screens including this card.
             'qr' => $order->qr_token,
             'created_at' => humanDate($order->created_at),
+            'created_at_iso' => isoDate($order->created_at),
         ];
     }
 

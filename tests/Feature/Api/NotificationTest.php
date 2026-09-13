@@ -276,6 +276,35 @@ class NotificationTest extends TestCase
     #[Test]
     public function a_muted_channel_is_skipped_and_the_skip_is_recorded(): void
     {
+        DeviceToken::create(['user_id' => $this->customer->id, 'token' => 'tok-muted']);
+
+        NotificationPreference::create([
+            'user_id' => $this->customer->id, 'channel' => 'push', 'enabled' => false,
+        ]);
+
+        $this->placedOrder();
+
+        $this->assertDatabaseHas('notification_logs', [
+            'user_id' => $this->customer->id,
+            'event' => NotificationEvent::OrderPlaced->value,
+            'channel' => 'push',
+            'status' => NotificationLog::SKIPPED,
+        ]);
+
+        // The handset stays quiet; the list still says what happened. That is the
+        // whole distinction — muting asks for less noise, not for less memory.
+        $this->assertSame(1, $this->customer->notifications()->count());
+    }
+
+    #[Test]
+    public function the_in_app_record_is_written_even_for_a_user_who_muted_it(): void
+    {
+        // A row of exactly the shape production carried: one account muted
+        // `database` on 2026-09-10, and from then on every notification arrived by
+        // push and was written down nowhere — the customer tapped the push, opened
+        // the list it pointed at, and found it empty. Rows like this can still be
+        // in the table on an install that has not run the cleanup migration, so
+        // the dispatcher has to ignore them rather than trust they are gone.
         NotificationPreference::create([
             'user_id' => $this->customer->id, 'channel' => 'database', 'enabled' => false,
         ]);
@@ -286,31 +315,41 @@ class NotificationTest extends TestCase
             'user_id' => $this->customer->id,
             'event' => NotificationEvent::OrderPlaced->value,
             'channel' => 'database',
-            'status' => NotificationLog::SKIPPED,
+            'status' => NotificationLog::SENT,
         ]);
 
-        $this->assertSame(0, $this->customer->notifications()->count());
+        $this->assertSame(1, $this->customer->notifications()->count());
     }
 
     #[Test]
     public function a_muted_user_still_hears_what_the_order_depends_on(): void
     {
+        DeviceToken::create(['user_id' => $this->customer->id, 'token' => 'tok-muted']);
+
         NotificationPreference::create([
-            'user_id' => $this->customer->id, 'channel' => 'database', 'enabled' => false,
+            'user_id' => $this->customer->id, 'channel' => 'push', 'enabled' => false,
         ]);
 
         $this->reviewedOrder();
 
         // «السعر النهائي جاهز» is not negotiable: silence here stops the order and
-        // the customer never learns why.
+        // the customer never learns why. It reaches the handset despite the mute.
         $this->assertDatabaseHas('notification_logs', [
             'user_id' => $this->customer->id,
             'event' => NotificationEvent::FinalPriceReady->value,
-            'channel' => 'database',
+            'channel' => 'push',
             'status' => NotificationLog::SENT,
         ]);
 
-        $this->assertSame(1, $this->customer->notifications()->count());
+        // And the list holds every stage, not only the transactional one: muting
+        // push never reached the record. Asserted by event rather than by count,
+        // because the count is a property of how many stages `reviewedOrder()`
+        // walks and would change for reasons that have nothing to do with muting.
+        $events = $this->customer->notifications()->get()
+            ->map(fn ($row) => $row->data['meta']['event'] ?? null);
+
+        $this->assertContains(NotificationEvent::FinalPriceReady->value, $events);
+        $this->assertContains(NotificationEvent::OrderPlaced->value, $events);
     }
 
     #[Test]
@@ -473,8 +512,9 @@ class NotificationTest extends TestCase
         // Absent means enabled — only exceptions are stored.
         $this->getJson('/api/v1/notification-preferences', $this->apiHeaders())
             ->assertOk()
-            ->assertJsonPath('data.0.enabled', true)
-            ->assertJsonPath('data.1.enabled', true);
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.channel', 'push')
+            ->assertJsonPath('data.0.enabled', true);
 
         $this->assertSame(0, NotificationPreference::count());
 
@@ -483,7 +523,23 @@ class NotificationTest extends TestCase
 
         $prefs = collect($this->getJson('/api/v1/notification-preferences', $this->apiHeaders())->json('data'));
         $this->assertFalse($prefs->firstWhere('channel', 'push')['enabled']);
-        $this->assertTrue($prefs->firstWhere('channel', 'database')['enabled']);
+    }
+
+    #[Test]
+    public function the_account_screen_never_offers_to_silence_the_record(): void
+    {
+        Sanctum::actingAs($this->customer);
+
+        // `database` was accepted here once, and that was the whole bug: the
+        // in-app list is what the customer opens *from* a push to read what they
+        // were told, so a switch that empties it grants nobody's wish for less
+        // noise. Refused rather than quietly ignored — a 200 on a setting that
+        // does nothing is how the app comes to believe it turned something off.
+        $this->putJson('/api/v1/notification-preferences',
+            ['channel' => 'database', 'enabled' => false], $this->apiHeaders())
+            ->assertStatus(422);
+
+        $this->assertSame(0, NotificationPreference::count());
     }
 
     #[Test]

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\V1;
 use App\Http\Controllers\Controller;
 use App\Modules\Notification\Models\DeviceToken;
 use App\Modules\Notification\Models\NotificationPreference;
+use App\Modules\Notification\Services\NotificationDispatcher;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -47,6 +48,7 @@ class NotificationController extends Controller
                 'meta' => $data['meta'] ?? [],
                 'read' => $row->read_at !== null,
                 'at' => humanDate($row->created_at),
+                'at_iso' => isoDate($row->created_at),
             ];
         }
 
@@ -126,6 +128,14 @@ class NotificationController extends Controller
 
     /**
      * «الإشعارات» in the account screen.
+     *
+     * Lists only what a person may actually silence, which is `push` and nothing
+     * else. `database` used to appear here and accepting it was the bug: the
+     * in-app list is the record of what somebody was told, so muting it left the
+     * push arriving on the handset and the list the customer opened from it
+     * empty. `NotificationDispatcher::MUTABLE_CHANNELS` is the single source of
+     * truth — a screen offering a switch the dispatcher ignores is worse than no
+     * switch at all.
      */
     public function preferences(Request $request): JsonResponse
     {
@@ -134,7 +144,7 @@ class NotificationController extends Controller
 
         $payload = [];
 
-        foreach (['database', 'push'] as $channel) {
+        foreach (NotificationDispatcher::MUTABLE_CHANNELS as $channel) {
             // Absent means on: only exceptions are stored.
             $payload[] = [
                 'channel' => $channel,
@@ -148,7 +158,7 @@ class NotificationController extends Controller
     public function updatePreferences(Request $request): JsonResponse
     {
         $data = $request->validate([
-            'channel' => ['required', Rule::in(['database', 'push'])],
+            'channel' => ['required', Rule::in(NotificationDispatcher::MUTABLE_CHANNELS)],
             'enabled' => ['required', 'boolean'],
         ]);
 

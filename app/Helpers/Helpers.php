@@ -697,6 +697,36 @@ if (! function_exists('humanDate')) {
     }
 }
 
+if (! function_exists('isoDate')) {
+    /**
+     * The machine-readable twin of `humanDate()`.
+     *
+     * `humanDate()` answers «منذ ساعتين» — a sentence, translated, and different
+     * on every request depending on the `lang` header and on when you asked. It
+     * is the right thing to print on a screen and the wrong thing to put in a
+     * JSON field, because a client cannot parse it, sort by it, or compare two
+     * of them. The API had sixteen timestamps shaped that way, alongside five
+     * already in ISO 8601 and seven in `Y-m-d` — three formats, none of them
+     * promised anywhere.
+     *
+     * This is the one to send. Carries the offset, so a client knows which
+     * timezone the instant is expressed in rather than guessing the server's:
+     * `2026-09-13T18:00:00+03:00`.
+     *
+     * Null in, null out — deliberately, and unlike `humanDate()`, which answers
+     * the `no_data_found` translation key. A JSON field saying «لا توجد بيانات»
+     * where a date belongs is a parse error waiting at the other end.
+     */
+    function isoDate($date): ?string
+    {
+        if (! $date) {
+            return null;
+        }
+
+        return Carbon::parse($date)->setTimezone(displayTimezone())->toIso8601String();
+    }
+}
+
 if (! function_exists('displayTimezone')) {
     /**
      * The timezone humans reading the dashboard expect to see.

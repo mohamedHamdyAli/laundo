@@ -5,6 +5,7 @@ namespace Tests\Feature\Api;
 use App\Modules\Order\Enums\OrderStatus;
 use App\Modules\Order\Enums\TaskType;
 use App\Modules\Order\Models\Order;
+use App\Modules\Order\Models\OrderStatusLog;
 use App\Modules\Order\Models\OrderTask;
 use App\Modules\Order\Services\DriverDispatcher;
 use App\Modules\Order\Services\OrderReviewService;
@@ -296,5 +297,72 @@ class TrackReturnLegTest extends TestCase
         // placing the order and the driver arriving either.
         $after = collect($this->track($order->fresh())['steps'])->keyBy('status');
         $this->assertTrue($after[OrderStatus::DriverOnWay->value]['reached']);
+    }
+
+    // ------------------------------------- what the mobile team asked us about
+
+    #[Test]
+    public function a_step_behind_a_reached_one_cannot_read_as_unreached(): void
+    {
+        $driver = $this->driverUser('+201033330068', zoneIds: [$this->geo['zones'][0]->id]);
+        $order = $this->readyForDelivery($driver);
+
+        // The mobile team's report: steps that had plainly happened were coming
+        // back false. Every step decided for itself off its own log row, so one
+        // missing row — an order mended by hand, a step added to this list after
+        // orders were already flowing — left that lamp dark for ever while the
+        // ones after it were lit.
+        OrderStatusLog::where('order_id', $order->id)
+            ->where('to_status', OrderStatus::Confirmed->value)
+            ->delete();
+
+        $steps = collect($this->track($order->fresh())['steps'])->keyBy('status');
+
+        $this->assertTrue($steps[OrderStatus::ReadyForDelivery->value]['reached']);
+        $this->assertTrue(
+            $steps[OrderStatus::Confirmed->value]['reached'],
+            'a step before a reached one must read as reached'
+        );
+
+        // The time is not invented. We know it happened; we do not know when, and
+        // a made-up timestamp on a tracking screen is worse than a blank one.
+        $this->assertNull($steps[OrderStatus::Confirmed->value]['at']);
+        $this->assertNull($steps[OrderStatus::Confirmed->value]['at_iso']);
+
+        // What has genuinely not happened stays false.
+        $this->assertFalse($steps[OrderStatus::Delivered->value]['reached']);
+    }
+
+    #[Test]
+    public function every_timeline_step_carries_a_parseable_time(): void
+    {
+        $driver = $this->driverUser('+201033330069', zoneIds: [$this->geo['zones'][0]->id]);
+        $order = $this->readyForDelivery($driver);
+
+        $reached = collect($this->track($order->fresh())['steps'])->firstWhere('reached', true);
+
+        // `at` is «منذ ساعتين» — a sentence, translated, and different every time
+        // you ask. Fine on a screen, unusable in a field.
+        $this->assertNotNull($reached['at_iso']);
+        $this->assertNotNull(
+            \DateTimeImmutable::createFromFormat(\DateTimeInterface::ATOM, $reached['at_iso']),
+            "at_iso must be ISO 8601, got: {$reached['at_iso']}"
+        );
+    }
+
+    #[Test]
+    public function the_track_screen_knows_where_the_two_handovers_are(): void
+    {
+        $driver = $this->driverUser('+201033330070', zoneIds: [$this->geo['zones'][0]->id]);
+        $order = $this->readyForDelivery($driver);
+
+        $data = $this->track($order->fresh());
+
+        // The screen already drew the driver's dot and had nothing to anchor it
+        // against — a marker moving on an empty map does not tell a customer
+        // whether the van is near their street.
+        $this->assertSame((float) $this->address->lat, $data['pickup_location']['lat']);
+        $this->assertSame((float) $this->address->lng, $data['pickup_location']['lng']);
+        $this->assertSame((float) $this->address->lat, $data['delivery_location']['lat']);
     }
 }

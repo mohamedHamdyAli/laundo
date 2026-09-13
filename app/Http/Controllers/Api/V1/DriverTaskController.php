@@ -70,7 +70,7 @@ class DriverTaskController extends Controller
             });
         }
 
-        $tasks = $query->orderByRaw('due_at is null, due_at')
+        $tasks = $query->inDueOrder()
             ->paginate(min((int) $request->get('per_page', 20), 50));
 
         return successReturnPaginated(
@@ -92,7 +92,7 @@ class DriverTaskController extends Controller
         $current = $this->scope($request)
             ->whereIn('status', [TaskStatus::Started->value, TaskStatus::Assigned->value])
             ->orderByRaw("status = '".TaskStatus::Started->value."' desc")
-            ->orderByRaw('due_at is null, due_at')
+            ->inDueOrder()
             ->first();
 
         return successReturnData([
@@ -140,14 +140,20 @@ class DriverTaskController extends Controller
             $query->where('status', TaskStatus::Failed->value);
         }
 
-        $tasks = $query->latest('updated_at')->paginate(min((int) $request->get('per_page', 20), 50));
+        // `id` behind `updated_at` for the same reason the live list is tie-broken:
+        // a batch of legs finished in one transaction shares a timestamp to the
+        // second, and an unstable tail duplicates rows across pages.
+        $tasks = $query->latest('updated_at')->latest('id')
+            ->paginate(min((int) $request->get('per_page', 20), 50));
 
         $payload = [];
 
         foreach ($tasks->items() as $task) {
             $payload[] = $this->summary($task) + [
                 'started_at' => $task->started_at ? humanDate($task->started_at) : null,
+                'started_at_iso' => isoDate($task->started_at),
                 'finished_at' => $task->completed_at ? humanDate($task->completed_at) : null,
+                'finished_at_iso' => isoDate($task->completed_at),
                 'duration_minutes' => $task->durationMinutes(),
                 'failure_reason' => $task->failure_reason
                     ? __($task->failure_reason->label())
@@ -302,6 +308,7 @@ class DriverTaskController extends Controller
                 // The sum in words, for a driver asking why a job paid what it did.
                 'calculation' => $earning->explain(),
                 'at' => humanDate($earning->created_at),
+                'at_iso' => isoDate($earning->created_at),
             ];
         }
 
@@ -353,13 +360,25 @@ class DriverTaskController extends Controller
     private function scope(Request $request)
     {
         return OrderTask::where('driver_id', $this->driver($request)->id)
-            ->with(['order:id,code,user_id,laundry_id,service_id,pickup_address_id,delivery_address_id,payment_method,payment_status,estimated_total,final_total']);
+            // The addresses and the laundry are here because `summary()` now
+            // carries the destination's coordinates. Left out, a page of fifteen
+            // tasks would fire fifteen address queries and fifteen laundry ones
+            // to draw a map pin — the N+1 the query-count tests exist to catch.
+            ->with([
+                'order:id,code,user_id,laundry_id,service_id,pickup_address_id,delivery_address_id,payment_method,payment_status,estimated_total,final_total',
+                'order.pickupAddress:id,street,lat,lng',
+                'order.deliveryAddress:id,street,lat,lng',
+                'order.laundry:id,name,address,lat,lng',
+            ]);
     }
 
     private function find(Request $request, $id): ?OrderTask
     {
         return OrderTask::where('driver_id', $this->driver($request)->id)
-            ->with(['order.customer:id,name,phone,customer_reference', 'order.laundry:id,name,address,phone',
+            // `lat,lng` on the laundry: a constrained eager load returns null for
+            // anything left out, so the laundry legs would still have answered
+            // with no coordinates after the presenter stopped hardcoding them.
+            ->with(['order.customer:id,name,phone,customer_reference', 'order.laundry:id,name,address,phone,lat,lng',
                 'order.pickupAddress', 'order.deliveryAddress', 'order.service:id,name'])
             ->find($id);
     }
@@ -383,7 +402,15 @@ class DriverTaskController extends Controller
             'order_code' => $order?->code,
             'customer_name' => $order?->customer?->name,
             'destination' => $task->type->destinationFor($order ?? new Order),
+            // The pin for the same destination, on the list rather than only in
+            // the detail — a driver planning a route should not have to open
+            // four screens to find out where the four legs are.
+            'destination_location' => $task->type->coordinatesFor($order ?? new Order),
             'due_at' => $task->due_at ? humanDate($task->due_at) : null,
+            // Null means «no time agreed yet», which is a real state: an order
+            // may be placed without a delivery window, and postponing a leg
+            // clears the one it had until the customer rebooks.
+            'due_at_iso' => isoDate($task->due_at),
         ];
     }
 
@@ -400,6 +427,8 @@ class DriverTaskController extends Controller
             ? $order?->deliveryAddress
             : $order?->pickupAddress;
 
+        $coordinates = $type->coordinatesFor($order ?? new Order);
+
         return $this->summary($task) + [
             // What the screen has to render, driven by the leg rather than by the
             // app guessing from the type string.
@@ -412,15 +441,21 @@ class DriverTaskController extends Controller
                 ? ['name' => $order?->customer?->name, 'phone' => $address?->callablePhone() ?? $order?->customer?->phone]
                 : ['name' => $order?->laundry ? getLocalizedValue($order->laundry, 'name') : null,
                     'phone' => $order?->laundry?->phone],
-            'address' => $atCustomer ? [
+            'address' => ($atCustomer ? [
                 'street' => $address?->street,
                 'building' => $address?->building,
                 'floor' => $address?->floor,
                 'apartment' => $address?->apartment,
                 'landmark' => $address?->landmark,
-                'lat' => $address?->lat !== null ? (float) $address->lat : null,
-                'lng' => $address?->lng !== null ? (float) $address->lng : null,
-            ] : ['street' => $order?->laundry?->address, 'lat' => null, 'lng' => null],
+            ] : [
+                'street' => $order?->laundry?->address,
+            ]) + [
+                // Both branches through the same accessor. The laundry half used
+                // to be a literal `'lat' => null` while the column was filled,
+                // so legs two and three had no map.
+                'lat' => $coordinates['lat'] ?? null,
+                'lng' => $coordinates['lng'] ?? null,
+            ],
 
             'driver_note' => $order?->driver_note,
             'special_instructions' => $order?->special_instructions,
@@ -461,7 +496,9 @@ class DriverTaskController extends Controller
 
             'signature_url' => $task->signatureUrl(),
             'started_at' => $task->started_at ? humanDate($task->started_at) : null,
+            'started_at_iso' => isoDate($task->started_at),
             'completed_at' => $task->completed_at ? humanDate($task->completed_at) : null,
+            'completed_at_iso' => isoDate($task->completed_at),
         ];
     }
 

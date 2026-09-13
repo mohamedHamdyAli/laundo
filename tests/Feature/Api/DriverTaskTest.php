@@ -18,6 +18,7 @@ use App\Modules\Order\Services\TaskService;
 use App\Modules\User\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\DB;
 use Laravel\Sanctum\Sanctum;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
@@ -636,6 +637,166 @@ class DriverTaskTest extends TestCase
     }
 
     // ------------------------------------------------------------------ helpers
+
+    // ------------------------------------- what the mobile team asked us about
+
+    #[Test]
+    public function every_task_in_the_list_carries_the_pin_for_where_it_is_going(): void
+    {
+        $driver = $this->eligibleDriver();
+        $this->placedOrder();
+
+        Sanctum::actingAs($driver);
+
+        $rows = collect($this->getJson('/api/v1/driver/tasks', $this->apiHeaders())->json('data'))
+            ->keyBy('type');
+
+        // The customer legs were reachable only by opening the task; the list
+        // had a street name and nothing to put on a map.
+        foreach ([TaskType::PickupFromCustomer, TaskType::DeliverToCustomer] as $type) {
+            $point = $rows[$type->value]['destination_location'];
+            $this->assertSame((float) $this->address->lat, $point['lat'], $type->value);
+            $this->assertSame((float) $this->address->lng, $point['lng'], $type->value);
+        }
+
+        // And the laundry legs had no coordinates **anywhere** — the presenter
+        // wrote a literal null while `laundries.lat` sat filled in the table, so
+        // two of the four legs could not be navigated to at all.
+        $laundry = $this->tenant['laundry']->fresh();
+
+        foreach ([TaskType::DeliverToLaundry, TaskType::CollectFromLaundry] as $type) {
+            $point = $rows[$type->value]['destination_location'];
+            $this->assertSame((float) $laundry->lat, $point['lat'], $type->value);
+            $this->assertSame((float) $laundry->lng, $point['lng'], $type->value);
+        }
+    }
+
+    #[Test]
+    public function the_task_detail_maps_the_laundry_as_well_as_the_door(): void
+    {
+        $driver = $this->eligibleDriver();
+        $order = $this->placedOrder();
+
+        Sanctum::actingAs($driver);
+
+        $task = OrderTask::withoutGlobalScopes()
+            ->where('order_id', $order->id)
+            ->where('type', TaskType::DeliverToLaundry->value)
+            ->firstOrFail();
+
+        $address = $this->getJson("/api/v1/driver/tasks/{$task->id}", $this->apiHeaders())
+            ->assertOk()->json('data.address');
+
+        $laundry = $this->tenant['laundry']->fresh();
+
+        $this->assertSame((float) $laundry->lat, $address['lat']);
+        $this->assertSame((float) $laundry->lng, $address['lng']);
+    }
+
+    #[Test]
+    public function drawing_a_pin_does_not_cost_a_query_per_row(): void
+    {
+        $driver = $this->eligibleDriver();
+        $this->placedOrder();
+        $this->placedOrder('+201099887799');
+
+        Sanctum::actingAs($driver);
+
+        DB::enableQueryLog();
+        $count = count($this->getJson('/api/v1/driver/tasks', $this->apiHeaders())->json('data'));
+        $log = collect(DB::getQueryLog())->pluck('query');
+        DB::disableQueryLog();
+
+        $this->assertSame(8, $count);
+
+        // Eight legs across two orders, each needing an address or a laundry to
+        // put a pin on. Read off the row rather than eager-loaded, that is
+        // sixteen extra round trips to draw one list; batched, it is three.
+        $this->assertLessThanOrEqual(2, $log->filter(fn ($q) => str_contains($q, 'from "addresses"'))->count());
+        $this->assertLessThanOrEqual(1, $log->filter(fn ($q) => str_contains($q, 'from "laundries"'))->count());
+    }
+
+    #[Test]
+    public function the_list_carries_a_parseable_due_date_beside_the_readable_one(): void
+    {
+        $driver = $this->eligibleDriver();
+
+        $order = $this->placedOrder();
+        $order->forceFill(['delivery_date' => now()->addDay()->toDateString()])->save();
+        app(OrderTask::class)->newQuery()->withoutGlobalScopes()
+            ->where('order_id', $order->id)
+            ->update(['due_at' => now()->addDay()->setTime(18, 0)]);
+
+        Sanctum::actingAs($driver);
+
+        $row = $this->getJson('/api/v1/driver/tasks', $this->apiHeaders())->json('data.0');
+
+        // `due_at` is «خلال يوم» — relative, translated, and moving. The app
+        // cannot parse it, sort by it, or put it on a calendar.
+        $this->assertNotNull($row['due_at_iso']);
+        $this->assertNotNull(
+            \DateTimeImmutable::createFromFormat(\DateTimeInterface::ATOM, $row['due_at_iso']),
+            "due_at_iso must be ISO 8601, got: {$row['due_at_iso']}"
+        );
+    }
+
+    #[Test]
+    public function an_unscheduled_leg_says_so_rather_than_guessing(): void
+    {
+        $driver = $this->eligibleDriver();
+        $this->placedOrder();
+
+        Sanctum::actingAs($driver);
+
+        // An order placed without a delivery window, and a leg whose window was
+        // cleared by a postponement, both genuinely have no due date. Null is the
+        // honest answer — the request to reject those at creation would break the
+        // postpone flow, which clears the date on purpose.
+        $row = collect($this->getJson('/api/v1/driver/tasks', $this->apiHeaders())->json('data'))
+            ->firstWhere('type', TaskType::DeliverToCustomer->value);
+
+        $this->assertNull($row['due_at_iso']);
+    }
+
+    #[Test]
+    public function the_task_list_comes_back_in_the_same_order_every_time(): void
+    {
+        $driver = $this->eligibleDriver();
+
+        // Three orders placed with no delivery window, so every leg's `due_at` is
+        // null and the whole list is one big tie — which is the state the driver
+        // app was seeing as «عشوائية».
+        $this->placedOrder();
+        $this->placedOrder('+201099887788');
+        $this->placedOrder('+201099887777');
+
+        Sanctum::actingAs($driver);
+
+        $ids = fn () => collect($this->getJson('/api/v1/driver/tasks?per_page=6', $this->apiHeaders())
+            ->json('data'))->pluck('id')->all();
+
+        $first = $ids();
+        $this->assertCount(6, $first);
+        $this->assertSame($first, $ids(), 'the same request must answer the same order');
+
+        // And the tie-break is the one that was chosen: the leg number first, so
+        // all the collections lead and the deliveries follow, then the id, so two
+        // orders at the same leg read oldest-first.
+        $rows = collect($this->getJson('/api/v1/driver/tasks?per_page=6', $this->apiHeaders())->json('data'));
+
+        $this->assertSame([1, 1, 1, 2, 2, 2], $rows->pluck('sequence')->all());
+        $this->assertSame(
+            $rows->pluck('id')->all(),
+            $rows->sortBy([['sequence', 'asc'], ['id', 'asc']])->pluck('id')->values()->all()
+        );
+
+        // Page two must not repeat page one — the failure an unstable sort
+        // produces under pagination.
+        $page2 = collect($this->getJson('/api/v1/driver/tasks?per_page=6&page=2', $this->apiHeaders())
+            ->json('data'))->pluck('id')->all();
+
+        $this->assertEmpty(array_intersect($first, $page2));
+    }
 
     private function eligibleDriver(): Driver
     {

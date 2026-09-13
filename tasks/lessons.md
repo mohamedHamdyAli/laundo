@@ -1899,3 +1899,66 @@ belongs and the typed one last, and **assert the fields nobody looks at**: a
 response shape with three fields needs three assertions, or the two you skipped
 are where the bug will live.
 
+---
+
+## Read the bug report against the code, not against the words
+
+The mobile team sent four items. Checking each one against the source moved
+three of them and killed the fourth's stated cause:
+
+- «تاريخ التسليم بيرجع null» — true, and the smaller half. The field was
+  `humanDate($task->due_at)`, which with no format is `diffForHumans()`: «منذ
+  ساعتين», translated, relative, different on every request. They had never been
+  sent a date at all. Sixteen fields across seven controllers were like that,
+  beside five in ISO 8601 and seven in `Y-m-d` — which is why their ask was
+  phrased as «confirm the format and its consistency» rather than «fix null».
+- «خلّيه required وقت الإنشاء» — would have broken a deliberate flow.
+  `TaskService::clearSchedule()` nulls the date when a leg is postponed, on
+  purpose, so the customer rebooks. Null is a real state here, not an omission.
+- «التاسكات بترجع عشوائية» — the query was already `ORDER BY due_at IS NULL,
+  due_at`. What it lacked was a tie-break, and ties are the common case because
+  the four legs of one order share a window. It was not unsorted; it was
+  unstable, which pagination turns into rows appearing twice or not at all.
+- «location مش موجود» — it *was* in the task detail. What was missing was the
+  list, and a hardcoded `'lat' => null` on the two laundry legs while
+  `laundries.lat` sat filled in the table.
+
+**Rule:** a report names the symptom from outside. Find the line that produces
+it before agreeing to the cause, and say plainly when the fix they asked for
+would break something they cannot see — then fix what is actually wrong.
+
+---
+
+## A constrained eager load returns null, not an error
+
+`->with('order.laundry:id,name,address,phone')` and then reading
+`$laundry->lat` gives you `null`, silently, for ever. Removing the presenter's
+hardcoded `'lat' => null` would have changed nothing on its own, because the
+column was never selected — the same trap `DriverCard` had already documented
+for `phone`, one file away.
+
+**Rule:** when a column starts being read, grep for every `with('relation:...')`
+that loads that relation and add it to the list. A missing column in a
+constrained eager load fails exactly like a missing value in the database.
+
+---
+
+## Match the file's own serialisation before rewriting it
+
+Editing three descriptions in the Postman collection by `json.load` →
+`json.dumps(indent=4)` rewrote all 6,055 lines: the file is indented with two
+spaces. A three-line change arrived as a 11,910-line diff, unreviewable and
+impossible to tell apart from an accident.
+
+The check is one line — round-trip the file and compare to the original bytes
+before writing anything:
+
+```python
+json.dumps(json.load(open(p)), ensure_ascii=False, indent=2) + '
+' == open(p).read()
+```
+
+**Rule:** for any generated or hand-maintained data file, reproduce its exact
+serialisation first and prove it byte-identical. Then make the edit, and check
+`git diff --stat` says roughly what you changed.
+

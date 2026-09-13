@@ -6,6 +6,7 @@ use App\Trait\DashboardModel;
 use App\Trait\Scopes\Searchable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Carbon;
 
 /**
  * One card in «رحلتك معنا بسيطة» on the customer's home screen.
@@ -14,8 +15,8 @@ use Illuminate\Database\Eloquent\Model;
  * @property string|null $image
  * @property int $sort_order
  * @property string $status
- * @property \Illuminate\Support\Carbon|null $created_at
- * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property Carbon|null $created_at
+ * @property Carbon|null $updated_at
  * @property-read mixed $title
  * @property-read mixed $description
  *

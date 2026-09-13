@@ -2217,7 +2217,7 @@
                     "track"
                   ]
                 },
-                "description": "The tracking screen: the five-point timeline plus which steps have been reached and when.\n\n`driver` is the card the design draws - «مندوب الاستلام · أحمد · ★ 4.9»:\n\n| Field | Notes |\n|---|---|\n| `name`, `image` | Whoever holds the leg in flight; the last completed leg between journeys. |\n| `role` | Which of the four legs - the person collecting and the person returning are usually not the same. |\n| `rating` | The average of **delivery** ratings alone, never the wash. `null`, not `0`, until somebody has rated them. |\n| `location` | `{lat, lng, updated_at}` - the live dot. |\n\n`driver` is null before anybody is assigned. `driver.location` is null in three more cases, each deliberate: the leg does not end at the customer (the runs to and from the laundry are not broadcast), the driver has not reported yet, or the last reading is over two minutes old - a frozen marker reads as a driver who has stopped.\n\n**No phone number.** Handing out a driver's personal mobile is a policy decision, not a field."
+                "description": "The tracking screen: the five-point timeline plus which steps have been reached and when.\n\n`driver` is the card the design draws - «مندوب الاستلام · أحمد · ★ 4.9»:\n\n| Field | Notes |\n|---|---|\n| `name`, `image` | Whoever holds the leg in flight; the last completed leg between journeys. |\n| `role` | Which of the four legs - the person collecting and the person returning are usually not the same. |\n| `rating` | The average of **delivery** ratings alone, never the wash. `null`, not `0`, until somebody has rated them. |\n| `location` | `{lat, lng, updated_at}` - the live dot. |\n\n`driver` is null before anybody is assigned. `driver.location` is null in three more cases, each deliberate: the leg does not end at the customer (the runs to and from the laundry are not broadcast), the driver has not reported yet, or the last reading is over two minutes old - a frozen marker reads as a driver who has stopped.\n\n**No phone number.** Handing out a driver's personal mobile is a policy decision, not a field.\n\n---\n\n**Map anchors.** `pickup_location` and `delivery_location` are `{lat, lng}` for the two doors, beside `driver.location`, which is the driver's live dot. The dot alone told a customer nothing about whether the van was near their street.\n\n**`steps[].reached` never goes backwards.** Each step is read from `order_status_logs`, and a step behind a reached one is reported reached even when its own row is missing — a line whose last lamp is lit and whose middle one is dark reads as something skipped. Where the row is genuinely absent, `at` and `at_iso` stay `null` rather than carrying an invented time.\n\n`steps[].at_iso` is the ISO 8601 twin of `at`."
               },
               "response": []
             },
@@ -4519,7 +4519,7 @@
                     "notification-preferences"
                   ]
                 },
-                "description": "One row per channel (`database`, `push`). Absent means **on**: only exceptions are stored."
+                "description": "One row per channel a person may silence, which today is `push` and nothing else. Absent means **on**: only exceptions are stored.\n\n`database` is deliberately not listed. The in-app list is the **record** of what somebody was told, not a way of telling them — muting it made nothing quieter and only left the push arriving on the handset and the list the customer opened from it empty."
               },
               "response": []
             },
@@ -4568,7 +4568,7 @@
                     "notification-preferences"
                   ]
                 },
-                "description": "One channel at a time.",
+                "description": "One channel at a time. `channel` must be one the account screen actually offers — `push` — and anything else is refused with **422**.\n\n`channel: \"database\"` used to be accepted and is the reason this note exists: it silenced the in-app list while push kept arriving, so a customer tapped a notification, opened the list it pointed at, and found nothing there.",
                 "body": {
                   "mode": "raw",
                   "raw": "{\n    \"channel\": \"push\",\n    \"enabled\": false\n}",
@@ -5324,7 +5324,7 @@
                     }
                   ]
                 },
-                "description": "Paginated, ordered by due date with undated tasks last.\n\n**Saves the first task id into `task_id`.**",
+                "description": "Paginated, ordered by due date with undated tasks last.\n\n**Saves the first task id into `task_id`.**\n\n---\n\n**Every row carries its own map pin.** `destination` is the street as a human reads it; `destination_location` is `{lat, lng}` for the same place, or `null` when nobody has dropped the pin. All four legs answer it, the two laundry ones included — they used to be hardcoded `null` in the presenter while `laundries.lat` sat filled in the table, so half the journey could not be navigated to.\n\n**Two forms of every time.** `due_at` is the readable one («خلال ساعتين»), translated to the `lang` header and different on every request. `due_at_iso` is the one to parse, sort and diff: ISO 8601 with the offset, e.g. `2026-09-13T18:00:00+03:00`. The same pairing is on `started_at` / `started_at_iso` and `completed_at` / `completed_at_iso` here and in the history.\n\n**`due_at_iso` is null when no time has been agreed** — not an error, and not something to hide. An order may be placed without a delivery window, and postponing a leg deliberately clears the window it had until the customer picks a new one.\n\n**The order is stable.** Soonest `due_at` first, undated legs last, then leg number, then id. The tie-break matters as much as the sort: undated legs are the common case, and without it MySQL reshuffled the tail between requests, so a task could appear on page one and page two of the same list, or on neither.",
                 "auth": {
                   "type": "bearer",
                   "bearer": [
@@ -5570,7 +5570,7 @@
                     "{{task_id}}"
                   ]
                 },
-                "description": "Everything the task screen renders, driven by the leg rather than by the app guessing from the type string: `requires_signature`, `requires_piece_count`, `collects_payment`, the contact and address for this end of the journey, the payment block, and the `ticket` («طباعة البطاقة») including the QR the scan checks against.",
+                "description": "Everything the task screen renders, driven by the leg rather than by the app guessing from the type string: `requires_signature`, `requires_piece_count`, `collects_payment`, the contact and address for this end of the journey, the payment block, and the `ticket` («طباعة البطاقة») including the QR the scan checks against.\n\n---\n\n`address.lat` / `address.lng` are filled for **all four legs**. On the two laundry legs they were a literal `null` while the laundry's coordinates sat in the table; they now come from the laundry row. Null still means «nobody placed this pin» — draw the address text rather than a marker at (0, 0), which is in the Atlantic.\n\n`started_at_iso` and `completed_at_iso` are the machine-readable twins of `started_at` and `completed_at`.",
                 "auth": {
                   "type": "bearer",
                   "bearer": [

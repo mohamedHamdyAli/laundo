@@ -773,6 +773,20 @@ a:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; border-r
     <span class="stage s-end">completed</span>
   </div>
 
+  <div class="note n-info">
+    <span class="note-t">شاشة التتبّع في الرحلة دي</span>
+    <p><code>GET /api/v1/orders/{id}/track</code> بترجع <b>٨ خطوات</b>: ستة منهم من
+    <code>order_status_logs</code> واتنين متولّدين. <code>OrderTimeline</code> بيضيف
+    <code>driver_on_way</code> (حالة حقيقية كانت متسجّلة ومترسمتش) و<code>out_for_delivery</code>
+    — ودي <b>مش حالة في <code>OrderStatus</code></b> أصلاً. استلام المندوب من المغسلة
+    مبيحرّكش الطلب — عن قصد، لأن حالة الطلب بتوصف الهدوم مش العربية اللي هي فيها — فالخطوة
+    دي بتتقرا من <b>رحلة ٣ لمّا تخلص</b>، مش لمّا تتعيّن: رجلتين الرجوع بيتعيّنوا مع بعض
+    ساعة ما المغسلة تقول «جاهز».</p>
+    <p>من غير الخطوتين دول كانت الشاشة ما بتتحرّكش من <code>ready_for_delivery</code>
+    لـ<code>delivered</code> طول رحلة الرجوع، وكارت المندوب كان بيروح من غير تليفون ولا
+    خريطة في نفس الوقت.</p>
+  </div>
+
   <p>عند <b>delivered</b> بيحصل تحصيل الكاش لو الدفع عند الاستلام.
      عند <b>completed</b> <u>بس</u> بتتحرك الفلوس:</p>
   <ul>

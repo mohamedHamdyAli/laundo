@@ -75,6 +75,7 @@ class WalletController extends Controller
                 'note' => $row->note,
                 'balance_after' => (float) $row->balance_after,
                 'at' => humanDate($row->created_at),
+                'at_iso' => isoDate($row->created_at),
             ];
         }
 

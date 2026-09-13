@@ -87,7 +87,9 @@ class RefundController extends Controller
                 'status_label' => __($refund->statusLabel()),
                 'destination' => $refund->destination,
                 'requested_at' => humanDate($refund->created_at),
+                'requested_at_iso' => isoDate($refund->created_at),
                 'settled_at' => $refund->settled_at ? humanDate($refund->settled_at) : null,
+                'settled_at_iso' => isoDate($refund->settled_at),
             ];
         }
 
