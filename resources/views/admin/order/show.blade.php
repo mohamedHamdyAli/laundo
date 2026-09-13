@@ -18,6 +18,14 @@
             <a href="{{ route('admin.order.index') }}" class="btn-quiet">
                 <i class="fa fa-arrow-left"></i>{{ __('Back') }}
             </a>
+            {{-- Last in the row on purpose: it is the one control here that
+                 cannot be undone, and it should not sit where the eye lands
+                 first or next to «Invoice», which is one place along. --}}
+            @include('admin.order.shared.controlBut', [
+                'row' => $row,
+                'blocker' => $deletionBlocker,
+                'compact' => true,
+            ])
         </div>
     </div>
 

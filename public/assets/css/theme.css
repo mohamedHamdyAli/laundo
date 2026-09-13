@@ -1642,10 +1642,12 @@ body.theme-dark {
 
    Two row shapes, and the difference is the number of actions:
 
-   * one action — the row is an `<a>` and the whole card is the link. Used on
-     orders, where `index` and `show` sit behind the same permission so anybody
-     reading the list can open any row, and there is nothing for an action
-     column to hold.
+   * one action — the row is an `<a>` and the whole card is the link. Nothing
+     uses this now. Orders did, while `index` and `show` were the only things a
+     reader of that list could reach and there was nothing for an action column
+     to hold; `order.delete` gave it something, so it moved to the shape below.
+     The rules are kept because the shape is still correct for a list whose only
+     action is «open me».
    * several — the row is a `<div>`, its identity cell carries the link, and the
      buttons sit in `.stack-actions`. A link cannot contain buttons.
    ========================================================================== */

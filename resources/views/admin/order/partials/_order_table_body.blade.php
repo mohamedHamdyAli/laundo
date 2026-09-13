@@ -1,28 +1,33 @@
 {{--
     Direction C, «Stack». Each order is a row-card, not a table row.
 
-    The whole card is the link: `admin.order.index` and `admin.order.show` both
-    sit behind `permission:order.view`, so anybody reading this list can open
-    any row in it and there is no second action to reserve a column for.
+    **Shape 2, not shape 1.** This list used to be the one place shape 1 was
+    used — the row itself an `<a>`, the whole card the link — because `index`
+    and `show` sat behind the same permission and there was no second action to
+    reserve a column for. There is one now: `order.delete`. A link cannot
+    contain a button, so the row becomes a `<div>`, the code carries the link,
+    and the button sits in `.stack-actions`. See the shape note in theme.css.
 
-    It still needs to *look* openable. This was the only list of the 26 with no
-    actions cell, and «the whole row is a link» is invisible: a reader saw five
-    columns of text and nothing saying the details were one click away. The
-    chevron on the trailing edge is that affordance. It is a plain glyph inside
-    the anchor rather than a button or a second link — a control nested in a
-    control is invalid, unreachable by keyboard, and would give the row two tab
-    stops to the same page.
+    The delete is offered on the **status** half of `OrderDeletionGuard` only.
+    Asking the whole guard here would be five existence queries per row; the
+    money half runs when the button is actually pressed, and a refusal comes
+    back naming the rule that caught it.
 
     The file keeps its `_table_body` name because OrderController@search renders
     it by that path, and the AJAX helper replaces the container's HTML wholesale
     — a div container takes card markup exactly as a tbody took rows.
 --}}
+@php
+    $deletionGuard = app(\App\Modules\Order\Services\OrderDeletionGuard::class);
+@endphp
+
 @forelse ($orders as $order)
-    <a href="{{ route('admin.order.show', $order->id) }}"
-        class="stack-row tone-{{ $order->status->tone() }}">
+    <div class="stack-row tone-{{ $order->status->tone() }}">
 
         <div>
-            <span class="row-lead">#{{ $order->code }}</span>
+            <span class="row-lead">
+                <a href="{{ route('admin.order.show', $order->id) }}">#{{ $order->code }}</a>
+            </span>
             <span class="row-sub">{{ humanDate($order->created_at) }}</span>
         </div>
 
@@ -67,13 +72,22 @@
             @endif
         </div>
 
-        {{-- Mirrored in RTL from the stylesheet, so there is one icon name
-             here rather than a direction test in the markup. --}}
-        <div class="stack-open" aria-hidden="true">
-            <i class="bi bi-chevron-right"></i>
+        <div class="stack-actions">
+            {{-- The chevron stays. It is the affordance that says the row opens,
+                 and it is the same link as the code — one destination, and it
+                 keeps its own tab stop off the page by being aria-hidden with
+                 the code carrying the accessible name. --}}
+            <a href="{{ route('admin.order.show', $order->id) }}" class="btn btn-sm action-btn action-view"
+                tabindex="-1" aria-hidden="true">
+                <i class="bi bi-chevron-right"></i>
+            </a>
+            @include('admin.order.shared.controlBut', [
+                'row' => $order,
+                'offer' => $deletionGuard->statusAllows($order),
+            ])
         </div>
 
-    </a>
+    </div>
 @empty
     <div class="stack-empty">{{ __('No data found') }}</div>
 @endforelse

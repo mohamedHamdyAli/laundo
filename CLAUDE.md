@@ -7,7 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ```bash
 composer dev          # server + queue:listen + pail logs + vite, concurrently
 composer test         # config:clear then artisan test (PHPUnit 11 — NOT Pest)
-composer test:browser # npx playwright test (needs a server already running)
+composer test:browser # npx playwright test (boots its own server on :8800)
 composer test:all     # composer test, then the browser suite
 composer stan         # phpstan analyse app --level=5 (via larastan)
 ./vendor/bin/pint     # formatter (no composer script)
@@ -18,7 +18,10 @@ php artisan laundo:sync-web-lang     # push new webFile.php keys into each {code
 npm run build / npm run dev
 ```
 
-Single test: `php artisan test --filter=TestName` · one file: `php artisan test tests/Feature/Api/OrderTest.php` · one suite: `php artisan test --testsuite=Unit`. One browser spec: `npx playwright test tests/browser/<name>.spec.js`.
+Single test: `php artisan test --filter=TestName` · one file: `php artisan test tests/Feature/Api/OrderTest.php` · one suite: `php artisan test --testsuite=Unit`. One browser spec: `npx playwright test tests/Browser/<name>.spec.js`.
+
+The full PHPUnit suite takes **~5 minutes**. Use `--filter` while iterating and
+run the whole thing before you call the task done.
 
 PHPUnit runs against in-memory SQLite (`phpunit.xml`); the app itself runs on MySQL. Anything relying on MySQL-only SQL will pass in tests and fail in the app.
 
@@ -34,7 +37,23 @@ Laravel 13 · PHP ^8.3 · MySQL · Sanctum (mobile API) · `laravel/ui` (Bootstr
 
 `app/Modules/{Name}/` — Controllers, Models, Repositories, Services, Requests, and often `Enums`. 31 modules: Address, Banner, City, Complaint, Country, Coupon, Driver, Faq, Intro, Item, ItemCategory, JourneyStep, Laundry, LaundryService, LaundryStaff, LaundryZone, Moderator, Notification, Offer, Order, Payment, Pricing, Rating, Recurrence, Report, Service, Setting, TimeSlot, User, Wallet, Zone.
 
-Not every feature is a module. **Role**, **Language** and **Notification** admin screens live in `app/Http/Controllers/Admin/` + `app/Models/` instead — when touching those, don't look for a module directory.
+**A sidebar screen is not a module directory.** There are 31 module dirs and 40
+panel screens, and the newer ones live inside an existing module rather than
+getting their own — so **do not go looking for `app/Modules/Settlement/`**:
+
+| Screen | Lives in |
+| --- | --- |
+| `payment`, `driver_earning`, `refund`, `order_settlement`, `commission_rule`, invoices | `app/Modules/Payment/` |
+| `dispatch`, `order_task` | `app/Modules/Order/` |
+| `driver_application`, `driver_bonus_rule`, `driver_bonus_award` | `app/Modules/Driver/` |
+| `role`, `language`, `notification_log` | `app/Http/Controllers/Admin/` + `app/Models/` |
+
+`app/Modules/Payment/` alone backs six panel screens plus the API's payment and
+refund controllers — and one controller can back several: `PaymentLedgerController`
+serves both `admin.payment.*` and `admin.earning.*`, and `DriverEarning` is a
+Payment model despite the name. **Grep for the controller before assuming a
+directory**, and note the menu/permission key (`driver_earning`) need not match
+either the route name (`admin.earning.index`) or the owning module.
 
 Read **`app/Modules/Offer/`** end to end for the module contract at its cleanest; **`app/Modules/Coupon/`** for a service with real business rules in it.
 
@@ -44,6 +63,125 @@ Controllers do HTTP only and delegate to the service; **repositories are the onl
 
 Every CRUD service exposes **`shredData($id = null)`** — the universal view-data assembler. It returns the list under a plural key and, when `$id` is given, the single record under **`row`**. Controllers pass its result straight to the view; Blade partials expect `$row`. New modules must follow this or the shared partials/components won't fit.
 
+### The order lifecycle
+
+The domain core. Full reference in **`docs/order-lifecycle.md`** (Arabic, written
+from the code) and **`docs/order-cycle-explained.md`**; the rules that bind code:
+
+- **`OrderStateMachine::transition()` is the only way a status changes.** Writing
+  `$order->status` directly skips validation *and* leaves `order_status_logs`
+  short — and the customer app's tracking screen is built from that log, not from
+  the current status, so a hand-moved order renders with missing steps.
+- `OrderStatus::allowedNext()` is the single transition table; `isCancellable()`
+  is derived from it, so no endpoint can permit a cancel the table forbids.
+  Cancelling stops at `picked_up` — once we hold the pieces the order runs out.
+- **`returned` is not `cancelled`**: the pieces come back but the delivery fee is
+  still owed, and collapsing the two loses that.
+- A driver's work is **four legs** owned by `TaskType` (`pickup_from_customer`,
+  `deliver_to_laundry`, `collect_from_laundry`, `deliver_to_customer`), each with
+  `start` / `verify` / `complete` / `fail`. `verify` (the QR scan) is separate
+  from `complete` on purpose — merging them meant a failed photo upload threw
+  away a good scan. `TaskType::startsInto()` / `completesInto()` decide which leg
+  moves the *order*; the others move only the task.
+- `cleaning`, `ready_for_delivery`, `completed` and `returned` currently have
+  **no endpoint driving them** — a known gap, not something to paper over.
+
+### Money: who owns which share
+
+Added after the rest of the panel; `docs/order-cycle-explained.md` covers it in
+prose. The total is composed in exactly one place, `OrderPricing::compose()`:
+`subtotal − discount + delivery_fee + cash_surcharge = pre_tax_total`, then
+`+ tax` (the rate is **copied onto the order at placement and never re-read**).
+
+It splits four ways: **tax** → the state, never divided and never commissioned;
+**delivery fee + cash surcharge** → the platform, which pays the driver out of
+them; and **cleaning revenue** (`Order::cleaningRevenue()` = subtotal − discount)
+is the only part the platform and the laundry divide.
+
+| Class | Role |
+| --- | --- |
+| `Payment/Services/SettlementService` | resolves rules, computes the split, moves money |
+| `Payment/Models/OrderSettlement` (+ `Line`) | one order's division — `pending\|settled\|cancelled` |
+| `Payment/Models/CommissionRule` | one platform charge, percent or fixed |
+| `Payment/Services/EarningService` + `Models/DriverEarning` | per-leg driver bonus — `pending\|released\|cancelled` |
+| `Driver/Services/BonusResolver` | which rule a driver is on, what one leg pays |
+| `Driver/Services/MonthlyBonusService` | measures a month, applies gates, picks a tier |
+| `Driver/Models/DriverBonusAward` | one driver-month — `due\|approved\|rejected` |
+| `Support/PlatformAccount` | the platform's wallet = the **oldest super admin** |
+
+At `Confirmed` a `pending` settlement is written (visible, nothing moved). At
+`Completed`, `OrderStateMachine::settleMoney()` releases the driver's bonus and,
+in one transaction, credits the platform its commission and the laundry owner the
+remainder. `Cancelled`/`Returned` cancels both.
+
+Rules that are easy to break by accident:
+
+- **The commission basis is `cleaningRevenue()`, not `preTaxTotal()`.** Widening
+  it re-creates the bug where the platform booked a cut of the delivery fee while
+  also paying the driver out of it. See `SettlementService::basisFor()`.
+- **A null rule means opposite things on each side.** No commission rule → falls
+  back to the `Commission_Rate` setting; a laundry that truly pays nothing needs
+  an attached 0% rule. No driver bonus rule → **no bonus at all**. Inactive
+  counts as absent on both.
+- **Pending recomputes, settled/approved is frozen.** A `pending` settlement and a
+  `due` award are rewritten on every recompute; once money moved the row is
+  immutable and stores its measurements rather than deriving them.
+- **Nothing pays on a schedule.** `drivers:close-bonus-month` (1st, 07:00, last
+  month) computes and raises one notification — it *never* approves. Approval is
+  a human act behind `driver_bonus_award.update`.
+- **Money permissions are `setting.update`, not `laundry.update`/`driver.update`.**
+  A laundry owner holds `laundry.update` by design, so gating its commission on
+  it would hand the payer the dial. Same boundary for a driver's bonus rule.
+- `per_order` bonuses pay only on `DeliverToCustomer` (four legs would pay 4×);
+  tiers pay the **highest reached**, never summed; the laundry share is computed
+  by subtraction so halves always reconcile.
+
+### Tenant scoping (laundry owners share the panel)
+
+Two cooperating pieces, no middleware and no repository filtering:
+
+- **`app/Support/LaundryContext.php`** — `currentId()` returns `null`, meaning *no
+  restriction*, for console/queue/seeders, for `super_admin`, and for any actor
+  whose `users.laundry_id` is null (moderators, customers). Otherwise it returns
+  that id. **That null is the entire super-admin bypass.**
+- **`app/Trait/BelongsToLaundry.php`** — a global scope filtering a
+  *table-qualified* `laundry_id` (so it survives joins), plus a `creating` hook
+  that **overwrites** `laundry_id` so a forged payload cannot plant a row in
+  another tenant.
+
+Scoped: `Order`, `OrderRating`, `LaundryService`, `LaundryZone`, `LaundryStaff`,
+`OrderSettlement`. `Laundry` is scoped by its own `own_laundry` scope on `id`.
+**Deliberately unscoped**: the global catalogue (Item, ItemCategory, Service,
+Pricing, Zone, Setting, Coupon), `User`, and **`OrderTask` — driver work carries
+no `laundry_id` at all**, so the home page withholds the dispatch and driver-money
+panels *by permission* instead. Adding a `laundry_id` model without the trait
+leaks across tenants; `withoutGlobalScopes()` is legitimate in ~20 places and is
+exactly the line that gets copy-pasted into a tenant-facing query.
+`TenancyIsolationTest` and `tests/Browser/tenancy.spec.js` guard this.
+
+### Notifications and the queue
+
+A service calls a notifier (`OrderNotifier`, `DriverApplicationNotifier`,
+`LaundryApplicationNotifier`, …) → **`NotificationDispatcher::send()`**. Every
+event delivers on **both** channels — `NotificationEvent::channels()` returns
+`['database','push']`; SMS is reserved for auth.
+
+- **Everything is synchronous.** There is no `app/Jobs/`, nothing implements
+  `ShouldQueue`, and **no worker is required** — an HTTP request pays the FCM
+  round-trip inline. `composer dev` runs `queue:listen` and `QUEUE_CONNECTION` is
+  `database`, which makes it look otherwise. Push failures are swallowed and
+  logged so a vendor outage never rolls back the business action.
+- **Only `push` is mutable** (`MUTABLE_CHANNELS`). `database` is a record, not a
+  delivery: muting it emptied the in-app list *and* froze the rate-limit counter
+  at zero, which handed the muted user unlimited push. Absent preference = on.
+- Rate limit `config('push.rate_limit_per_hour', 3)` per subject, counted off the
+  `database` rows; `isTransactional()` events bypass both the cap and the mute.
+- **The FCM gotcha**: `data` is a *map* in FCM v1 and PHP's empty array encodes as
+  `[]`, so Google 400'd every data-less message — and the driver read 400 as
+  "device gone", so the dispatcher deleted every handset it notified. `data` is
+  now set only when non-empty with string values, and **400 is no longer
+  treated as permanent** (only 403/404). Don't reintroduce it.
+
 ### List pages: server render + AJAX search
 
 Every list module has both `index` and `search` routes:
@@ -51,9 +189,37 @@ Every list module has both `index` and `search` routes:
 - `index` returns the full view, or `response($view)` when `$request->ajax()`.
 - `search` (AJAX only) returns JSON `{table, pagination}` by rendering `admin/{module}/partials/_{module}_table_body.blade.php`.
 
-The client half — **`setupAjaxSearch({inputSelector, tableBodySelector, paginationWrapperSelector, url, colspan})`** and the `.toggle-status` click handler — is defined **inline in `resources/views/layouts/footer_script.blade.php`**, not in `public/assets/js/custom/`. Index views wire it up in a `@push('scripts')` block (`layouts/main.blade.php` renders `@stack('scripts')`).
+The client half — **`setupAjaxSearch({inputSelector, tableBodySelector, paginationWrapperSelector, url, colspan, errorHtml, extraParams})`** and the `.toggle-status` click handler — is defined **inline in `resources/views/layouts/footer_script.blade.php`**, not in `public/assets/js/custom/`. Index views wire it up in a `@push('scripts')` block (`layouts/main.blade.php` renders `@stack('scripts')`).
 
 It binds **`keyup`**. Driving it from a test with Playwright's `page.fill()` sets the value without firing that event and the search looks broken — use `page.type()`.
+
+**`extraParams`** (object or function) is how the twelve filtered screens keep
+their dropdown selected across a search and a page change — orders, payments,
+wallet, settlement, refund, complaint, rating, recurrence, notification,
+dispatch, earning, driver_bonus. Pass a *function* so the value is read at
+request time rather than at wire-up time.
+
+The term is sent as **`query`**, and a `search()` action must read it as
+`$request->get('query')` — **never `$request->query`**, which is Symfony's
+public ParameterBag property and hands you the bag, not the term.
+
+**`Searchable` (`app/Trait/Scopes/Searchable.php`) reaches across relations.**
+Columns may be dotted paths (`profile.vehicle_type`, `laundry.city.name`),
+resolved with `whereHas`, plus an `$expressions` list for a cell no column holds.
+The rule the owner set is that **anything a list screen displays is searchable**
+— so when you add a column to a table body, add it to the model's search list
+too. Aggregates and `humanDate()` columns are deliberately excluded.
+
+### Two search patterns — picking the wrong one blanks data
+
+`setupAjaxSearch` re-renders rows **from the server**. On a screen that is one
+big bulk-edit form — the price grid, the roles permission matrix — the cells the
+partial does not render come back empty and **are blanked on save**.
+
+Those screens use **`setupClientFilter({inputSelector, itemSelector, groupSelector, siblingHeadingSelector, emptySelector, countSelector})`** instead (same file): it
+hides non-matching rows with `style.display`, fetches nothing, and leaves every
+input in the DOM so a save still posts the whole grid. `ClientFilterWiringTest`
+guards which screens are wired to which.
 
 ### Stack lists, not tables
 
@@ -144,6 +310,13 @@ Laundries can also **apply for themselves**: `GET /laundry/register` files the l
 
 A locked-out owner is given a new password from the **laundry edit screen** (`owner_password`, blank means unchanged) — `Laundry::owner()` is the relation that finds them. Note it is a plain constrained `hasOne` ordered by id: `latestOfMany()` builds its aggregate subquery *without* the constraints declared before it, so on a laundry that also has staff it picks the newest staff row and the role filter then discards it, returning null.
 
+**Drivers apply too, but differently.** `POST /drivers/apply` (public, no GET —
+the form is on the landing page) files a `DriverApplication` row, which is a
+*lead*, not an account: the operator reads it on `admin/driver-application`,
+marks it handled (`toggleHandled`), and creates the driver by hand. A laundry
+application creates real inactive rows; a driver application does not. Don't
+unify the two paths without knowing that.
+
 ### Sidebar
 
 **Queue counts.** `App\Services\MenuBadges::for($model)` returns a number or
@@ -156,7 +329,22 @@ nothing**. It is a class and not a config entry because a closure in
 stale badge on a queue reads as "nothing waiting" to somebody who then does not
 look.
 
-`config/menu.php` drives everything — `groups` (dropdowns), `singles`, plus parallel `icons` / `titles` / `routes` maps keyed by model name. `MenuBuilder` intersects those keys with the user's `*.view` permissions. A new module needs an entry in the relevant `groups`/`singles` list **and** in all three UI maps, or it renders with nulls.
+`config/menu.php` drives everything. `MenuBuilder` intersects its keys with the
+user's `*.view` permissions. Four top-level keys:
+
+- **`groups`** — the dropdowns, each `{order, title, icon, items: [model keys]}`.
+  Eight of them: `locations`(1), `catalog`(2), `laundries`(3), `delivery`(4),
+  `marketing`(6), `operations`(8), `money`(9), `system`(99).
+- **`singles`** — a `model => order` **map** (`user`:5, `order`:7, `report`:10),
+  interleaved with the groups by that number.
+- **`icons` / `titles` / `routes`** — three parallel 40-entry maps keyed by model
+  name.
+
+A new module needs an entry in a group's `items` (or in `singles`) **and** in all
+three UI maps, or it renders with nulls. **Menu keys are not always the module
+name**: `order_task`, `driver_earning`, `order_settlement`, `order_rating`,
+`order_recurrence`, `item_price` and `notification_log` are menu/permission keys
+whose code lives in a differently-named module.
 
 ### Routing
 
@@ -256,9 +444,15 @@ five Playwright specs** — leave it alone.
 
 ### The API layer
 
-`routes/api.php`, 102 endpoints under `/api/v1`, controllers in `app/Http/Controllers/Api/V1/`, requests in `app/Http/Requests/Api/V1/`.
+`routes/api.php`, 103 endpoints under `/api/v1`, controllers in `app/Http/Controllers/Api/V1/`, requests in `app/Http/Requests/Api/V1/`.
 
 - **Responses** go through `app/Helpers/ApiResponse.php` — `successReturnData()`, `successReturnCreated()`, `successReturnPaginated()`. The envelope is `key`, `status`, `msg`, `code` plus `data`/`errors`/`meta`. **`status` is `success`/`error` derived from the code by `apiResponseStatus()` — never pass it in**, or a call site will eventually disagree with its own HTTP status; `key` is the one that says *which* outcome. The panel's `ResponseService` is a different thing (it `throw`s / returns `never`); don't mix them.
+- **`successReturnPaginated($items, $paginator = null, $msg = '')`** — items
+  first, paginator second. Getting them the wrong way round is a **silent**
+  failure: a paginator has a `__toString()` that renders the Blade pagination
+  *view*, so the response came back 200 OK with a page of Bootstrap `<nav>`
+  markup in `msg` and an empty `meta`, and nothing in the log. Every call site in
+  the API was once written that way. `ApiContractTest` guards it now.
 - **Auth** is Sanctum on the `api` guard, one `users` table for both apps. Customer tokens are named `mobile`, driver tokens `driver-app`.
 - **Driver endpoints are not gated by middleware.** `$request->user()` returns a plain `User`, so each driver controller resolves the driver record and does `abort_unless($driver !== null, 403, …)` itself. Adding a driver endpoint means repeating that, not adding a middleware.
 - **Named rate limiters** beyond `api`: `otp`, `otp-verify`, `login`, `location`. Auth routes carry them individually.
@@ -272,10 +466,17 @@ five Playwright specs** — leave it alone.
 - `appCurrency()` reads the `Currency` setting, validates `/^[A-Z]{3}$/`, falls back to `EGP`. `moneyFormat($amount, ?string $currency = null)` formats through `NumberFormatter` with a `-u-nu-latn` locale extension, so Arabic renders **Western digits** — Arabic-Indic numerals in prices is a bug, not a locale preference.
 - `phoneRegex()` is **E.164** (`/^\+[1-9]\d{7,14}$/`). Stored numbers are normalised to it; don't reintroduce a local-format regex.
 - One discount per order: `coupon_code` and `offer_id` are mutually exclusive, the offer wins, and a code sent beside it is **refused with a message** rather than dropped. Enforced at the quote as well as at submit.
+- **Timestamps are stored UTC and shifted only at render.** `config('app.timezone')`
+  is `UTC`; `displayTimezone()` reads `app.display_timezone` and falls back to it.
+  `humanDate()` is **the only place** the conversion belongs — doing it in the
+  application timezone corrupts what gets written back. `isoDate()` is the
+  machine-readable counterpart for API payloads. This is also why date columns
+  are deliberately not searchable: matching the text somebody reads would need a
+  timezone conversion in SQL.
 
 ### Helpers (`app/Helpers/`, auto-loaded via composer `files`)
 
-`Helpers.php` — `uploadOrUpdateImage($file, $dir, $existing = null)` (validates extension + 5MB cap, deletes the old file, returns the stored path, or returns `$existing` when `$file` is null), `DeleteImage()`, `getImageDashboardUrl()` (returns **raw HTML**, use `{!! !!}`), `canDo()`, `getLocalizedValue*()`, `getDefaultLanguage()`, `humanDate()`, `moneyFormat()`, `appCurrency()`, `phoneRegex()`, `getSettingValue()`.
+`Helpers.php` (~44 functions) — `uploadOrUpdateImage($file, $dir, $existing = null)` (validates extension + 5MB cap, deletes the old file, returns the stored path, or returns `$existing` when `$file` is null), `DeleteImage()`, `getImageDashboardUrl()` (returns **raw HTML**, use `{!! !!}`), `canDo()`, `getLocalizedValue*()`, `getDefaultLanguage()`, `humanDate()`, `isoDate()`, `displayTimezone()`, `moneyFormat()`, `appCurrency()`, `phoneRegex()`, `getSettingValue()`, `realSetting()` / `isPlaceholderSetting()` (the landing page's dev-data guard), `assetVersion()`, `brandLogo()` / `brandPlaceholder()`, `webText()`, `panelIsRtl()`. **Grep before adding one** — it is large enough that duplicates get written by accident.
 
 `LanguageHelper.php` — generates `resources/lang/{code}{,_panel,_mobile,_web}.json` from the `storage/app/{panel,mobile,web}File.php` templates.
 
@@ -292,9 +493,23 @@ Two overlapping caches exist:
 
 ## Testing
 
-767 PHPUnit tests, 2327 assertions, currently green (~84s). Real coverage exists — treat a failure as a regression, not as a flaky stub.
+1,187 PHPUnit tests, 3,825 assertions, currently green — but **~5 minutes now**,
+not the minute and a half it used to be. Budget for that before you start a run.
+Real coverage exists — treat a failure as a regression, not as a flaky stub.
 
-- `tests/Feature/Api/` (28 files) · `tests/Feature/Dashboard/` (17) · `tests/Feature/Console/` · `tests/Unit/` (9) · `tests/browser/` (10 Playwright specs).
+- 85 PHP test files: `tests/Feature/Api/` (30) · `tests/Feature/Dashboard/` (36) ·
+  `tests/Feature/Landing/` · `tests/Feature/Console/` · `tests/Unit/` (11), plus
+  15 Playwright specs in **`tests/Browser/`** — capital B, which is what
+  `playwright.config.js` points at and what a case-sensitive CI will demand.
+- **The browser suite is not isolated.** It drives the real dashboard against the
+  **development MySQL database** and the fixtures already in it
+  (`DevFixturesSeeder`, `CatalogSeeder`, `GeoSeeder`, `TimeSlotSeeder`), so it
+  reads far more than it writes and cleans up or clearly labels anything it
+  creates. Keep new specs to that discipline. It runs `workers: 1` and
+  `fullyParallel: false` on purpose — status toggles mutate shared rows and
+  parallel workers race. The config **boots its own server** (`php artisan serve
+  --port=8800`, reusing one already running), so no manual setup is needed;
+  override with `APP_TEST_URL`.
 - **There are no factories.** `database/factories/` holds only an unused `UserFactory`. Build rows with `Model::create()`, or better with the builders on `tests/TestCase.php`: `seedCore()`, `seedGeo()`, `seedCatalog()`, `cover()`, `addressFor()`, `grant()`, `superAdmin()`, `customer()`, `driverUser()`, `laundryWithOwner()`, `apiHeaders()`.
 - **`seedCore()` is mandatory** in `setUp` — the locale helpers throw without a default language row.
 - Idiom: `Tests\TestCase`, `RefreshDatabase`, `#[Test]` attributes (not `test_` prefixes), `Cache::flush()` in `setUp`, and a private `tr()` helper that json-encodes translations with `JSON_UNESCAPED_UNICODE`.
@@ -304,7 +519,7 @@ Two overlapping caches exist:
 
 `docs/` is maintained by hand and drifts if you don't:
 
-- `docs/postman/Laundo API v1.postman_collection.json` — 102 requests, one per endpoint, with substantive per-request descriptions. An endpoint diff will not catch a **stale request body**; check the bodies when you add a field.
+- `docs/postman/Laundo API v1.postman_collection.json` — 103 requests in 6 caller-grouped folders, one per endpoint, with substantive per-request descriptions. An endpoint diff will not catch a **stale request body**; check the bodies when you add a field.
 - `docs/postman/generate-reference.py` → `docs/api-reference.html`. **The endpoint list is hand-written Python inside that script**, not derived from the collection or from `route:list`. Run it from the repo root (it writes a relative path).
 - `docs/laundo-screen-actions.html` + `.pdf` — every Figma screen against the route its button calls and the panel page staff act from. The HTML is the source; the PDF is rendered from it with headless Chrome `--print-to-pdf`.
 - `docs/laundo-qa-guide.html` + `.pdf` — the QA guide, in Arabic: every panel screen, what must exist before it works, what it feeds in the apps, its permission, and the traps a tester would otherwise file as bugs. Ordered by build order, the same order `config/menu.php` uses. Same HTML-is-the-source rule as above; regenerate the PDF with:
@@ -317,6 +532,15 @@ Two overlapping caches exist:
   ```
 
   It states **live facts about this install** (which tables are empty, which settings rows are missing), so re-check those numbers when the seed data changes.
+- `docs/order-lifecycle.md` — the status table, which request produces each
+  status, and the four driver legs. Written from the code, not from the design.
+- `docs/order-cycle-explained.md` + `.html` + `.pdf` — the order cycle in prose,
+  including the money split and the two flows that confuse people. Same
+  HTML-is-the-source, PDF-rendered-from-it rule.
+- `docs/mobile-api-changes.md` and `docs/api-change-notification-preferences.md`
+  — running notes handed to the app teams when an endpoint's contract changed.
+  Append to these rather than rewriting, and only when a mobile client is
+  affected.
 
 ## Known rough edges
 
@@ -343,9 +567,11 @@ Don't "fix" these blind, but know they're there:
   `zones.name`, `services.name`, `items.name`, `item_categories.name`,
   `laundries.name` and `coupons.name` — while `banners.name`, `faqs.question`,
   `intros.title`, `journey_steps.title` and `offers.title` are `text` with
-  `utf8mb4_unicode_ci` as documented above. A MySQL `json` column has **no
-  charset and no collation** and compares as binary, which made `LIKE` on those
-  seven case-sensitive and broke lowercase search on their list screens.
+  `utf8mb4_unicode_ci` as documented above. Production runs **MariaDB**, where
+  `json` is `longtext` with the binary collation **`utf8mb4_bin`**, so `LIKE`
+  against it compares case-sensitively — searching `c` on Cities returned
+  nothing while `C` returned Cairo. `Searchable` fixes it with
+  `LOWER(CAST(col AS CHAR))` on both sides.
   `Searchable::scopeSearch()` now folds case in SQL, so the query layer is
   correct either way — **do not "simplify" it back to a bare `orWhere(...,
   'LIKE', ...)`**. `ListSearchTest` asserts the generated SQL, because the
@@ -356,11 +582,25 @@ Don't "fix" these blind, but know they're there:
   empty 200. Tests hitting it need `X-Requested-With: XMLHttpRequest`.
 - `Banner` and `Intro` model **classes are lowercase** (`class banner`, `class intro`) — match existing usage rather than renaming casually.
 - `CachingService::getSystemSettings()` plucks by a `name` column; the `settings` table has `key`. It is currently unreferenced — dead code.
-- Settings are key/value rows with **PascalCase keys** (`App_Name`, `App_Logo`, `About`, `Privacy_Policy`, `Terms`, `Country_Id`, `Currency`, `Cash_Surcharge`); `About`/`Privacy_Policy`/`Terms` hold translatable JSON.
+- Settings are key/value rows with **PascalCase keys** (`App_Name`, `App_Logo`, `About`, `Privacy_Policy`, `Terms`, `Country_Id`, `Currency`, `Cash_Surcharge`, `Commission_Rate`); `About`/`Privacy_Policy`/`Terms` hold translatable JSON.
+- Those three hold **HTML documents, not strings**, and are printed unescaped.
+  They are authored in a TinyMCE box (`setupRichText()` in
+  `layouts/footer_script.blade.php`), which is used because TinyMCE 5.10.5 is
+  **already loaded on every panel page** — the project's brief is to add no
+  vendor bundles. Init is per-textarea because `directionality` differs per box:
+  the Arabic document is authored RTL even while the panel is in English.
+  `assets/js/pages/ckeditor.js` expects a `ClassicEditor` global nothing defines
+  and draws nothing — don't reach for it.
 - **No Arabic webfont in the panel.** `--bs-body-font-family: Nunito` has no fallback stack, and the shipped Nunito subsets are latin, latin-ext, cyrillic, cyrillic-ext and vietnamese — so every Arabic *panel* screen renders in whatever font the browser picks. The landing page self-hosts IBM Plex Sans Arabic; the panel has not been migrated.
 - The **`App_Name` setting row still says `BaseCode`** while `.env` says `Laundo` — and the setting is the one the apps, the invoice and the login alt text read, via `getSettingValue('App_Name')`. `config('app.name')` is only the browser tab title. Left alone deliberately: an invoice may need a registered legal name, so it is the owner's call.
-- Terms and privacy hold **draft copy awaiting legal review**.
+- Terms, privacy and About now hold **real legal copy**, seeded by
+  `LegalContentSeeder` (registered in `DatabaseSeeder`) — no longer the draft
+  placeholder text. `LegalSettingsTest` covers the editors.
 - Seven images are still placeholders pending export from Figma (3 onboarding illustrations, 3 journey-step icons, 1 offer image).
+- **OTP is the fixed code `123456`.** SMS delivery is not integrated (the driver
+  is `LogSmsDriver`), so `OtpService` issues one static value and logs a loud
+  `[OTP:STATIC-CODE — NOT RANDOM]` warning each time. Set `OTP_STATIC_CODE=` in
+  the env to restore random codes once an SMS provider exists.
 - `public/storage` must be the **symlink**, not a real directory. If it is a directory, every uploaded file 404s and signed routes 403; fix with `rmdir` then `php artisan storage:link`.
 
 ## Frontend
@@ -368,6 +608,14 @@ Don't "fix" these blind, but know they're there:
 Views are Blade under `resources/views/admin/{module}/` (with `partials/`, `forms/`, `shared/` subfolders), extending **`layouts.main`**.
 
 **Styling is a static vendor admin template, not a build pipeline.** CSS/JS come from `public/assets/**` via `asset()` calls in `layouts/include.blade.php` and `layouts/footer_script.blade.php` — Bootstrap 5, jQuery, Font Awesome, bootstrap-icons, select2, sweetalert2, toastify, filepond, bootstrap-table, leaflet. RTL swaps to `assets/css/main/rtl.css` based on the session language. Project overrides go in `public/assets/css/theme.css` and `custom.css`; the vendor `main/app.css` often out-specifies them, so **match its selector specificity instead of relying on load order** — and before changing a property, grep for *every* rule that sets it, in both override files and the vendor CSS. More than one "fix" here has been a no-op because a second `!important` rule was still winning.
+
+**Hand-edited panel assets must be cache-busted by hand.** `theme.css` and
+`custom.js` have no build step and no content hash, and sit behind Cloudflare —
+so a release that edits them ships Blade referring to rules the cached files do
+not have (this already shipped a full-size splash image across every page).
+Reference them through **`assetVersion('assets/css/theme.css')`**, which stamps
+`filemtime()`. `landingAssetVersion()` is the same function under a narrower
+name, kept because four views call it.
 
 Vite/Tailwind are near-unused but **not dead**: `@vite` appears only in `layouts/app.blade.php` — and seven views do extend it (`auth/passwords/*`, `auth/register`, `auth/verify`, `home`, `welcome`). `Auth::routes(['register' => false])` in `routes/web.php` makes `/password/reset` reachable, so **`npm run build` is required before deploying** or that page 500s with a missing Vite manifest. It appears to work locally only because `npm run dev` leaves a gitignored `public/hot` behind. Don't route new styles through Vite unless you're deliberately migrating.
 
@@ -401,13 +649,18 @@ only hide the page they lead to.
 
 ## Adding a New Module
 
-1. `app/Modules/{Name}/` — Controller, Model (+ `DashboardModel` and `Searchable` traits), Repository, `{name}CrudService.php` (with `shredData()`), Request (branch rules on `$this->getMethod() === 'PUT'`: required on create, nullable on update), plus `Enums/` if it has a closed vocabulary.
-2. Migration (`status` enum `active|inactive`, translatable columns as `text`), then `php artisan migrate`.
-3. Register the model class in `config/dashboard.php` so `PermissionSeeder` generates its five permissions, then `php artisan db:seed --class=PermissionSeeder`.
-4. Route group in `routes/web.php` with `permission:` middleware on each action, including `search` and `status`.
-5. `config/menu.php`: `groups`/`singles` entry **plus** `icons`, `titles`, `routes`.
-6. Views under `resources/views/admin/{name}/` — `index` (with `setupAjaxSearch` in `@push('scripts')`), `create`, `edit`, `show`, `partials/_{name}_table_body`, `forms/formInput`, `shared/controlBut`.
-7. If it is exposed to the apps: endpoint in `routes/api.php`, a `present*()` method, an entry in the Postman collection **and** in `generate-reference.py`.
+First decide whether it *is* a module: a screen that belongs to an existing
+domain goes inside that module (see the table under **Module structure**), and
+only a genuinely new domain earns a directory.
+
+1. `app/Modules/{Name}/` — Controller, Model (+ `App\Trait\DashboardModel` and `App\Trait\Scopes\Searchable`), Repository, `{name}CrudService.php` (with `shredData()`), Request (branch rules on `$this->getMethod() === 'PUT'`: required on create, nullable on update), plus `Enums/` if it has a closed vocabulary.
+2. Migration (`status` enum `active|inactive`, translatable columns as `text` — **not `json`**, see the rough edges), then `php artisan migrate`. Add `laundry_id` + `use BelongsToLaundry` if a laundry owner must only see their own rows.
+3. Register the model class in `config/dashboard.php` (40 entries today) so `PermissionSeeder` generates its five permissions, then `php artisan db:seed --class=PermissionSeeder`.
+4. Route group in `routes/web.php` with `permission:` middleware on each action, including `search` and `status`. **Money terms gate on `setting.update`**, not the module's own `update`.
+5. `config/menu.php`: add the key to a group's **`items`** array (or to the `singles` map with an order number) **plus** `icons`, `titles`, `routes`.
+6. Views under `resources/views/admin/{name}/` — `index` (with `setupAjaxSearch` in `@push('scripts')`, or `setupClientFilter` if it is a bulk-edit grid), `create`, `edit`, `show`, `partials/_{name}_table_body`, `forms/formInput`, `shared/controlBut`.
+7. Add every displayed column to the model's searchable list, including dotted relation paths — the owner's rule is that anything shown can be searched.
+8. If it is exposed to the apps: endpoint in `routes/api.php`, a `present*()` method, an entry in the Postman collection **and** in `generate-reference.py`.
 
 ## Changelog Policy (MANDATORY)
 

@@ -3665,3 +3665,81 @@ look, not worth a speculative change.
   inside a rolled-back transaction
 
 Nothing is committed. Everything is in the working tree on `main`.
+# Task — a guarded delete for orders (panel)
+
+## Why
+
+The orders list had no delete at all, by an explicit decision recorded in
+`routes/web.php` and repeated in `orderCrudService`: «an order is a customer's
+agreement, not a row an operator invents or erases».
+
+That decision is kept for anything with a trace. What is added is a narrow
+escape hatch for the rows it was never really about: an order nobody has acted
+on yet, and no money has touched.
+
+## The guard
+
+`$order->delete()` cascades into **11 tables** — `payments`, `refunds`,
+`driver_earnings`, `order_settlements`, coupon redemptions, plus the six detail
+tables — and `wallet_transactions` points at orders **polymorphically with no
+FK**, so it would be left holding rows that reference a row that no longer
+exists. The guard exists so none of that can happen from a misclick.
+
+Refused when any of these is true:
+
+- [ ] the clothes are physically with us (`OrderStatus::isInCustody()`)
+- [ ] a payment exists that is not `pending`/`failed`
+- [ ] a refund exists
+- [ ] a laundry settlement exists
+- [ ] a driver earning exists
+- [ ] a wallet transaction names this order as its source
+
+Deletable in practice: `awaiting_pickup`, `driver_on_way`, `cancelled` — and
+only while all six money checks are clean.
+
+## Steps
+
+- [ ] `OrderRepository` — the existence queries + `delete()`
+- [ ] `OrderDeletionGuard` — one blocker reason, shared by the view and the service
+- [ ] `orderCrudService::deleteRecord()` — enforces the guard inside `DB::transaction`
+- [ ] `OrderController::destroy()`
+- [ ] route `DELETE /admin/order/delete/{id}` → `admin.order.delete`, `permission:order.delete`
+- [ ] list row: shape 1 (`<a class="stack-row">`) → shape 2 (div + link on the code + `.stack-actions`)
+- [ ] `admin/order/shared/controlBut.blade.php`
+- [ ] show page: the same button, with the reason spelled out when it is refused
+- [ ] `theme.css` — the stack-row comment names orders as the one-action case; update it
+- [ ] tests: guard allows, guard refuses per reason, permission gate, cascade actually gone
+- [ ] Changelog
+
+## Review
+
+Done, and green: **1,202 tests / 3,876 assertions** (15 new), PHPStan level 5
+clean, Pint applied.
+
+What landed:
+
+* `OrderDeletionGuard` — the whole licence for the delete, in one object so the
+  list, the detail screen and the service cannot drift on what «deletable»
+  means. Two questions, a no from either is a no.
+* `OrderRepository::moneyTrace()` returns **which** rule caught the order rather
+  than a bool, because «this one has a settlement» and «this one has been paid»
+  are different instructions to the person reading them.
+* The guard is asked twice on purpose — `statusAllows()` on the list (free, and
+  it disqualifies almost everything), the full `blocker()` on the detail screen
+  and inside `deleteRecord()`'s transaction. The alternative was 75 existence
+  queries to draw one page.
+
+Two things worth knowing that were not in the plan:
+
+* The list row had to change shape. It was the codebase's only «shape 1» stack
+  row — the row itself an `<a>` — and a link cannot contain a button. It is now
+  shape 2, the shape `admin/offer/` already used, and theme.css's shape note was
+  rewritten because it named orders as the reason shape 1 existed.
+* `x-action-buttons` is unusable here: it draws an Edit and orders have no edit
+  route, so it would throw on `route('admin.order.edit')`. Hence the module's
+  own `shared/controlBut`.
+
+Deliberately **not** done: no cancel button. The panel still cannot cancel an
+order — only the customer's app can — and adding one is a state-machine change
+rather than a screen, so it stays a separate decision.
+

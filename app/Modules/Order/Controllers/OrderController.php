@@ -10,10 +10,13 @@ use RuntimeException;
 /**
  * Orders in the dashboard.
  *
- * No create, no destroy. An order is a customer's agreement; an operator reads
- * it, and — while it is still assignable — hands it to a laundry. Everything
- * else about an order's life happens through the state machine, from the driver
- * app (P8) and the laundry's review screen (P7).
+ * No create. An order is a customer's agreement; an operator reads it, and —
+ * while it is still assignable — hands it to a laundry. Everything else about an
+ * order's life happens through the state machine, from the driver app (P8) and
+ * the laundry's review screen (P7).
+ *
+ * destroy() is the one exception, and a narrow one: `OrderDeletionGuard` allows
+ * it only for an order nobody has collected and no money has touched.
  */
 class OrderController extends Controller
 {
@@ -57,5 +60,27 @@ class OrderController extends Controller
         }
 
         return back()->with('success', __('Order assigned successfully'));
+    }
+
+    /**
+     * Erases an order the guard agrees is erasable.
+     *
+     * A refusal comes back as the guard's own sentence rather than a generic
+     * failure. The rules are not obvious from the screen — «this one has a
+     * settlement» is not something an operator can see in the list — so the
+     * message has to carry the reason or the button looks broken.
+     *
+     * Redirects to the list, not `back()`: the row the operator was looking at
+     * no longer exists.
+     */
+    public function destroy($id)
+    {
+        try {
+            $this->orderCrudService->deleteRecord($id);
+        } catch (RuntimeException $e) {
+            return back()->with('error', $e->getMessage());
+        }
+
+        return redirect()->route('admin.order.index')->with('success', __('Deleted Successfully'));
     }
 }

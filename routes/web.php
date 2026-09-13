@@ -544,9 +544,15 @@ Route::middleware(['auth', 'dashboard.only'])->prefix('/admin')->group(function 
     | Orders (الطلبات)
     |--------------------------------------------------------------------------
     |
-    | Read-only plus assignment. There is no create and no delete: an order is a
-    | customer's agreement, not a row an operator invents or erases. Cancelling
-    | goes through the state machine so it leaves a trace.
+    | Read-only plus assignment. There is no create: an order is a customer's
+    | agreement, not a row an operator invents. Cancelling goes through the state
+    | machine so it leaves a trace.
+    |
+    | Delete is the narrow exception, and `OrderDeletionGuard` is the whole of
+    | its licence — an order nobody has collected and no money has touched. Eleven
+    | tables cascade off an order row and `wallet_transactions` does not cascade
+    | at all, so the guard is the difference between erasing a booking and erasing
+    | the record that money moved.
     |
     | The list is tenant-scoped by the Order model, so a laundry sees its own
     | orders here and a super admin sees all of them — including the unassigned
@@ -558,6 +564,10 @@ Route::middleware(['auth', 'dashboard.only'])->prefix('/admin')->group(function 
         Route::get('/order/search', 'search')->middleware('permission:order.view')->name('admin.order.search');
         Route::get('/order/show/{id}', 'show')->middleware('permission:order.view')->name('admin.order.show');
         Route::put('/order/assign/{id}', 'assign')->middleware('permission:order.update')->name('admin.order.assign');
+        // Named `.delete` while the method is `destroy`, as everywhere else —
+        // `x-action-buttons` and this module's own controlBut both build the URL
+        // from `route("$routePrefix.delete", $id)`.
+        Route::delete('/order/delete/{id}', 'destroy')->middleware('permission:order.delete')->name('admin.order.delete');
     });
 
     // «تحميل الفاتورة» — a printable page rather than a PDF, since no PDF package

@@ -100,7 +100,7 @@
                              AJAX helper targets it by that name and replaces its
                              HTML wholesale. --}}
                         @php
-                            $stackCols = 'minmax(8rem,1.1fr) minmax(9rem,1.3fr) minmax(8rem,1fr) minmax(9rem,1.1fr) minmax(6rem,auto) 1.5rem';
+                            $stackCols = 'minmax(8rem,1.1fr) minmax(9rem,1.3fr) minmax(8rem,1fr) minmax(9rem,1.1fr) minmax(6rem,auto) auto';
                         @endphp
 
                         <div class="stack-head" style="--stack-cols: {{ $stackCols }}">
@@ -109,10 +109,12 @@
                             <span>{{ __('Service') }}</span>
                             <span>{{ __('Status') }}</span>
                             <span class="text-end">{{ __('Total') }}</span>
-                            {{-- The chevron's column. Empty and hidden from
+                            {{-- The actions column. Empty and hidden from
                                  assistive tech: it labels nothing, it only has
                                  to hold the track open so the five real labels
-                                 stay over the fields they name. --}}
+                                 stay over the fields they name. The track is
+                                 `auto` rather than a fixed 1.5rem now that it
+                                 holds a delete button beside the chevron. --}}
                             <span aria-hidden="true"></span>
                         </div>
 

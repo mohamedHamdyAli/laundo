@@ -11,6 +11,8 @@ use App\Modules\Order\Models\OrderTask;
 use App\Modules\Order\Repositories\OrderRepository;
 use App\Modules\Pricing\Models\ItemPrice;
 use App\Modules\User\Models\User;
+use Illuminate\Support\Facades\DB;
+use RuntimeException;
 
 /**
  * The dashboard's view of orders.
@@ -20,16 +22,20 @@ use App\Modules\User\Models\User;
  * assign the ones nothing covered. Piece review and final pricing are P7; the
  * transport legs are P8.
  *
- * There is no addNew() and no deleteRecord(), and that is deliberate: an order
- * placed by a customer is a record of an agreement, not a row an operator
- * invents or erases. Cancellation goes through the state machine, which leaves a
- * trace.
+ * There is no addNew(), and that is deliberate: an order is placed by a
+ * customer, not invented by an operator. Cancellation goes through the state
+ * machine, which leaves a trace.
+ *
+ * deleteRecord() exists but is not a CRUD delete — it is the narrow escape
+ * hatch `OrderDeletionGuard` describes, for the order nobody has acted on and
+ * no money has touched. Everything with a history is still un-erasable.
  */
 class orderCrudService
 {
     public function __construct(
         private readonly OrderRepository $orders,
         private readonly OrderService $orderService,
+        private readonly OrderDeletionGuard $guard,
     ) {}
 
     /**
@@ -85,6 +91,11 @@ class orderCrudService
             $data['taskBlockers'] = $this->taskBlockers($row);
             // What each candidate is already carrying, so the picker can say it.
             $data['driverLoads'] = $this->driverLoads($data['taskCandidates']);
+            // The full guard, money half included — one order in hand is worth
+            // the five existence queries the list cannot afford per row. Null
+            // means the delete button is drawn; anything else is the sentence
+            // shown in its place.
+            $data['deletionBlocker'] = $this->guard->blocker($row);
         }
 
         return $data;
@@ -112,6 +123,41 @@ class orderCrudService
     public function assign(int|string $id, int $laundryId, ?User $actor = null): Order
     {
         return $this->orderService->assignLaundry($this->orders->findById($id), $laundryId, $actor);
+    }
+
+    /**
+     * Whether the delete button should be drawn, and what to say when it should
+     * not. Straight through to the guard so the screens and this service are
+     * asking one question of one object.
+     */
+    public function deletionBlocker(Order $order): ?string
+    {
+        return $this->guard->blocker($order);
+    }
+
+    /**
+     * Erases an order — and, by cascade, the eleven tables hanging off it.
+     *
+     * The guard runs **here**, inside the transaction, and not only in the view
+     * that drew the button. A screen left open while the order was collected
+     * would otherwise post a delete the list still believed was allowed, and by
+     * then the clothes are in a van.
+     *
+     * @throws RuntimeException the guard's reason, ready to show
+     */
+    public function deleteRecord(int|string $id): void
+    {
+        DB::transaction(function () use ($id): void {
+            $order = $this->orders->findById($id);
+
+            $blocker = $this->guard->blocker($order);
+
+            if ($blocker !== null) {
+                throw new RuntimeException($blocker);
+            }
+
+            $this->orders->delete($order->id);
+        });
     }
 
     /**

@@ -5,6 +5,11 @@ namespace App\Modules\Order\Repositories;
 use App\Modules\Order\Models\Order;
 use App\Modules\Order\Models\OrderPriceQuery;
 use App\Modules\Order\Models\OrderTask;
+use App\Modules\Payment\Enums\PaymentStatus;
+use App\Modules\Payment\Models\DriverEarning;
+use App\Modules\Payment\Models\OrderSettlement;
+use App\Modules\Payment\Models\Refund;
+use App\Modules\Wallet\Models\WalletTransaction;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
 
@@ -138,6 +143,66 @@ class OrderRepository
     public function create(array $data): Order
     {
         return Order::create($data);
+    }
+
+    /**
+     * Whether anything financial has already happened on this order.
+     *
+     * Every one of these tables cascades when an order row goes, so this is the
+     * difference between deleting an order and deleting the record that money
+     * moved. Named per cause rather than returned as a bool: the operator is
+     * told which one refused them, and «this order has a settlement» is a
+     * different instruction from «this order has been paid».
+     *
+     * `wallet_transactions` is in here for the opposite reason — it has **no**
+     * foreign key on the order, because it points at its source
+     * polymorphically. It would not cascade; it would be left behind naming a
+     * row that no longer exists.
+     *
+     * A `pending` or `failed` payment is not a trace. Nothing moved: it is a row
+     * the gateway wrote on the way to an outcome that never arrived, and an
+     * order can collect one without anybody having been charged.
+     */
+    public function moneyTrace(Order $order): ?string
+    {
+        if ($order->payments()->whereNotIn('status', [
+            PaymentStatus::Pending->value,
+            PaymentStatus::Failed->value,
+        ])->exists()) {
+            return 'payment';
+        }
+
+        if (Refund::where('order_id', $order->id)->exists()) {
+            return 'refund';
+        }
+
+        if (OrderSettlement::where('order_id', $order->id)->exists()) {
+            return 'settlement';
+        }
+
+        if (DriverEarning::where('order_id', $order->id)->exists()) {
+            return 'earning';
+        }
+
+        if (WalletTransaction::where('source_type', Order::class)
+            ->where('source_id', $order->id)
+            ->exists()) {
+            return 'wallet';
+        }
+
+        return null;
+    }
+
+    /**
+     * Deletes the order row, and with it the eleven tables that cascade off it.
+     *
+     * Unguarded on purpose — `OrderDeletionGuard` decides, and it is called by
+     * the service that calls this. A repository that second-guessed the caller
+     * would put the rule in two places.
+     */
+    public function delete(int|string $id): bool
+    {
+        return (bool) $this->findById($id)->delete();
     }
 
     public function counts(): array
