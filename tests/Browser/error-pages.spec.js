@@ -82,6 +82,16 @@ test.describe('Error pages', () => {
     // catches a revert to it even if the filename changes.
     const box = await brand.boundingBox();
     expect(box.width / box.height).toBeGreaterThan(2);
+
+    // And it sits on the page's centre line. landing.css has
+    // `img, svg { display: block }`, so the card's `text-align: center` does
+    // nothing for it — without `margin-inline: auto` it hugs the start edge,
+    // which is how it shipped: the wordmark left of centre above a centred 404.
+    const card = await page.locator('.error-card').boundingBox();
+    const brandCentre = box.x + box.width / 2;
+    const cardCentre = card.x + card.width / 2;
+
+    expect(Math.abs(brandCentre - cardCentre)).toBeLessThan(2);
   });
 
   test('the home button goes home', async ({ page }) => {

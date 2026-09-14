@@ -2082,3 +2082,29 @@ ground's `backgroundColor` — about 1.2 when broken, over 12 when fixed.
 **Rule:** for anything whose whole job is to be read, measure the contrast in the
 browser test. It costs ten lines and it is the only check that fails when a
 colour is technically applied and practically invisible.
+
+---
+
+## `landingAssetVersion()` takes a path relative to `assets/`, `asset()` does not
+
+```blade
+{{-- wrong: looks for assets/assets/css/error.css --}}
+{{ asset('assets/css/error.css') }}?v={{ landingAssetVersion('assets/css/error.css') }}
+
+{{-- right --}}
+{{ asset('assets/css/error.css') }}?v={{ landingAssetVersion('css/error.css') }}
+```
+
+The helper prepends `assets/` itself and falls back to `app()->version()` when
+the file is not found — so the wrong form renders a perfectly plausible
+`?v=13.29.0` that **never changes again**. A corrected stylesheet then sits
+behind a stale cached copy on production while the HTML around it updates, and
+the symptom is "I deployed the fix and it did not work".
+
+Proving it is one line:
+`php artisan tinker --execute="echo landingAssetVersion('css/error.css');"` —
+an mtime is a ten-digit number, anything else is the fallback.
+
+**Rule:** two helpers on the same line taking the same-looking path is a trap.
+When adding a fingerprinted asset, print the version once and check it is a
+timestamp — and prefer a test that asserts the rendered `?v=` matches `\d{9,}`.

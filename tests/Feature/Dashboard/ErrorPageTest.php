@@ -163,6 +163,36 @@ class ErrorPageTest extends TestCase
     }
 
     #[Test]
+    public function the_stylesheets_are_fingerprinted_by_mtime_not_by_a_constant(): void
+    {
+        /*
+         * `landingAssetVersion()` prepends `assets/` itself, so a path written
+         * the way `asset()` takes it — `assets/css/error.css` — sends it looking
+         * for `assets/assets/css/...`, which does not exist. It then falls back
+         * to `app()->version()`.
+         *
+         * Nothing looks wrong: the tag still renders a plausible `?v=`. But the
+         * value is the Laravel version, so it never changes again and the file
+         * is never busted. That shipped — a corrected stylesheet sat behind a
+         * stale cached copy on production while the HTML around it updated,
+         * which reads as "the fix did not work".
+         */
+        $html = $this->get('/a-url-that-does-not-exist')->getContent();
+
+        preg_match_all('/assets\/css\/(landing|error)\.css\?v=([^"]+)/', $html, $m);
+
+        $this->assertCount(2, $m[2], 'both stylesheets should be fingerprinted');
+
+        foreach ($m[2] as $i => $version) {
+            $this->assertMatchesRegularExpression(
+                '/^\d{9,}$/', $version,
+                "{$m[1][$i]}.css is stamped with «{$version}» rather than an mtime — "
+                .'the path given to landingAssetVersion() must be relative to assets/'
+            );
+        }
+    }
+
+    #[Test]
     public function the_html_element_keeps_the_landing_class(): void
     {
         // landing.css scopes its dark tokens and its 100% root font size to

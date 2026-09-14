@@ -22,7 +22,17 @@
    So: **every colour here is a real token, and every text rule names its own
    colour** rather than trusting inheritance. landing.css styles bare elements,
    and a bare-element rule outranks an inherited value however specific the
-   ancestor.
+   ancestor. The same trap bit the wordmark, which `img { display: block }` slid
+   to the inline start edge while the card's `text-align: center` did nothing.
+
+   **Every token also carries a literal fallback**, which looks redundant and is
+   not. This page's whole premise is that it renders when things are failing —
+   and landing.css is itself a thing that can fail: a stale CDN copy, a cache
+   that kept the old file, a deploy that shipped one stylesheet and not the
+   other. Without fallbacks an unresolved `var()` makes the declaration invalid
+   at computed-value time, `color` falls back to *inherit*, and the page turns
+   into dark text on a dark ground — which is exactly the failure this file has
+   already produced once in production.
 
    Everything here is logical properties (`margin-inline`, `inset-inline-*`), so
    one stylesheet serves Arabic and English. `rtl.css` is not loaded, exactly as
@@ -31,9 +41,9 @@
 
 .error-page {
     align-items: center;
-    background: var(--brand-navy);
+    background: var(--brand-navy, #0f2d52);
     box-sizing: border-box;
-    color: var(--on-navy);
+    color: var(--on-navy, #ffffff);
     display: flex;
     justify-content: center;
     min-block-size: 100dvh;
@@ -47,7 +57,7 @@
 .error-page::before {
     background:
         radial-gradient(60rem 40rem at 50% -10%, rgba(56, 132, 255, .20), transparent 70%),
-        radial-gradient(48rem 34rem at 100% 100%, var(--brand-navy-2), transparent 70%);
+        radial-gradient(48rem 34rem at 100% 100%, var(--brand-navy-2, #001d36), transparent 70%);
     content: "";
     inset: 0;
     pointer-events: none;
@@ -66,8 +76,15 @@
    would have drawn the word about eight times too wide. */
 .error-brand {
     block-size: auto;
+    /* `margin-inline: auto`, not the card's `text-align: center` — landing.css
+       has `img, svg { display: block }`, and a block box ignores text-align and
+       hugs the inline start edge. This is the same trap as the colours below:
+       that stylesheet restyles bare elements, so nothing here may rely on an
+       element's default behaviour. */
+    display: block;
     inline-size: min(11rem, 45vw);
     margin-block-end: 2.25rem;
+    margin-inline: auto;
     opacity: .95;
 }
 
@@ -82,7 +99,7 @@
     /* Western digits in every language. Arabic-Indic numerals for a status code
        would be a puzzle, not a localisation — the same rule moneyFormat() keeps
        for prices. */
-    background: linear-gradient(180deg, var(--on-navy) 20%, rgba(199, 206, 222, .35));
+    background: linear-gradient(180deg, var(--on-navy, #ffffff) 20%, rgba(199, 206, 222, .35));
     -webkit-background-clip: text;
     background-clip: text;
     color: transparent;
@@ -92,14 +109,14 @@
     /* Named, not inherited. landing.css paints every h1 with `--text-strong`,
        which is `#1f1f1f` under the default (light) tokens — that is what made
        this line invisible on the navy. */
-    color: var(--on-navy);
+    color: var(--on-navy, #ffffff);
     font-size: clamp(1.25rem, 4vw, 1.75rem);
     font-weight: 700;
     margin-block: 1rem .75rem;
 }
 
 .error-message {
-    color: var(--on-navy-muted);
+    color: var(--on-navy-muted, #c7cede);
     font-size: 1rem;
     line-height: 1.7;
     margin-block-end: 2rem;
@@ -126,30 +143,30 @@
 }
 
 .error-btn-primary {
-    background: var(--brand-primary);
-    color: var(--on-navy);
+    background: var(--brand-primary, #2f6fed);
+    color: var(--on-navy, #ffffff);
 }
 
 .error-btn-primary:hover,
 .error-btn-primary:focus-visible {
-    background: var(--brand-primary-dark);
-    color: var(--on-navy);
+    background: var(--brand-primary-dark, #2559c4);
+    color: var(--on-navy, #ffffff);
 }
 
 .error-btn-quiet {
     background: transparent;
     border-color: rgba(199, 206, 222, .35);
-    color: var(--on-navy);
+    color: var(--on-navy, #ffffff);
 }
 
 .error-btn-quiet:hover,
 .error-btn-quiet:focus-visible {
-    border-color: var(--brand-primary);
-    color: var(--on-navy);
+    border-color: var(--brand-primary, #2f6fed);
+    color: var(--on-navy, #ffffff);
 }
 
 .error-btn:focus-visible {
-    outline: 2px solid var(--brand-primary);
+    outline: 2px solid var(--brand-primary, #2f6fed);
     outline-offset: 2px;
 }
 
@@ -157,14 +174,14 @@
    who has to report the fault, not for the person who hit it. */
 .error-meta {
     border-block-start: 1px solid rgba(199, 206, 222, .18);
-    color: var(--on-navy-muted);
+    color: var(--on-navy-muted, #c7cede);
     font-size: .8rem;
     margin-block-start: 2.5rem;
     padding-block-start: 1.25rem;
 }
 
 .error-meta code {
-    color: var(--on-navy);
+    color: var(--on-navy, #ffffff);
     font-size: .8rem;
     -webkit-user-select: all;
     user-select: all;

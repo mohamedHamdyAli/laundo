@@ -61,9 +61,17 @@
          there is no third copy of the token block for theme.css to drift from.
 
          Both are fingerprinted with filemtime() — neither has a build step, so
-         nothing else would bust a visitor's cache after a deploy. --}}
-    <link rel="stylesheet" href="{{ asset('assets/css/landing.css') }}?v={{ landingAssetVersion('assets/css/landing.css') }}">
-    <link rel="stylesheet" href="{{ asset('assets/css/error.css') }}?v={{ landingAssetVersion('assets/css/error.css') }}">
+         nothing else would bust a visitor's cache after a deploy.
+
+         **The path passed to `landingAssetVersion()` is relative to `assets/`,
+         which `asset()`'s is not.** The helper prepends `assets/` itself, so
+         `assets/css/error.css` sends it looking for `assets/assets/css/...`,
+         which does not exist — and it then falls back to `app()->version()`, a
+         constant. The tag still renders a plausible `?v=`, the file is simply
+         never busted again. That shipped: a fixed stylesheet sat behind a stale
+         cached copy on production while the HTML around it updated. --}}
+    <link rel="stylesheet" href="{{ asset('assets/css/landing.css') }}?v={{ landingAssetVersion('css/landing.css') }}">
+    <link rel="stylesheet" href="{{ asset('assets/css/error.css') }}?v={{ landingAssetVersion('css/error.css') }}">
 </head>
 
 <body>
