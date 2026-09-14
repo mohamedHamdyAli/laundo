@@ -69,7 +69,14 @@
 <body>
     <main class="error-page">
         <div class="error-card">
-            <img src="{{ asset('assets/images/brand/laundo-mark.png') }}" alt="" class="error-brand">
+            {{-- The full wordmark, not `laundo-mark.png` — that one is the square
+                 «L» badge and it is the favicon's job, not the page's. The
+                 `-light` file is the same mark drawn white, which is what a navy
+                 ground needs; it is a static file, so unlike `brandLogo()` it
+                 costs no settings read. `alt` is empty on purpose: the name is
+                 already in the title and in the tab, and a screen reader
+                 announcing «Laundo» before «404» buries the thing that matters. --}}
+            <img src="{{ asset('assets/images/brand/laundo-light.png') }}" alt="" class="error-brand">
 
             <p class="error-code">@yield('code')</p>
 

@@ -7,6 +7,23 @@
    with theme.css — `LandingTokenParityTest` guards that pair and would not see
    a third file.
 
+   **The palette is the `--*-navy` set, and that is not a detail.** This page is
+   a navy band filling the viewport, and landing.css already has the tokens for
+   exactly that surface: `--brand-navy` behind, `--on-navy` / `--on-navy-muted`
+   on top. They hold their values in both themes, because a navy band is navy in
+   both.
+
+   The first version invented a dark ground with hardcoded fallbacks instead —
+   and landing.css's *default* tokens are the light theme, so `--text-strong` is
+   `#1f1f1f`. The `h1, h2, h3, h4` rule at the top of landing.css paints every
+   heading with it, which beat the colour this page merely inherited: the title
+   rendered near-black on a near-black ground and was invisible on production.
+
+   So: **every colour here is a real token, and every text rule names its own
+   colour** rather than trusting inheritance. landing.css styles bare elements,
+   and a bare-element rule outranks an inherited value however specific the
+   ancestor.
+
    Everything here is logical properties (`margin-inline`, `inset-inline-*`), so
    one stylesheet serves Arabic and English. `rtl.css` is not loaded, exactly as
    on the landing page.
@@ -14,9 +31,9 @@
 
 .error-page {
     align-items: center;
-    background: var(--surface-page, #0b1a2e);
+    background: var(--brand-navy);
     box-sizing: border-box;
-    color: var(--text-body, #e8eef6);
+    color: var(--on-navy);
     display: flex;
     justify-content: center;
     min-block-size: 100dvh;
@@ -29,8 +46,8 @@
    an error page must not depend on an image that may itself be what is 404ing. */
 .error-page::before {
     background:
-        radial-gradient(60rem 40rem at 50% -10%, rgba(56, 132, 255, .18), transparent 70%),
-        radial-gradient(40rem 30rem at 100% 100%, rgba(56, 132, 255, .10), transparent 70%);
+        radial-gradient(60rem 40rem at 50% -10%, rgba(56, 132, 255, .20), transparent 70%),
+        radial-gradient(48rem 34rem at 100% 100%, var(--brand-navy-2), transparent 70%);
     content: "";
     inset: 0;
     pointer-events: none;
@@ -44,11 +61,14 @@
     z-index: 1;
 }
 
+/* The full wordmark, so it is sized by width with a height cap rather than by
+   height — the square badge this replaced was 2.5rem tall and the same rule
+   would have drawn the word about eight times too wide. */
 .error-brand {
-    block-size: 2.5rem;
-    inline-size: auto;
-    margin-block-end: 2rem;
-    opacity: .9;
+    block-size: auto;
+    inline-size: min(11rem, 45vw);
+    margin-block-end: 2.25rem;
+    opacity: .95;
 }
 
 /* The status code, as the page's one large graphic element. `ch`-free sizing
@@ -62,20 +82,24 @@
     /* Western digits in every language. Arabic-Indic numerals for a status code
        would be a puzzle, not a localisation — the same rule moneyFormat() keeps
        for prices. */
-    background: linear-gradient(180deg, var(--text-body, #e8eef6) 20%, rgba(232, 238, 246, .25));
+    background: linear-gradient(180deg, var(--on-navy) 20%, rgba(199, 206, 222, .35));
     -webkit-background-clip: text;
     background-clip: text;
     color: transparent;
 }
 
 .error-title {
+    /* Named, not inherited. landing.css paints every h1 with `--text-strong`,
+       which is `#1f1f1f` under the default (light) tokens — that is what made
+       this line invisible on the navy. */
+    color: var(--on-navy);
     font-size: clamp(1.25rem, 4vw, 1.75rem);
     font-weight: 700;
     margin-block: 1rem .75rem;
 }
 
 .error-message {
-    color: var(--text-muted, #9fb0c6);
+    color: var(--on-navy-muted);
     font-size: 1rem;
     line-height: 1.7;
     margin-block-end: 2rem;
@@ -102,45 +126,45 @@
 }
 
 .error-btn-primary {
-    background: var(--brand-primary, #2f6fed);
-    color: #fff;
+    background: var(--brand-primary);
+    color: var(--on-navy);
 }
 
 .error-btn-primary:hover,
 .error-btn-primary:focus-visible {
-    background: var(--brand-primary-dark, #2559c4);
-    color: #fff;
+    background: var(--brand-primary-dark);
+    color: var(--on-navy);
 }
 
 .error-btn-quiet {
     background: transparent;
-    border-color: rgba(232, 238, 246, .25);
-    color: var(--text-body, #e8eef6);
+    border-color: rgba(199, 206, 222, .35);
+    color: var(--on-navy);
 }
 
 .error-btn-quiet:hover,
 .error-btn-quiet:focus-visible {
-    border-color: var(--brand-primary, #2f6fed);
-    color: var(--text-body, #e8eef6);
+    border-color: var(--brand-primary);
+    color: var(--on-navy);
 }
 
 .error-btn:focus-visible {
-    outline: 2px solid var(--brand-primary, #2f6fed);
+    outline: 2px solid var(--brand-primary);
     outline-offset: 2px;
 }
 
 /* The support line, and on a 500 the incident id. Quiet: it is for the person
    who has to report the fault, not for the person who hit it. */
 .error-meta {
-    border-block-start: 1px solid rgba(232, 238, 246, .12);
-    color: var(--text-muted, #9fb0c6);
+    border-block-start: 1px solid rgba(199, 206, 222, .18);
+    color: var(--on-navy-muted);
     font-size: .8rem;
     margin-block-start: 2.5rem;
     padding-block-start: 1.25rem;
 }
 
 .error-meta code {
-    color: var(--text-body, #e8eef6);
+    color: var(--on-navy);
     font-size: .8rem;
     -webkit-user-select: all;
     user-select: all;

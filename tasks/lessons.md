@@ -2050,3 +2050,35 @@ not just the tests.
 up before reading any further into the stack trace:
 `Test-NetConnection 127.0.0.1 -Port 3306`. Start it with
 `C:\laragon\bin\mysql\mysql-8.4.3-winx64\bin\mysqld.exe --defaults-file=...\my.ini`.
+
+---
+
+## A bare-element rule beats an inherited colour
+
+`.error-page` set `color: var(--on-navy)` and the `<h1>` inside it inherited —
+except landing.css has `h1, h2, h3, h4 { color: var(--text-strong) }`, and a rule
+that matches the element wins over a value merely inherited from an ancestor, no
+matter how specific that ancestor's selector is. Inheritance is the lowest
+priority there is; it only applies when *nothing* matches.
+
+The result shipped: a near-black title on a near-black ground, invisible on
+production, and every PHPUnit assertion green because the markup was perfect.
+
+**Rule:** when writing a component onto a stylesheet that styles bare elements,
+give every text node its own explicit `color`. And when borrowing another
+stylesheet's tokens, check what its **default** block holds — landing.css's
+default set is the *light* theme, so `--text-strong` is dark; the dark values
+live behind `prefers-color-scheme` and a `theme-dark` class this page never set.
+
+---
+
+## Assert contrast, not just presence
+
+`toBeVisible()`, `toHaveText()` and a `getContent()` substring check all passed
+on a page whose title could not be read. The only assertion that would have
+caught it computes the WCAG ratio between `getComputedStyle(el).color` and the
+ground's `backgroundColor` — about 1.2 when broken, over 12 when fixed.
+
+**Rule:** for anything whose whole job is to be read, measure the contrast in the
+browser test. It costs ten lines and it is the only check that fails when a
+colour is technically applied and practically invisible.
