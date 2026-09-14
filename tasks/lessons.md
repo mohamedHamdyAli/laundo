@@ -2000,3 +2000,53 @@ control to a screen, grep the browser specs for `toHaveCount(0)` on that area �
 an absence assertion is how this codebase records a deliberate omission, and
 building the thing it forbids is exactly when it should be reconsidered rather
 than deleted.
+
+---
+
+## Blade evaluates a child's sections before the parent runs
+
+`errors/layout.blade.php` resolved the locale in its own `@php` block and set
+`app()->setLocale()` there. The `<html dir>` came out right and every string on
+the page came out English.
+
+`errors/404.blade.php` does `@section('title', __('Page not found'))`. Blade runs
+the **child** first to collect its sections, then renders the parent — so every
+`__()` in a `@section` has already resolved under the old locale by the time the
+layout's first line executes.
+
+**Rule:** anything a child view's `@section` depends on must be set before that
+child renders — a view composer, middleware, or the controller. A layout can
+only consume state, never establish it.
+
+---
+
+## `setLocale()` writes `config('app.locale')`, so comparing them proves nothing
+
+The guard for "has something already chosen a language?" was
+`app()->getLocale() !== config('app.locale')`. `Application::setLocale()` sets
+`config('app.locale')` on its way past, so the two are equal by construction:
+the branch fired on every request and forced the fallback every time.
+
+The honest signal for "did the middleware run?" was the session —
+`$request->hasSession() && $request->session()->isStarted()`. An unmatched URL
+throws before route middleware and has no session at all; a request that reached
+a route has one.
+
+**Rule:** don't infer "this was set explicitly" from a value. Laravel's setters
+often write the config they read from. Find a signal that is *structurally*
+different between the two cases.
+
+---
+
+## Check the services the tests need are actually up
+
+Half an hour of a run failing with `SQLSTATE[HY000] [2002]` on `config:clear`,
+after a reboot, because Laragon's mysqld was not running — it is a process, not
+a registered service, so nothing restarts it at boot. PHPUnit runs on SQLite,
+but a service provider boots against MySQL, so *every* artisan command fails,
+not just the tests.
+
+**Rule:** when artisan itself fails on a connection error, check the server is
+up before reading any further into the stack trace:
+`Test-NetConnection 127.0.0.1 -Port 3306`. Start it with
+`C:\laragon\bin\mysql\mysql-8.4.3-winx64\bin\mysqld.exe --defaults-file=...\my.ini`.

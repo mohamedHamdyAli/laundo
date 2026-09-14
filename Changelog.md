@@ -1,5 +1,18 @@
 # Changelog
 
+## 2026-09-14
+
+### Feature
+
+- **Branded error pages for every non-200 the web side can return** — 401, 403, 404, 419, 429, 500 and 503, in `resources/views/errors/`. Laravel's bare default is gone. One shell (`errors/layout.blade.php`) on the landing page's dark ground and IBM Plex Sans Arabic, a large status numeral, the sentence that says what happened, «رجوع» (only when the tab has history) and «الرئيسية». The API is untouched: `bootstrap/app.php` already answers `api/*` in the `ApiResponse` envelope before any view is reached (Blade / CSS).
+- **The shell may not touch anything that can fail, and a test enforces it.** `CACHE_STORE` and `SESSION_DRIVER` are both `database` here, so a database that is down takes the cache and the session with it — and that is the commonest cause of the 500 these pages exist to draw. A shell reading `getSettingValue('App_Name')` would throw *while rendering the error page* and Laravel would fall back to its built-in one: the design failing in exactly the case it was built for. So no `layouts.main` (22 stylesheets, 30 scripts, a topbar composer that reads `languages` every render), no `layouts.auth-card` (right look, but it opens with three settings/language reads), no `@csrf`, no `panelIsRtl()`. `ErrorPageTest` counts queries with `DB::listen()` while rendering each of the seven and asserts **zero**.
+- `error.css` carries only this page's layout and is loaded after `landing.css`, which already holds the design tokens and the two Arabic font faces — so there is no third copy of the token block for `LandingTokenParityTest` to miss. Both are fingerprinted with `landingAssetVersion()`; neither has a build step.
+
+### Fix
+
+- **A 404 was always English, whatever language the visitor had chosen.** An unmatched URL throws *before* route middleware, so the `web` group — and `SetLocale` inside it — never runs, and the page rendered in the config default. On an Arabic-first product that is the wrong half of the audience. An `errors.*` view composer now falls back to the browser's `Accept-Language` when, and only when, the request has no started session (Provider / Blade).
+- Two traps found building that, both now written down where the next person will hit them. **Comparing `app()->getLocale()` to `config('app.locale')` to detect «somebody already chose» is worthless**: `setLocale()` writes that config key on its way past, so the two are equal by construction and the branch fires on every request — forcing every `abort(404)` inside the panel to English. The session is the honest signal. And **the fallback cannot live in the layout**: `errors/404.blade.php` translates its own title inside `@section`, and Blade evaluates a child's sections *before* it renders the parent, so the layout's own `@php` block runs too late to matter. A composer is the hook that fires first.
+
 ## 2026-09-13
 
 ### Feature

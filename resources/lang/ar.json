@@ -1650,5 +1650,22 @@
     "Fixed": "ثابت",
     "Last taken": "آخر تحصيل",
     "Nothing has been taken yet": "لم يتم تحصيل أي مبلغ بعد",
-    "On the way to you": "هدومك في الطريق إليك"
+    "On the way to you": "هدومك في الطريق إليك",
+    "Page not found": "الصفحة غير موجودة",
+    "This page does not exist, or it was moved. Check the address, or go back to where you were.": "الصفحة دي مش موجودة، أو اتنقلت. راجع العنوان، أو ارجع للمكان اللي كنت فيه.",
+    "You do not have access to this": "مالكش صلاحية على الصفحة دي",
+    "Your account is not permitted to open this page. If you need it, ask whoever manages your permissions.": "حسابك مش مسموح له يفتح الصفحة دي. لو محتاجها، كلّم المسؤول عن الصلاحيات.",
+    "Please sign in": "من فضلك سجّل الدخول",
+    "This page needs you to be signed in. Your session may have ended while the tab was open.": "الصفحة دي محتاجة تكون مسجّل دخول. غالباً الجلسة انتهت والتاب مفتوح.",
+    "This page expired": "انتهت صلاحية الصفحة",
+    "You had the form open long enough for the page to go stale. Open it again and your details will be there to re-enter.": "الفورم فضل مفتوح مدة طويلة لحد ما الصفحة بطّلت صلاحيتها. افتحها تاني وأدخل بياناتك من جديد.",
+    "Too many requests": "طلبات كتير أوي",
+    "You have sent a lot of requests in a short time. Wait a moment and try again.": "بعتّ طلبات كتير في وقت قصير. استنى شوية وجرّب تاني.",
+    "Down for maintenance": "الموقع تحت الصيانة",
+    "The system is being updated right now. This takes a few minutes — please try again shortly.": "بنحدّث النظام دلوقتي. الموضوع دقايق — جرّب تاني بعد شوية.",
+    "Something went wrong on our side": "حصل عطل من عندنا",
+    "This is a fault in the system, not something you did. It has been recorded and the team can see it.": "ده عطل في النظام، مش حاجة إنت عملتها. اتسجّل والفريق شايفه.",
+    "Reference:": "الرقم المرجعي:",
+    "Go back": "رجوع",
+    "Back to home": "الرئيسية"
 }
