@@ -269,4 +269,61 @@ class MenuBadgeTest extends TestCase
             'the badge promised work on a board that has none');
         $this->assertSame(0, $board['waiting']);
     }
+
+    #[Test]
+    public function the_badge_equals_the_board_when_there_is_work_on_it(): void
+    {
+        /*
+         * The zero case above passed while the two still disagreed on real data:
+         * live, the badge read **15** against a board of **19**.
+         *
+         * They were asking different questions. The board lists «no driver and
+         * not finished»; the badge counted `queued()`, which is `status =
+         * pending` and says nothing about `driver_id` — so a leg already handed
+         * to a driver was counted as needing somebody. Both now go through
+         * `OrderTask::scopeNeedingAPerson()`.
+         */
+        $geo = $this->seedGeo();
+        $catalog = $this->seedCatalog();
+
+        $laundry = $this->laundryWithOwner('A', '+201011110001', '+201011110002');
+        $driver = $this->driverUser();
+        $buyer = $this->customer();
+
+        $order = fn () => Order::withoutGlobalScopes()->create([
+            'code' => Order::generateCode(),
+            'user_id' => $buyer->id,
+            'laundry_id' => $laundry['laundry']->id,
+            'service_id' => $catalog['service']->id,
+            'status' => 'awaiting_pickup',
+            'pickup_address_id' => $this->addressFor($buyer, $geo['zones'][0])->id,
+            'delivery_address_id' => $this->addressFor($buyer, $geo['zones'][0])->id,
+            'delivery_fee' => 20,
+            'estimated_total' => 100,
+            'qr_token' => Order::generateQrToken(),
+        ]);
+
+        // Three shapes, and only two of them are waiting on anybody.
+        $shapes = [
+            ['status' => 'pending', 'driver_id' => null],               // unplaced
+            ['status' => 'failed', 'driver_id' => null],                // fell out of the pool
+            ['status' => 'pending', 'driver_id' => $driver->id],        // a driver has it
+        ];
+
+        foreach ($shapes as $shape) {
+            OrderTask::create([
+                'order_id' => $order()->id,
+                'type' => 'pickup_from_customer',
+                'sequence' => 1,
+            ] + $shape);
+        }
+
+        $this->actingAs($laundry['owner']);
+
+        $board = app(dispatchBoardService::class)->counts();
+
+        $this->assertSame(2, $board['waiting'], 'a leg with a driver is not waiting on anybody');
+        $this->assertSame($board['waiting'], MenuBadges::for('order_task'),
+            'the badge and the board it points at disagree');
+    }
 }

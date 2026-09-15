@@ -123,6 +123,29 @@ class OrderTask extends Model
     }
 
     /**
+     * A leg that is actually waiting on a human being.
+     *
+     * **No driver, and not finished.** One definition, in one place, because
+     * three callers need it to agree: the dispatch board's list, its three
+     * counters, and the sidebar badge that points at all of them.
+     *
+     * They did not agree. The badge counted `queued()` — which is
+     * `status = pending` and says nothing about `driver_id` — so a leg already
+     * handed to a driver was counted as needing somebody, and the number beside
+     * Dispatch read 15 against a board showing 19. A badge is a promise about
+     * the screen behind it, and the only way to keep that promise is for the two
+     * to run the same query.
+     *
+     * `queued()` stays what it is: dispatch uses it to mean «in the pool», which
+     * is a different question from «needs a person».
+     */
+    public function scopeNeedingAPerson(Builder $query): Builder
+    {
+        return $query->whereNull('driver_id')
+            ->where('status', '!=', TaskStatus::Completed->value);
+    }
+
+    /**
      * The driver app's order: soonest first, and **stable**.
      *
      * The list was already sorted by `due_at` with the undated legs last. What it

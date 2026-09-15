@@ -79,8 +79,9 @@ class dispatchBoardService
         return OrderTask::query()
             // Through the tenant-scoped Order, so a laundry owner sees its own.
             ->whereIn('order_id', Order::query()->select('id'))
-            ->whereNull('driver_id')
-            ->where('status', '!=', 'completed')
+            // The one definition of «waiting on a person», shared with the
+            // counters below and with the sidebar badge that points here.
+            ->needingAPerson()
             ->with([
                 // `user_id` is in the select because `customer()` is a
                 // `belongsTo(User::class, 'user_id')`: a column list on the
@@ -120,8 +121,7 @@ class dispatchBoardService
     {
         $base = fn () => OrderTask::query()
             ->whereIn('order_id', Order::query()->select('id'))
-            ->whereNull('driver_id')
-            ->where('status', '!=', 'completed');
+            ->needingAPerson();
 
         return [
             'waiting' => $base()->count(),

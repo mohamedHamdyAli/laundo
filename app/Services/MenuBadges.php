@@ -71,20 +71,18 @@ class MenuBadges
                 + Order::where('status', OrderStatus::Reviewed->value)->count()
                 + OrderPriceQuery::open()->whereIn('order_id', Order::query()->select('id'))->count(),
 
-            // Journeys dispatch could not place, and ones that ran out of
-            // attempts and now need a person to intervene.
+            // Journeys with nobody on them: unplaced, and ones that failed
+            // their way back out of the pool.
             //
-            // Scoped through the order, because `OrderTask` has no `laundry_id`
-            // of its own — see the note above. This is the same filter
-            // `dispatchBoardService::counts()` applies, so the badge and the
-            // board it points at always report the same number.
-            'order_task' => OrderTask::queued()
+            // Two filters, both borrowed rather than restated. `needingAPerson()`
+            // is the board's own definition of the rows it lists — counting
+            // `queued()` instead meant counting legs a driver already had, and
+            // the badge read 15 against a board of 19. The `whereIn` is because
+            // `OrderTask` has no `laundry_id` of its own; see the note above.
+            'order_task' => OrderTask::query()
+                ->needingAPerson()
                 ->whereIn('order_id', Order::query()->select('id'))
-                ->count()
-                + OrderTask::where('status', 'failed')
-                    ->where('attempts', '>=', OrderTask::MAX_ATTEMPTS)
-                    ->whereIn('order_id', Order::query()->select('id'))
-                    ->count(),
+                ->count(),
 
             // Answered by phone, so nothing closes itself.
             'complaint' => Complaint::open()->count(),
