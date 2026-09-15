@@ -103,6 +103,9 @@
             var REACH = @json(__('This will reach :count people.'));
             var CONFIRM = @json(__('This goes to :count people at once and cannot be undone. Send it?'));
 
+            // `footer_script` turns every `select.form-select` in this panel into a
+            // select2, so jQuery is the only thing that can hear one change.
+            var $ = window.jQuery;
             var audience = document.getElementById('audience');
             var target = document.getElementById('target');
             var note = document.getElementById('reachNote');
@@ -142,6 +145,14 @@
                 }
 
                 restore = null;
+
+                // The widget draws from its own copy. Rebuilding the `<option>`
+                // elements underneath it changes nothing on screen until it is
+                // told to re-read them.
+                if ($ && $(target).data('select2')) {
+                    $(target).trigger('change.select2');
+                }
+
                 describe();
             }
 
@@ -155,8 +166,25 @@
                 note.textContent = target.value === EVERYONE ? REACH.replace(':count', reach()) : '';
             }
 
-            audience.addEventListener('change', fill);
-            target.addEventListener('change', describe);
+            /*
+             * Bound through jQuery, and that is the whole of it.
+             *
+             * `footer_script` turns **every** `select.form-select` in the panel
+             * into a select2, and select2 announces a change with a jQuery
+             * event. `addEventListener('change')` never hears one — so the
+             * audience visibly switched to Drivers while `fill()` was never
+             * called and the recipient list went on offering customers.
+             *
+             * jQuery's own `.on('change')` catches both, so this is correct
+             * whether or not select2 ever loaded.
+             */
+            if ($) {
+                $(audience).on('change', fill);
+                $(target).on('change', describe);
+            } else {
+                audience.addEventListener('change', fill);
+                target.addEventListener('change', describe);
+            }
 
             // Bound to the button's click rather than the form's submit: the
             // background submitter in form-validation.js listens for submit too,

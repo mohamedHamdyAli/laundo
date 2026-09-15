@@ -371,7 +371,21 @@
             }
 
             apply();
-            city.addEventListener('change', apply);
+
+            /*
+             * jQuery, not `addEventListener`.
+             *
+             * `footer_script` turns every `select.form-select` in this panel into
+             * a select2, and select2 announces a change with a **jQuery** event
+             * that a native listener never hears — so this ran on page load and
+             * then never again, and the control below stayed hidden however the
+             * field was set. jQuery's own `.on()` catches both kinds.
+             */
+            if (window.jQuery) {
+                window.jQuery(city).on('change', apply);
+            } else {
+                city.addEventListener('change', apply);
+            }
 
             // Unticking a zone from another city removes the last reason to
             // show it, so the list has to settle again.

@@ -2245,3 +2245,38 @@ is not a weak fix, it is no fix.** Same family as the `.bg-dark` badge. Assert o
 what the browser lays out — `boundingBox()`, `toBeVisible()` — never on the
 property you set, because the failure mode is a property that is set and does
 nothing.
+
+## Twice in one afternoon: testing the thing underneath
+
+The badge that could not render was `style.display` against a vendor
+`[hidden] { display: none !important }`. I wrote the lesson down — assert on
+what the browser lays out — and then, an hour later, shipped a dropdown whose
+`addEventListener('change')` never fired because `footer_script` turns **every**
+`select.form-select` in this panel into a select2, and select2 announces a change
+with a jQuery event.
+
+My browser test passed because it drove the element underneath:
+`page.selectOption('#audience', 'driver')` sets the hidden native select and
+fires a native event, which my listener did hear. The owner opened the screen,
+picked «Drivers», and got a list of customers.
+
+Sweeping for the pattern found the same fault on three more screens, live: an
+offer's «Open a service» set the value and left the panel naming the service
+hidden, so the field could not be filled at all. `map-picker` had already hit it
+and says so in a comment nobody else read.
+
+**Rule:** in this panel, never bind `change` on a `.form-select` with
+`addEventListener`. Use `jQuery(el).on('change', …)`, which hears both native and
+jQuery-triggered events. A global re-dispatch in `footer_script` was considered
+and rejected: jQuery `.on('change')` hears native events too, so every
+jQuery-bound handler in the panel would fire twice and every filtered list screen
+would double its AJAX search.
+
+**Rule:** a browser test must click what a person clicks. `page.selectOption()`,
+`page.fill()` on a widget-backed input, and reading `.value` instead of the
+rendered text are all the same error: they exercise the DOM the library replaced.
+
+**Rule:** when a test compares before/after, assert the reading is non-empty
+first. My panel check used a selector that matched nothing on the banner form, so
+`'' === ''` passed and proved nothing — the same shape of false green as the two
+above.

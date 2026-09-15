@@ -217,7 +217,21 @@
                 });
             }
 
-            type.addEventListener('change', sync);
+            /*
+             * jQuery, not `addEventListener`.
+             *
+             * `footer_script` turns every `select.form-select` in this panel into
+             * a select2, and select2 announces a change with a **jQuery** event
+             * that a native listener never hears — so this ran on page load and
+             * then never again, and the control below stayed hidden however the
+             * field was set. jQuery's own `.on()` catches both kinds.
+             */
+            if (window.jQuery) {
+                window.jQuery(type).on('change', sync);
+            } else {
+                type.addEventListener('change', sync);
+            }
+
             sync();
         })();
     </script>

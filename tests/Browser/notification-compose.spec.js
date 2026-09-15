@@ -5,11 +5,18 @@ import { ACCOUNTS, login } from './helpers.js';
  * «إرسال إشعار» — the one screen in the panel that raises a notification with no
  * business action behind it.
  *
- * The behaviour worth driving in a browser rather than in PHPUnit is the pair of
- * selects: the recipient list is rebuilt client-side when the audience changes,
- * specifically so that switching from customers to drivers does **not** throw
- * away the message already typed. That was the whole point of the recent
- * form-validation work and it is invisible to a feature test.
+ * **Everything here goes through select2, and that is the point.**
+ * `footer_script` turns every `select.form-select` in this panel into one, so the
+ * native `<select>` is hidden and what a person actually clicks is a widget. The
+ * first version of this spec drove the native element with `page.selectOption()`
+ * — which sets the value and fires a native `change` — and it passed green while
+ * the real screen was broken: select2 announces a change with a **jQuery** event,
+ * which `addEventListener('change')` never hears, so choosing «Drivers» left the
+ * recipient list offering customers.
+ *
+ * That is the same mistake as asserting on `style.display` for an element the
+ * vendor CSS hides with `!important`: testing the thing underneath instead of the
+ * thing a person sees. So these tests click the widget and read the widget.
  *
  * Anything this spec sends is titled so nobody reading the log mistakes it for a
  * real message.
@@ -17,25 +24,84 @@ import { ACCOUNTS, login } from './helpers.js';
 
 const PROBE_TITLE = 'BROWSER TEST — please ignore';
 
+/** The widget select2 put in front of a native select. */
+function widget(page, selectId) {
+  return page.locator(`#${selectId} + .select2-container`);
+}
+
+/** What the closed control is showing right now. */
+function shown(page, selectId) {
+  return widget(page, selectId).locator('.select2-selection__rendered');
+}
+
+async function open(page, selectId) {
+  await widget(page, selectId).locator('.select2-selection').click();
+  await expect(page.locator('.select2-results__option').first()).toBeVisible();
+}
+
+/** Every line the open dropdown is offering. */
+async function offered(page, selectId) {
+  await open(page, selectId);
+  const rows = await page.locator('.select2-results__option').allTextContents();
+  await page.keyboard.press('Escape');
+
+  return rows.map((row) => row.trim());
+}
+
+async function choose(page, selectId, text) {
+  await open(page, selectId);
+  await page.locator('.select2-results__option', { hasText: text }).first().click();
+}
+
+async function chooseByIndex(page, selectId, index) {
+  await open(page, selectId);
+  await page.locator('.select2-results__option').nth(index).click();
+}
+
 test.describe('sending a notification by hand', () => {
   test.beforeEach(async ({ page }) => {
     await login(page, ACCOUNTS.superAdmin);
     await page.goto('/admin/notification/compose');
+    // select2 initialises on DOM ready; without waiting for it the first click
+    // lands on a control that is still a plain select.
+    await expect(widget(page, 'audience')).toBeVisible();
   });
 
-  test('the recipient list is built for the chosen audience', async ({ page }) => {
-    const target = page.locator('#target');
+  test('changing the audience rebuilds the recipient list', async ({ page }) => {
+    /*
+     * The regression this file exists for. Reported from production: audience
+     * read «Drivers» while the recipient list still offered eleven customers.
+     */
+    const customers = await offered(page, 'target');
+    expect(customers[0]).toMatch(/customer/i);
 
-    // Always an «everyone» option, and it carries the count — the number that
-    // decides whether to press send.
-    await expect(target.locator('option').first()).toContainText(/\(\d+\)/);
+    await choose(page, 'audience', 'Drivers');
+    await expect(shown(page, 'audience')).toHaveText('Drivers');
 
-    const customers = await target.locator('option').allTextContents();
+    const drivers = await offered(page, 'target');
 
-    await page.selectOption('#audience', 'driver');
-    const drivers = await target.locator('option').allTextContents();
-
+    expect(drivers[0]).toMatch(/driver/i);
+    expect(drivers[0]).not.toMatch(/customer/i);
     expect(drivers).not.toEqual(customers);
+  });
+
+  test('the control shows the person it is about to write to', async ({ page }) => {
+    // Rebuilding the options underneath select2 changes nothing on screen until
+    // it is told to re-read them — so the closed control could name somebody
+    // from the previous audience while the form posted somebody else.
+    await choose(page, 'audience', 'Laundries');
+
+    const listed = await offered(page, 'target');
+    const rendered = (await shown(page, 'target').textContent()).trim();
+
+    expect(listed).toContain(rendered);
+  });
+
+  test('the everyone option carries its count', async ({ page }) => {
+    // The number that decides whether to press send.
+    const rows = await offered(page, 'target');
+
+    expect(rows[0]).toMatch(/\(\d+\)/);
   });
 
   test('changing the audience keeps what has been typed', async ({ page }) => {
@@ -44,7 +110,7 @@ test.describe('sending a notification by hand', () => {
     await page.fill('#title', PROBE_TITLE);
     await page.fill('#body', 'Typed before the audience changed.');
 
-    await page.selectOption('#audience', 'laundry');
+    await choose(page, 'audience', 'Laundries');
 
     await expect(page.locator('#title')).toHaveValue(PROBE_TITLE);
     await expect(page.locator('#body')).toHaveValue('Typed before the audience changed.');
@@ -53,7 +119,7 @@ test.describe('sending a notification by hand', () => {
   test('a broadcast asks before it goes, and a refusal sends nothing', async ({ page }) => {
     await page.fill('#title', PROBE_TITLE);
     await page.fill('#body', 'This one should never be sent.');
-    await page.selectOption('#target', 'all');
+    await chooseByIndex(page, 'target', 0); // «Every …»
 
     let asked = false;
     page.on('dialog', async (dialog) => {
@@ -71,13 +137,11 @@ test.describe('sending a notification by hand', () => {
   });
 
   test('one person can be sent a message and it appears in the log', async ({ page }) => {
-    const target = page.locator('#target');
+    const rows = await offered(page, 'target');
+    test.skip(rows.length < 2, 'no customers on this install to write to');
 
-    // The second option is the first real person; the first is «everyone».
-    const options = await target.locator('option').all();
-    test.skip(options.length < 2, 'no customers on this install to write to');
-
-    await target.selectOption({ index: 1 });
+    // Index 1 is the first real person; index 0 is «everyone».
+    await chooseByIndex(page, 'target', 1);
     await page.fill('#title', PROBE_TITLE);
     await page.fill('#body', 'Sent by the browser suite. Safe to ignore.');
 
