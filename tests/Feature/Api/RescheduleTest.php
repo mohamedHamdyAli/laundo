@@ -216,7 +216,106 @@ class RescheduleTest extends TestCase
         $this->assertNull($data['leg']);
     }
 
+    /**
+     * The app was building the label from `from`+`to` and hiding capacity
+     * entirely, because these rows had a different shape from `GET /time-slots`
+     * — and a missing `remaining` cannot be told apart from an uncapped one.
+     */
+    #[Test]
+    public function the_slot_rows_have_the_same_shape_as_the_time_slots_endpoint(): void
+    {
+        $order = $this->order();
+        $this->postpone($order);
+
+        $slot = $this->slot();
+        $slot->forceFill(['capacity' => 5])->save();
+
+        $date = now()->addDays(2)->toDateString();
+
+        $data = $this->actingAs($this->customer)
+            ->getJson("/api/v1/orders/{$order->id}/reschedule?date={$date}")
+            ->assertOk()
+            ->json('data');
+
+        $this->assertSame($date, $data['date']);
+
+        $row = collect($data['slots'])->firstWhere('id', $slot->id);
+
+        $this->assertNotNull($row['label']);
+        $this->assertSame('both', $row['applies_to']);
+        $this->assertSame(5, $row['capacity']);
+        // Nothing booked into that window on that day yet.
+        $this->assertSame(5, $row['remaining']);
+        $this->assertFalse($row['is_full']);
+    }
+
+    /**
+     * Null and zero are different answers: «as many as you like» against
+     * «choose another window».
+     */
+    #[Test]
+    public function an_uncapped_window_reports_null_rather_than_a_number(): void
+    {
+        $order = $this->order();
+        $this->postpone($order);
+
+        $slot = $this->slot();
+        $slot->forceFill(['capacity' => null])->save();
+
+        $row = collect($this->actingAs($this->customer)
+            ->getJson("/api/v1/orders/{$order->id}/reschedule")
+            ->assertOk()
+            ->json('data.slots'))->firstWhere('id', $slot->id);
+
+        $this->assertNull($row['remaining']);
+        $this->assertFalse($row['is_full']);
+    }
+
     // ----------------------------------------------------------- rescheduling
+
+    /**
+     * **The rebooking stays on the order it rebooked.** The app asked us to
+     * confirm this rather than fix it — it was already true — and the response
+     * now says so in fields instead of leaving the screen to re-fetch and find
+     * out.
+     */
+    #[Test]
+    public function rescheduling_rebooks_the_same_order_and_returns_the_booking(): void
+    {
+        $order = $this->order();
+        $this->postpone($order);
+
+        $code = $order->code;
+        $slot = $this->slot();
+        $newDate = now()->addDays(2)->toDateString();
+
+        $data = $this->actingAs($this->customer)
+            ->postJson("/api/v1/orders/{$order->id}/reschedule", [
+                'slot_id' => $slot->id,
+                'date' => $newDate,
+            ])
+            ->assertOk()
+            ->json('data');
+
+        $this->assertSame($order->id, $data['id']);
+        $this->assertSame($code, $data['code']);
+        $this->assertSame('pickup', $data['leg']);
+        $this->assertSame($newDate, $data['date']);
+        $this->assertSame($slot->id, $data['time_slot']['id']);
+        $this->assertNotNull($data['time_slot']['label']);
+        $this->assertFalse($data['needs_new_time']);
+        $this->assertNotNull($data['status_label']);
+
+        // And no second order was created alongside it.
+        $this->assertSame(1, Order::withoutGlobalScopes()->count());
+
+        // What the app sees on its next fetch agrees with what it was just told.
+        $this->assertFalse(
+            $this->actingAs($this->customer)
+                ->getJson("/api/v1/orders/{$order->id}/reschedule")
+                ->json('data.needs_new_time')
+        );
+    }
 
     #[Test]
     public function choosing_a_new_time_puts_the_journey_back_in_play(): void

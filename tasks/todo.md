@@ -3989,53 +3989,74 @@ is a change to existing behaviour, not to this feature.
 
 ## 1. prompts الجدولة الملغية (باج)
 
-- [ ] migration: توسيع `recurrence_prompts.answer` enum بـ `cancelled`
+- [x] migration: توسيع `recurrence_prompts.answer` enum بـ `cancelled`
       (العمود enum في MySQL — `'cancelled'` هيعدي على SQLite في التستات ويقع في
       التطبيق، وده بالظبط الفخ المكتوب في CLAUDE.md)
-- [ ] `RecurrenceService::cancel()` يقفل الـ prompts المفتوحة في نفس الترانزاكشن
-- [ ] `pendingPrompts()` يفلتر على `recurrence.status = active` — ده اللي بيغطي
+- [x] `RecurrenceService::cancel()` يقفل الـ prompts المفتوحة في نفس الترانزاكشن
+- [x] `pendingPrompts()` يفلتر على `recurrence.status = active` — ده اللي بيغطي
       الموقوفة (paused) كمان، ومن غير ما يمسح سؤال جدولة هترجع تشتغل
-- [ ] الـ payload: `prompted_for` (الاسم اللي التطبيق بيقراه)، `status`،
+- [x] الـ payload: `prompted_for` (الاسم اللي التطبيق بيقراه)، `status`،
       `recurrence_status`، `items[]`، `pickup_address_id`
-- [ ] الجدولة: `next_run_on`، `is_paused`، `status_label`، `time_slot_id`،
+- [x] الجدولة: `next_run_on`، `is_paused`، `status_label`، `time_slot_id`،
       `pickup_address` ككائن
-- [ ] **مش** هنلمس `decline()` — اتأكدت إنه بيكتب `answer` فعلاً والـ unique على
+- [x] **مش** هنلمس `decline()` — اتأكدت إنه بيكتب `answer` فعلاً والـ unique على
       `(recurrence_id, prompted_for)` بيمنع إعادة السؤال. السبب التاني في البلاغ
       غلط.
 
 ## 2. reorder كامل ومسعّر النهاردة
 
-- [ ] `OrderService::reorderPayload()` يرجّع الطلب كله: الخدمة بالاسم، العنوانين
+- [x] `OrderService::reorderPayload()` يرجّع الطلب كله: الخدمة بالاسم، العنوانين
       ككائنات، النافذة، طريقة الدفع، الملاحظات، الكوبون، والأسطر مسعّرة **النهاردة**
-- [ ] التسعير من نفس مسار `quote()` — مش من أرقام الأوردر القديم
-- [ ] التسعير بيرمي `RuntimeException` لو العنوان اتمسح أو الخدمة اتقفلت →
+- [x] التسعير من نفس مسار `quote()` — مش من أرقام الأوردر القديم
+- [x] التسعير بيرمي `RuntimeException` لو العنوان اتمسح أو الخدمة اتقفلت →
       يتلفّ في try/catch ويرجّع `pricing: null` + سبب، مش 500 على شاشة إعادة طلب
-- [ ] `is_estimated` من `service.pricing_mode === 'quote'` — مصدر حقيقي موجود
+- [x] `is_estimated` من `service.pricing_mode === 'quote'` — مصدر حقيقي موجود
 
 ## 3. reschedule (تأكيد + تحسين)
 
-- [ ] الـ POST يرجّع النتيجة المحجوزة كاملة بدل `{id, code}`
-- [ ] الـ GET slots ياخد شكل `GET /time-slots` نفسه: `label`, `applies_to`,
+- [x] الـ POST يرجّع النتيجة المحجوزة كاملة بدل `{id, code}`
+- [x] الـ GET slots ياخد شكل `GET /time-slots` نفسه: `label`, `applies_to`,
       `capacity`, `remaining`, `is_full` + `date`/`slot_id` الحاليين
-- [ ] **مفيش تغيير في المنطق** — اتأكدت إنه بيعدّل نفس الأوردر ومش بيغيّر الكود
+- [x] **مفيش تغيير في المنطق** — اتأكدت إنه بيعدّل نفس الأوردر ومش بيغيّر الكود
 
 ## 4. track
 
-- [ ] `driver.leg` كمفتاح ماشيني (`pickup`/`delivery`) + `task_type` الخام —
+- [x] `driver.leg` كمفتاح ماشيني (`pickup`/`delivery`) + `task_type` الخام —
       دلوقتي فيه `role` **مترجَم** بس والتطبيق مش قادر يبدّل عليه
-- [ ] `driver.photo` alias لـ `image`
-- [ ] `delivery_address` و `pickup_address` ككائنات مقروءة (الإحداثيات فاضلة)
-- [ ] `delivery_method` + `delivery_method_label` — بمفرداتنا الحقيقية
+- [x] `driver.photo` alias لـ `image`
+- [x] `delivery_address` و `pickup_address` ككائنات مقروءة (الإحداثيات فاضلة)
+- [x] `delivery_method` + `delivery_method_label` — بمفرداتنا الحقيقية
       `door`/`leave`، مش `home_delivery`/`pickup_point` اللي مش موجودة أصلاً
-- [ ] `OrderEta` — من نافذة الرجل اللي العميل مستنيها (`due_at` / السلوت)، مع
+- [x] `OrderEta` — من نافذة الرجل اللي العميل مستنيها (`due_at` / السلوت)، مع
       `eta_window` عشان الشاشة تقول «بين ٩ و١٢» بدل وقت مخترع
-- [ ] **مش** هنغيّر إسقاط الموقع البايت بعد ١٢٠ ثانية: ده قرار مالك موثّق
+- [x] **مش** هنغيّر إسقاط الموقع البايت بعد ١٢٠ ثانية: ده قرار مالك موثّق
       وعليه تست بالاسم (`a_reading_that_stopped_arriving_is_removed_not_frozen`).
       يترفع ليه كسؤال منتج مش كفيكس.
 
 ## الإثبات
 
-- [ ] تستات جديدة لكل بند، وكل فيكس يترجّع ويتشاف التست بيقع
-- [ ] السويت كاملة + PHPStan + Pint
-- [ ] Changelog، Postman، `generate-reference.py`
-- [ ] رد بالعربي لفريق الموبايل في `docs/mobile-api-changes.md`
+- [x] تستات جديدة لكل بند، وكل فيكس يترجّع ويتشاف التست بيقع
+- [x] السويت كاملة + PHPStan + Pint
+- [x] Changelog، Postman، `generate-reference.py`
+- [x] رد بالعربي لفريق الموبايل في `docs/mobile-api-changes.md`
+
+## المراجعة
+
+**اتعمل:** البنود الأربعة. الأول باج حقيقي، التاني ناقص فعلاً، التالت كان شغال
+صح والرد عليه توثيق + رد أغنى، والرابع نصّه كان منشور من يومين.
+
+**اتقال لأ، ومتسجّل:**
+
+- **إسقاط الموقع البايت بعد ١٢٠ ثانية فضل زي ما هو.** قرار مالك موثّق وعليه تست
+  بالاسم (`a_reading_that_stopped_arriving_is_removed_not_frozen`). اترفع
+  للمالك في الرد بدل ما يتغيّر من تحته.
+- **مفردات `home_delivery` / `pickup_point` مترفضة.** مفيش نقط استلام في
+  الداتابيز ولا اللوحة ولا دورة الحياة — ده فيتشر مش حقل ناقص. اترفع كسؤال.
+- **الرقم المقنّع مش ممكن دلوقتي**: مفيش مزوّد telephony ولا SMS في المشروع.
+  الخيار الأول اللي طلبوه (رقم حقيقي وقت الرجل الشغّالة) منشور من ٣ سبتمبر.
+
+**اتصلّح في الطريق، مكنش مطلوب:** `is_estimated` كانت هتطلع `true` على كل
+الطلبات بسبب constrained eager load — التست مسكها، والدرس في `lessons.md`.
+
+**الإثبات:** ٢٠ تست جديد، الفيكسات اترجّعت واتشافت بتقع، ١٣٠٣ تست / ٤٢٠٣
+assertion خضرا، PHPStan و Pint نضاف.

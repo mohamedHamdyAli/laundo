@@ -97,6 +97,23 @@ class OrderRecurrence extends Model
         return $this->hasMany(RecurrencePrompt::class, 'recurrence_id')->latest('prompted_for');
     }
 
+    /**
+     * The state in words.
+     *
+     * Here rather than in the controller because three surfaces spell the same
+     * three states, and a client inventing its own «موقوفة» from the raw enum is
+     * a copy of our vocabulary we cannot change. Returned untranslated — the
+     * caller runs it through `__()` in the request's own language.
+     */
+    public function statusLabel(): string
+    {
+        return match ($this->status) {
+            'paused' => 'Paused',
+            'cancelled' => 'Cancelled',
+            default => 'Active',
+        };
+    }
+
     public function scopeDue(Builder $query, ?Carbon $on = null): Builder
     {
         return $query->where('status', 'active')

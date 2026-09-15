@@ -362,6 +362,117 @@ class OrderTest extends TestCase
         $this->assertSame(1, Order::withoutGlobalScopes()->count());
     }
 
+    /**
+     * The app opened the wizard half-empty because the payload was seven keys:
+     * the customer had to re-enter the address, the window, the payment method
+     * and the instructions they had already chosen last time.
+     */
+    #[Test]
+    public function reorder_hands_back_the_whole_order_not_only_the_basket(): void
+    {
+        [$customer, $address] = $this->customerWithAddress();
+        $slot = $this->pickupSlot();
+
+        $order = app(OrderService::class)->place($customer, [
+            'service_id' => $this->catalog['service']->id,
+            'pickup_address_id' => $address->id,
+            'pickup_slot_id' => $slot->id,
+            'pickup_date' => now()->addDay()->toDateString(),
+            'payment_method' => 'cash',
+            'special_instructions' => 'Third floor, no lift.',
+            'items' => [['item_id' => $this->catalog['items'][0]->id, 'qty' => 3]],
+        ]);
+
+        Sanctum::actingAs($customer);
+
+        $data = $this->getJson("/api/v1/orders/{$order->id}/reorder", $this->apiHeaders())
+            ->assertOk()
+            ->json('data');
+
+        // The address as something a person can read, not only an id.
+        $this->assertSame($address->id, $data['pickup_address']['id']);
+        $this->assertSame($address->label, $data['pickup_address']['label']);
+        $this->assertNotNull($data['pickup_address']['lat']);
+
+        $this->assertSame(
+            getLocalizedValue($this->catalog['service'], 'name'),
+            $data['service']['name']
+        );
+        $this->assertFalse($data['is_estimated']);
+
+        $this->assertSame($slot->id, $data['time_slot_id']);
+        $this->assertNotNull($data['time_slot']['label']);
+        $this->assertSame('cash', $data['payment_method']);
+        $this->assertSame('Third floor, no lift.', $data['notes']);
+
+        // A reviewable line: the piece by name, with money on it.
+        $line = $data['items'][0];
+        $this->assertSame($this->catalog['items'][0]->id, $line['item_id']);
+        $this->assertSame(3, $line['qty']);
+        $this->assertNotNull($line['item']['name']);
+        $this->assertNotNull($line['unit_price']);
+        $this->assertSame(round($line['unit_price'] * 3, 2), round($line['line_total'], 2));
+
+        $this->assertNull($data['pricing_error']);
+        $this->assertNotNull($data['pricing']['total']);
+    }
+
+    /**
+     * **The customer must never be billed yesterday's prices.** The stored
+     * figures are what they paid then; the wizard opens on what it costs now.
+     */
+    #[Test]
+    public function reorder_prices_the_basket_at_todays_prices(): void
+    {
+        [$customer, $address] = $this->customerWithAddress();
+        $order = $this->makeOrder($customer, $address);
+
+        $was = (float) $order->estimated_subtotal;
+
+        ItemPrice::where('service_id', $this->catalog['service']->id)
+            ->where('item_id', $this->catalog['items'][0]->id)
+            ->update(['price' => $was * 2]);
+
+        Sanctum::actingAs($customer);
+
+        $data = $this->getJson("/api/v1/orders/{$order->id}/reorder", $this->apiHeaders())
+            ->assertOk()
+            ->json('data');
+
+        $this->assertSame(round($was * 2, 2), round((float) $data['pricing']['subtotal'], 2));
+        $this->assertSame(round($was * 2, 2), round((float) $data['items'][0]['unit_price'], 2));
+        // And the order it was read from is untouched — reorder creates nothing
+        // and rewrites nothing.
+        $this->assertSame($was, (float) $order->fresh()->estimated_subtotal);
+    }
+
+    /**
+     * A service withdrawn since the order was placed is not a 500 on the
+     * customer's «إعادة الطلب» button. The order comes back priceless, with the
+     * reason named, so the app can say why rather than showing a crash.
+     */
+    #[Test]
+    public function reorder_survives_a_service_that_is_no_longer_offered(): void
+    {
+        [$customer, $address] = $this->customerWithAddress();
+        $order = $this->makeOrder($customer, $address);
+
+        $this->catalog['service']->update(['status' => 'inactive']);
+
+        Sanctum::actingAs($customer);
+
+        $data = $this->getJson("/api/v1/orders/{$order->id}/reorder", $this->apiHeaders())
+            ->assertOk()
+            ->json('data');
+
+        $this->assertNull($data['pricing']);
+        $this->assertSame('service_not_found', $data['pricing_error']);
+        // Everything that does not need pricing is still there.
+        $this->assertSame($address->id, $data['pickup_address']['id']);
+        $this->assertSame(1, $data['items'][0]['qty']);
+        $this->assertNull($data['items'][0]['unit_price']);
+    }
+
     #[Test]
     public function orders_require_a_token(): void
     {

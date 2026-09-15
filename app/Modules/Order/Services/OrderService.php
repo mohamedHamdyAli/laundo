@@ -12,6 +12,7 @@ use App\Modules\Order\Enums\OrderStatus;
 use App\Modules\Order\Models\Order;
 use App\Modules\Order\Models\OrderItem;
 use App\Modules\Service\Models\Service;
+use App\Modules\TimeSlot\Models\TimeSlot;
 use App\Modules\TimeSlot\Services\SlotCapacity;
 use App\Modules\User\Models\User;
 use Illuminate\Support\Facades\DB;
@@ -336,20 +337,197 @@ class OrderService
      */
     public function reorderPayload(Order $order): array
     {
+        $order->loadMissing([
+            'pickupAddress', 'deliveryAddress',
+            'pickupSlot', 'deliverySlot', 'estimatedItems.item:id,name',
+        ]);
+
+        // `load`, not `loadMissing`: the controller arrives with `service:id,name`
+        // already loaded, and a constrained eager load silently returns null for
+        // every column it left out. `pricing_mode` is one of them — so
+        // `is_estimated` read as true for every order, which is the opposite of
+        // the answer. `loadMissing` would have kept the truncated row.
+        $order->load('service');
+
+        $basket = [];
+
+        foreach ($order->estimatedItems as $line) {
+            $basket[] = ['item_id' => (int) $line->item_id, 'qty' => (int) $line->qty];
+        }
+
+        // **Today's prices, never the order's own.** The stored figures are what
+        // this customer paid last month; re-opening the wizard on them would put
+        // a number on screen we are not willing to honour. Same pass as the
+        // quote screen, so the basket they are about to confirm is costed by the
+        // code that will cost it again when they submit.
+        $quote = $this->requoteFor($order, $basket);
+
+        // The quote prices what it can price; the original order names what was
+        // in the basket. Neither alone can draw a reviewable line, so they are
+        // joined on the item — a piece the service no longer prices keeps its
+        // quantity and comes back with null money rather than disappearing.
+        $priced = collect($quote['lines'])->keyBy('item_id');
+
         $items = [];
 
         foreach ($order->estimatedItems as $line) {
-            $items[] = ['item_id' => $line->item_id, 'qty' => $line->qty];
+            $today = $priced->get((int) $line->item_id);
+
+            $items[] = [
+                'item_id' => (int) $line->item_id,
+                'item' => $line->item ? [
+                    'id' => $line->item->id,
+                    'name' => getLocalizedValue($line->item, 'name'),
+                ] : null,
+                'qty' => (int) $line->qty,
+                'unit_price' => isset($today['unit_price']) ? (float) $today['unit_price'] : null,
+                'line_total' => isset($today['line_total']) ? (float) $today['line_total'] : null,
+            ];
         }
 
         return [
             'service_id' => $order->service_id,
+            'service' => $order->service ? [
+                'id' => $order->service->id,
+                'name' => getLocalizedValue($order->service, 'name'),
+                'pricing_mode' => $order->service->pricing_mode,
+            ] : null,
+            // Stated rather than inferred. A quoted service has no per-piece
+            // prices at all, so its basket is empty by design — and the app was
+            // reading that empty array as «nothing to reorder».
+            'is_estimated' => $order->service !== null && ! $order->service->isPerItem(),
+
             'pickup_address_id' => $order->pickup_address_id,
+            'pickup_address' => $this->addressPayload($order->pickupAddress),
             'delivery_address_id' => $order->delivery_address_id,
+            'delivery_address' => $this->addressPayload($order->deliveryAddress),
+            'same_address' => $order->isRoundTrip(),
             'pickup_method' => $order->pickup_method,
             'delivery_method' => $order->delivery_method,
+
+            // The windows the customer used last time, as defaults. The dates are
+            // deliberately absent: a date from a past order is not a booking the
+            // wizard can open on, and capacity is per window per day.
+            'pickup_slot_id' => $order->pickup_slot_id,
+            'pickup_slot' => $this->slotPayload($order->pickupSlot),
+            'delivery_slot_id' => $order->delivery_slot_id,
+            'delivery_slot' => $this->slotPayload($order->deliverySlot),
+            // The app reads the pickup window under the bare name.
+            'time_slot_id' => $order->pickup_slot_id,
+            'time_slot' => $this->slotPayload($order->pickupSlot),
+
+            'payment_method' => $order->payment_method,
             'special_instructions' => $order->special_instructions,
+            // The app reads the instructions under this name.
+            'notes' => $order->special_instructions,
+            'driver_note' => $order->driver_note,
+
+            // What was used last time — offered back so the app can tell the
+            // customer whether it still applies, which is the quote's job and
+            // not this endpoint's. Re-quoting with the code would spend a
+            // single-use coupon on a screen the customer may walk away from.
+            'coupon_code' => $order->coupon_code,
+            'offer_id' => $order->offer_id,
+
             'items' => $items,
+
+            // Null when the basket could not be re-priced at all — see below.
+            'pricing' => $quote['pricing'],
+            'pricing_error' => $quote['error'],
+        ];
+    }
+
+    /**
+     * Re-price an old basket at today's prices, tolerantly.
+     *
+     * `quote()` throws when the context no longer holds — the service was
+     * deactivated, the address was deleted since. On the wizard that is the
+     * right answer: there is nothing to price. On *reorder* it is not, because
+     * the customer asked to see a previous order and a 500 on that screen tells
+     * them nothing. So the failure is caught, named, and the rest of the order
+     * is handed back priceless rather than not at all.
+     *
+     * @param  array<int, array{item_id: int, qty: int}>  $basket
+     * @return array{lines: array<int, array<string, mixed>>, pricing: array<string, mixed>|null, error: string|null}
+     */
+    private function requoteFor(Order $order, array $basket): array
+    {
+        $customer = $order->customer;
+
+        if ($customer === null) {
+            return ['lines' => [], 'pricing' => null, 'error' => 'customer_not_found'];
+        }
+
+        try {
+            $quote = $this->quote($customer, [
+                'service_id' => $order->service_id,
+                'pickup_address_id' => $order->pickup_address_id,
+                'delivery_address_id' => $order->delivery_address_id,
+                'items' => $basket,
+                'payment_method' => $order->payment_method,
+            ]);
+        } catch (RuntimeException $e) {
+            return ['lines' => [], 'pricing' => null, 'error' => $e->getMessage()];
+        }
+
+        return [
+            'lines' => $quote['lines'],
+            'pricing' => [
+                'items_count' => $quote['items_count'],
+                'subtotal' => $quote['subtotal'],
+                'delivery_fee' => $quote['delivery_fee'],
+                'delivery_fee_reason' => $quote['delivery_fee_reason'],
+                // No coupon is applied here — see `coupon_code` above — so this
+                // is zero by construction. Sent so the block has the same shape
+                // as the quote screen's, which the app already draws.
+                'discount' => $quote['discount'],
+                'cash_surcharge' => $quote['cash_surcharge'],
+                'tax_rate' => $quote['tax_rate'],
+                'tax' => $quote['tax'],
+                'pre_tax_total' => $quote['pre_tax_total'],
+                'total' => $quote['total'],
+                // Pieces this service no longer prices. They keep their line
+                // above with null money; this is the machine-readable half.
+                'unpriced_item_ids' => $quote['unpriced'],
+            ],
+            'error' => null,
+        ];
+    }
+
+    /**
+     * An address the customer can read, not an id they cannot.
+     *
+     * @return array<string, mixed>|null
+     */
+    private function addressPayload(?Address $address): ?array
+    {
+        if ($address === null) {
+            return null;
+        }
+
+        return [
+            'id' => $address->id,
+            'label' => $address->label,
+            'line' => $address->street,
+            'lat' => (float) $address->lat,
+            'lng' => (float) $address->lng,
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    private function slotPayload(?TimeSlot $slot): ?array
+    {
+        if ($slot === null) {
+            return null;
+        }
+
+        return [
+            'id' => $slot->id,
+            'label' => $slot->label(),
+            'from' => $slot->start_time,
+            'to' => $slot->end_time,
         ];
     }
 

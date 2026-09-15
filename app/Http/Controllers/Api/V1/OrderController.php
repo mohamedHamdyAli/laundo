@@ -12,13 +12,16 @@ use App\Modules\Order\Enums\TaskType;
 use App\Modules\Order\Models\Order;
 use App\Modules\Order\Models\OrderMedia;
 use App\Modules\Order\Models\RecurrencePrompt;
+use App\Modules\Order\Services\OrderEta;
 use App\Modules\Order\Services\OrderService;
 use App\Modules\Order\Services\OrderTimeline;
 use App\Modules\Order\Services\RecurrenceService;
 use App\Modules\Order\Services\RescheduleService;
 use App\Modules\TimeSlot\Models\TimeSlot;
+use App\Modules\TimeSlot\Services\SlotCapacity;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use RuntimeException;
 
 /**
@@ -178,13 +181,16 @@ class OrderController extends Controller
         // read off the third leg, and without this it is a query per request.
         $order = $request->user()->orders()
             // The two addresses are for the map pins below; without them this is
-            // two extra queries on a screen that polls.
-            ->with(['statusLogs', 'tasks', 'pickupAddress', 'deliveryAddress'])
+            // two extra queries on a screen that polls. The two slots are the
+            // ETA's window — same reason, same screen.
+            ->with(['statusLogs', 'tasks', 'pickupAddress', 'deliveryAddress', 'pickupSlot', 'deliverySlot'])
             ->find($id);
 
         if (! $order) {
             return failReturnNotFound(__('Order not found.'));
         }
+
+        $eta = app(OrderEta::class)->forOrder($order);
 
         return successReturnData([
             'code' => $order->code,
@@ -192,6 +198,19 @@ class OrderController extends Controller
             'status_label' => __($order->status->label()),
             'is_active' => $order->status->isActive(),
             'can_cancel' => $order->status->isCancellable(),
+            // How the clothes are handed over. **`door` / `leave`, and those are
+            // the only two** — there are no collection points, lockers or
+            // branches anywhere in this system, so a vocabulary naming them
+            // would describe a service that does not exist.
+            'delivery_method' => $order->delivery_method,
+            'delivery_method_label' => __($this->deliveryMethodLabel($order->delivery_method)),
+            // The booked window for the leg on its way, not a routed arrival —
+            // see OrderEta. Null when nothing is currently coming.
+            'eta_iso' => $eta['iso'] ?? null,
+            'eta_minutes' => $eta['minutes'] ?? null,
+            'eta_label' => $eta['label'] ?? null,
+            'eta_window' => $eta['window'] ?? null,
+            'eta_source' => $eta['source'] ?? null,
             // «مندوب الاستلام · أحمد · ★ 4.9». Null between journeys and before
             // anybody is assigned, which the design already draws as an empty
             // card rather than a missing one.
@@ -203,6 +222,11 @@ class OrderController extends Controller
             // these two are the doors.
             'pickup_location' => $this->point($order->pickupAddress),
             'delivery_location' => $this->point($order->deliveryAddress),
+            // The same two doors as something a person can read. The coordinates
+            // above place a pin; they do not tell a customer *where* their
+            // clothes are going, and the screen names the destination.
+            'pickup_address' => $this->addressCard($order->pickupAddress),
+            'delivery_address' => $this->addressCard($order->deliveryAddress),
             // Eight steps, not the landing page's six. `OrderStatus::trackingSteps()`
             // is the marketing journey and stays that; a customer waiting at home
             // needs the two «on the way» states it leaves out. See OrderTimeline.
@@ -227,6 +251,43 @@ class OrderController extends Controller
         }
 
         return ['lat' => (float) $address->lat, 'lng' => (float) $address->lng];
+    }
+
+    /**
+     * An address as the tracking screen names it.
+     *
+     * @return array<string, mixed>|null
+     */
+    private function addressCard(?Address $address): ?array
+    {
+        if ($address === null) {
+            return null;
+        }
+
+        return [
+            'id' => $address->id,
+            'label' => $address->label,
+            'line' => $address->street,
+            'lat' => (float) $address->lat,
+            'lng' => (float) $address->lng,
+        ];
+    }
+
+    /**
+     * «يتسلّم باليد» / «يتساب عند الباب».
+     *
+     * Two values, because the service has two. Untranslated here and run through
+     * `__()` by the caller, in the request's own language.
+     */
+    private function deliveryMethodLabel(?string $method): string
+    {
+        // Both keys are already carried and translated — the panel names the
+        // same two choices on the order screen. Inventing new ones would ship
+        // two untranslated strings to the app for no gain.
+        return match ($method) {
+            'leave' => 'Leave at the door',
+            default => 'Hand to the customer',
+        };
     }
 
     public function cancel(Request $request, $id): JsonResponse
@@ -452,6 +513,10 @@ class OrderController extends Controller
             return successReturnData([
                 'needs_new_time' => false,
                 'leg' => null,
+                'date' => null,
+                'current_date' => null,
+                'slot_id' => null,
+                'current_slot_id' => null,
                 'slots' => [],
             ]);
         }
@@ -461,22 +526,51 @@ class OrderController extends Controller
             TaskType::DeliverToLaundry,
         ], true);
 
+        // Which day the capacity figures are about. The postponed leg has had its
+        // own date cleared, so «today» is the honest default — and a client
+        // walking a date picker passes the day it is showing.
+        $date = $request->filled('date')
+            ? Carbon::parse($request->get('date'))
+            : ($collection ? $order->pickup_date : $order->delivery_date) ?? now();
+
         // Only the slots this leg may actually use. Offering a delivery-only slot
         // for a collection would be a choice the server then refuses.
         $slots = TimeSlot::where('status', 'active')
             ->whereIn('applies_to', ['both', $collection ? 'pickup' : 'delivery'])
             ->orderBy('sort_order')
             ->orderBy('start_time')
-            ->get(['id', 'start_time', 'end_time']);
+            ->get();
+
+        $capacity = app(SlotCapacity::class);
 
         return successReturnData([
             'needs_new_time' => true,
             'leg' => $collection ? 'pickup' : 'delivery',
-            'slots' => $slots->map(fn (TimeSlot $slot) => [
-                'id' => $slot->id,
-                'from' => $slot->start_time,
-                'to' => $slot->end_time,
-            ])->values(),
+            // The day the rows below are counted against, and the booking this
+            // is replacing. Both under two names, because the app reads one and
+            // this endpoint has always been shaped like the other.
+            'date' => $date->toDateString(),
+            'current_date' => ($collection ? $order->pickup_date : $order->delivery_date)?->toDateString(),
+            'slot_id' => $collection ? $order->pickup_slot_id : $order->delivery_slot_id,
+            'current_slot_id' => $collection ? $order->pickup_slot_id : $order->delivery_slot_id,
+            // The same shape `GET /time-slots` sends. It used to be three keys,
+            // so the app built the label itself and could not tell a full day
+            // from an unknown one — `remaining` is null for an uncapped window
+            // and 0 for a full one, and those are different answers.
+            'slots' => $slots->map(function (TimeSlot $slot) use ($capacity, $date) {
+                $remaining = $capacity->remaining($slot, $date);
+
+                return [
+                    'id' => $slot->id,
+                    'from' => $slot->start_time,
+                    'to' => $slot->end_time,
+                    'label' => $slot->label(),
+                    'applies_to' => $slot->applies_to,
+                    'capacity' => $slot->capacity,
+                    'remaining' => $remaining,
+                    'is_full' => $remaining !== null && $remaining < 1,
+                ];
+            })->values(),
         ]);
     }
 
@@ -495,8 +589,21 @@ class OrderController extends Controller
             'date' => ['required', 'date', 'after_or_equal:today'],
         ]);
 
+        $service = app(RescheduleService::class);
+
+        // Which end is being rebooked, read **before** the write: once the leg
+        // is pending again `postponedTask()` finds nothing, and deducing the leg
+        // afterwards from which columns moved is a guess that goes wrong the
+        // moment both ends carry the same slot and date.
+        $task = $service->postponedTask($order);
+
+        $collection = $task !== null && in_array($task->type, [
+            TaskType::PickupFromCustomer,
+            TaskType::DeliverToLaundry,
+        ], true);
+
         try {
-            $order = app(RescheduleService::class)->reschedule($order, $request->user(), $validated);
+            $order = $service->reschedule($order, $request->user(), $validated);
         } catch (RuntimeException $e) {
             return match ($e->getMessage()) {
                 'nothing_to_reschedule' => failReturnMsg(__('This order is not waiting for a new time.')),
@@ -508,9 +615,29 @@ class OrderController extends Controller
             };
         }
 
-        return successReturnData(
-            ['id' => $order->id, 'code' => $order->code],
-            __('Your new time is set. We will collect it then.')
-        );
+        $slot = $collection ? $order->pickupSlot : $order->deliverySlot;
+
+        // **The same order, the same code.** It is a re-booking, not a new
+        // order, and the response says so in the fields rather than leaving the
+        // app to re-fetch and find out. Returning the booked result also closes
+        // the round-trip the screen used to need to redraw itself.
+        return successReturnData([
+            'id' => $order->id,
+            'code' => $order->code,
+            'leg' => $collection ? 'pickup' : 'delivery',
+            'date' => ($collection ? $order->pickup_date : $order->delivery_date)?->toDateString(),
+            'time_slot' => $slot ? [
+                'id' => $slot->id,
+                'from' => $slot->start_time,
+                'to' => $slot->end_time,
+                'label' => $slot->label(),
+            ] : null,
+            // False by construction — the leg this endpoint was waiting on is
+            // pending again. Asked rather than hardcoded, so an order carrying a
+            // second postponed leg still says so.
+            'needs_new_time' => $service->isAwaitingNewSlot($order),
+            'status' => $order->status->value,
+            'status_label' => __($order->status->label()),
+        ], __('Your new time is set. We will collect it then.'));
     }
 }

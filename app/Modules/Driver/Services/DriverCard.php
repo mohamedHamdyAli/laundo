@@ -55,10 +55,19 @@ class DriverCard
         return [
             'name' => $driver->name,
             'image' => getImageassetUrl($driver->image_profile),
+            // The same URL under the name the app reads it by.
+            'photo' => getImageassetUrl($driver->image_profile),
             // «مندوب الاستلام» / «مندوب التسليم» — which of the four legs this is
             // matters to the customer: the person collecting and the person
             // returning their clothes are usually not the same.
             'role' => __($task->type->label()),
+            // **The same fact as a key, not as prose.** `role` is translated, so
+            // a client switching on it is switching on the request's language —
+            // and this is the field that decides whether the screen says
+            // «جاي ياخد» or «جاي يسلّم». `leg` is the customer's two sides;
+            // `task_type` is the raw leg, for anything that needs all four.
+            'leg' => $this->side($task),
+            'task_type' => $task->type->value,
             'rating' => $this->rating((int) $driver->id),
             // Same gate as the location below, deliberately: the two answer the
             // same question — «is this person on their way to me right now» —
@@ -106,6 +115,23 @@ class DriverCard
             TaskType::DeliverToCustomer,
         ], true)
             && in_array($task->status, [TaskStatus::Assigned, TaskStatus::Started], true);
+    }
+
+    /**
+     * Which side of the order this leg is, in the customer's terms.
+     *
+     * Four legs collapse to two sides because the customer only ever stands at
+     * one end: either their clothes are being taken away or they are coming
+     * back. The middle two belong to the laundry, and `deliver_to_laundry` is
+     * reported as `pickup` because it is the tail of the journey that started
+     * at the customer's door.
+     */
+    private function side(OrderTask $task): string
+    {
+        return in_array($task->type, [
+            TaskType::PickupFromCustomer,
+            TaskType::DeliverToLaundry,
+        ], true) ? 'pickup' : 'delivery';
     }
 
     /**

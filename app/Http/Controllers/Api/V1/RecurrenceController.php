@@ -103,7 +103,15 @@ class RecurrenceController extends Controller
     public function pendingPrompts(Request $request): JsonResponse
     {
         $prompts = RecurrencePrompt::whereNull('answer')
-            ->whereHas('recurrence', fn ($q) => $q->where('user_id', $request->user()->id))
+            ->whereHas('recurrence', fn ($q) => $q->where('user_id', $request->user()->id)
+                // **Only a schedule that is still running may ask.** Without
+                // this the list was «every unanswered row», so a cancelled or
+                // paused schedule went on raising the question — the customer
+                // was asked about a cycle they had already ended. Cancelling
+                // closes its own prompts as well; this is the second half,
+                // because pausing must not destroy a question a resumed
+                // schedule would still want to ask.
+                ->where('status', 'active'))
             ->with(['recurrence.service:id,name'])
             ->orderBy('prompted_for')
             ->get();
@@ -111,13 +119,31 @@ class RecurrenceController extends Controller
         $payload = [];
 
         foreach ($prompts as $prompt) {
+            $recurrence = $prompt->recurrence;
+
             $payload[] = [
                 'id' => $prompt->id,
                 'recurrence_id' => $prompt->recurrence_id,
+                // The same date under both names. `for_date` is what this
+                // endpoint has always sent; `prompted_for` is the column's own
+                // name and what the app reads. Cheaper than a breaking rename.
                 'for_date' => $prompt->prompted_for->toDateString(),
-                'service' => $prompt->recurrence?->service
-                    ? getLocalizedValue($prompt->recurrence->service, 'name')
+                'prompted_for' => $prompt->prompted_for->toDateString(),
+                'service' => $recurrence?->service
+                    ? getLocalizedValue($recurrence->service, 'name')
                     : null,
+                'service_id' => $recurrence?->service_id,
+                // The basket this cycle is about. `confirm` hands back the same
+                // thing, but a banner that has to fetch before it can say what
+                // it is asking about cannot draw itself.
+                'pickup_address_id' => $recurrence?->pickup_address_id,
+                'items' => $this->basketOf($recurrence),
+                // Both states, so a client logging a surprise can say which half
+                // produced it. `status` is always `pending` here by definition —
+                // it is sent so the row's shape does not change when a future
+                // endpoint returns answered ones too.
+                'status' => $prompt->answer ?? 'pending',
+                'recurrence_status' => $recurrence?->status,
                 'question' => __('Do you need a wash today?'),
             ];
         }
@@ -200,27 +226,62 @@ class RecurrenceController extends Controller
     }
 
     /**
+     * The basket a schedule carries, as the app reads it.
+     *
+     * @return array<int, array{item_id: int, qty: int}>
+     */
+    private function basketOf(?OrderRecurrence $schedule): array
+    {
+        $items = [];
+
+        foreach ($schedule?->items ?: [] as $line) {
+            $items[] = ['item_id' => (int) $line['item_id'], 'qty' => (int) $line['qty']];
+        }
+
+        return $items;
+    }
+
+    /**
+     * What a schedule looks like on the Repeat Schedules screen.
+     *
      * @return array<string, mixed>
      */
     private function present(OrderRecurrence $schedule): array
     {
-        $items = [];
-
-        foreach ($schedule->items as $line) {
-            $items[] = ['item_id' => (int) $line['item_id'], 'qty' => (int) $line['qty']];
-        }
+        $address = $schedule->pickupAddress;
 
         return [
             'id' => $schedule->id,
             'frequency' => $schedule->frequency,
             'day_of_week' => $schedule->day_of_week,
             'status' => $schedule->status,
+            // The state in words as well as as a key. The screen draws a
+            // «موقوفة» chip and was building it from the raw enum, which means
+            // every client owns its own copy of our vocabulary.
+            'status_label' => __($schedule->statusLabel()),
+            // Derived here rather than left to the client: `status === 'paused'`
+            // is our spelling of it, and the screen's rule — hide the next run
+            // date while paused — should not depend on knowing that.
+            'is_paused' => $schedule->status === 'paused',
             'service' => $schedule->service ? getLocalizedValue($schedule->service, 'name') : null,
             'service_id' => $schedule->service_id,
             'pickup_address_id' => $schedule->pickup_address_id,
+            // The address itself, not only its id: the row names where the
+            // pickup happens, and an id is not a name.
+            'pickup_address' => $address ? [
+                'id' => $address->id,
+                'label' => $address->label,
+                'line' => $address->street,
+            ] : null,
+            'time_slot_id' => $schedule->time_slot_id,
             'time_slot' => $schedule->timeSlot?->label(),
-            'items' => $items,
+            'items' => $this->basketOf($schedule),
+            // Two names for one date, for the same reason as the prompt above:
+            // `next_prompt_on` is the column and what this endpoint has always
+            // sent, `next_run_on` is what the app reads. Null while paused or
+            // cancelled, which is the honest answer — there is no next one.
             'next_prompt_on' => $schedule->next_prompt_on?->toDateString(),
+            'next_run_on' => $schedule->next_prompt_on?->toDateString(),
         ];
     }
 }

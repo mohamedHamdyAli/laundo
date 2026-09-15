@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
@@ -17,33 +18,26 @@ use Illuminate\Support\Facades\Schema;
  * collapsing the two loses the only record of which happened. The same reason
  * `returned` is not `cancelled` on an order.
  *
- * MySQL only, deliberately. The test suite runs on SQLite, where an enum is a
- * varchar and every value already fits — so this would pass in tests and the
- * write would fail in the app. That is the trap this guard exists for, not a
- * shortcut around it.
+ * **Both drivers, not MySQL alone.** The first draft of this guarded on
+ * `mysql` and returned early otherwise, on the usual assumption that SQLite
+ * treats an enum as a free varchar. It does not: Laravel's SQLite grammar
+ * writes the value list out as a CHECK constraint, and the new write failed the
+ * constraint in the test suite. Worth keeping written down — the assumption is
+ * right often enough to be dangerous.
  */
 return new class extends Migration
 {
     public function up(): void
     {
-        if (DB::getDriverName() !== 'mysql') {
-            return;
-        }
-
-        DB::statement(
-            "ALTER TABLE `recurrence_prompts` MODIFY COLUMN `answer` ENUM('confirmed','declined','cancelled') NULL"
-        );
+        $this->allow(['confirmed', 'declined', 'cancelled']);
     }
 
     public function down(): void
     {
-        if (DB::getDriverName() !== 'mysql') {
-            return;
-        }
-
         // Rows carrying the value being removed would be silently truncated to
-        // ''. Reopen them instead: a cancelled schedule's prompt is filtered out
-        // by its schedule's status anyway, so a null answer is the honest
+        // '' by MySQL and would fail the rebuilt CHECK on SQLite. Reopen them
+        // instead: a cancelled schedule's prompts are filtered out by their
+        // schedule's status anyway, so a null answer is the honest
         // pre-migration state rather than a fabricated decline.
         if (Schema::hasTable('recurrence_prompts')) {
             DB::table('recurrence_prompts')
@@ -51,8 +45,26 @@ return new class extends Migration
                 ->update(['answer' => null, 'answered_at' => null]);
         }
 
-        DB::statement(
-            "ALTER TABLE `recurrence_prompts` MODIFY COLUMN `answer` ENUM('confirmed','declined') NULL"
-        );
+        $this->allow(['confirmed', 'declined']);
+    }
+
+    /**
+     * @param  array<int, string>  $values
+     */
+    private function allow(array $values): void
+    {
+        if (DB::getDriverName() === 'mysql') {
+            $list = implode(',', array_map(fn (string $v) => "'".$v."'", $values));
+
+            DB::statement("ALTER TABLE `recurrence_prompts` MODIFY COLUMN `answer` ENUM({$list}) NULL");
+
+            return;
+        }
+
+        // Everything else — SQLite in the suite — rebuilds the table around the
+        // new constraint.
+        Schema::table('recurrence_prompts', function (Blueprint $table) use ($values) {
+            $table->enum('answer', $values)->nullable()->change();
+        });
     }
 };

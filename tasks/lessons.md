@@ -2280,3 +2280,38 @@ rendered text are all the same error: they exercise the DOM the library replaced
 first. My panel check used a selector that matched nothing on the banner form, so
 `'' === ''` passed and proved nothing — the same shape of false green as the two
 above.
+
+---
+
+## ٢٠٢٦-٠٩-١٥ — بلاغات الموبايل الأربعة
+
+**الدرس الأول: «SQLite بتعامل الـ enum كـ varchar» غلط.** كتبت migration بيوسّع
+`recurrence_prompts.answer` وحطيت عليه حارس `if (DB::getDriverName() !== 'mysql')
+return;` — بالمنطق المكتوب في CLAUDE.md إن السويت بتشتغل على SQLite واللي بيعدي
+هناك بيقع في التطبيق. **الحارس كان بالمقلوب هنا**: Laravel's SQLite grammar
+بتكتب قايمة قيم الـ enum كـ **CHECK constraint**، فالمايجريشن اللي اتخطّت خلّت
+الكتابة الجديدة تقع في التستات.
+
+**القاعدة:** الحارس على الـ driver بيتحط عشان الـ SQL **مختلف**، مش عشان
+افتراض إن واحد منهم متساهل. لو التغيير لازم يحصل على الاتنين، اكتبه للاتنين —
+فرع raw SQL لـ MySQL وفرع `Schema::table(...)->change()` للباقي.
+
+**الدرس التاني: constrained eager load بيرجّع null للأعمدة اللي مش فيه، و
+`loadMissing` بيحافظ على الصف المبتور.** الكونترولر بيحمّل `service:id,name`،
+وأنا في السيرفس عملت `loadMissing(['service', ...])` وقريت
+`$service->pricing_mode` — رجّع null، فـ`is_estimated` طلعت `true` على **كل**
+الطلبات، وهي عكس الإجابة. التست هو اللي مسكها.
+
+**القاعدة:** لو محتاج عمود مش أكيد إنه اتحمّل، استعمل `load()` مش
+`loadMissing()`. `loadMissing` بيسأل «العلاقة محمّلة؟» مش «العلاقة كاملة؟» —
+والفرق ده بيطلع كـ null صامت مش كخطأ. نفس عيلة التعليق المكتوب في `DriverCard`
+عن `driver:id,name,phone,image_profile`.
+
+**الدرس التالت: اتأكد من نسخة السيرفر قبل ما تصدّق بلاغ.** نص البند الرابع في
+تقرير الموبايل كان متنفّذ ومنشور — `driver.phone` من ٣ سبتمبر و`at_iso` من ١٣
+سبتمبر، يعني يومين قبل التقرير. والدليل كان في التقرير نفسه: اقتبسوا جملة
+«no phone number by policy» اللي هي نص **وصف Postman قديم**.
+
+**القاعدة:** اقتباس العميل من توثيقك هو ختم زمني. لو بيقتبس جملة انت غيّرتها،
+فهو على نسخة أقدم — اسأل عن البيلد قبل ما تفتح تذكرة على حاجة موجودة. والتوثيق
+البايت هو اللي وَلّد البلاغ، فحدّثه كجزء من الفيكس مش بعديه.

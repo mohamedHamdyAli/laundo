@@ -458,6 +458,149 @@ class RecurrenceTest extends TestCase
         $this->assertSame(0, RecurrencePrompt::count());
     }
 
+    // ------------------------------------------- the question after the answer
+
+    /**
+     * The bug the app reported: the Tuesday cycle kept being asked after the
+     * Tuesday schedule had been cancelled.
+     *
+     * `cancel()` touched the schedule and nothing else, and `pendingPrompts`
+     * reads unanswered rows — so every question already asked stayed open for
+     * ever on a schedule that would never run again.
+     */
+    #[Test]
+    public function cancelling_a_schedule_closes_the_questions_it_already_asked(): void
+    {
+        $schedule = $this->dueSchedule();
+        $this->artisan('orders:prompt-recurring')->assertSuccessful();
+
+        $prompt = RecurrencePrompt::firstOrFail();
+
+        Sanctum::actingAs($this->customer);
+
+        $this->getJson('/api/v1/recurrences/prompts', $this->apiHeaders())
+            ->assertOk()
+            ->assertJsonCount(1, 'data');
+
+        $this->deleteJson("/api/v1/recurrences/{$schedule->id}", [], $this->apiHeaders())->assertOk();
+
+        // Closed, not deleted: the row is the record that we asked, and an order
+        // placed from an earlier cycle still points at one.
+        $this->assertSame('cancelled', $prompt->fresh()->answer);
+        $this->assertNotNull($prompt->fresh()->answered_at);
+
+        $this->getJson('/api/v1/recurrences/prompts', $this->apiHeaders())
+            ->assertOk()
+            ->assertJsonCount(0, 'data');
+    }
+
+    /**
+     * Pausing must not be asked either — the screen hides a paused schedule's
+     * next run date, so a question on one contradicts the row above it.
+     *
+     * The prompt is filtered, not closed: a resumed schedule still wants to ask.
+     */
+    #[Test]
+    public function a_paused_schedule_raises_no_question_and_loses_none(): void
+    {
+        $schedule = $this->dueSchedule();
+        $this->artisan('orders:prompt-recurring')->assertSuccessful();
+
+        Sanctum::actingAs($this->customer);
+
+        $this->putJson("/api/v1/recurrences/{$schedule->id}/pause", [], $this->apiHeaders())->assertOk();
+
+        $this->getJson('/api/v1/recurrences/prompts', $this->apiHeaders())
+            ->assertOk()
+            ->assertJsonCount(0, 'data');
+
+        // Still open, still unanswered — filtered by its schedule, not destroyed.
+        $this->assertNull(RecurrencePrompt::firstOrFail()->answer);
+
+        $this->putJson("/api/v1/recurrences/{$schedule->id}/resume", [], $this->apiHeaders())->assertOk();
+
+        $this->getJson('/api/v1/recurrences/prompts', $this->apiHeaders())
+            ->assertOk()
+            ->assertJsonCount(1, 'data');
+    }
+
+    /**
+     * The app reported a second possible cause — that declining was not being
+     * persisted against the cycle. It is, and this pins it: after a decline the
+     * same `prompted_for` never comes back, including across another run of the
+     * scheduler.
+     */
+    #[Test]
+    public function a_declined_cycle_is_never_asked_again(): void
+    {
+        $this->dueSchedule();
+        $this->artisan('orders:prompt-recurring')->assertSuccessful();
+
+        $prompt = RecurrencePrompt::firstOrFail();
+        $cycle = $prompt->prompted_for->toDateString();
+
+        Sanctum::actingAs($this->customer);
+
+        $this->postJson("/api/v1/recurrences/prompts/{$prompt->id}/decline", [], $this->apiHeaders())->assertOk();
+
+        $this->artisan('orders:prompt-recurring')->assertSuccessful();
+
+        $this->assertSame(1, RecurrencePrompt::whereDate('prompted_for', $cycle)->count());
+
+        $this->getJson('/api/v1/recurrences/prompts', $this->apiHeaders())
+            ->assertOk()
+            ->assertJsonCount(0, 'data');
+    }
+
+    /**
+     * The fields the app reads, under the names it reads them by.
+     */
+    #[Test]
+    public function a_prompt_carries_the_cycle_its_basket_and_both_states(): void
+    {
+        $schedule = $this->dueSchedule();
+        $this->artisan('orders:prompt-recurring')->assertSuccessful();
+
+        Sanctum::actingAs($this->customer);
+
+        $row = $this->getJson('/api/v1/recurrences/prompts', $this->apiHeaders())
+            ->assertOk()
+            ->json('data.0');
+
+        $this->assertSame($row['for_date'], $row['prompted_for']);
+        $this->assertSame('pending', $row['status']);
+        $this->assertSame('active', $row['recurrence_status']);
+        $this->assertSame($this->address->id, $row['pickup_address_id']);
+        $this->assertSame($schedule->items[0]['item_id'], $row['items'][0]['item_id']);
+        $this->assertSame(2, $row['items'][0]['qty']);
+    }
+
+    /**
+     * And the same for the schedule row above it.
+     */
+    #[Test]
+    public function a_paused_schedule_reports_itself_paused_and_shows_no_next_run(): void
+    {
+        $schedule = $this->dueSchedule();
+
+        Sanctum::actingAs($this->customer);
+
+        $row = $this->getJson('/api/v1/recurrences', $this->apiHeaders())->assertOk()->json('data.0');
+
+        $this->assertFalse($row['is_paused']);
+        $this->assertSame($row['next_prompt_on'], $row['next_run_on']);
+        $this->assertNotNull($row['next_run_on']);
+        $this->assertSame($this->address->id, $row['pickup_address']['id']);
+
+        $paused = $this->putJson("/api/v1/recurrences/{$schedule->id}/pause", [], $this->apiHeaders())
+            ->assertOk()
+            ->json('data');
+
+        $this->assertTrue($paused['is_paused']);
+        $this->assertSame('paused', $paused['status']);
+        $this->assertNotSame('paused', $paused['status_label']);
+    }
+
     private function dueSchedule(): OrderRecurrence
     {
         $schedule = app(RecurrenceService::class)->create($this->customer, [
