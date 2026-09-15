@@ -47,6 +47,27 @@ return [
             'password' => env('MAIL_PASSWORD'),
             'timeout' => null,
             'local_domain' => env('MAIL_EHLO_DOMAIN', parse_url((string) env('APP_URL', 'http://localhost'), PHP_URL_HOST)),
+
+            /*
+             * Whether the SMTP server's certificate has to check out.
+             *
+             * True everywhere it should be, and **false on this install**,
+             * because the mail server is Postfix on the same machine reached
+             * over `127.0.0.1` and its certificate is the self-signed one
+             * CentOS Web Panel generates. That certificate cannot verify — not
+             * against an IP literal and not against its own hostname, since
+             * nothing signed it — so Symfony's automatic STARTTLS upgrade threw
+             * `certificate verify failed` and no mail left the building.
+             *
+             * It is not a security trade here: the connection is a loopback and
+             * never touches a network. It **would** be one the day mail moves to
+             * a real relay, which is exactly why this is an env switch that
+             * defaults to verifying rather than a literal `false` in the file.
+             *
+             * Read by Symfony off the DSN options — see
+             * `EsmtpTransportFactory`, which Laravel hands this whole array to.
+             */
+            'verify_peer' => env('MAIL_VERIFY_PEER', true),
         ],
 
         'ses' => [
