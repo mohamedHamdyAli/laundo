@@ -3798,13 +3798,244 @@ the money. Both payment paths already set `payment_status = 'paid'` and then sto
 
 ## Steps
 
-- [ ] `TaskType::completesInto()` — the two middle legs
-- [ ] `OrderStateMachine::completeIfPaid()` — Delivered + paid → Completed, idempotent
-- [ ] call it from `TaskService::complete()` (delivery last) and `PaymentService::capture()` (payment last)
-- [ ] tests: the full walk, each ordering of the last two events, and that a short cash collection does **not** complete
-- [ ] repair `#10021` and `#10023` on the server
-- [ ] Changelog
+- [x] `TaskType::completesInto()` — the two middle legs
+- [x] `OrderStateMachine::completeIfPaid()` — Delivered + paid → Completed, idempotent
+- [x] call it from `TaskService::complete()` (delivery last) and `PaymentService::capture()` (payment last)
+- [x] tests: the full walk, each ordering of the last two events, and that a short cash collection does **not** complete
+- [x] repair `#10021` and `#10023` on the server
+- [x] Changelog
 
 ## Review
 
-(filled in at the end)
+Shipped as `4ee4ffe`. Ten tests in `OrderLifecycleCompletionTest`; the whole
+suite green at 1,263 / 4,026.
+
+Two things found on the way that were not in the plan:
+
+- **Two existing tests were pinning the broken behaviour.**
+  `only_the_customer_legs_move_the_order` said in its own comment «after the
+  collection it is already ready» while nothing in the code made it ready. A test
+  that asserts the absence of a missing feature reads as coverage and is the
+  reason this survived eleven phases.
+- **`earnings = 0` after the repair is correct, not a second bug.** There are no
+  `DriverBonusRule` rows on the platform and driver 17 carries a null
+  `bonus_rule_id`; the documented rule is that no driver bonus rule means no
+  bonus at all.
+
+The repair walked `#10021` and `#10023` through the state machine rather than
+writing `status`, so the customer's tracking screen — which is built from
+`order_status_logs`, not from the current status — draws every step. Money moved:
+`58.50` + `43.20` laundry payout, `6.50` + `4.80` commission.
+
+---
+
+# Sending a notification by hand, and the bell that never rings
+
+## Two requests, and they turn out to be the same subject
+
+«محتاج اضيف هنا اني اقدر ابعت نتوفكيشين لليوزر او السواق او المغسله» and
+«النتوفكيشين في الداش بورد مفيش حاجه بتوصل فيها خالص».
+
+## Why the operator's bell is empty — the diagnosis
+
+The bell reads Laravel's `notifications` table for the **signed-in panel user**.
+`NotificationLogController` reads `notification_logs`, which is a different table
+about a different audience — so the screen showing 184 sent messages and the bell
+showing nothing are both telling the truth.
+
+Everything the order lifecycle raises is addressed to a customer, a driver, or a
+laundry's own staff. Exactly seven things ever address an operator:
+
+| Source | Trigger | Driven by |
+| --- | --- | --- |
+| `LaundryApplicationNotifier::received` | a laundry applies | a request |
+| `DriverApplicationNotifier::received` | a driver applies | a request |
+| `ModeratorController::store` | a moderator is added | a request |
+| `ComplaintService::alertOperations` | a complaint arrives | a request |
+| `AlertStuckTasks` | a task unassigned > 2h | **cron** |
+| `AlertSilentPriceConfirmations` | a customer silent > 24h | **cron** |
+| `CloseDriverBonusMonth` | the 1st of the month | **cron** |
+
+That reading led straight to a guess — that `schedule:run` had no cron entry —
+and **the guess was wrong.** The crontab has run it every minute all along, the
+hourly stuck-task alert had been firing for weeks, and the super admin had **50
+unread notifications on live, the newest that morning.**
+
+The fault was one line of CSS. The badge ships with the `hidden` attribute and
+the vendor `app.css` carries `[hidden] { display: none !important }`, while the
+script raised it with `badge.style.display = 'inline-block'` — an inline style,
+which cannot out-rank `!important` from a stylesheet. So the counter was
+invisible whatever the number behind it, and the dropdown behind the bell was
+filling correctly the entire time. Nothing said so, so nobody opened it.
+
+The lesson is the one already in `lessons.md` about `.bg-dark`: **an override
+that a vendor `!important` outranks is not a weak fix, it is no fix**, and the
+way to find out is to assert on what the browser lays out rather than on the
+property that was set.
+
+Two smaller faults fall out of the same reading:
+
+- The four request-driven ones call `Notification::send()` **directly**, bypassing
+  `NotificationDispatcher`. So they reach the bell but are written to no log and
+  sent to no handset — and the log screen, whose stated subject is «every message
+  the system tried to send», cannot see them. Out of scope to re-route today, but
+  recorded.
+- `notification_logs` has no column for **who** sent a message. Fine while every
+  message is automatic; wrong the moment a person can write one.
+
+## The feature
+
+A compose screen behind `notification_log.create`, reached from a button on the
+log's header.
+
+- **Audience** — customer, driver, or laundry. Three, because those are the three
+  named, and because each resolves to a different query.
+- **Recipient** — one of them, or everyone in that audience. «Everyone» is an
+  explicit option, never the result of leaving a field blank, and asks for a
+  confirmation carrying the count.
+- **Title and body**, and nothing else. No link field: the apps navigate on
+  `data`, and a free-text URL on a screen that writes to customers is a small
+  open redirect waiting to happen.
+
+A laundry is not a user, so choosing one resolves to its **active owner and
+staff** — the same recipients `orderAssignedToLaundry` uses.
+
+### Decisions worth stating
+
+- **The message is not transactional.** It respects a muted push, because a mute
+  the panel can override is not a mute. `database` is written regardless, which
+  is already the rule everywhere else.
+- **A broadcast is queued; there is no ceiling.** It shipped capped, because
+  nothing in this project queues and an uncapped blast would be a 504
+  indistinguishable from a bug. The owner chose the worker instead, so the cap
+  came off. One job per recipient, never one per chunk — a chunk failing at the
+  sixtieth of a hundred would, on retry, reach the first fifty-nine a second
+  time. Under `push.manual_inline_limit` (5) it still sends inline and says
+  «sent»; above it the flash says «sending», because telling somebody a message
+  has gone while it sits on a queue is how a stopped worker becomes invisible.
+- **The worker is a cron entry under `flock`, not a daemon.** No root needed, and
+  it cannot leave a dead process behind — a stopped daemon looks exactly like an
+  empty queue, which is the failure the no-worker rule existed to avoid.
+- **The sender is recorded.** A hand-written message to a customer with no author
+  is the one row in an audit log that cannot be audited.
+
+## Steps
+
+- [x] check the server's cron — **it was there all along; the fault was elsewhere**
+- [x] the bell's badge could never render (`[hidden]` + `!important`)
+- [x] `NotificationEvent::ManualMessage` — not transactional
+- [x] migration: `sent_by` on `notification_logs`, nullable
+- [x] `NotificationMessage::$sentBy`, written by `NotificationDispatcher::log()`
+- [x] `ManualNotifier` — resolve the audience, cap it, send
+- [x] controller + routes behind `notification_log.create`
+- [x] compose view, the button on the log header, the author on the log row
+- [x] Arabic
+- [x] tests: audience resolution, the mute, the permission, the log
+- [x] **owner's call: cap removed, queue worker installed** — job, chunking, cron, tests
+- [x] Changelog
+
+## Review
+
+**Shipped.** 1,278 PHPUnit tests / 4,071 assertions green — 15 new, nothing else
+moved. Five Playwright specs on the compose screen, PHPStan level 5 clean, Pint
+applied. Checked in English and in Arabic RTL.
+
+Four things worth keeping:
+
+- **The blocker is a validation error, not a flash.** It lands beside the
+  recipient field, which is what it is about, and `form-validation.js` paints it
+  without losing the message already typed. A 302 with a flash would reload the
+  page to say the same thing less usefully.
+- **The recipient map is cast to objects before `@json`.** A PHP array whose keys
+  happen to run 0,1,2… encodes as a JSON *array*, and `Object.keys()` would then
+  hand back list indexes instead of user ids — the recipient silently becoming
+  the wrong person. Ids never start at zero so it changes nothing today; it is
+  there so that staying true is not an accident.
+- **The cross-audience check cannot be `exists:users,id`.** The id has to be in
+  *this* audience, or a hand-made request could name a customer while claiming to
+  write to drivers and reach somebody the operator never saw on the screen.
+- **The tenant refusal is not expressible as a permission.** A tick grants a
+  screen and has no vocabulary for «to whom», so a laundry owner handed
+  `notification_log.create` could have written to every customer on the platform.
+  `LaundryContext::currentId() === null` is the same bypass the rest of the panel
+  already trusts.
+
+**The bell.** Diagnosed wrongly first — see `lessons.md`. The reasoning was sound
+and the conclusion was not: the crontab had `schedule:run` all along, the hourly
+stuck-task alert had been firing for weeks, and the super admin had **50 unread**,
+the newest that morning. The fault was `[hidden] { display: none !important }` in
+the vendor CSS against `badge.style.display` in the script. Asserted now on
+`boundingBox()`, and proved by reverting the one line and watching the test fail
+with «unexpected value hidden».
+
+**The queue.** The cap was the owner's to decide and they removed it. That makes
+`SendManualNotification` the first `ShouldQueue` class in the codebase, so the
+«everything is synchronous» rule in CLAUDE.md now reads as one deliberate
+exception with the reason attached — a worker that dies is invisible, which is
+true for an order moving and not true for an announcement that cannot fit in a
+request at all.
+
+Not done, deliberately, and recorded rather than silently left: re-routing the
+four `Notification::send()` call sites through the dispatcher so they are logged
+and pushed like everything else. It needs three new `NotificationEvent` cases and
+is a change to existing behaviour, not to this feature.
+
+---
+
+# P-mobile-4 — أربع بلاغات من فريق الموبايل (`BACKEND_ISSUES.md`, 2026-09-15)
+
+التشخيص الكامل قبل الشغل: بند واحد باج حقيقي، بند ناقص فعلاً، بند **شغال صح
+أصلاً** والرد عليه توثيق مش كود، وبند نصّه اتنفّذ من يومين والباقي قرار منتج.
+
+## 1. prompts الجدولة الملغية (باج)
+
+- [ ] migration: توسيع `recurrence_prompts.answer` enum بـ `cancelled`
+      (العمود enum في MySQL — `'cancelled'` هيعدي على SQLite في التستات ويقع في
+      التطبيق، وده بالظبط الفخ المكتوب في CLAUDE.md)
+- [ ] `RecurrenceService::cancel()` يقفل الـ prompts المفتوحة في نفس الترانزاكشن
+- [ ] `pendingPrompts()` يفلتر على `recurrence.status = active` — ده اللي بيغطي
+      الموقوفة (paused) كمان، ومن غير ما يمسح سؤال جدولة هترجع تشتغل
+- [ ] الـ payload: `prompted_for` (الاسم اللي التطبيق بيقراه)، `status`،
+      `recurrence_status`، `items[]`، `pickup_address_id`
+- [ ] الجدولة: `next_run_on`، `is_paused`، `status_label`، `time_slot_id`،
+      `pickup_address` ككائن
+- [ ] **مش** هنلمس `decline()` — اتأكدت إنه بيكتب `answer` فعلاً والـ unique على
+      `(recurrence_id, prompted_for)` بيمنع إعادة السؤال. السبب التاني في البلاغ
+      غلط.
+
+## 2. reorder كامل ومسعّر النهاردة
+
+- [ ] `OrderService::reorderPayload()` يرجّع الطلب كله: الخدمة بالاسم، العنوانين
+      ككائنات، النافذة، طريقة الدفع، الملاحظات، الكوبون، والأسطر مسعّرة **النهاردة**
+- [ ] التسعير من نفس مسار `quote()` — مش من أرقام الأوردر القديم
+- [ ] التسعير بيرمي `RuntimeException` لو العنوان اتمسح أو الخدمة اتقفلت →
+      يتلفّ في try/catch ويرجّع `pricing: null` + سبب، مش 500 على شاشة إعادة طلب
+- [ ] `is_estimated` من `service.pricing_mode === 'quote'` — مصدر حقيقي موجود
+
+## 3. reschedule (تأكيد + تحسين)
+
+- [ ] الـ POST يرجّع النتيجة المحجوزة كاملة بدل `{id, code}`
+- [ ] الـ GET slots ياخد شكل `GET /time-slots` نفسه: `label`, `applies_to`,
+      `capacity`, `remaining`, `is_full` + `date`/`slot_id` الحاليين
+- [ ] **مفيش تغيير في المنطق** — اتأكدت إنه بيعدّل نفس الأوردر ومش بيغيّر الكود
+
+## 4. track
+
+- [ ] `driver.leg` كمفتاح ماشيني (`pickup`/`delivery`) + `task_type` الخام —
+      دلوقتي فيه `role` **مترجَم** بس والتطبيق مش قادر يبدّل عليه
+- [ ] `driver.photo` alias لـ `image`
+- [ ] `delivery_address` و `pickup_address` ككائنات مقروءة (الإحداثيات فاضلة)
+- [ ] `delivery_method` + `delivery_method_label` — بمفرداتنا الحقيقية
+      `door`/`leave`، مش `home_delivery`/`pickup_point` اللي مش موجودة أصلاً
+- [ ] `OrderEta` — من نافذة الرجل اللي العميل مستنيها (`due_at` / السلوت)، مع
+      `eta_window` عشان الشاشة تقول «بين ٩ و١٢» بدل وقت مخترع
+- [ ] **مش** هنغيّر إسقاط الموقع البايت بعد ١٢٠ ثانية: ده قرار مالك موثّق
+      وعليه تست بالاسم (`a_reading_that_stopped_arriving_is_removed_not_frozen`).
+      يترفع ليه كسؤال منتج مش كفيكس.
+
+## الإثبات
+
+- [ ] تستات جديدة لكل بند، وكل فيكس يترجّع ويتشاف التست بيقع
+- [ ] السويت كاملة + PHPStan + Pint
+- [ ] Changelog، Postman، `generate-reference.py`
+- [ ] رد بالعربي لفريق الموبايل في `docs/mobile-api-changes.md`

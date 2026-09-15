@@ -274,11 +274,35 @@ class RecurrenceService
         return $recurrence->refresh();
     }
 
+    /**
+     * End the schedule — and the questions it has already asked.
+     *
+     * Cancelling used to touch the schedule only, which left every open prompt
+     * sitting in `recurrence_prompts` with a null answer. `pendingPrompts` reads
+     * unanswered rows, so the app went on asking «محتاج تغسل النهاردة؟» for a
+     * schedule the customer had deleted — the cycle they cancelled was the one
+     * that kept coming back.
+     *
+     * Closed rather than deleted: the prompt is the record that we asked, and an
+     * order placed from an earlier cycle still points at its row. `cancelled` is
+     * its own answer and not a `declined`, because the customer declined nothing
+     * — they ended the schedule.
+     *
+     * One transaction: a schedule marked cancelled whose prompts were still open
+     * is exactly the state this is fixing.
+     */
     public function cancel(OrderRecurrence $recurrence): OrderRecurrence
     {
-        $recurrence->update(['status' => 'cancelled', 'next_prompt_on' => null]);
+        return DB::transaction(function () use ($recurrence) {
+            $recurrence->update(['status' => 'cancelled', 'next_prompt_on' => null]);
 
-        return $recurrence->refresh();
+            $recurrence->prompts()->whereNull('answer')->update([
+                'answer' => 'cancelled',
+                'answered_at' => now(),
+            ]);
+
+            return $recurrence->refresh();
+        });
     }
 
     /**

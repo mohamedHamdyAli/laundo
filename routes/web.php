@@ -26,6 +26,7 @@ use App\Modules\LaundryService\Controllers\LaundryServiceController;
 use App\Modules\LaundryStaff\Controllers\LaundryStaffController;
 use App\Modules\LaundryZone\Controllers\LaundryZoneController;
 use App\Modules\Moderator\Controllers\ModeratorController;
+use App\Modules\Notification\Controllers\NotificationComposeController;
 use App\Modules\Notification\Controllers\NotificationLogController;
 use App\Modules\Offer\Controllers\OfferController;
 use App\Modules\Order\Controllers\DispatchController;
@@ -847,9 +848,15 @@ Route::middleware(['auth', 'dashboard.only'])->prefix('/admin')->group(function 
     | Notification log (سجل الإشعارات)
     |--------------------------------------------------------------------------
     |
-    | Read-only. It answers «did the customer get it?», which had no answer at all
-    | before P11 — and its failures counter is how a device token that Firebase
-    | invalidated months ago stops being invisible.
+    | It answers «did the customer get it?», which had no answer at all before P11
+    | — and its failures counter is how a device token that Firebase invalidated
+    | months ago stops being invisible.
+    |
+    | `compose` is the one thing here that is not a reading. It is the only place
+    | in the panel that raises a notification with no business action behind it,
+    | so it gates on `notification_log.create` rather than on `.view` — and the
+    | controller refuses a laundry account outright, because a permission can
+    | grant a screen and has no way to say «but only to your own people».
     |
     */
     Route::controller(NotificationLogController::class)->group(function () {
@@ -857,6 +864,13 @@ Route::middleware(['auth', 'dashboard.only'])->prefix('/admin')->group(function 
             ->middleware('permission:notification_log.view')->name('admin.notification.index');
         Route::get('/notification/search', 'search')
             ->middleware('permission:notification_log.view')->name('admin.notification.search');
+    });
+
+    Route::controller(NotificationComposeController::class)->group(function () {
+        Route::get('/notification/compose', 'create')
+            ->middleware('permission:notification_log.create')->name('admin.notification.compose');
+        Route::post('/notification/send', 'store')
+            ->middleware('permission:notification_log.create')->name('admin.notification.send');
     });
 
     /*

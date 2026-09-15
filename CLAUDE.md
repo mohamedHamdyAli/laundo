@@ -166,11 +166,32 @@ A service calls a notifier (`OrderNotifier`, `DriverApplicationNotifier`,
 event delivers on **both** channels — `NotificationEvent::channels()` returns
 `['database','push']`; SMS is reserved for auth.
 
-- **Everything is synchronous.** There is no `app/Jobs/`, nothing implements
-  `ShouldQueue`, and **no worker is required** — an HTTP request pays the FCM
-  round-trip inline. `composer dev` runs `queue:listen` and `QUEUE_CONNECTION` is
-  `database`, which makes it look otherwise. Push failures are swallowed and
-  logged so a vendor outage never rolls back the business action.
+- **Business actions are synchronous, and that is deliberate.** An HTTP request
+  pays the FCM round-trip inline, because a worker that dies is invisible and a
+  delivery that silently did not happen is worse than a slow one. Push failures
+  are swallowed and logged so a vendor outage never rolls back the business
+  action.
+- **One exception, and only one**: `app/Jobs/SendManualNotification.php`, the
+  hand-written broadcast from `admin.notification.compose`. An announcement to
+  three thousand customers cannot be done inside a request at all — each
+  recipient is a round-trip — and the alternative was a cap on how many people
+  could be told. **One job per recipient, never one per chunk**: a chunk failing
+  at the sixtieth of a hundred would, on retry, reach the first fifty-nine a
+  second time, and a duplicate notification cannot be taken back. Below
+  `push.manual_inline_limit` (5) it still sends inline and reports «sent»; above
+  it the flash says «sending», because telling somebody a message has gone while
+  it sits on a queue is how a stopped worker becomes invisible.
+- **The worker is a cron entry, not a supervisor daemon.** The box runs
+  `queue:work --stop-when-empty --max-time=55` every minute under `flock -n`
+  (lock at `/home/nahrnet/.laundo-queue.lock`), which needs no root
+  and cannot leave a dead process behind — a stopped daemon looks exactly like an
+  empty queue. `QUEUE_CONNECTION` is `database`; `composer dev` runs
+  `queue:listen` locally. Worst-case latency on a broadcast is a minute, which is
+  a minute nobody is waiting on.
+- **Do not reach for a job for anything else.** If a new feature seems to need
+  one, the question to answer first is what happens when the worker is behind,
+  and for every other path in this codebase the answer is «the business action
+  silently did not happen».
 - **Only `push` is mutable** (`MUTABLE_CHANNELS`). `database` is a record, not a
   delivery: muting it emptied the in-app list *and* froze the rate-limit counter
   at zero, which handed the muted user unlimited push. Absent preference = on.
@@ -613,7 +634,10 @@ Views are Blade under `resources/views/admin/{module}/` (with `partials/`, `form
 `custom.js` have no build step and no content hash, and sit behind Cloudflare —
 so a release that edits them ships Blade referring to rules the cached files do
 not have (this already shipped a full-size splash image across every page).
-Reference them through **`assetVersion('assets/css/theme.css')`**, which stamps
+Reference them through **`assetVersion('css/theme.css')`** — the path is
+relative to `assets/`, and passing the prefix makes it look for
+`assets/assets/…`, miss, and fall back to `app()->version()`, which is a
+constant and busts nothing. It stamps
 `filemtime()`. `landingAssetVersion()` is the same function under a narrower
 name, kept because four views call it.
 

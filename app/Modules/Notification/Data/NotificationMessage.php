@@ -3,6 +3,7 @@
 namespace App\Modules\Notification\Data;
 
 use App\Modules\Notification\Enums\NotificationEvent;
+use App\Modules\User\Models\User;
 use Illuminate\Database\Eloquent\Model;
 
 /**
@@ -16,6 +17,9 @@ class NotificationMessage
     /**
      * @param  array<string, string>  $data  what the app reads to decide where to
      *                                       navigate when the notification is tapped
+     * @param  User|null  $sentBy  the person who wrote this, when a person did —
+     *                             null on every automatic message, which is the
+     *                             honest value rather than a gap
      */
     public function __construct(
         public readonly NotificationEvent $event,
@@ -24,5 +28,6 @@ class NotificationMessage
         public readonly ?string $url = null,
         public readonly array $data = [],
         public readonly ?Model $subject = null,
+        public readonly ?User $sentBy = null,
     ) {}
 }

@@ -56,4 +56,23 @@ return [
     */
     'rate_limit_per_hour' => (int) env('PUSH_RATE_LIMIT_PER_HOUR', 3),
 
+    /*
+    |--------------------------------------------------------------------------
+    | How many people a hand-written message reaches inside the request
+    |--------------------------------------------------------------------------
+    |
+    | At or below this, the compose screen writes to everybody before it answers
+    | and reports «sent». Above it, one `SendManualNotification` job per recipient
+    | goes on the queue and it reports «sending» — the notification log is where
+    | you watch them land.
+    |
+    | Small on purpose. This is not a performance budget; it is the line between
+    | «done» and «being done», and the operator is told which of the two happened.
+    | One person should be seen to arrive rather than promised. Beyond a handful
+    | there is nothing to gain from making somebody wait, and past a few hundred
+    | the request could not survive it — every recipient is an FCM round-trip.
+    |
+    */
+    'manual_inline_limit' => (int) env('PUSH_MANUAL_INLINE_LIMIT', 5),
+
 ];

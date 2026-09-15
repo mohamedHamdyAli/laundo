@@ -89,6 +89,20 @@ enum NotificationEvent: string
     case DriverBonusReady = 'driver_bonus_ready';
 
     /**
+     * Something a person sat down and wrote.
+     *
+     * Every other case here is a moment the system recognised. This one is the
+     * absence of one — «اتأخرنا عليك، الأوردر في الطريق» has no trigger and never
+     * will, and before this the only way to say it was to telephone.
+     *
+     * Deliberately **not** transactional. A hand-written message is the one kind
+     * most likely to be noise, and a mute the panel can talk over is not a mute.
+     * The in-app record is still written, because `database` is not a delivery
+     * and was never what anybody asked to silence.
+     */
+    case ManualMessage = 'manual_message';
+
+    /**
      * Whether silence would stall something.
      */
     public function isTransactional(): bool
@@ -149,6 +163,7 @@ enum NotificationEvent: string
             self::RescheduleNeeded => 'New time needed',
             self::OrderAssignedToLaundry => 'Order assigned to your laundry',
             self::DriverBonusReady => 'Driver bonuses ready',
+            self::ManualMessage => 'Message from the team',
         };
     }
 

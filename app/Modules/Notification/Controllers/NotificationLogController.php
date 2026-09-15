@@ -53,7 +53,7 @@ class NotificationLogController extends Controller
     {
         $term = $request->get('query');
 
-        return NotificationLog::with('recipient:id,name,phone')
+        return NotificationLog::with(['recipient:id,name,phone', 'author:id,name'])
             /*
              * Same un-grouped-OR fault Refund had, and this one fired in normal
              * use: the index view does post `event` and `status`, and both were
@@ -72,6 +72,9 @@ class NotificationLogController extends Controller
                 'title', 'body',
                 'destination', 'channel', 'failure_reason',
                 'recipient.name', 'recipient.phone',
+                // Displayed, therefore searchable — the owner's rule. On a
+                // hand-written message «who sent this?» is the first question.
+                'author.name',
             ]))
             ->when($request->get('event'), fn ($q) => $q->where('event', $request->get('event')))
             ->when($request->get('status'), fn ($q) => $q->where('status', $request->get('status')));

@@ -2214,3 +2214,34 @@ invisible unless you compare what it lists against what the table holds.
 **Rule:** when a management screen filters rows, print the filtered set beside the
 unfiltered one once. `Role::pluck('slug','type')` would have shown this in a
 second.
+
+## A diagnosis that fits the evidence is not the same as the cause
+
+«مفيش حاجة بتوصل في النوتفيكيشين خالص». I read the code, found that only seven
+things in the whole codebase ever address an operator, that three of those are
+scheduled, and concluded the server had no cron entry for `schedule:run`. The
+chain was sound, the evidence all pointed that way, and I said so before checking.
+
+The crontab had the line. It had been running every minute for weeks. The super
+admin had **50 unread notifications**, the newest that morning. The real fault was
+one line of vendor CSS: the badge carries `hidden`, `app.css` carries
+`[hidden] { display: none !important }`, and the script raised it with
+`style.display` — which cannot out-rank `!important` from a stylesheet. The bell
+had been filling correctly the whole time and could not say so.
+
+Two rules, and the second is the one that cost time:
+
+**Rule:** when the complaint is «I see nothing», count the rows *first*. One query
+against `notifications` separates «nothing was produced» from «nothing is drawn»,
+and those have no code in common. I reasoned about producers for an hour without
+asking whether the thing already existed.
+
+**Rule:** do not report a cause that rests on an unchecked fact, even when the
+reasoning is tight. Say «I think X, checking now» — or check, then say. A
+confident wrong diagnosis is worse than no diagnosis, because it is acted on.
+
+And the CSS half is the third time: **an override a vendor `!important` outranks
+is not a weak fix, it is no fix.** Same family as the `.bg-dark` badge. Assert on
+what the browser lays out — `boundingBox()`, `toBeVisible()` — never on the
+property you set, because the failure mode is a property that is set and does
+nothing.

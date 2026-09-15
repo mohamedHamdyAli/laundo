@@ -16,6 +16,11 @@
         <div>
             <span class="row-main">{{ $log->title }}</span>
             <span class="row-sub">{{ $log->body ? Str::limit($log->body, 90) : '—' }}</span>
+            {{-- Only ever set on a message a person wrote. The automatic ones have
+                 no author, which is the truth rather than a gap. --}}
+            @if ($log->author)
+                <span class="row-sub">{{ __('Sent by :name', ['name' => $log->author->name]) }}</span>
+            @endif
         </div>
         <div>
             @if ($s === \App\Modules\Notification\Models\NotificationLog::SENT)

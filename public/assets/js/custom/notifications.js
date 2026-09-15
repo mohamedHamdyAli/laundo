@@ -20,21 +20,33 @@
     function renderNotifications(data) {
         const count = data.count || 0;
 
+        // `badge.hidden`, **not** `style.display`.
+        //
+        // The markup ships the badge with the `hidden` attribute, and the vendor
+        // `app.css` carries `[hidden] { display: none !important }`. An inline
+        // style cannot out-rank `!important` from a stylesheet, so
+        // `style.display = 'inline-block'` was a no-op and the counter was
+        // invisible no matter how many notifications were waiting.
+        //
+        // That is the whole of «nothing ever arrives in the dashboard»: the
+        // alerts were arriving, unread, for weeks — 50 of them on the live
+        // install — and the only thing that would have said so could not be
+        // drawn. The dropdown behind it was filling correctly the entire time.
         if (count > 0) {
             badge.textContent = count > 99 ? '99+' : count;
-            badge.style.display = 'inline-block';
+            badge.hidden = false;
         } else {
-            badge.style.display = 'none';
+            badge.hidden = true;
         }
 
         list.querySelectorAll('.notification-item').forEach((el) => el.remove());
 
         if (!data.items || data.items.length === 0) {
-            emptyItem.style.display = 'block';
+            emptyItem.hidden = false;
             return;
         }
 
-        emptyItem.style.display = 'none';
+        emptyItem.hidden = true;
 
         data.items.forEach((item) => {
             const li = document.createElement('li');

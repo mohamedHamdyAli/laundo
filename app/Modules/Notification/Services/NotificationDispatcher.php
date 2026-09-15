@@ -283,6 +283,7 @@ class NotificationDispatcher
     ): void {
         NotificationLog::create([
             'user_id' => $user->id,
+            'sent_by' => $message->sentBy?->id,
             'event' => $message->event,
             'channel' => $channel,
             'status' => $status,

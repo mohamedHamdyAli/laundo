@@ -3,6 +3,11 @@
 @section('content')
     <div class="card-header d-flex justify-content-between align-items-center">
         <h5 class="card-title mb-0">{{ __('Notification Log') }}</h5>
+        @if (canDo('notification_log.create'))
+            <a href="{{ route('admin.notification.compose') }}" class="btn btn-primary btn-sm">
+                {{ __('Send a notification') }}
+            </a>
+        @endif
     </div>
 
     <section class="section">

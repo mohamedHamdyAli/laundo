@@ -46,7 +46,6 @@ use Illuminate\Support\Carbon;
  * and the `latestOfMany()` trap described in CLAUDE.md, where the aggregate
  * subquery is built without the constraints declared before it and the role
  * filter discards what it picked.
- *
  * @property-read User|null $owner
  *
  * @method static Builder<static>|Laundry newModelQuery()

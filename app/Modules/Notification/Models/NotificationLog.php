@@ -16,6 +16,7 @@ use Illuminate\Support\Carbon;
  * What was sent, and what happened to it.
  *
  * @property int|null $user_id
+ * @property int|null $sent_by
  * @property NotificationEvent $event
  * @property string $channel
  * @property string $status
@@ -36,7 +37,7 @@ class NotificationLog extends Model
     public const SKIPPED = 'skipped';
 
     protected $fillable = [
-        'user_id', 'event', 'channel', 'status', 'destination',
+        'user_id', 'sent_by', 'event', 'channel', 'status', 'destination',
         'title', 'body', 'failure_reason', 'subject_type', 'subject_id',
     ];
 
@@ -51,6 +52,19 @@ class NotificationLog extends Model
     public function recipient(): BelongsTo
     {
         return $this->belongsTo(User::class, 'user_id');
+    }
+
+    /**
+     * The person who wrote this, when a person did.
+     *
+     * Null on every automatic message, which is not missing data — nobody sent
+     * those. See the `sent_by` migration.
+     *
+     * @return BelongsTo<User, $this>
+     */
+    public function author(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'sent_by');
     }
 
     public function subject(): MorphTo
