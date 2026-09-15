@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-09-15
+
+### Fix
+
+- **You could not sign in on a short window.** `body.hall` carried `overflow: hidden` alongside `min-height: 100vh`, and on `<body>` that switches off page scrolling altogether — so on any viewport shorter than the card, the submit button sat below the fold with **no way to reach it**. A laptop at 1366×600 clipped 152px; a phone held sideways, far more. Nothing in the markup looked wrong: the button was there and styled, and simply did not exist for the user. Now `overflow-x: hidden` — only the axis that needs containing, because `.hall-orbit` is absolutely positioned — plus `min-height: 100dvh` so a phone's browser chrome is measured out rather than assumed away (CSS).
+- **Touch targets in the list rows were 26×26px**, three of them side by side, and the third deletes the record — 45 such controls on one coupon page. They are 44px on a touchscreen now (WCAG 2.5.5), and unchanged on a mouse. Keyed on `pointer: coarse` rather than a width, because what is too small is the finger: a tablet at 1024px has the problem and a desktop window dragged narrow does not. Sized in **px** deliberately — the panel's root is 87.5%, so `2rem` lands at 26px, and 44px is a measurement of a fingertip, not of type (CSS).
+- Audited all **72 admin screens at 390px** before touching anything: zero horizontal overflow, the sidebar collapses, the content takes the full width and the tables are already inside their own scrollers. The panel's layout was sound — the sign-in page and the touch targets were the whole of it. 41 new Playwright assertions across eight viewport sizes, including a phone held sideways at 740×360 (CSS / tests).
+
 ## 2026-09-14
 
 ### Feature

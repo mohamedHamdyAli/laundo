@@ -52,14 +52,29 @@
     position: relative;
     display: grid;
     place-items: center;
+
+    /* `min-height`, and `dvh` where it is understood: on a phone `100vh` is the
+       viewport *without* the browser's own chrome, so the card is pushed down by
+       a toolbar that is actually on screen. `dvh` measures what is really
+       visible. The `vh` line stays as the fallback for older engines. */
     min-height: 100vh;
+    min-height: 100dvh;
     margin: 0;
     padding: clamp(1.5rem, 5vw, 3rem);
     background: var(--hall-ground);
     color: var(--hall-ink);
     font-family: 'IBM Plex Sans Arabic', 'Nunito', system-ui, -apple-system, 'Segoe UI', sans-serif;
     -webkit-font-smoothing: antialiased;
-    overflow: hidden;
+
+    /* **Horizontal only.** This is `<body>`, and a plain `overflow: hidden` here
+       switches off page scrolling altogether — so on any window shorter than the
+       card, the sign-in button sat below the fold with no way to reach it. A
+       laptop at 1366×600 clipped 152px, and you cannot log in to a panel whose
+       submit button does not exist.
+       Only the axis that needs containing is named: `.hall-orbit` is
+       `position: absolute` and its chips drift a little outside their box.
+       Naming one axis leaves the other `auto`, which is the scrolling we want. */
+    overflow-x: hidden;
 }
 
 /* ---------------------------------------------------------- the background */

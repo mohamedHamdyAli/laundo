@@ -3274,3 +3274,53 @@ body.theme-dark #brand-loader {
     outline: 2px solid var(--brand-primary);
     outline-offset: -2px;
 }
+
+/* ==========================================================================
+   Touch targets
+
+   Keyed on `pointer: coarse`, not on a width. The thing that is too small is
+   the finger, not the window: a tablet at 1024px has the problem and a desktop
+   browser dragged narrow does not. A width query would fix the wrong machines
+   and miss the right ones.
+
+   Sized in **px**, which is deliberate in a file that otherwise uses `rem`. The
+   panel's root is `var(--ui-zoom)` at 87.5%, so `2rem` lands at 26px — and 44px
+   is a measurement of a fingertip, not of type. It must not shrink because
+   somebody turns the density down.
+
+   44px is the WCAG 2.5.5 figure. The list rows carry view/edit/delete side by
+   side and the third one deletes: at 26px apiece, a mis-tap between two of them
+   is a row gone. Nothing changes on a mouse.
+   ========================================================================== */
+
+@media (pointer: coarse) {
+
+    .action-btn,
+    .stack-actions .action-btn {
+        block-size: 44px;
+        inline-size: 44px;
+    }
+
+    .action-btn > i {
+        font-size: 1rem;
+    }
+
+    /* The status toggle is a real button — it posts — so it is held to the same
+       floor. `inline-flex` because the pill is `inline-block` and padding alone
+       would not give a reliable height. */
+    .status-pill.status-toggle {
+        align-items: center;
+        display: inline-flex;
+        justify-content: center;
+        min-block-size: 44px;
+        padding-inline: 1rem;
+    }
+
+    /* The row's action cell has to be allowed to wrap now that its contents are
+       larger, rather than pushing the card wider than the screen. */
+    .stack-actions,
+    td .d-inline-flex {
+        flex-wrap: wrap;
+        gap: .35rem;
+    }
+}
