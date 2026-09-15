@@ -593,3 +593,59 @@ test.describe('The roles permission grid', () => {
     });
   }
 });
+
+/**
+ * «Applications» — the amber button on the laundries screen.
+ *
+ * The same shape of bug as the badges above, and in the same template. Bootstrap
+ * ships `.btn-warning` with `--bs-btn-color: #000` — black on #ffc107, 12.6:1 —
+ * and the vendor stylesheet overrides it at app.css:20761 with
+ * `.btn.btn-warning { color: #fff }`. White on that amber is **1.9:1**.
+ *
+ * It mattered more than most: this button is drawn only when a laundry is
+ * actually waiting for approval, so the one control whose whole job is to be
+ * noticed on the day it appears was the least readable thing on the page.
+ */
+test.describe('The Applications button', () => {
+  test('is legible on its amber', async ({ page }) => {
+    await login(page, ACCOUNTS.superAdmin);
+    await page.goto('/admin/laundry');
+
+    const button = page.locator('a.btn-warning').first();
+
+    // Only rendered when something is pending, which is the normal state of the
+    // development database but not a thing to assume.
+    if (await button.count() === 0) {
+      test.skip(true, 'no pending applications in the fixture database');
+    }
+
+    const { fg, bg } = await button.evaluate((el) => {
+      const s = getComputedStyle(el);
+      return { fg: s.color, bg: s.backgroundColor };
+    });
+
+    expect(contrast(fg, bg), `«Applications» is ${contrast(fg, bg).toFixed(2)}:1 on its own background`)
+      .toBeGreaterThan(4.5);
+  });
+
+  test('its count badge is legible too', async ({ page }) => {
+    await login(page, ACCOUNTS.superAdmin);
+    await page.goto('/admin/laundry');
+
+    const badge = page.locator('a.btn-warning .badge').first();
+
+    if (await badge.count() === 0) {
+      test.skip(true, 'no pending applications in the fixture database');
+    }
+
+    // The badge inherits its colour from the button, so fixing the button
+    // without naming the badge leaves the number black on a dark pill.
+    const { fg, bg } = await badge.evaluate((el) => {
+      const s = getComputedStyle(el);
+      return { fg: s.color, bg: s.backgroundColor };
+    });
+
+    expect(contrast(fg, bg), `the count is ${contrast(fg, bg).toFixed(2)}:1 on its pill`)
+      .toBeGreaterThan(4.5);
+  });
+});

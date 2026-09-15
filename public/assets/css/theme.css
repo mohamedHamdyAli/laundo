@@ -2700,6 +2700,38 @@ textarea.form-control {
     border-radius: var(--control-radius);
 }
 
+/* «Applications» on the laundries screen, and every other amber button.
+   Bootstrap sets `--bs-btn-color: #000` on `.btn-warning` — black on #ffc107,
+   which is 12.6:1 — and the vendor template overrides it at app.css:20761 with
+   `.btn.btn-warning { color: #fff }`. White on that amber is **1.9:1**, under
+   every threshold there is, and the label read as a smudge on the one control
+   that exists to be noticed on the day an application arrives.
+
+   Spelled `.btn.btn-warning` to match the vendor rule's specificity exactly
+   rather than to out-rank it: theme.css loads after app.css, so an equal
+   selector wins on order, and a heavier one would only be a guess about what
+   else might be added later. The badge inside it is set explicitly for the same
+   reason — it inherited the white and sat invisible on its own dark pill. */
+.btn.btn-warning {
+    color: #000;
+}
+
+/* The count pill on «Applications», wearing its own class rather than `bg-dark`.
+
+   `bg-dark` is a trap in this template: the vendor redefines
+   `--bs-dark-rgb: 242, 247, 255` at :root — the *page background* — so the class
+   paints a near-white pill, and white on it measured **1.08:1**. It also sets
+   `background-color` with `!important`, so no override here could have won it;
+   the markup had to stop asking for it. Same family of bug as the badge tests at
+   the top of contrast.spec.js, where a correct class held a wrong value.
+
+   Opaque rather than an `rgba()` over the amber, so what the contrast test
+   measures is what the eye actually gets. */
+.btn.btn-warning .badge.pending-count {
+    background-color: #1f2937;
+    color: #fff;
+}
+
 /* A submit sitting next to an input should be the same height as it; Bootstrap's
    button padding leaves it 3px short of the control it submits. */
 .btn-primary,
@@ -3194,4 +3226,51 @@ body.theme-dark #brand-loader {
 .submenu-item a {
     display: flex;
     align-items: center;
+}
+
+
+/* ==========================================================================
+   The eye on a password box
+
+   `password-reveal.js` wraps each `input[type=password]` at runtime, so the
+   markup in the five forms that take one is untouched. The input keeps its own
+   border and the button sits inside it — `inset-inline-end`, so it moves to the
+   left in Arabic without a direction test.
+   ========================================================================== */
+
+.pw-reveal {
+    position: relative;
+}
+
+/* Room for the button, so a long password does not run underneath it. */
+.pw-reveal > input {
+    padding-inline-end: 2.6rem;
+}
+
+.pw-reveal-btn {
+    background: none;
+    border: 0;
+    color: var(--text-muted);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    inline-size: 2.4rem;
+    inset-block: 1px;
+    inset-inline-end: 1px;
+    padding: 0;
+    position: absolute;
+    /* Above the input's own background, below any validation message. */
+    z-index: 2;
+}
+
+.pw-reveal-btn:hover,
+.pw-reveal-btn[aria-pressed="true"] {
+    color: var(--brand-primary);
+}
+
+.pw-reveal-btn:focus-visible {
+    border-radius: var(--control-radius);
+    outline: 2px solid var(--brand-primary);
+    outline-offset: -2px;
 }

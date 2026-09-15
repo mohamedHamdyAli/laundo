@@ -17,7 +17,15 @@
         <p class="auth-note is-bad">{{ __('Please check the fields marked below.') }}</p>
     @endif
 
-    <form method="POST" action="{{ route('laundry.register.store') }}" enctype="multipart/form-data">
+    {{-- `needs-validation` is the hook `form-validation.js` binds to. It matters
+         more here than on most of the 41 dashboard forms that already carry it:
+         this one holds a **file** and **two passwords**, and `old()` can carry
+         none of the three. A failed validation used to be a full page load that
+         handed back an empty logo box and two empty password fields, with the
+         map pin to place again — so the applicant retyped the form to fix one
+         mistyped phone number. --}}
+    <form method="POST" action="{{ route('laundry.register.store') }}"
+        class="needs-validation" enctype="multipart/form-data">
         @csrf
 
         <div class="auth-grid">
@@ -238,4 +246,11 @@
 
 @push('scripts')
     <script src="{{ asset('assets/js/auth-card.js') }}?v={{ landingAssetVersion('js/auth-card.js') }}" defer></script>
+    {{-- The panel's own validation script, reused rather than rewritten. It is
+         plain vanilla — no jQuery, no bootstrap — so it costs this layout its
+         ~5 KB and nothing else, and the applicant gets the same behaviour a
+         moderator gets on the same form's dashboard twin. `auth-card.css` maps
+         its `.is-invalid` / `.js-field-error` output onto the card's own error
+         look. --}}
+    <script src="{{ asset('assets/js/custom/form-validation.js') }}?v={{ assetVersion('js/custom/form-validation.js') }}" defer></script>
 @endpush

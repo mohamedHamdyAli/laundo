@@ -2108,3 +2108,109 @@ an mtime is a ten-digit number, anything else is the fallback.
 **Rule:** two helpers on the same line taking the same-looking path is a trap.
 When adding a fingerprinted asset, print the version once and check it is a
 timestamp — and prefer a test that asserts the rendered `?v=` matches `\d{9,}`.
+
+---
+
+## `!important` on a vendor utility cannot be out-specified — stop using the class
+
+`.btn.btn-warning .badge.bg-dark { background-color: #1f2937 }` was a no-op, and
+so would any heavier selector have been: the vendor sets
+`.bg-dark { background-color: ... !important }`. Specificity does not enter into
+it; `!important` wins over every non-important rule at any weight.
+
+Worse, the class was not even dark — the template redefines
+`--bs-dark-rgb: 242, 247, 255`, the page background.
+
+The fix was to take `bg-dark` off the element and give it a class of its own.
+
+**Rule:** before overriding a Bootstrap *utility* class, grep the vendor CSS for
+the property **with `!important`**. If it is there, the only clean answers are to
+change the markup or to match the `!important` — and changing the markup is the
+one that leaves no war behind. Measure afterwards; a CSS fix that "looks right in
+the file" is not evidence.
+
+---
+
+## Native `required` means the server never sees the request
+
+Three browser tests timed out waiting for a POST that never happened: the form
+carries `required` on most fields, so clicking submit ran the browser's own
+constraint validation and stopped there.
+
+That is worth knowing for its own sake — the 422 path only exists for rules the
+browser cannot check (a format, a uniqueness, a confirmation) — and it means a
+test for server-side validation has to fill **every natively-required field** and
+then break exactly one server rule.
+
+**Rule:** to exercise a 422 in a browser test, satisfy native validation first.
+A mistyped phone that passes `required` and fails `regex:E.164` is the realistic
+case and the one users actually hit.
+
+---
+
+## A badge is a promise; count the same set the screen shows
+
+The sidebar read «38» beside Dispatch and the board said «Nothing is waiting for
+a driver». Neither number was a bug on its own — the board scoped its tasks
+through the order, the badge counted `OrderTask` flat — and the class docblock
+asserted they could not diverge, because it believed `OrderTask` carried
+`BelongsToLaundry`. It does not: driver work has **no `laundry_id` at all**, on
+purpose.
+
+The idiom for reaching a tenant through a table with no `laundry_id` is
+`whereIn('order_id', Order::query()->select('id'))` — the subquery inherits
+`Order`'s global scope, so it is the whole table for a super admin and one
+laundry's rows for an owner. The `order` badge beside it already did this; the
+`order_task` branch had simply not.
+
+**Rule:** a count shown next to a link must be produced by the same filter as the
+screen it links to — and the test should assert them **against each other**, not
+against a literal, so a change to one has to be made to both. Before trusting
+"this model is scoped", check the model for the trait rather than the docblock
+that says so.
+
+---
+
+## A `<button>` inside a form submits it
+
+The password eye is a `<button>`, and a button in a form defaults to
+`type="submit"`. Without `type="button"` the first click posts the half-filled
+create form — a validation error on create, and an unasked-for save on edit.
+
+**Rule:** every scripted `<button>` inside a `<form>` gets an explicit
+`type="button"`, and a test that asserts no request was made when it is clicked.
+The failure is invisible in review and obvious in production.
+
+---
+
+## A disabled checkbox posts nothing
+
+Locking a permission in the roles grid with `@disabled` and stopping there would
+have been worse than not locking it: an unchecked *and* disabled box sends no
+value, `sync()` receives the set without it, and the permission the markup was
+protecting is the one that gets dropped.
+
+The floor is re-added in the controller, and the test sends
+`['permissions' => []]` — the exact payload a browser produces when every box is
+disabled — rather than driving the form.
+
+**Rule:** `disabled` is a statement about the *UI*, never about the data. Any
+value that must survive a submit is enforced server-side, and the test posts the
+request by hand instead of clicking through the page.
+
+---
+
+## A screen that manages one row is worth checking against the table
+
+`/admin/roles` looked like it worked. It listed a role, opened a permission grid,
+saved. It was filtering `type = 'dashboard'` while the two roles that actually
+carry permissions are `type = 'laundry'` — so the whole screen administered
+`admin`, which holds none, and the twenty-one grants that decide what a laundry
+owner sees were reachable only through a seeder.
+
+Nothing failed. The screen was simply empty of the thing it was for, and that is
+invisible unless you compare what it lists against what the table holds.
+
+**Rule:** when a management screen filters rows, print the filtered set beside the
+unfiltered one once. `Role::pluck('slug','type')` would have shown this in a
+second.

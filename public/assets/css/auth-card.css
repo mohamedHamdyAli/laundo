@@ -165,15 +165,43 @@
     outline: none;
 }
 
+/* `.has-error` is what Blade paints on a full page render; `.is-invalid` is what
+   `form-validation.js` paints when the same form is submitted in the background
+   and comes back 422. Same state, two authors, so they share one rule — the
+   alternative is a field that looks wrong on a reload and looks fine when the
+   script is doing its job. */
 .auth-input.has-error,
 .auth-select.has-error,
-.auth-textarea.has-error {
+.auth-textarea.has-error,
+.auth-input.is-invalid,
+.auth-select.is-invalid,
+.auth-textarea.is-invalid {
     border-color: var(--tone-bad);
 }
 
-.auth-error {
+/* Likewise: `.auth-error` is the server's `@error` paragraph, `.js-field-error`
+   is the div the script appends. */
+.auth-error,
+.js-field-error {
     color: var(--tone-bad);
     font-size: .8125rem;
+}
+
+/* The script's own banner, for a message that belongs to no single field. Made
+   to read as the `.auth-note.is-bad` the server renders in its place, so the two
+   paths look identical. */
+.js-form-banner {
+    background: var(--tone-bad-bg);
+    border-inline-start: 3px solid var(--tone-bad);
+    border-radius: var(--radius-control);
+    color: var(--tone-bad);
+    font-size: .875rem;
+    margin-block-end: 1rem;
+    padding: .75rem 1rem;
+}
+
+.js-form-banner p {
+    margin: 0;
 }
 
 .auth-hint {

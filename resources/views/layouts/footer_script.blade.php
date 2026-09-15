@@ -135,6 +135,16 @@
      reloading the page and losing every file, password and select2 choice
      `old()` cannot carry back. Loaded after the widgets it has to find. --}}
 <script type="text/javascript" src="{{ asset('assets/js/custom/form-validation.js') }}?v={{ landingAssetVersion('js/custom/form-validation.js') }}"></script>
+{{-- An eye on every password box. After form-validation.js on purpose: that one
+     binds a submit handler to the form, this one only rearranges markup, and
+     keeping the order stable means the wrapper exists before anything walks the
+     DOM looking for fields. Labels are handed over as globals so the script
+     stays free of Blade. --}}
+<script>
+    window.pwRevealShowLabel = @json(__('Show password'));
+    window.pwRevealHideLabel = @json(__('Hide password'));
+</script>
+<script type="text/javascript" src="{{ asset('assets/js/custom/password-reveal.js') }}?v={{ assetVersion('js/custom/password-reveal.js') }}"></script>
 <script type="text/javascript" src="{{ asset('assets/js/custom/bootstrap-table/formatter.js') }}"></script>
 <script type="text/javascript" src="{{ asset('assets/js/custom/bootstrap-table/queryParams.js') }}"></script>
 <script type="text/javascript" src="{{ asset('assets/js/custom/bootstrap-table/actionEvents.js') }}"></script>

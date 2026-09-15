@@ -19,7 +19,12 @@
                 <a href="{{ route('admin.laundry.pending') }}" class="btn btn-warning btn-sm">
                     <i class="bi bi-hourglass-split"></i>
                     {{ __('Applications') }}
-                    <span class="badge bg-dark ms-1">{{ $pendingApplications }}</span>
+                    {{-- Not `bg-dark`. The vendor template redefines
+                         `--bs-dark-rgb` to the *page background* at :root, so
+                         that class paints a near-white pill — and it sets the
+                         colour with `!important`, so no override in theme.css
+                         can win it. The class is a trap here, not a shortcut. --}}
+                    <span class="badge pending-count ms-1">{{ $pendingApplications }}</span>
                 </a>
             @endif
             @if (canDo('laundry.create'))

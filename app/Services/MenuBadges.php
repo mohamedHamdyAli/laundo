@@ -27,11 +27,23 @@ use App\Modules\Payment\Models\Refund;
  * «Waiting for a person» queue asks; this puts the answer where somebody sees
  * it without opening the home page first.
  *
- * **Tenant-safe by inheritance.** `Order`, `OrderTask` and the rest carry
- * `BelongsToLaundry`, so a laundry owner's badge counts their own rows and a
- * super admin's counts everything. Nothing here bypasses a global scope, and
- * anything added later must not either — a badge is a number shown to whoever
- * is looking at the menu.
+ * **Tenant scoping is not automatic, and the exception is the one that bit.**
+ * `Order`, `Complaint` and `Refund` carry `BelongsToLaundry`, so counting them
+ * is already per-tenant. **`OrderTask` does not** — driver work carries no
+ * `laundry_id` at all, by design — so a bare `OrderTask::count()` is a global
+ * number handed to whoever is looking at the menu. A laundry owner saw «38»
+ * beside Dispatch and opened a screen that said «Nothing is waiting for a
+ * driver», because the board scopes through the order and the badge did not.
+ *
+ * The idiom for reaching a tenant through a table that has no `laundry_id` is
+ * `whereIn('order_id', Order::query()->select('id'))` — the subquery inherits
+ * `Order`'s global scope, so it is the whole table for a super admin and one
+ * laundry's orders for an owner. `dispatchBoardService::counts()` does exactly
+ * this, and the two must agree: **a badge is a promise about what the screen
+ * behind it holds.**
+ *
+ * Nothing here bypasses a global scope, and anything added later must not
+ * either.
  *
  * **Not cached.** These are indexed `COUNT(*)`s and there are at most six of
  * them per page, against a stale badge on a queue being worse than no badge
@@ -61,9 +73,17 @@ class MenuBadges
 
             // Journeys dispatch could not place, and ones that ran out of
             // attempts and now need a person to intervene.
-            'order_task' => OrderTask::queued()->count()
+            //
+            // Scoped through the order, because `OrderTask` has no `laundry_id`
+            // of its own — see the note above. This is the same filter
+            // `dispatchBoardService::counts()` applies, so the badge and the
+            // board it points at always report the same number.
+            'order_task' => OrderTask::queued()
+                ->whereIn('order_id', Order::query()->select('id'))
+                ->count()
                 + OrderTask::where('status', 'failed')
                     ->where('attempts', '>=', OrderTask::MAX_ATTEMPTS)
+                    ->whereIn('order_id', Order::query()->select('id'))
                     ->count(),
 
             // Answered by phone, so nothing closes itself.

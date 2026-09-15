@@ -6,6 +6,8 @@ use App\Modules\Complaint\Models\Complaint;
 use App\Modules\Driver\Models\DriverApplication;
 use App\Modules\Laundry\Models\Laundry;
 use App\Modules\Order\Models\Order;
+use App\Modules\Order\Models\OrderTask;
+use App\Modules\Order\Services\dispatchBoardService;
 use App\Services\MenuBadges;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
@@ -161,5 +163,110 @@ class MenuBadgeTest extends TestCase
         // handed a count drawn from the other's rows.
         $this->assertNull($mineCount);
         $this->assertNull($theirsCount);
+    }
+
+    #[Test]
+    public function the_dispatch_badge_counts_only_the_tenants_own_journeys(): void
+    {
+        /*
+         * The bug this covers, in full: a laundry owner's sidebar read «38»
+         * beside Dispatch while the board behind it said «Nothing is waiting for
+         * a driver». Both numbers were honestly computed — the board scopes its
+         * tasks through the order, and the badge counted `OrderTask` flat.
+         *
+         * `OrderTask` is the one queue model with no `laundry_id`: driver work
+         * is deliberately not tenant-owned. So a bare count is a global count,
+         * handed to whoever is reading the menu.
+         */
+        $geo = $this->seedGeo();
+        $catalog = $this->seedCatalog();
+
+        $a = $this->laundryWithOwner('A', '+201011110001', '+201011110002');
+        $b = $this->laundryWithOwner('B', '+201022220001', '+201022220002');
+
+        $buyer = $this->customer();
+
+        // One unplaced journey on each laundry's order.
+        foreach ([$a['laundry'], $b['laundry']] as $laundry) {
+            $order = Order::withoutGlobalScopes()->create([
+                'code' => Order::generateCode(),
+                'user_id' => $buyer->id,
+                'laundry_id' => $laundry->id,
+                'service_id' => $catalog['service']->id,
+                'status' => 'awaiting_pickup',
+                'pickup_address_id' => $this->addressFor($buyer, $geo['zones'][0])->id,
+                'delivery_address_id' => $this->addressFor($buyer, $geo['zones'][0])->id,
+                'delivery_fee' => 20,
+                'estimated_total' => 100,
+                'qr_token' => Order::generateQrToken(),
+            ]);
+
+            OrderTask::create([
+                'order_id' => $order->id,
+                'type' => 'pickup_from_customer',
+                'sequence' => 1,
+                'status' => 'pending',
+                'driver_id' => null,
+            ]);
+        }
+
+        // The super admin sees both, because nothing scopes them.
+        $this->actingAs($this->superAdmin());
+        $this->assertSame(2, MenuBadges::for('order_task'));
+
+        // Each owner sees their own one — not the other's, and not the total.
+        $this->actingAs($a['owner']);
+        $this->assertSame(1, MenuBadges::for('order_task'),
+            'the badge counted journeys belonging to another laundry');
+
+        $this->actingAs($b['owner']);
+        $this->assertSame(1, MenuBadges::for('order_task'));
+    }
+
+    #[Test]
+    public function the_dispatch_badge_agrees_with_the_board_it_points_at(): void
+    {
+        // The property that actually matters. A badge is a promise about what
+        // the screen behind it holds, so the two counts are asserted against
+        // each other rather than against a literal — a later change to either
+        // filter has to be made to both.
+        $geo = $this->seedGeo();
+        $catalog = $this->seedCatalog();
+
+        $a = $this->laundryWithOwner('A', '+201011110001', '+201011110002');
+        $b = $this->laundryWithOwner('B', '+201022220001', '+201022220002');
+        $buyer = $this->customer();
+
+        // Three unplaced journeys, all on the *other* laundry's orders.
+        for ($i = 0; $i < 3; $i++) {
+            $order = Order::withoutGlobalScopes()->create([
+                'code' => Order::generateCode(),
+                'user_id' => $buyer->id,
+                'laundry_id' => $b['laundry']->id,
+                'service_id' => $catalog['service']->id,
+                'status' => 'awaiting_pickup',
+                'pickup_address_id' => $this->addressFor($buyer, $geo['zones'][0])->id,
+                'delivery_address_id' => $this->addressFor($buyer, $geo['zones'][0])->id,
+                'delivery_fee' => 20,
+                'estimated_total' => 100,
+                'qr_token' => Order::generateQrToken(),
+            ]);
+
+            OrderTask::create([
+                'order_id' => $order->id,
+                'type' => 'pickup_from_customer',
+                'sequence' => 1,
+                'status' => 'pending',
+                'driver_id' => null,
+            ]);
+        }
+
+        $this->actingAs($a['owner']);
+
+        $board = app(dispatchBoardService::class)->counts();
+
+        $this->assertNull(MenuBadges::for('order_task'),
+            'the badge promised work on a board that has none');
+        $this->assertSame(0, $board['waiting']);
     }
 }

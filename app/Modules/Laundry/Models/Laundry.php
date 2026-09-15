@@ -40,6 +40,15 @@ use Illuminate\Support\Carbon;
  * @property-read Collection<int, User> $users
  * @property-read int|null $users_count
  *
+ * `owner` is genuinely nullable and is spelled out here because larastan infers
+ * a bare `User` from the `HasOne` and then reports every null check on it as
+ * dead code. It really can be null: a laundry whose owner account was deleted,
+ * and the `latestOfMany()` trap described in CLAUDE.md, where the aggregate
+ * subquery is built without the constraints declared before it and the role
+ * filter discards what it picked.
+ *
+ * @property-read User|null $owner
+ *
  * @method static Builder<static>|Laundry newModelQuery()
  * @method static Builder<static>|Laundry newQuery()
  * @method static Builder<static>|Laundry query()

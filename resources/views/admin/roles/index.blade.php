@@ -35,7 +35,20 @@
 
                 {{-- Role Row --}}
                 <div class="card-body d-flex justify-content-between align-items-center">
-                    <strong>{{ $role->name }}</strong>
+                    <div>
+                        <strong>{{ $role->name }}</strong>
+
+                        {{-- Said out loud, because the consequence is not
+                             guessable from the screen: roles are global, so a
+                             tick here moves *every* laundry at once, not the one
+                             somebody has in mind. --}}
+                        @if ($role->type === 'laundry')
+                            <span class="badge bg-info-subtle text-info-emphasis ms-2">{{ __('Laundry role') }}</span>
+                            <div class="text-muted small mt-1">
+                                {{ __('Applies to every laundry on the platform, not to one.') }}
+                            </div>
+                        @endif
+                    </div>
 
                     {{-- Opening the permission grid is a secondary action; as a
                          solid fill it was as loud as the page's primary. --}}
@@ -70,10 +83,20 @@
                                 @foreach (['view', 'create', 'update', 'delete', 'toggle'] as $action)
                                     @php
                                         $slug = "$model.$action";
+                                        // The floor a laundry account cannot be
+                                        // pushed below. Clearing one of these
+                                        // signs an owner in to a panel with
+                                        // nothing in it — and with no way back,
+                                        // because the screen that would fix it
+                                        // is the one they just lost.
+                                        $locked = $role->type === 'laundry'
+                                            && in_array($slug, $protectedSlugs, true);
                                     @endphp
                                     <div class="col text-center">
                                         <input type="checkbox" name="permissions[]" value="{{ $slug }}"
-                                            @checked($role->permissions->contains('slug', $slug))>
+                                            @checked($locked || $role->permissions->contains('slug', $slug))
+                                            @disabled($locked)
+                                            @if ($locked) title="{{ __('This role cannot work without this.') }}" @endif>
                                     </div>
                                 @endforeach
 

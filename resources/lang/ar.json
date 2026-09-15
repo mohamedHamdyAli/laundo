@@ -1667,5 +1667,10 @@
     "This is a fault in the system, not something you did. It has been recorded and the team can see it.": "ده عطل في النظام، مش حاجة إنت عملتها. اتسجّل والفريق شايفه.",
     "Reference:": "الرقم المرجعي:",
     "Go back": "رجوع",
-    "Back to home": "الرئيسية"
+    "Back to home": "الرئيسية",
+    "Hide password": "إخفاء كلمة المرور",
+    "Laundry role": "دور مغسلة",
+    "Applies to every laundry on the platform, not to one.": "بيسري على كل المغاسل في المنصة، مش على واحدة.",
+    "This role cannot work without this.": "الدور ده مش هيشتغل من غيرها.",
+    "Permissions updated successfully": "تم تحديث الصلاحيات بنجاح"
 }
