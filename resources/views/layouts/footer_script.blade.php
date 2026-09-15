@@ -129,6 +129,7 @@
     window.csrfToken = "{{ csrf_token() }}";
     window.notificationUnreadUrl = "{{ route('admin.myNotifications.unread') }}";
     window.notificationReadUrlTemplate = "{{ route('admin.myNotifications.read', ['id' => '__ID__']) }}";
+    window.notificationReadAllUrl = "{{ route('admin.myNotifications.read-all') }}";
 </script>
 <script type="text/javascript" src="{{ asset('assets/js/custom/notifications.js') }}?v={{ assetVersion('js/custom/notifications.js') }}"></script>
 {{-- Keeps a create or edit form's contents when validation fails, instead of

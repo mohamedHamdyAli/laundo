@@ -2309,10 +2309,165 @@ body.theme-dark .topbar-icon-btn:hover {
     position: absolute;
 }
 
+/* The bell's dropdown.
+
+   Everything here is written against one vendor rule: `app.css` line 22508 sets
+   `.dropdown-item { display: flex; align-items: center; white-space: nowrap;
+   color: black }`. That is why a notification's title, body and timestamp — three
+   block `<div>`s — sat side by side on a single unwrapping line reading «A task is
+   waiting for a driverOrder 10029 has had no driver for over 2 hours.4 hours ago».
+
+   No `!important` on it, so a two-class selector out-ranks it honestly. Every
+   colour is a token so `body.theme-dark` carries without a second block — the
+   vendor's literal `black` would have been invisible on the dark surface. */
 .topbar-notifications {
     max-height: 26rem;
-    min-width: 21rem;
+    min-width: 22rem;
     overflow-y: auto;
+    padding-block: 0;
+}
+
+.topbar-notifications .notification-head {
+    align-items: center;
+    background: var(--surface-card);
+    border-block-end: 1px solid var(--surface-border);
+    display: flex;
+    gap: .75rem;
+    justify-content: space-between;
+    padding: .75rem 1rem;
+    /* The list scrolls under it; a heading that scrolls away leaves the reader
+       looking at unlabelled sentences. */
+    position: sticky;
+    inset-block-start: 0;
+    z-index: 1;
+}
+
+.topbar-notifications .notification-head-title {
+    color: var(--text-strong);
+    font-size: .875rem;
+    font-weight: 600;
+}
+
+.topbar-notifications .notification-readall {
+    background: none;
+    border: 0;
+    color: var(--brand-text);
+    cursor: pointer;
+    font-size: .75rem;
+    padding: 0;
+}
+
+.topbar-notifications .notification-readall:hover {
+    text-decoration: underline;
+}
+
+.topbar-notifications .notification-empty {
+    color: var(--text-muted);
+    font-size: .8125rem;
+    padding: 1.5rem 1rem;
+    text-align: center;
+}
+
+/* The row. Two classes, so it out-ranks the vendor `.dropdown-item` without
+   `!important` and without borrowing its class at all. */
+.topbar-notifications .notification-row {
+    align-items: flex-start;
+    color: var(--text-strong);
+    display: flex;
+    gap: .625rem;
+    padding: .75rem 1rem;
+    text-decoration: none;
+    /* The fault this file exists to fix: a message is a sentence and has to
+       wrap. */
+    white-space: normal;
+}
+
+.topbar-notifications .notification-row:hover,
+.topbar-notifications .notification-row:focus-visible {
+    background: var(--surface-bg);
+    color: var(--text-strong);
+}
+
+.topbar-notifications .notification-item + .notification-item .notification-row {
+    border-block-start: 1px solid var(--surface-border);
+}
+
+/* The whole unread affordance. Bold text alone is not one — beside another bold
+   row it reads as emphasis rather than as state. */
+.topbar-notifications .notification-dot {
+    background: transparent;
+    block-size: .5rem;
+    border-radius: 50%;
+    flex: 0 0 auto;
+    inline-size: .5rem;
+    margin-block-start: .375rem;
+}
+
+.topbar-notifications .notification-row.is-unread .notification-dot {
+    background: var(--brand-primary);
+}
+
+.topbar-notifications .notification-body {
+    display: flex;
+    flex-direction: column;
+    gap: .125rem;
+    /* Without this a long unbroken order code pushes the row wider than the
+       menu and the whole dropdown scrolls sideways. */
+    min-inline-size: 0;
+}
+
+/* `text-align: start`, never `left`/`right`: each line carries `dir="auto"` and
+   resolves its own direction, so the alignment has to follow the line rather
+   than the page. */
+.topbar-notifications .notification-title,
+.topbar-notifications .notification-text,
+.topbar-notifications .notification-time {
+    text-align: start;
+}
+
+.topbar-notifications .notification-title {
+    color: var(--text-strong);
+    font-size: .8125rem;
+    font-weight: 500;
+    line-height: 1.35;
+}
+
+.topbar-notifications .notification-row.is-unread .notification-title {
+    font-weight: 700;
+}
+
+.topbar-notifications .notification-text {
+    color: var(--text-muted);
+    font-size: .75rem;
+    line-height: 1.45;
+    overflow-wrap: anywhere;
+}
+
+.topbar-notifications .notification-time {
+    color: var(--text-muted);
+    font-size: .6875rem;
+    opacity: .85;
+}
+
+.topbar-notifications .notification-foot {
+    background: var(--surface-card);
+    border-block-start: 1px solid var(--surface-border);
+    position: sticky;
+    inset-block-end: 0;
+}
+
+.topbar-notifications .notification-foot-link {
+    color: var(--brand-text);
+    display: block;
+    font-size: .75rem;
+    padding: .625rem 1rem;
+    text-align: center;
+    text-decoration: none;
+}
+
+.topbar-notifications .notification-foot-link:hover {
+    background: var(--surface-bg);
+    text-decoration: underline;
 }
 
 .topbar-user {

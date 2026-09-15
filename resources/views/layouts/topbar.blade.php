@@ -95,19 +95,31 @@
                     </button>
                     <ul class="dropdown-menu dropdown-menu-end topbar-notifications" id="notification-list"
                         aria-labelledby="notificationDropdownToggle">
-                        <li class="dropdown-item-text text-muted small" id="notification-empty">
-                            {{ __('No notifications') }}
+                        {{-- A heading, because a bare list of sentences gives no
+                             clue what it is a list of — and the one action worth
+                             having here belongs beside it rather than at the end
+                             of a scroll. --}}
+                        <li class="notification-head">
+                            <span class="notification-head-title">{{ __('Notifications') }}</span>
+                            <button type="button" class="notification-readall" id="notification-mark-all" hidden>
+                                {{ __('Mark all as read') }}
+                            </button>
                         </li>
-                        {{--
-                            A way out of the dropdown. It holds ten items, and
-                            an operations alert that scrolled past the tenth
-                            used to be unreachable — there was no page listing
-                            them.
-                        --}}
-                        <li><hr class="dropdown-divider"></li>
-                        <li>
-                            <a class="dropdown-item text-center small"
+
+                        <li class="notification-empty" id="notification-empty">
+                            {{ __('Nothing new') }}
+                        </li>
+
+                        {{-- Rows are inserted **before** this footer, not appended
+                             to the list. Appending put every notification after
+                             «See all», so the way out rendered as a heading above
+                             the things it was a way out of. --}}
+                        <li class="notification-foot" id="notification-foot">
+                            <a class="notification-foot-link"
                                 href="{{ route('admin.myNotifications.index') }}">
+                                {{-- The dropdown holds ten. An operations alert
+                                     that scrolled past the tenth used to be
+                                     unreachable — there was no page listing them. --}}
                                 {{ __('See all notifications') }}
                             </a>
                         </li>
