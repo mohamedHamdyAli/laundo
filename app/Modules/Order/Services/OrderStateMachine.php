@@ -72,6 +72,36 @@ class OrderStateMachine
     }
 
     /**
+     * Close a delivered order once its money has arrived.
+     *
+     * **Delivered is the clothes; Completed is the payment.** `RatingService`
+     * already states the distinction — «an unpaid cash order can sit at
+     * delivered for days» — and nothing acted on it: both payment paths set
+     * `payment_status = 'paid'` and stopped, so `Completed` was unreachable and
+     * `settleMoney()` never ran. Nineteen orders on this install, one
+     * settlement, and not one driver earning released.
+     *
+     * Two events have to land and either may be last — the driver hands over a
+     * card-paid order, or collects the cash at the door of one already
+     * delivered — so this is called from both and does nothing until both are
+     * true. Idempotent by the status check: a replayed webhook or a second leg
+     * completion finds the order already `Completed` and returns.
+     *
+     * It deliberately does not force the transition. If an order reaches
+     * `delivered` without being paid it stays there, visible as an unpaid
+     * delivered order, which is a thing somebody should chase rather than a
+     * thing to tidy away.
+     */
+    public function completeIfPaid(Order $order, string $actorType = 'system', ?User $actor = null): Order
+    {
+        if ($order->status !== OrderStatus::Delivered || $order->payment_status !== 'paid') {
+            return $order;
+        }
+
+        return $this->transition($order, OrderStatus::Completed, $actorType, $actor, __('Paid in full'));
+    }
+
+    /**
      * Record the order's starting state.
      *
      * A separate method because there is no `from`, and forcing the caller through

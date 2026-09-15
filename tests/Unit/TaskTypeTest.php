@@ -69,16 +69,54 @@ class TaskTypeTest extends TestCase
     }
 
     #[Test]
-    public function only_the_customer_legs_move_the_order(): void
+    public function every_leg_moves_the_order(): void
     {
-        // After the hand-over the order waits on the laundry's review, and after
-        // the collection it is already ready — so legs 2 and 3 move nothing, and
-        // the state machine stays the single writer.
+        /*
+         * This test used to assert the opposite for legs 2 and 3, and it was
+         * wrong in the same way the code was: «after the collection it is
+         * already ready» — and nothing put it there.
+         *
+         * `allowedNext()` runs
+         * `confirmed → cleaning → ready_for_delivery → delivered`, so with those
+         * two returning null, leg 4 asked for `confirmed → delivered`, the table
+         * refused, and the order was stranded at `confirmed` for ever with
+         * nobody paid. The chain only closes if every leg says where it lands.
+         */
         $this->assertSame(OrderStatus::PickedUp, TaskType::PickupFromCustomer->completesInto());
+        $this->assertSame(OrderStatus::Cleaning, TaskType::DeliverToLaundry->completesInto());
+        $this->assertSame(OrderStatus::ReadyForDelivery, TaskType::CollectFromLaundry->completesInto());
         $this->assertSame(OrderStatus::Delivered, TaskType::DeliverToCustomer->completesInto());
+    }
 
-        $this->assertNull(TaskType::DeliverToLaundry->completesInto());
-        $this->assertNull(TaskType::CollectFromLaundry->completesInto());
+    #[Test]
+    public function the_legs_walk_the_status_chain_in_order(): void
+    {
+        // The property that matters more than the individual values: each leg
+        // must land exactly where the previous one's status allows, or the chain
+        // breaks again somewhere in the middle and the symptom is an order that
+        // stops rather than an error.
+        $previous = OrderStatus::DriverOnWay;
+
+        foreach (TaskType::cases() as $leg) {
+            $target = $leg->completesInto();
+
+            if ($leg === TaskType::PickupFromCustomer) {
+                $previous = $target;
+
+                continue;
+            }
+
+            // The review sits between leg 1 and leg 2 and is driven by the
+            // laundry, so the walk resumes from `confirmed`.
+            $from = $previous === OrderStatus::PickedUp ? OrderStatus::Confirmed : $previous;
+
+            $this->assertTrue(
+                $from->canTransitionTo($target),
+                "«{$from->value}» cannot reach «{$target->value}», so {$leg->value} would strand the order"
+            );
+
+            $previous = $target;
+        }
     }
 
     #[Test]

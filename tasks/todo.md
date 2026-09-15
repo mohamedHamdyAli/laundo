@@ -3757,3 +3757,54 @@ Deliberately **not** done: no cancel button. The panel still cannot cancel an
 order — only the customer's app can — and adding one is a state-machine change
 rather than a screen, so it stays a separate decision.
 
+
+---
+
+# Task — the back half of the order lifecycle was never wired up
+
+## What was found
+
+Order `#10023`: all four driver legs completed, the customer has the clothes,
+and the order still says «تم تأكيد السعر». `delivered` reports `reached: false`
+two days after delivery. The log holds a `confirmed → confirmed` row written at
+the exact second the final leg completed — `advanceOrder()`'s refusal note.
+
+Across the whole install: **19 orders, none past `confirmed`. One settlement.
+Zero driver earnings, ever.**
+
+## Why
+
+`OrderStatus::allowedNext()` runs
+`confirmed → cleaning → ready_for_delivery → delivered → completed`, and four of
+those edges had nothing driving them. `DeliverToCustomer` completes into
+`Delivered`, so it asked for `confirmed → delivered`, which the table refuses —
+correctly. The order is then stuck for ever, and since `settleMoney()` fires at
+`Completed`, **the laundry and the driver are never paid.**
+
+## The fix, and why it is not an invention
+
+Every missing edge already has an event that means it. Nothing new is endpointed:
+
+| Edge | The event that is it | Where it lives |
+| --- | --- | --- |
+| `confirmed → cleaning` | the clothes reach the laundry | `DeliverToLaundry` completes |
+| `cleaning → ready_for_delivery` | the laundry hands them back | `CollectFromLaundry` completes |
+| `ready_for_delivery → delivered` | the driver hands them over | already wired |
+| `delivered → completed` | **the money arrives** | cash: `TaskService::settlePayment()`; card: `PaymentService::capture()` |
+
+The last one is not a guess. `RatingService` already says it out loud: «an unpaid
+cash order can sit at delivered for days». Delivered is the clothes; Completed is
+the money. Both payment paths already set `payment_status = 'paid'` and then stop.
+
+## Steps
+
+- [ ] `TaskType::completesInto()` — the two middle legs
+- [ ] `OrderStateMachine::completeIfPaid()` — Delivered + paid → Completed, idempotent
+- [ ] call it from `TaskService::complete()` (delivery last) and `PaymentService::capture()` (payment last)
+- [ ] tests: the full walk, each ordering of the last two events, and that a short cash collection does **not** complete
+- [ ] repair `#10021` and `#10023` on the server
+- [ ] Changelog
+
+## Review
+
+(filled in at the end)

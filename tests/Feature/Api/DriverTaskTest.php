@@ -324,7 +324,14 @@ class DriverTaskTest extends TestCase
         $order->refresh();
         $this->assertSame('paid', $order->payment_status);
         $this->assertNotNull($order->paid_at);
-        $this->assertSame(OrderStatus::Delivered, $order->status);
+
+        // **Completed, not Delivered.** Delivered is the clothes and Completed
+        // is the money, and on a cash order both land in this one call — the
+        // driver hands the bag over and takes the notes. This asserted
+        // `Delivered` while `Completed` was unreachable at all, so the order sat
+        // there for ever and `settleMoney()` never ran. See
+        // OrderLifecycleCompletionTest.
+        $this->assertSame(OrderStatus::Completed, $order->status);
     }
 
     #[Test]

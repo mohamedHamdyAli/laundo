@@ -3,6 +3,7 @@
 namespace App\Modules\Payment\Services;
 
 use App\Modules\Order\Models\Order;
+use App\Modules\Order\Services\OrderStateMachine;
 use App\Modules\Payment\Contracts\PaymentGateway;
 use App\Modules\Payment\Data\ChargeRequest;
 use App\Modules\Payment\Data\WebhookEvent;
@@ -175,6 +176,12 @@ class PaymentService
                     'paid_at' => now(),
                     'payment_method' => $payment->method->value,
                 ]);
+
+                // The other half of the same rule the driver's side applies:
+                // an order already handed over closes the moment the money
+                // lands. Does nothing while it is not yet delivered, so a
+                // prepaid order simply completes later, at the door.
+                app(OrderStateMachine::class)->completeIfPaid($order->refresh());
             }
 
             return $payment->refresh();

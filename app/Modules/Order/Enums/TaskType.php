@@ -123,19 +123,44 @@ enum TaskType: string
     }
 
     /**
-     * The order status this leg produces on completion, if any.
+     * The order status this leg produces on completion.
      *
-     * Legs 2 and 3 move nothing: after the hand-over to the laundry the order is
-     * waiting on the review (P7), and after collecting it the order is already
-     * `ready_for_delivery`. Returning null here is what keeps the state machine
-     * the single writer instead of scattering transitions through the task code.
+     * **All four, now.** This used to answer null for legs 2 and 3, on the
+     * reasoning that «after collecting it the order is already
+     * `ready_for_delivery`» — and nothing put it there. `allowedNext()` runs
+     * `confirmed → cleaning → ready_for_delivery → delivered`, so leg 4 asked
+     * for `confirmed → delivered`, the table refused it, and every order that
+     * got as far as a price was stranded at `confirmed` for ever. Nineteen of
+     * them on the live install, with `settleMoney()` — which fires at
+     * `Completed` — never once running.
+     *
+     * Each of the two additions is an event, not a convenience: the clothes are
+     * at the laundry, and the laundry has handed them back. Reading the status
+     * off those keeps it a record of something that happened, which is the same
+     * standard the other two already met.
+     *
+     * The state machine is still the single writer; this only says what to ask
+     * it for, and `TaskService::advanceOrder()` still lets it refuse.
      */
-    public function completesInto(): ?OrderStatus
+    public function completesInto(): OrderStatus
     {
         return match ($this) {
             self::PickupFromCustomer => OrderStatus::PickedUp,
+
+            // The clothes are at the laundry, so the work has started. Nothing
+            // else says this: there is no «we began washing» endpoint and no
+            // screen the laundry presses, and without it the order stopped dead
+            // at `confirmed` — `DeliverToCustomer` then asked for
+            // `confirmed → delivered`, the table refused, and the order was
+            // stranded for ever with nobody paid. See tasks/todo.md.
+            self::DeliverToLaundry => OrderStatus::Cleaning,
+
+            // The driver has them back, which can only be true if the laundry
+            // finished. Reading it off the collection rather than off a button
+            // means the status is a record of something that happened.
+            self::CollectFromLaundry => OrderStatus::ReadyForDelivery,
+
             self::DeliverToCustomer => OrderStatus::Delivered,
-            default => null,
         };
     }
 

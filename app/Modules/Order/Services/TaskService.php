@@ -170,6 +170,13 @@ class TaskService
 
             $this->advanceOrder($task, $driver, $task->type->completesInto());
 
+            // Delivered is the clothes, Completed is the money, and on a cash
+            // order both land in this one call — `settlePayment()` above marked
+            // it paid, `advanceOrder()` has just marked it delivered. Asked
+            // after both, so the order does not have to wait for a second event
+            // that is never coming.
+            $this->machine->completeIfPaid($task->order->refresh(), 'driver', $driver);
+
             return $task->refresh();
         });
     }
