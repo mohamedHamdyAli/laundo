@@ -3047,6 +3047,35 @@ textarea.form-control {
     transform: translateY(.05rem) rotate(135deg);
 }
 
+/* The clear «×» on a field that has a placeholder to clear back to.
+
+   The vendor theme pins it with a physical `right: .75rem`, which does not
+   mirror — so in Arabic it lands on the *start* of the text rather than beside
+   the arrow, printed straight through the first word. Measured on the wallets
+   filter before this: the arrow correctly at the left edge, the × at the right,
+   overlapping the label by 10px.
+
+   Logical properties, like the arrow above, and placed just inside it.
+
+   The two physical resets come **first, and the logical property last**, which
+   is load-bearing rather than tidiness: `inset-inline-end` resolves to `left` in
+   RTL and `right` in LTR, so a reset written after it sets the same physical
+   edge and silently wins. Written the other way round this rule cancelled itself
+   in both directions and the × stayed exactly where the vendor had put it. */
+.select2-container--bootstrap-5 .select2-selection--single .select2-selection__clear {
+    left: auto;
+    right: auto;
+    inset-inline-end: 1.85rem;
+}
+
+/* Room for it, so the text stops short of the × instead of running under it.
+   Only when one is actually rendered — the other selects keep the 1.2rem that
+   just clears the arrow, and a blanket reserve would leave dead space on every
+   dropdown in the panel to serve the few that are clearable. */
+.select2-container--bootstrap-5 .select2-selection--single .select2-selection__rendered:has(.select2-selection__clear) {
+    padding-inline-end: 2.9rem;
+}
+
 /* The panel. A card, not a system menu: the card's own surface and border, a
    radius that matches the field, and a shadow so it reads as sitting above the
    form rather than punched into it. */

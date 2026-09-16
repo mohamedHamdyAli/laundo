@@ -97,6 +97,23 @@
                 return;
             }
 
+            // An empty first option is a placeholder **only on a field that
+            // posts a value**. On a filter it is a real choice — «All statuses»,
+            // «Wallets holding money» — and treating it as an absence does two
+            // visible things wrong: it greys the current selection out like an
+            // unfilled prompt, and it hangs a clear «×» on the control as soon
+            // as anything else is picked. That × was reported as a bug on the
+            // wallets screen, where in Arabic it lands on top of the text.
+            //
+            // `name` is the honest test, and it splits the panel exactly: all 17
+            // selects that post are form fields whose empty option means «not
+            // chosen yet», and all 5 that do not are the filter dropdowns on
+            // orders, wallets, dispatch and the notification log.
+            const empty = $el.find('option[value=""]');
+            const placeholder = ($el.attr('name') && empty.length > 0)
+                ? empty.first().text()
+                : null;
+
             $el.select2({
                 theme: 'bootstrap-5',
                 width: '100%',
@@ -108,10 +125,10 @@
                 dropdownParent: $el.closest('.modal').length
                     ? $el.closest('.modal')
                     : $(document.body),
-                placeholder: $el.find('option[value=""]').first().text() || null,
-                // The empty first option of these forms is the placeholder, so
-                // the field must be clearable back to it.
-                allowClear: $el.prop('required') !== true && $el.find('option[value=""]').length > 0,
+                placeholder: placeholder,
+                // Only where there is a placeholder to clear back to. select2
+                // needs one for this to mean anything at all.
+                allowClear: placeholder !== null && $el.prop('required') !== true,
             });
         });
 
