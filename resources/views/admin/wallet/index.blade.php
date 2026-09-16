@@ -43,20 +43,34 @@
                     <div class="card-body">
                         <p class="text-muted small">
                             @if ($type)
-                                {{-- Said plainly, because the two lists follow
+                                {{-- Said plainly, because the three lists follow
                                      different rules and a silently different one
                                      is the kind of thing somebody reconciles
                                      against and gets wrong. --}}
                                 {{ __('Every wallet in this group is listed, including the empty ones.') }}
+                            @elseif ($every)
+                                {{ __('Every wallet is listed, including the empty ones.') }}
                             @else
-                                {{ __('Only wallets holding money are listed. Pick a group to see every wallet in it, empty ones included.') }}
+                                {{ __('Only wallets holding money are listed. Pick a group, or «:every», to see the empty ones too.', ['every' => __('Every wallet')]) }}
                             @endif
                             {{ __('A balance is never edited directly — every change is a transaction.') }}
                         </p>
 
                         <div class="d-flex justify-content-end mb-3 gap-2">
-                            <select id="walletTypeFilter" class="form-select" style="max-width: 220px;">
-                                <option value="">{{ __('All wallets') }}</option>
+                            <select id="walletTypeFilter" class="form-select" style="max-width: 240px;">
+                                {{-- This option used to read «All wallets» while
+                                     hiding every empty wallet, and was reported
+                                     as a bug the first time somebody counted the
+                                     rows. The rule it drives is a good default —
+                                     the screen opens on «where is the money» —
+                                     so the rule stayed and the label changed to
+                                     say what it does, with a real «all» beside
+                                     it. --}}
+                                <option value="">{{ __('Wallets holding money') }}</option>
+                                <option value="{{ \App\Modules\Wallet\Controllers\WalletController::EVERY }}"
+                                    @selected($every)>
+                                    {{ __('Every wallet') }}
+                                </option>
                                 @foreach ($types as $case)
                                     <option value="{{ $case->value }}" @selected($type === $case)>
                                         {{ __($case->label()) }}

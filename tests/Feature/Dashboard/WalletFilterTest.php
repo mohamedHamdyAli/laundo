@@ -4,6 +4,7 @@ namespace Tests\Feature\Dashboard;
 
 use App\Models\Role;
 use App\Modules\User\Models\User;
+use App\Modules\Wallet\Controllers\WalletController;
 use App\Modules\Wallet\Enums\TransactionReason;
 use App\Modules\Wallet\Enums\WalletOwnerType;
 use App\Modules\Wallet\Services\WalletService;
@@ -260,12 +261,108 @@ class WalletFilterTest extends TestCase
         $this->actingAs($this->superAdmin())
             ->get(route('admin.wallet.index'))
             ->assertOk()
-            ->assertSee(__('Only wallets holding money are listed. Pick a group to see every wallet in it, empty ones included.'), false);
+            ->assertSee(__('Only wallets holding money are listed. Pick a group, or «:every», to see the empty ones too.', ['every' => __('Every wallet')]), false);
 
         $this->actingAs($this->superAdmin())
             ->get(route('admin.wallet.index', ['type' => 'driver']))
             ->assertOk()
             ->assertSee(__('Every wallet in this group is listed, including the empty ones.'), false);
+
+        $this->actingAs($this->superAdmin())
+            ->get(route('admin.wallet.index', ['type' => WalletController::EVERY]))
+            ->assertOk()
+            ->assertSee(__('Every wallet is listed, including the empty ones.'), false);
+    }
+
+    // -------------------------------------------------------- «all» means all
+
+    #[Test]
+    public function the_default_option_no_longer_claims_to_show_everything(): void
+    {
+        $this->seedOneOfEach();
+
+        // The reported bug. The rule was right and the label was not: an option
+        // reading «All wallets» that hides every empty one is a label nobody can
+        // reconcile against the rows under it.
+        $response = $this->actingAs($this->superAdmin())
+            ->get(route('admin.wallet.index'))
+            ->assertOk();
+
+        $response->assertDontSee('All wallets', false);
+        $response->assertSee(__('Wallets holding money'), false);
+        $response->assertSee(__('Every wallet'), false);
+    }
+
+    #[Test]
+    public function every_wallet_really_does_mean_every_wallet(): void
+    {
+        $this->seedOneOfEach();
+
+        $this->actingAs($this->superAdmin())
+            ->get(route('admin.wallet.index', ['type' => WalletController::EVERY]))
+            ->assertOk()
+            // Both the funded and the empty, across every group — no rule at all.
+            ->assertSee('Rich Customer')
+            ->assertSee('Empty Customer')
+            ->assertSee('Rich Driver')
+            ->assertSee('Empty Laundry Owner')
+            ->assertSee('Some Staff')
+            ->assertSee('Platform Holder');
+    }
+
+    #[Test]
+    public function the_default_still_hides_the_empty_ones(): void
+    {
+        $this->seedOneOfEach();
+
+        // The new option must not have widened the default by accident — that
+        // default is what makes the screen open on «where is the money».
+        $this->actingAs($this->superAdmin())
+            ->get(route('admin.wallet.index'))
+            ->assertOk()
+            ->assertSee('Rich Customer')
+            ->assertDontSee('Empty Customer');
+    }
+
+    #[Test]
+    public function the_sentinel_cannot_collide_with_a_group(): void
+    {
+        // `all` is read off the same `type` key the groups use, so a future
+        // WalletOwnerType case called `all` would silently take the list over.
+        $this->assertNull(WalletOwnerType::tryFrom(WalletController::EVERY));
+        $this->assertNotContains(WalletController::EVERY, WalletOwnerType::values());
+    }
+
+    #[Test]
+    public function searching_across_every_wallet_finds_an_empty_one(): void
+    {
+        $this->seedOneOfEach();
+
+        // The list and the search share one query builder; a row that appears
+        // while you type and vanishes when you clear the box reads as data loss.
+        $response = $this->actingAs($this->superAdmin())
+            ->getJson(route('admin.wallet.search', ['query' => 'Empty', 'type' => WalletController::EVERY]), [
+                'X-Requested-With' => 'XMLHttpRequest',
+            ])->assertOk();
+
+        $table = (string) $response->json('table');
+
+        $this->assertStringContainsString('Empty Customer', $table);
+        $this->assertStringContainsString('Empty Laundry Owner', $table);
+    }
+
+    #[Test]
+    public function the_totals_cover_every_wallet_too(): void
+    {
+        $this->seedOneOfEach();
+
+        // Same figure as the default here, because an empty wallet adds nothing
+        // — which is the point: the totals must not change when the row count
+        // does, or the cards and the list are describing different sets.
+        $this->actingAs($this->superAdmin())
+            ->get(route('admin.wallet.index', ['type' => WalletController::EVERY]))
+            ->assertOk()
+            ->assertSee(moneyFormat(182), false);   // 100 + 50 + 7 + 25
     }
 
     #[Test]

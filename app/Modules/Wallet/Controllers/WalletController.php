@@ -27,18 +27,36 @@ use RuntimeException;
  */
 class WalletController extends Controller
 {
+    /**
+     * The filter value that means «every wallet, no rule at all».
+     *
+     * A third state, because the first two were sharing one. An empty `type`
+     * meant both «no group chosen» *and* «only the funded ones», and the option
+     * driving it was labelled «All wallets» — which is the one thing it was not.
+     * The label was reported as a bug, and rightly: the note under it said the
+     * truth and the label won, because nobody reads a caption to find out what a
+     * dropdown they have already read does.
+     *
+     * The default is unchanged and still hides empty wallets, because that is
+     * what makes the screen answer «where is the money». It just no longer claims
+     * to be showing everything.
+     */
+    public const EVERY = 'all';
+
     public function __construct(private readonly WalletService $wallets) {}
 
     public function index(Request $request)
     {
         $type = WalletOwnerType::tryFrom((string) $request->get('type'));
+        $every = $this->wantsEvery($request);
 
-        $wallets = $this->query($type)->paginate(15);
+        $wallets = $this->query($type, $every)->paginate(15);
 
         $view = view('admin.wallet.index', [
             'wallets' => $wallets,
-            'totals' => $this->totals($type),
+            'totals' => $this->totals($type, $every),
             'type' => $type,
+            'every' => $every,
             'types' => WalletOwnerType::cases(),
         ]);
 
@@ -51,7 +69,7 @@ class WalletController extends Controller
             $term = $request->get('query');
             $type = WalletOwnerType::tryFrom((string) $request->get('type'));
 
-            $wallets = $this->query($type)
+            $wallets = $this->query($type, $this->wantsEvery($request))
                 ->when($term, fn ($q) => $q->search($term, [
                     'owner.name', 'owner.phone', 'owner.email',
                 ]))
@@ -67,26 +85,44 @@ class WalletController extends Controller
     }
 
     /**
-     * The list, filtered to one audience or not filtered at all.
+     * Did the operator ask for every wallet, empty ones included?
      *
-     * **Zero-balance wallets are hidden on the unfiltered list and shown on a
-     * filtered one**, and the asymmetry is the point rather than an oversight.
-     * Unfiltered, this screen answers «where is the money», and a page of empty
-     * customer wallets — one is created the first time anybody opens the wallet
-     * screen in the app — buries the rows that hold any. Filtered, the operator
-     * has asked a different question: «show me the laundries». Answering that
-     * with «the laundries that happen to have a balance today» is how somebody
-     * concludes a laundry has no wallet at all.
+     * Read off the same `type` parameter the groups use, so the screen keeps one
+     * dropdown and one query-string key. `WalletOwnerType::tryFrom('all')` is
+     * null, so the sentinel cannot collide with a group.
+     */
+    private function wantsEvery(Request $request): bool
+    {
+        return (string) $request->get('type') === self::EVERY;
+    }
+
+    /**
+     * The list: one audience, everything, or the funded rows only.
+     *
+     * Three states, and the middle one is the reason this has a flag rather than
+     * just a nullable type:
+     *
+     *  - **A group** — every wallet in it, empty ones included. The operator
+     *    asked «show me the laundries», and answering with «the laundries that
+     *    happen to hold a balance today» is how somebody concludes a laundry has
+     *    no wallet at all.
+     *  - **Every wallet** — no rule whatsoever. What «All» has to mean when it
+     *    says «All».
+     *  - **The default** — funded rows only. This screen opens on «where is the
+     *    money», and a page of empty customer wallets (one is created the first
+     *    time anybody opens the wallet screen in the app) buries the rows holding
+     *    any. Kept as the default for exactly that reason; it is the *label* that
+     *    was wrong, not the rule.
      *
      * Shared with search() so a term and a filter cannot disagree — the pair
      * drifting apart is what made searching surface rows the plain list hides.
      *
      * @return Builder<Wallet>
      */
-    private function query(?WalletOwnerType $type): Builder
+    private function query(?WalletOwnerType $type, bool $every = false): Builder
     {
         return Wallet::with('owner:id,name,phone,email,role_id', 'owner.role:id,slug,name')
-            ->when($type === null, fn (Builder $q) => $q->where(
+            ->when($type === null && ! $every, fn (Builder $q) => $q->where(
                 fn (Builder $inner) => $inner->where('balance', '>', 0)->orWhere('pending_balance', '>', 0)
             ))
             ->when($type !== null, fn (Builder $q) => $q->whereHas(
@@ -106,9 +142,9 @@ class WalletController extends Controller
      *
      * @return array<string, float|int>
      */
-    private function totals(?WalletOwnerType $type): array
+    private function totals(?WalletOwnerType $type, bool $every = false): array
     {
-        $scope = fn () => $this->query($type);
+        $scope = fn () => $this->query($type, $every);
 
         return [
             'balance' => (float) $scope()->sum('balance'),

@@ -1754,5 +1754,9 @@
     ":count deduction was withdrawn.|:count deductions were withdrawn.": "تم التراجع عن :count خصومات.|تم التراجع عن خصم واحد.",
     "Say why this is being deducted.": "اكتب سبب الخصم.",
     "All time": "كل الفترات",
-    "Withdraw the deduction standing against this laundry?|Withdraw all :count deductions standing against this laundry?": "تتراجع عن كل الـ :count خصومات القايمة على المغسلة دي؟|تتراجع عن الخصم القايم على المغسلة دي؟"
+    "Withdraw the deduction standing against this laundry?|Withdraw all :count deductions standing against this laundry?": "تتراجع عن كل الـ :count خصومات القايمة على المغسلة دي؟|تتراجع عن الخصم القايم على المغسلة دي؟",
+    "Wallets holding money": "المحافظ اللي فيها رصيد",
+    "Every wallet": "كل المحافظ",
+    "Every wallet is listed, including the empty ones.": "كل المحافظ معروضة، والفاضية كمان.",
+    "Only wallets holding money are listed. Pick a group, or «:every», to see the empty ones too.": "المعروض هنا المحافظ اللي فيها رصيد بس. اختار مجموعة، أو «:every»، عشان تشوف الفاضية كمان."
 }
