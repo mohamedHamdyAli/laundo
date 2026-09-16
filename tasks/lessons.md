@@ -2342,3 +2342,58 @@ distinction.** Sharing the rows removed the «Final total» label, which was the
 only thing telling an operator the price had been reviewed. The test that caught
 it was right to fail. The answer was to say the standing once above the rows,
 not to put the duplicate back.
+
+---
+
+## Arabic plural pairs go in the opposite order to English ones
+
+Writing `trans_choice(':count area|:count areas', 25)` and translating it as
+`'منطقة واحدة|:count مناطق'` — the obvious singular-then-plural reading — rendered
+**«منطقة واحدة» for 25**. It looked right in English and wrong only in Arabic, on
+a screen nobody would open in Arabic while building it.
+
+`MessageSelector::getPluralIndex()` returns **0–5** for Arabic:
+
+| count | 0 | 1 | 2 | 3–10 | 11–99 | 100+ |
+| --- | --- | --- | --- | --- | --- | --- |
+| index | 0 | 1 | 2 | 3 | 4 | 5 |
+
+A translation with only **two** segments has nothing at indices 2–5, and
+`choose()` falls back to `$segments[0]` when the index is not set. So:
+
+- `$segments[1]` is reached **only when the count is exactly 1**
+- `$segments[0]` covers **0, 2, 3, 25, 100 — everything else**
+
+**Rule:** an Arabic two-segment translation reads
+**`[the general form]|[the exactly-one form]`**, the reverse of the
+`singular|plural` English string it translates. `':count منطقة|منطقة واحدة'`.
+`:count` belongs in the *first* segment, because that is the one almost every
+count lands on, and «25 منطقة» is the correct Arabic for 11–99 anyway.
+
+**Rule:** verify it rather than reasoning about it. Two lines settle it:
+
+```php
+$sel = new Illuminate\Translation\MessageSelector();
+foreach ([0,1,2,3,25,100] as $n) { echo $n.' -> '.$sel->choose('FIRST|SECOND', $n, 'ar').PHP_EOL; }
+```
+
+Several pairs already in `resources/lang/ar.json` have the English ordering and
+render «1 سائقين» / «1 أهداف». They were left alone — changing shared keys blind
+to fix a screen they are not on is a wider edit than the bug justifies — but do
+not copy their shape when adding a new one.
+
+## A feature test passing is not the screen working
+
+Twenty green tests covered the figures, the permissions, the search and the
+export, and the screen still shipped two faults that only a browser shows:
+
+- `fa fa-scissors` does not exist in **Font Awesome 5** (it is `fa-cut`), so the
+  action button rendered an empty box. Nothing errors — a missing glyph is
+  silent.
+- The modal never opened. The handler filled the form's action and the fields but
+  nothing called Bootstrap; the existing commission dialog opens itself with
+  `bootstrap.Modal.getOrCreateInstance(...).show()` because the attributes have to
+  be read in *before* it appears.
+
+**Rule:** for a screen with an icon or a dialog, drive it. The assertion
+`assertOk()` cannot see either of these, and neither can PHPStan.

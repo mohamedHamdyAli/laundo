@@ -29,6 +29,7 @@ use App\Modules\Order\Models\OrderRecurrence;
 use App\Modules\Order\Models\OrderTask;
 use App\Modules\Payment\Models\CommissionRule;
 use App\Modules\Payment\Models\DriverEarning;
+use App\Modules\Payment\Models\LaundryRevenue;
 use App\Modules\Payment\Models\OrderSettlement;
 use App\Modules\Payment\Models\Payment;
 use App\Modules\Payment\Models\Refund;
@@ -85,5 +86,8 @@ return [
         DriverEarning::class,
         OrderSettlement::class,
         CommissionRule::class,
+        // Not a table — the permission subject behind «إيرادات المغاسل». Same
+        // device Report::class uses for the five report screens.
+        LaundryRevenue::class,
     ],
 ];

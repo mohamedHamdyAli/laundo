@@ -35,6 +35,7 @@ use App\Modules\Order\Controllers\OrderReviewController as DashboardOrderReviewC
 use App\Modules\Order\Controllers\OrderTaskController;
 use App\Modules\Payment\Controllers\CommissionRuleController;
 use App\Modules\Payment\Controllers\InvoiceController;
+use App\Modules\Payment\Controllers\LaundryRevenueController;
 use App\Modules\Payment\Controllers\PaymentLedgerController;
 use App\Modules\Payment\Controllers\RefundController;
 use App\Modules\Payment\Controllers\SettlementController;
@@ -1009,6 +1010,35 @@ Route::middleware(['auth', 'dashboard.only'])->prefix('/admin')->group(function 
             ->middleware('permission:order_settlement.view')->name('admin.settlement.index');
         Route::get('/settlement/search', 'search')
             ->middleware('permission:order_settlement.view')->name('admin.settlement.search');
+    });
+
+    /*
+    |--------------------------------------------------------------------------
+    | Laundry revenue (إيرادات المغاسل)
+    |--------------------------------------------------------------------------
+    |
+    | The settlements screen beside this one is one row per **order**; this is one
+    | row per **laundry**. Both read the same stored figures, and neither
+    | recomputes a commission — that was decided when the price was agreed.
+    |
+    | Two permissions, deliberately. Reading is `laundry_revenue.view`. The two
+    | writes take money off a laundry, so they sit behind `setting.update`
+    | alongside the commission terms: a laundry owner holds `laundry.update` by
+    | design, so anything deciding what they are paid must hang off a permission
+    | they do not hold. See `MoneyBoundaryTest`.
+    */
+    Route::controller(LaundryRevenueController::class)->group(function () {
+        Route::get('/laundry-revenue', 'index')
+            ->middleware('permission:laundry_revenue.view')->name('admin.laundry_revenue.index');
+        Route::get('/laundry-revenue/search', 'search')
+            ->middleware('permission:laundry_revenue.view')->name('admin.laundry_revenue.search');
+        Route::get('/laundry-revenue/export', 'export')
+            ->middleware('permission:laundry_revenue.view')->name('admin.laundry_revenue.export');
+
+        Route::post('/laundry-revenue/deduct/{laundry}', 'deduct')
+            ->middleware('permission:setting.update')->name('admin.laundry_revenue.deduct');
+        Route::post('/laundry-revenue/reverse/{laundry}', 'reverse')
+            ->middleware('permission:setting.update')->name('admin.laundry_revenue.reverse');
     });
 
     /*

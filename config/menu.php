@@ -166,6 +166,10 @@ return [
                 'order_settlement' => 4,
                 // The terms, beside the settlements they produce.
                 'commission_rule' => 5,
+                // The roll-up, after the detail: settlements are one row per
+                // order, this is one row per laundry — what each brought in,
+                // what the platform took, and what is left to pay them.
+                'laundry_revenue' => 6,
             ],
         ],
 
@@ -242,6 +246,7 @@ return [
         'driver_bonus_award' => 'bi bi-trophy',
         'order_settlement' => 'bi bi-pie-chart-fill',
         'commission_rule' => 'bi bi-percent',
+        'laundry_revenue' => 'bi bi-graph-up-arrow',
 
         'user' => 'bi bi-people',
 
@@ -295,6 +300,7 @@ return [
         'driver_bonus_award' => 'Monthly Bonuses',
         'order_settlement' => 'Order Settlements',
         'commission_rule' => 'Commissions',
+        'laundry_revenue' => 'Laundry Revenue',
 
         'user' => 'Users',
 
@@ -348,6 +354,7 @@ return [
         'driver_bonus_award' => 'admin.driver_bonus.index',
         'order_settlement' => 'admin.settlement.index',
         'commission_rule' => 'admin.commission_rule.index',
+        'laundry_revenue' => 'admin.laundry_revenue.index',
 
         'user' => 'admin.user.index',
 
