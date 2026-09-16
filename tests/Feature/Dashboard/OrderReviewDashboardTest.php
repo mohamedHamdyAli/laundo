@@ -182,8 +182,16 @@ class OrderReviewDashboardTest extends TestCase
 
         $response = $this->actingAs($owner)->get("/admin/order/show/{$order->id}");
 
+        /*
+         * «Final price», not «Final total». The card used to repeat the whole
+         * block below the estimate under `Final …` labels; once the rows became
+         * the bill itself that printed the same number twice under two names, so
+         * the standing moved to one line above them. What this test guards is
+         * unchanged: an operator can see that the price is the reviewed one, and
+         * by how much the review moved it.
+         */
         $response->assertOk()
-            ->assertSee(__('Final total'), false)
+            ->assertSee(__('Final price'), false)
             ->assertSee(__('Difference'), false)
             // And that the order is now waiting on somebody else.
             ->assertSee(__('Waiting for the customer to confirm the final price.'), false);

@@ -303,62 +303,73 @@
                 <div class="card mb-3">
                     <div class="card-header"><h6 class="mb-0">{{ __('Pricing') }}</h6></div>
                     <div class="card-body">
+                        {{-- Which price this is, said once and **above** the rows
+                             it qualifies, because standing applies to everything
+                             under it.
+
+                             It used to be carried by prefixing «Estimated» onto
+                             every label and repeating the whole block below as
+                             «Final …». That printed the same number twice under
+                             two names once the rows became the bill, so the
+                             distinction moved here — where it is one line instead
+                             of five. --}}
+                        @if ($row->hasFinalPrice())
+                            <p class="small text-primary mb-2">
+                                <strong>{{ __('Final price') }}</strong>
+                                <span class="text-muted">{{ __('counted by the laundry') }}</span>
+                            </p>
+                        @else
+                            <p class="small text-muted mb-2">
+                                {{ __('Estimated — the final price is set after the pieces are reviewed.') }}
+                            </p>
+                        @endif
+
                         <table class="table table-sm table-borderless mb-0">
-                            <tr>
-                                <td>{{ __('Estimated subtotal') }}</td>
-                                <td class="text-end">{{ moneyFormat($row->estimated_subtotal) }}</td>
-                            </tr>
-                            <tr>
-                                <td>{{ __('Delivery fee') }}</td>
-                                <td class="text-end">{{ moneyFormat($row->delivery_fee) }}</td>
-                            </tr>
-                            @if ((float) $row->discount_total > 0)
-                                <tr class="text-success">
-                                    <td>{{ __('Discount') }}</td>
-                                    <td class="text-end">- {{ moneyFormat($row->discount_total) }}</td>
-                                </tr>
-                            @endif
-                            @if ((float) $row->cash_surcharge > 0)
-                                <tr>
-                                    <td>{{ __('Cash handling fee') }}</td>
-                                    <td class="text-end">{{ moneyFormat($row->cash_surcharge) }}</td>
-                                </tr>
-                            @endif
-                            @if ((float) $row->estimated_tax > 0)
-                                {{-- The rate beside the amount. An operator
-                                     reading an old order needs to see what it was
-                                     charged at, which is not necessarily what the
-                                     settings say today. --}}
-                                <tr>
+                            {{-- Rendered from `Order::moneyRows()`, which is
+                                 also what the printed invoice renders. The two
+                                 used to assemble these rows separately and said
+                                 different things about the same order — this
+                                 card called it «Estimated subtotal» while the
+                                 invoice called it «Subtotal», and only the
+                                 invoice carried the before-tax line. --}}
+                            @foreach ($row->moneyRows() as $line)
+                                <tr @class([
+                                    'text-success' => $line['kind'] === 'credit',
+                                    'border-top' => in_array($line['kind'], ['subtotal', 'total'], true),
+                                ])>
                                     <td>
-                                        {{ __('Tax') }}
-                                        <small class="text-muted">
-                                            ({{ rtrim(rtrim(number_format($row->taxRate(), 2), '0'), '.') }}%)
-                                        </small>
+                                        @if ($line['kind'] === 'total')<strong>@endif
+                                        {{ $line['label'] }}
+                                        @if ($line['note'])
+                                            <small class="text-muted">({{ $line['note'] }})</small>
+                                        @endif
+                                        @if ($line['kind'] === 'total')</strong>@endif
                                     </td>
-                                    <td class="text-end">{{ moneyFormat($row->estimated_tax) }}</td>
+                                    <td class="text-end">
+                                        @if ($line['kind'] === 'total')<strong>@endif
+                                        {{ moneyFormat($line['amount']) }}
+                                        @if ($line['kind'] === 'total')</strong>@endif
+                                    </td>
                                 </tr>
-                            @endif
-                            <tr class="border-top">
-                                <td><strong>{{ __('Estimated total') }}</strong></td>
-                                <td class="text-end"><strong>{{ moneyFormat($row->estimated_total) }}</strong></td>
-                            </tr>
+                            @endforeach
+
+                            {{-- What follows is this screen's own job and has no
+                                 place on a customer's invoice: the estimate it
+                                 started at and how far the review moved it. --}}
                             @if ($row->hasFinalPrice())
-                                <tr class="border-top">
-                                    <td class="text-muted">{{ __('Final subtotal') }}</td>
-                                    <td class="text-end text-muted">{{ moneyFormat($row->final_subtotal) }}</td>
-                                </tr>
-                                @if ((float) $row->final_tax > 0)
-                                    <tr>
-                                        <td class="text-muted">{{ __('Tax') }}</td>
-                                        <td class="text-end text-muted">{{ moneyFormat($row->final_tax) }}</td>
-                                    </tr>
-                                @endif
-                                <tr class="text-primary">
-                                    <td><strong>{{ __('Final total') }}</strong></td>
-                                    <td class="text-end"><strong>{{ moneyFormat($row->final_total) }}</strong></td>
-                                </tr>
+                                {{-- Inverted deliberately. The rows above are
+                                     now the **bill** — the final figures once the
+                                     laundry has counted — so repeating them here
+                                     as «Final total» would print the same number
+                                     twice under two names. What an operator
+                                     still needs is what it *was* and how far the
+                                     review moved it, which is the one thing the
+                                     bill cannot say about itself. --}}
                                 @php $difference = $row->priceDifference(); @endphp
+                                <tr class="border-top">
+                                    <td class="text-muted">{{ __('Estimated at placement') }}</td>
+                                    <td class="text-end text-muted">{{ moneyFormat($row->estimated_total) }}</td>
+                                </tr>
                                 <tr>
                                     <td class="text-muted">{{ __('Difference') }}</td>
                                     <td class="text-end {{ $difference > 0 ? 'text-danger' : ($difference < 0 ? 'text-success' : 'text-muted') }}">

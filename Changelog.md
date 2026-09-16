@@ -1,5 +1,25 @@
 # Changelog
 
+## 2026-09-16
+
+### Fix
+
+- **The order screen and the printed invoice billed the same order differently.** Each Blade file assembled the money rows itself, so one called it «Estimated subtotal» and the other «Subtotal», and only the invoice carried the subtotal-before-tax line. Two documents about one sum that do not agree is the argument you lose in front of a customer holding the other one. **`Order::moneyRows()`** is now the only place that decides which rows exist, what they are called and in what order; both screens render it and neither can drift. They are still drawn separately — one is a card in a panel, the other a printed page (Model / Blade).
+- The order card's reconciliation block was **inverted** as a consequence: the rows above it are now the bill, so repeating them below as «Final total» printed the same number twice under two names. It shows what the order was estimated at and how far the review moved it — the one thing a bill cannot say about itself (Blade).
+- Sharing the rows removed the **«Final total»** label, which was the only thing telling an operator the price had been reviewed — collapsing a duplicate can delete a distinction. The standing is said once now, above the rows it qualifies: «Final price — counted by the laundry», or the estimate note. One line instead of five (Blade).
+- A discount is carried **negative** in the rows so no renderer has to remember to subtract it, and the subtotal-before-tax line appears only when something actually moved the subtotal rather than restating the row above it. Zero rows are dropped — except the delivery fee, because free delivery is worth saying (Model).
+- The invoice's issue date rendered through `humanDate()` with no format, so it read **«2 weeks ago»**. Right on an operator's screen, useless on a document filed against a date (Blade).
+
+### Feature
+
+- **The invoice is a document now, not a price list with a name on top.** It carries who is billing, who is billed, **who did the work**, the service, the collection and delivery dates with their windows and addresses, how the bag changed hands, the order's status and any special instructions. `InvoiceRenderer` had been eager-loading the service and both addresses since it was written and the view rendered none of them (Service / Blade).
+- Two things stay off it deliberately: **the settlement** — commission and the laundry's share are the platform's arrangement with the shop, and printing them on the customer's copy publishes the margin to the person paying it — and the driver notes and transport legs, which are delivery logistics rather than billing.
+- **«بيانات الجهة المُصدِّرة»** on the settings screen: registered business name, address and tax registration number. Kept apart from `App_Name`, which the apps, the login screen and every push payload read — a registered business is often called something other than the product, and overloading it would rename the product everywhere to fix a piece of paper (Blade / Request).
+
+### Improvement
+
+- **The invoice now goes through `realSetting()`, like the landing page.** Every issuer setting on this install is still the seeded value — `App_Name` is «BaseCode», `Email` is `nahrPhpTeam@nahrPhpTeam.com`, the logo is the shipped `logo1.png` — so the invoice was headed «BaseCode» and adding contact lines naively would have printed a development address on a document a customer keeps. It prints nothing rather than a placeholder (Service).
+
 ## 2026-09-15
 
 ### Feature

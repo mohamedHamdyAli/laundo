@@ -2315,3 +2315,30 @@ return;` — بالمنطق المكتوب في CLAUDE.md إن السويت بت
 **القاعدة:** اقتباس العميل من توثيقك هو ختم زمني. لو بيقتبس جملة انت غيّرتها،
 فهو على نسخة أقدم — اسأل عن البيلد قبل ما تفتح تذكرة على حاجة موجودة. والتوثيق
 البايت هو اللي وَلّد البلاغ، فحدّثه كجزء من الفيكس مش بعديه.
+
+## Two renderers of one number will disagree, and nobody will notice
+
+The brief was «the invoice needs more detail». It did. But the fault worth
+finding was that the order screen and the invoice **billed the same order
+differently** — «Estimated subtotal» against «Subtotal», and a
+subtotal-before-tax line on one and not the other — because each Blade file
+assembled the rows itself.
+
+Nothing failed. Both screens were correct on their own terms and had been for
+months. It is only visible when you put them side by side, which is exactly what
+the owner did and what I had not.
+
+**Rule:** when the same figure is rendered in two places, the *data* is what gets
+shared, not the markup. One method returning labelled rows; each surface draws
+them its own way. Sharing the markup instead would have forced a printed page and
+a panel card into one template, which is a worse fix than the bug.
+
+**Rule:** before adding to a screen that duplicates another, diff the two first.
+«Add the missing details» was the ask; the answer was «and stop them disagreeing»,
+which nobody asked for because nobody had lined them up.
+
+And the consequence to watch for: **collapsing a duplicate can delete a
+distinction.** Sharing the rows removed the «Final total» label, which was the
+only thing telling an operator the price had been reviewed. The test that caught
+it was right to fail. The answer was to say the standing once above the rows,
+not to put the duplicate back.

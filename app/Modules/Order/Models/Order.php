@@ -423,6 +423,80 @@ class Order extends Model
     }
 
     /**
+     * The bill, as the ordered rows that make it up.
+     *
+     * **One source, because there were two and they disagreed.** The order
+     * screen's pricing card and the printed invoice each assembled these rows
+     * in their own Blade file, so the same order showed «Estimated subtotal»
+     * on one and «Subtotal» on the other, and only the invoice carried the
+     * subtotal-before-tax line. Two documents about one sum that do not agree
+     * is the argument you lose in front of a customer.
+     *
+     * They are still rendered separately — one is a card in a panel and the
+     * other is a printed page — but neither decides *which* rows exist or what
+     * they are called.
+     *
+     * Zero rows are dropped rather than printed: a «Discount EGP 0.00» line
+     * invites the question of which discount, and the delivery fee stays even
+     * at zero because free delivery is a thing worth saying.
+     *
+     * @return array<int, array{key: string, label: string, amount: float, note: string|null, kind: string}>
+     */
+    public function moneyRows(): array
+    {
+        $final = $this->hasFinalPrice();
+        $subtotal = (float) ($final ? $this->final_subtotal : $this->estimated_subtotal);
+        $delivery = (float) $this->delivery_fee;
+        $discount = (float) $this->discount_total;
+        $surcharge = (float) $this->cash_surcharge;
+        $tax = $this->payableTax();
+
+        $rows = [
+            ['key' => 'subtotal', 'label' => __('Subtotal'), 'amount' => $subtotal, 'note' => null, 'kind' => 'line'],
+            ['key' => 'delivery_fee', 'label' => __('Delivery fee'), 'amount' => $delivery, 'note' => null, 'kind' => 'line'],
+        ];
+
+        if ($discount > 0) {
+            // Carried negative so nothing downstream has to remember to subtract
+            // it — a sign that lives in the renderer is a sign one renderer
+            // eventually forgets.
+            $rows[] = ['key' => 'discount', 'label' => __('Discount'), 'amount' => -$discount, 'note' => null, 'kind' => 'credit'];
+        }
+
+        if ($surcharge > 0) {
+            // Its own line rather than folded into delivery: the customer can
+            // avoid it by paying another way, and a charge you cannot see is a
+            // charge you cannot avoid.
+            $rows[] = ['key' => 'cash_surcharge', 'label' => __('Cash handling fee'), 'amount' => $surcharge, 'note' => null, 'kind' => 'line'];
+        }
+
+        if ($tax > 0) {
+            // The subtotal-before-tax line only earns its place when something
+            // moved the subtotal; with nothing between them it would restate the
+            // row above it.
+            if ($delivery != 0.0 || $discount > 0 || $surcharge > 0) {
+                $rows[] = ['key' => 'pre_tax', 'label' => __('Subtotal before tax'), 'amount' => $this->preTaxTotal(), 'note' => null, 'kind' => 'subtotal'];
+            }
+
+            // The rate beside the amount, always. An operator reading an old
+            // order needs what it was charged at, which is not necessarily what
+            // the settings say today — the rate is copied onto the order at
+            // placement and never re-read.
+            $rows[] = [
+                'key' => 'tax',
+                'label' => __('Tax'),
+                'amount' => $tax,
+                'note' => rtrim(rtrim(number_format($this->taxRate(), 2), '0'), '.').'%',
+                'kind' => 'line',
+            ];
+        }
+
+        $rows[] = ['key' => 'total', 'label' => __('Total'), 'amount' => $this->payableTotal(), 'note' => null, 'kind' => 'total'];
+
+        return $rows;
+    }
+
+    /**
      * True once the laundry has counted the pieces and set a price.
      */
     public function hasFinalPrice(): bool

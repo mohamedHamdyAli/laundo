@@ -54,6 +54,25 @@ class GeneralSettingRequest extends FormRequest
                 // Capped, because it was uncapped and a fat-fingered 1000 would
                 // have multiplied every invoice in the country by eleven.
                 'Tax' => 'nullable|numeric|min:0|max:100',
+
+                /*
+                 * Who the invoice is from.
+                 *
+                 * `App_Name` is the product's name and is read by the apps, the
+                 * login screen and the push payloads; a registered business is
+                 * often called something else, and the invoice is the one place
+                 * that has to use the registered name. Kept apart rather than
+                 * overloading `App_Name`, which would rename the product
+                 * everywhere to fix a document.
+                 *
+                 * All three are nullable and the invoice prints only what is
+                 * filled — a blank line is better than a guess, and an invoice
+                 * carrying a tax line with no registration number is one an
+                 * accountant cannot file.
+                 */
+                'Invoice_Legal_Name' => 'nullable|string|max:191',
+                'Invoice_Address' => 'nullable|string|max:500',
+                'Invoice_Tax_Number' => 'nullable|string|max:60',
                 // What the platform takes from a laundry on each order. The
                 // general rate; a laundry that negotiated its own overrides it
                 // on its own row.
