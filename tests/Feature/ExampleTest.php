@@ -23,12 +23,16 @@ class ExampleTest extends TestCase
         $this->get('/')->assertOk();
     }
 
-    public function test_a_signed_in_dashboard_user_is_redirected_to_home(): void
+    public function test_a_signed_in_dashboard_user_sees_the_page_and_a_way_in(): void
     {
         $this->seedCore();
 
+        // It used to redirect to /admin/home. Now the panel is offered by the
+        // account bar instead of chosen on the viewer's behalf — the fuller
+        // coverage is in Tests\Feature\Landing\LandingPageTest.
         $this->actingAs($this->superAdmin())
             ->get('/')
-            ->assertRedirect('/admin/home');
+            ->assertOk()
+            ->assertSee('account-bar', false);
     }
 }

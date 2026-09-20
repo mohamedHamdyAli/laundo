@@ -8,18 +8,13 @@ use Illuminate\Support\Facades\Auth;
 class EnsureDashboardRole
 {
     /**
-     * Role types allowed to reach /admin.
+     * Which role types reach /admin is `User::canReachPanel()`, not a list here.
      *
-     * `laundry` shares the same prefix as `dashboard` on purpose: CheckPermission
-     * and MenuBuilder both derive what a user may see from their role's
-     * permissions, so a laundry role with a narrower permission set is confined
-     * automatically and neither of them needed changing. What a laundry user may
-     * see WITHIN an allowed page is enforced separately by the tenant scope.
-     *
-     * `app` (customers and drivers) stays locked out — those are API-only.
+     * It was a private const on this class, which was fine while this was the
+     * only thing asking. The landing page's account bar now asks the same
+     * question — it offers a button into the panel — and a second copy of the
+     * list is how that button comes to invite somebody into a 403.
      */
-    private const ALLOWED_TYPES = ['dashboard', 'laundry'];
-
     public function handle($request, Closure $next)
     {
         $user = Auth::user();
@@ -30,7 +25,7 @@ class EnsureDashboardRole
         }
 
         // لو role مش dashboard أو laundry
-        if (! in_array($user->role->type, self::ALLOWED_TYPES, true)) {
+        if (! $user->canReachPanel()) {
             return abort(403, 'Unauthorized action.');
         }
 

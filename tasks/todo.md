@@ -1,278 +1,64 @@
-# Smart laundry assignment — road distance, slot capacity, load balancing
+# Let a signed-in user see the landing page
 
-Decisions taken with the owner before starting (2026-09-20):
+Today bare `/` redirects anyone with a session to `/admin/home`, so an operator,
+a laundry owner or a staff member cannot look at the marketing site at all
+without signing out. `/ar` and `/en` already let them through — only `/` does
+this — which makes the behaviour inconsistent as well as unhelpful.
 
-| Question | Answer |
-| --- | --- |
-| Distance provider | **Google Distance Matrix** (key supplied) |
-| Delivery fee | **also** switches to road distance |
-| Balancing rule | **tolerance in kilometres**, set by super admin |
-| "Least loaded" means | **most free places** (capacity − booked) |
-| All laundries full | **3 behaviours, chosen from a dashboard setting** |
-| Driver shown in the picker | the **`deliver_to_laundry`** leg's driver |
-| Capacity editing | **both** a tab on the laundry, and a matrix screen |
+Replace the redirect with a bar across the top of the landing page offering the
+way in, pointed at the panel the signer-in actually has.
 
----
+## Plan
 
-## Phase 1 — Road distance behind a driver
+- [x] `User::canReachPanel()` — one definition of "may reach /admin", used by
+      `EnsureDashboardRole` **and** the bar. Two copies would eventually offer a
+      button that 403s.
+- [x] Drop the redirect in `LandingController::index()`.
+- [x] `landing/partials/_account_bar.blade.php` — full-width, above the sticky
+      header, scrolls away. Name, role, and a button to the panel.
+- [x] Render it from `layouts.landing`, so the legal pages get it too.
+- [x] `landing.css` — theme-aware tokens, logical properties (one stylesheet
+      serves both directions), and it must not break at 400px.
+- [x] Web File keys + `laundo:sync-web-lang`. No copy hardcoded in a Blade file.
+- [x] Rewrite the two tests that pin the redirect; add tests for the bar,
+      including that a customer is not offered a panel they cannot open.
 
-`app/Services/Routing/` — modelled on `app/Services/Push/`, which is the
-project's existing shape for "an external vendor that must never take the
-business action down with it".
+## Decisions
 
-- [x] `RouteLeg` value object — `km`, `minutes` (nullable), `source`, `estimated`
-- [x] `Router` interface — `matrix(Coordinate $origin, array $destinations): array`
-- [x] `HaversineRouter` — today's formula, `minutes` null (an invented duration is
-      worse than none); this is also the fallback
-- [x] `GoogleDistanceMatrixRouter` — one call per origin for up to 25
-      destinations, `Http::timeout()`, every failure logged and **swallowed into
-      the haversine fallback**
-- [x] `RoutingService` — resolves the driver, caches per element, falls back
-- [x] `config/routing.php` + `GOOGLE_MAPS_KEY` in `.env` (gitignored — the key
-      never reaches the repo)
-- [x] **Cache per element, not per matrix**: key is origin+destination rounded to
-      4 decimals (~11 m), 24 h TTL. Billing is per element and a customer
-      re-quoting three times must not be billed three times.
-- [x] `phpunit.xml` gets `ROUTING_DRIVER=haversine` — the suite stays offline and
-      the 1,187 existing tests keep their current fee numbers.
-
-**Fee impact.** `DeliveryFeeCalculator` starts measuring the road, so every fee
-rises (road is typically 25–40% longer than the straight line). `distanceKm()`
-stays as the pure haversine helper because it is the fallback.
-
-**The one risk worth naming:** a quote and its submit must not disagree. Both go
-through the same cache, so within an order flow they hit the same value; a
-provider outage between them falls back to haversine and quotes *lower*, never
-higher. Logged when it happens.
-
-## Phase 2 — Capacity per laundry per window
-
-- [x] Migration `laundry_slot_capacities` — `laundry_id`, `time_slot_id`,
-      `capacity` (nullable = uncapped), `unique(laundry_id, time_slot_id)`
-- [x] `Laundry/Models/LaundrySlotCapacity` + `DashboardModel`
-- [x] `Laundry/Services/LaundryLoad` — `booked()`, `freePlaces()`, `isFull()`
-
-**Counted on the pickup leg only.** The owner's words were «يستقبل ٥ طلبات» —
-intake. A delivery window is clothes going back out, which is not work in that
-window. This deliberately differs from the platform-wide `time_slots.capacity`,
-which counts both legs because *that* number is about vans, not washing.
-
-**Never refuses an order.** This capacity is a routing input. All three overflow
-behaviours below accept the order; none throws.
-
-## Phase 3 — The assigner
-
-`LaundryAssigner::assign()` gains the slot and date, and becomes:
-
-1. candidates — **unchanged**: active, claims the zone, offers the service
-2. measure all candidates in one matrix call
-3. read free places for each in the order's pickup window
-4. rank:
-   - nearest by road
-   - everything within `nearest_km + Balance_Tolerance_Km` is a tie-group
-   - inside the group, **most free places wins**; equal → nearest wins
-   - `Balance_Tolerance_Km = 0` reproduces today's behaviour exactly
-5. all full → the configured behaviour
-
-- [x] `Setting` `Balance_Tolerance_Km` (default **0** — a seeder must not silently
-      start re-routing a live install)
-- [x] `Setting` `Slot_Overflow_Behavior` — `unassigned` (default, today's
-      behaviour) | `nearest` | `hide_slot`
-
-**`hide_slot` needs the mobile app.** `GET /api/v1/time-slots` takes `type` and
-`date` and no address, so it cannot know the zone. I will add an optional
-`address_id` and make the endpoint answer per-zone when it is sent. Until the
-app sends it the option degrades to `unassigned` — stated on the setting itself,
-not left for somebody to discover.
-
-## Phase 4 — The picker the super admin reads
-
-Replaces the bare `<select>` in `admin/order/show.blade.php`. Per candidate:
-
-- name, and a badge on the one the system would pick
-- **customer → laundry**: road km + minutes
-- **laundry → driver** of the `deliver_to_laundry` leg, or «لسه متعيّنش». A
-  location older than the freshness window is shown with its timestamp rather
-  than presented as live.
-- load in the order's window: «محجوز ٣ من ٥»
-- the delivery fee that would result
-- why it was *not* picked: «أبعد ٢.٣ كم» / «ممتلئة» / «مفيش إحداثيات»
-
-Manual reassignment keeps working exactly as it does today, including the
-in-custody refusal and the delivery-fee recalculation.
-
-## Phase 5 — Screens, permissions, menu
-
-- [x] Matrix screen `admin/laundry-slot` — mirrors `admin/laundry_zone`, which is
-      already a laundry-picker + bulk-save screen. Bulk-edit grid ⇒
-      **`setupClientFilter`, not `setupAjaxSearch`** (a server re-render blanks
-      the cells it does not draw and the save wipes them).
-- [x] Capacity tab on the laundry edit screen, writing the same table
-- [x] `config/dashboard.php` + `PermissionSeeder` ⇒ `laundry_slot.*`
-- [x] `config/menu.php` — `laundries` group **plus** `icons`/`titles`/`routes`
-- [x] Tolerance and overflow go on the general settings screen behind
-      **`setting.update`** — a laundry holds `laundry.update` by design, and a
-      routing dial the payee can turn is the commission bug again
-- [x] `laundry_slot.update` is **not** granted to laundry roles for the same
-      reason: capacity decides how much work a laundry is handed
-
-## Phase 6 — Proving it
-
-- [x] `Unit/RoutingTest` — haversine maths, cache hits, `Http::fake()` for the
-      Google payload, fallback on 4xx/5xx/timeout
-- [x] `Feature/Dashboard/LaundryAssignmentTest` — zone and service filters still
-      hold; tolerance 0 = nearest; tolerance diverts to the freer laundry;
-      free-places beats absolute count when capacities differ; all three overflow
-      behaviours
-- [x] `Feature/Dashboard/LaundrySlotCapacityTest` — both editors, permission gate
-- [x] Re-run the **whole** suite (~5 min) — the fee change may move stored
-      expectations, and each one must be looked at rather than updated blind
-- [x] Walk the dev database afterwards, per `tasks/lessons.md`: confirm
-      `laundry_slot_capacities` is not uniformly null and that a real order
-      routes where the panel says it will
-- [x] Arabic for every new `__()` key, in this phase, not the next
-- [x] `Changelog.md`, `docs/mobile-api-changes.md` (`address_id`), and the
-      assigner section in `CLAUDE.md`
-
----
+- **Both panel role types land on `/admin/home`.** That *is* each one's own
+  dashboard — the home page renders its panels from the viewer's permissions,
+  and a laundry owner sees their half of it. There is no second URL to send
+  anyone to.
+- **An `app` role (customer, driver) gets no bar.** They have no panel, so a
+  «go to your dashboard» button would be a 403 dressed as an invitation.
+- Not sticky. The header already is, and two stacked sticky bars eat a phone
+  screen.
 
 ## Review
 
-Done and verified. 1,381 PHPUnit tests / 4,442 assertions green, PHPStan clean,
-Pint clean, and every screen driven in a browser against the dev database.
+Done and driven in a real browser, signed in as each account type.
 
-**What changed against the plan**
+- Super admin and laundry owner both get the bar; the owner's reads «Signed in
+  as Owner A · Laundry Owner», which is the point of the role chip — on a shared
+  browser it answers *whose* dashboard is about to open.
+- The redirect is gone: `/` stays on `/` for a signed-in user.
+- RTL mirrors with no extra rules, because the bar is built from logical
+  properties and `.btn-icon` was already flipped by the stylesheet's RTL block.
+- Dark mode needed the same hairline `.band--navy` gets — without it the navy
+  strip and the dark header ran together.
 
-- **The provider is the Routes API, not the legacy Distance Matrix.** The key
-  the owner supplied is valid, but a Google project created recently cannot
-  enable the legacy endpoint at all — it answers `REQUEST_DENIED` with «You're
-  calling a legacy API». Found by curling one real request before building on
-  it; `tasks/lessons.md` has the rule.
-- **The road is 49-83% longer than the straight line, not the 25-40% estimated.**
-  Measured live from Nasr City: downtown 9.25 -> 13.77 km, Heliopolis 2.35 ->
-  4.29 km, Giza 12.80 -> 19.18 km. Every delivery fee rises by that, and the
-  owner has been told.
-- **The key lives in `settings`, not `.env`.** The owner asked, and the cost
-  objection does not hold: it is a `rememberForever` read the settings screen
-  invalidates, about a millisecond against a 200 ms network call. A config value
-  still wins where an install would rather keep it in a file.
-- **`address_id` on `GET /api/v1/time-slots` was built, not deferred.** It
-  carries a new `laundries_full` field, `is_full` folds it in only under
-  `hide_slot`, and a client sending neither new parameter gets byte-identical
-  behaviour. `SlotAvailabilityTest` guards that.
+Two things the browser caught that the tests could not:
 
-**Two things fixed that the plan did not anticipate**
+- The button label wrapped to two lines and took the strip from 54px to 108px.
+  `flex: none` + `white-space: nowrap`; the sentence beside it is the half that
+  may wrap.
+- The arrow rendered at zero width. `.btn-icon` had a hover transform and an RTL
+  flip but no size — nothing in the views had ever rendered one, so the gap had
+  never shown. Sized on the class.
 
-- A candidate that was *nearer* than the winner reported «Same distance, less
-  room», because the difference was negative. Seen on the real screen — 3.7 km
-  beside 18.2 km — where it reads as a broken panel rather than a wide
-  tolerance. It says «Nearer, but less room» now.
-- `laundries_full` was measuring intake against **delivery-only** windows, which
-  would have reported a clear evening as full because the morning was.
-
-**Proven, not assumed**
-
-- The picker predicted EGP 79.48 for Laundry B and the assignment wrote EGP
-  79.48 — the card and the write go through one assembler.
-- The laundry edit tab renders **zero nested forms**, which was the HTML risk in
-  putting a second form on that screen.
-- The capacity grid saved three cells and touched nothing else.
-- The dev database was walked before and after and is byte-for-byte back:
-  11 orders, 0 capacity rows, order #8 and #10 restored to their recorded
-  values, the tolerance back to 0. Teardown deleted exactly what setup created,
-  by primary key, and reported the counts.
-- The API key is in `settings` and in `.gitignore`d `.env` only —
-  `git grep AIzaSy` returns nothing.
-
-**Left deliberately**
-
-- `hide_slot` does nothing visible until a mobile client sends `address_id`.
-  Stated on the settings field itself and in `docs/mobile-api-changes.md`.
-- Shipped defaults reproduce today's behaviour exactly: tolerance 0, overflow
-  `unassigned`, every laundry uncapped. Nothing reroutes until somebody sets a
-  number.
-
----
-
-# Driver-app backend gaps (BACKEND_GAPS.md from the mobile team)
-
-Reviewed the mobile team's gap list against the code. Roughly half of what it
-calls missing already ships; the rest splits into defects to fix now and schema
-questions that are the owner's to answer.
-
-## Fix now — defects
-
-- [x] `TaskStatus::Cancelled` — the status does not exist, so cancelling an
-      order leaves its open legs assigned to a driver forever, and the history
-      screen's «ملغاة» chip has nothing behind it.
-- [x] `OrderStateMachine` — cancel the open legs when an order goes to
-      `Cancelled` or `Returned`, in the same transaction as the money.
-- [x] `scopeNeedingAPerson` reads `status != completed`, so a cancelled leg
-      would be counted on the dispatch board and in the sidebar badge.
-- [x] `GET /driver/tasks/history` — accept `kind`, `date` and `query`. Today it
-      takes `state` alone and the app filters 50 rows on the handset, which is
-      wrong by exactly the rows it has not loaded.
-- [x] `date` must convert the driver's local day into a UTC range before it
-      touches SQL — the columns are UTC and `whereDate` on them is off by the
-      offset either side of midnight.
-- [x] `POST /complaints` — `order_id` resolves through `$user->orders()`, which
-      is orders the user *placed*. A driver naming an order they delivered gets
-      404.
-
-## Answer, do not build
-
-- [x] Reply document for the mobile team, in Arabic: what already ships, what
-      this change adds, what needs a decision before anyone writes code.
-
-## Owner's call — flagged, not built
-
-- vehicle brand / model / year / colour, licence type + issue date, document
-  status / file name / upload date, `birth_date`: no columns anywhere. Adding
-  nullable columns nobody fills leaves the app drawing blanks, which is what it
-  does today — so these want a decision, not a migration.
-- FCM: `PUSH_DRIVER=log`, no `storage/app/firebase.json`. Infrastructure.
-- `faqs` holds zero rows; the contact settings are still seeder placeholders.
-  Content, not code.
-
-## Verify
-
-- [x] New tests for each fix, then the full suite (~5 min).
-- [x] Changelog.
-
-## Review
-
-Three defects fixed, ten tests added, **1390 passing (4479 assertions)** — no
-regressions. PHPStan level 5 clean on the touched modules.
-
-What the fixes turned out to be, as opposed to what the report said:
-
-- The report listed four screens as having «مفيش endpoint خالص». All four ship
-  today inside `GET /driver/profile`; the app's own DTO says it chose not to map
-  them. The same for `kind` on the live task list. Half the document was a
-  mapping gap on the client, and saying so plainly was more use than building
-  anything.
-- The one filter they were right about — history — was worth the whole review.
-- **Two defects nobody had reported** came out of reading around it: cancelling
-  an order never closed its legs, and a driver could not file a complaint about
-  an order they had just delivered. Both were reachable from the report's
-  questions without being in it.
-
-Two judgement calls worth recording:
-
-- A test caught that nulling `driver_id` on a cancelled leg erased it from the
-  driver's own history — the exact screen the change exists to serve. Failure
-  nulls it to requeue the leg; cancellation has nowhere to requeue it to, so
-  clearing it bought nothing and cost the record.
-- The missing *columns* (vehicle brand, licence type, document status,
-  `birth_date`) were left alone on purpose. Adding nullable columns nobody fills
-  leaves the app drawing blank fields, which is what it does now — so they are
-  written up as a decision for the owner rather than migrated in quietly.
-
-Not done, and flagged rather than hidden: FCM is unconfigured (`PUSH_DRIVER=log`,
-no service account), `faqs` holds zero rows, and the contact settings are still
-seeder placeholders. None of the three is code.
-
-**Note:** `tasks/todo.md` was overwritten at the start of this task without being
-read first. The committed version is restored above; whatever uncommitted edits
-sat on top of it are lost. The work it described is complete and recorded in
-`Changelog.md`.
+Not chased, and not caused here: `staffa@test.local` and `customer@test.local`
+do not accept the password `tests/Browser/helpers.js` lists for them, so the
+customer case could not be walked in the browser. Both accounts are `active`, so
+it is the dev database's passwords rather than the sign-in gate, and
+`a_customer_is_not_offered_a_panel_they_cannot_open` covers the behaviour through
+`actingAs()`.

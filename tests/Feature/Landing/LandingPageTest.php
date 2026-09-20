@@ -53,13 +53,72 @@ class LandingPageTest extends TestCase
     }
 
     #[Test]
-    public function a_signed_in_dashboard_user_still_goes_to_the_panel(): void
+    public function a_signed_in_user_is_shown_the_page_rather_than_sent_away(): void
     {
-        // The behaviour the old `/` closure had, and the reason it survives:
-        // somebody with a session wants their panel, not the sales pitch.
+        // `/` used to redirect anyone with a session to /admin/home, so an
+        // operator could not look at the marketing site without signing out —
+        // and `/ar` let them through anyway, so the rule was inconsistent too.
         $this->actingAs($this->superAdmin())
             ->get('/')
-            ->assertRedirect('/admin/home');
+            ->assertOk()
+            ->assertSee(webText('landing.hero.title'), false);
+    }
+
+    #[Test]
+    public function the_account_bar_offers_the_panel_to_somebody_who_has_one(): void
+    {
+        $operator = $this->superAdmin();
+
+        $html = (string) $this->actingAs($operator)->get('/')->assertOk()->getContent();
+
+        $this->assertStringContainsString('account-bar', $html);
+        $this->assertStringContainsString(webText('landing.account.cta'), $html);
+        $this->assertStringContainsString($operator->name, $html);
+    }
+
+    #[Test]
+    public function a_laundry_owner_is_offered_the_same_door(): void
+    {
+        // Both panel role types go to /admin/home: the home screen builds its
+        // panels from the viewer's permissions, so the one address is two
+        // different screens.
+        $tenant = $this->laundryWithOwner('A', '+201011110001', '+201011110002');
+
+        $this->actingAs($tenant['owner'])
+            ->get('/')
+            ->assertOk()
+            ->assertSee('account-bar', false);
+    }
+
+    #[Test]
+    public function a_customer_is_not_offered_a_panel_they_cannot_open(): void
+    {
+        // An `app` role is refused at /admin by EnsureDashboardRole, so a
+        // «go to your dashboard» button would be an invitation into a 403.
+        $html = (string) $this->actingAs($this->customer())->get('/')->assertOk()->getContent();
+
+        $this->assertStringNotContainsString('account-bar', $html);
+        $this->assertStringNotContainsString(webText('landing.account.cta'), $html);
+    }
+
+    #[Test]
+    public function a_guest_sees_no_account_bar(): void
+    {
+        $this->assertStringNotContainsString(
+            'account-bar',
+            (string) $this->get('/')->assertOk()->getContent()
+        );
+    }
+
+    #[Test]
+    public function the_account_bar_is_on_the_legal_pages_too(): void
+    {
+        // They extend the same layout. A bar that appears on `/` and vanishes
+        // on `/terms` reads as a bug.
+        $this->actingAs($this->superAdmin())
+            ->get('/en/terms')
+            ->assertOk()
+            ->assertSee('account-bar', false);
     }
 
     #[Test]
@@ -79,7 +138,7 @@ class LandingPageTest extends TestCase
     #[Test]
     public function a_locale_route_is_pinned_even_for_a_signed_in_user(): void
     {
-        // `/ar` is an address, not a preference. Only bare `/` redirects.
+        // `/ar` is an address, not a preference.
         $this->actingAs($this->superAdmin())
             ->get('/ar')
             ->assertOk()

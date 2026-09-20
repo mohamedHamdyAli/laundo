@@ -6,7 +6,6 @@ use App\Models\Language;
 use App\Modules\Setting\Models\Setting;
 use App\Services\Landing\LandingContentService;
 use Illuminate\Contracts\View\View;
-use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Session;
@@ -40,20 +39,21 @@ class LandingController extends Controller
      * so on only some of the routes that share the method. Reading them
      * explicitly cannot be broken by reordering.
      */
-    public function index(Request $request): View|RedirectResponse
+    public function index(Request $request): View
     {
         $locale = $request->route('locale');
         $locale = is_string($locale) ? $locale : null;
 
-        // Unchanged from the closure this replaced, and pinned by
-        // `ExampleTest::test_a_signed_in_dashboard_user_is_redirected_to_home`:
-        // somebody with a session wants their panel, not the sales pitch.
+        // `/` used to redirect anyone with a session to /admin/home, on the
+        // reasoning that somebody signed in wants their panel rather than the
+        // sales pitch. That is often true and it is not the site's call: an
+        // operator checking how a price renders, an owner reading the page their
+        // applicants arrive from, anybody sent a link — all had to sign out to
+        // see it. And it only ever applied to bare `/`, so `/ar` already showed
+        // them the page; the rule was inconsistent as well as unhelpful.
         //
-        // Only on `/` though. `/ar` is an explicit request for the Arabic
-        // marketing page, and an operator who typed it meant it.
-        if ($locale === null && Auth::check()) {
-            return redirect('/admin/home');
-        }
+        // The way into the panel is offered instead, by the account bar in
+        // `layouts.landing`, which is a link rather than a decision.
 
         // A two-letter code that is not a language row is a 404, not a soft
         // fallback: serving `/zz` the default language would publish the same

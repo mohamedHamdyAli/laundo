@@ -20,10 +20,11 @@ npm run build / npm run dev
 
 Single test: `php artisan test --filter=TestName` · one file: `php artisan test tests/Feature/Api/OrderTest.php` · one suite: `php artisan test --testsuite=Unit`. One browser spec: `npx playwright test tests/Browser/<name>.spec.js`.
 
-The full PHPUnit suite takes **about eight minutes**. That is long enough to
-plan around: use `--filter` while iterating and run the whole thing once, before
-you call the task done. It has grown steadily — if it feels much longer than
-this, re-measure and correct the figure here rather than working around it.
+The full PHPUnit suite takes **five to eight minutes** — two measured runs on
+the same machine came in at 317s and 477s, so budget for the longer one. Use
+`--filter` while iterating and run the whole thing once, before you call the
+task done. It has grown steadily; if it runs much longer than this, re-measure
+and correct the figure here rather than working around it.
 
 PHPUnit runs against in-memory SQLite (`phpunit.xml`); the app itself runs on MySQL. Anything relying on MySQL-only SQL will pass in tests and fail in the app.
 
@@ -602,9 +603,8 @@ Two overlapping caches exist:
 
 ## Testing
 
-Around 1,390 PHPUnit tests and 4,480 assertions, currently green, in roughly
-eight minutes. Real coverage exists — treat a failure as a regression, not as a
-flaky stub.
+Around 1,400 PHPUnit tests and 4,500 assertions, currently green. Real coverage
+exists — treat a failure as a regression, not as a flaky stub.
 
 - Roughly a hundred PHP test files, the bulk of them in `tests/Feature/Dashboard/`
   and `tests/Feature/Api/`, with `tests/Feature/Landing/`, `tests/Feature/Console/`

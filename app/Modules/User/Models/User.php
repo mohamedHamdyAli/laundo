@@ -195,6 +195,34 @@ class User extends Authenticatable
     }
 
     /**
+     * Role types that may reach `/admin`.
+     *
+     * `laundry` shares the prefix with `dashboard` on purpose: CheckPermission
+     * and MenuBuilder derive what a user may see from their role's permissions,
+     * so a laundry role with a narrower set is confined automatically. What they
+     * may see *within* an allowed page is the tenant scope's job.
+     *
+     * `app` — customers and drivers — stays locked out. Those are API-only.
+     *
+     * @var array<int, string>
+     */
+    public const PANEL_ROLE_TYPES = ['dashboard', 'laundry'];
+
+    /**
+     * Whether this account has a panel to go to.
+     *
+     * One definition because two callers must agree: `EnsureDashboardRole`, which
+     * refuses everyone else at `/admin`, and the landing page's account bar,
+     * which offers the way in. A second copy of the test is a button that
+     * invites somebody into a 403.
+     */
+    public function canReachPanel(): bool
+    {
+        return $this->role !== null
+            && in_array($this->role->type, self::PANEL_ROLE_TYPES, true);
+    }
+
+    /**
      * The laundry this account belongs to, for the owner and staff who have one.
      *
      * Null for everybody else — a customer, a driver and a moderator are not

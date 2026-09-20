@@ -86,6 +86,21 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | The account bar
+    |--------------------------------------------------------------------------
+    |
+    | Shown across the top of the public pages to somebody who is signed in and
+    | has a panel to go to. `/` used to redirect them there outright; this
+    | offers the way in instead of deciding for them.
+    |
+    */
+
+    'landing.account.region' => 'Your account',
+    'landing.account.signed_in' => 'Signed in as :name',
+    'landing.account.cta' => 'Go to your dashboard',
+
+    /*
+    |--------------------------------------------------------------------------
     | Hero
     |--------------------------------------------------------------------------
     */

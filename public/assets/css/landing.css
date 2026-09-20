@@ -499,7 +499,14 @@ html[lang="ar"] .band-lead {
                 box-shadow .16s ease, transform .16s ease;
 }
 
+/* Sized here rather than on the one `<svg>` that uses it: the class carried a
+   hover transform and an RTL flip but never a width, because until the account
+   bar nothing in the views actually rendered one — so an unsized SVG collapsed
+   to nothing inside a `flex: none` button. */
 .btn-icon {
+    flex: none;
+    width: 1.05rem;
+    height: 1.05rem;
     transition: transform .16s ease;
 }
 
@@ -575,6 +582,103 @@ html[lang="ar"] .band-lead {
 .pill--warn {
     background: var(--tone-warn-bg);
     color: var(--tone-warn);
+}
+
+/* --------------------------------------------------------------------------
+   Account bar
+
+   Shown above the header to somebody signed in who has a panel to go to. `/`
+   used to redirect them there outright; this is the same destination offered
+   rather than taken.
+
+   Navy on purpose, matching `.band--navy`: it reads as a strip belonging to the
+   application rather than to the marketing page, which is what stops it being
+   mistaken for a promotion. Deliberately NOT sticky — `.site-header` below it
+   already is, and two stacked bars cost a phone a third of its viewport.
+   -------------------------------------------------------------------------- */
+
+.account-bar {
+    background: linear-gradient(160deg, var(--brand-navy), var(--brand-navy-2));
+    color: var(--on-navy);
+    font-size: .9375rem;
+}
+
+.account-bar-inner {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: .75rem 1.25rem;
+    padding-block: .625rem;
+}
+
+.account-bar-who {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: .5rem;
+    margin: 0;
+    min-width: 0;
+}
+
+.account-bar-icon {
+    flex: none;
+    width: 1.125rem;
+    height: 1.125rem;
+    color: var(--on-navy-accent);
+}
+
+/* The role, as a quiet chip after the name. It answers "whose dashboard am I
+   about to open", which is the question a shared browser raises. */
+.account-bar-role {
+    padding: .1rem .5rem;
+    border-radius: var(--radius-pill);
+    background: rgba(255, 255, 255, .12);
+    color: var(--on-navy-muted);
+    font-size: .8125rem;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+/* Smaller than the page's CTAs. This is a utility link on every page, not the
+   thing any of them is asking anybody to do.
+
+   `flex: none` and `nowrap` together: as a shrinkable flex item the label broke
+   across two lines and took the whole strip from 54px to 108px, which is a lot
+   of a phone's first screen spent on a link most people use once. The sentence
+   beside it is the part that may wrap. */
+.btn--bar {
+    flex: none;
+    padding: .45rem .9rem;
+    font-size: .875rem;
+    white-space: nowrap;
+}
+
+/* In dark mode the navy is close enough to the page ground that the strip's
+   edge disappears — the same hairline `.band--navy` gets, for the same reason.
+   Both blocks, because neither state implies the other. */
+html.landing.theme-dark .account-bar {
+    border-block-end: 1px solid rgba(255, 255, 255, .07);
+}
+
+@media (prefers-color-scheme: dark) {
+    html.landing:not(.theme-light) .account-bar {
+        border-block-end: 1px solid rgba(255, 255, 255, .07);
+    }
+}
+
+/* On a phone the two halves stack and the button goes full width, so it is not
+   a 40px target floating beside a wrapped sentence. */
+@media (max-width: 34rem) {
+    .account-bar-inner {
+        align-items: stretch;
+        justify-content: flex-start;
+    }
+
+    .btn--bar {
+        width: 100%;
+        justify-content: center;
+    }
 }
 
 /* --------------------------------------------------------------------------

@@ -102,6 +102,13 @@
 <body>
 <a class="skip-link" href="#main">{{ webText('landing.nav.skip') }}</a>
 
+{{-- Above the header rather than inside it: the header is the site's own
+     navigation and this is about the viewer's account, which is a different
+     thing wearing a different colour. Included here so the legal pages carry it
+     too — they extend this layout, and a bar that appears on `/` and vanishes
+     on `/terms` reads as a bug. --}}
+@include('landing.partials._account_bar')
+
 @include('landing.partials._header')
 
 <main id="main">
