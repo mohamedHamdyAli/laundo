@@ -13,6 +13,7 @@ use App\Modules\Order\Services\TaskService;
 use App\Modules\Payment\Models\DriverEarning;
 use App\Modules\Payment\Services\EarningService;
 use App\Modules\Wallet\Services\WalletService;
+use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -47,28 +48,8 @@ class DriverTaskController extends Controller
             default => $query,
         };
 
-        // الكل / استلام / تسليم
-        $kind = $request->get('kind');
-
-        if ($kind === 'collection') {
-            $query->whereIn('type', [
-                TaskType::PickupFromCustomer->value,
-                TaskType::CollectFromLaundry->value,
-            ]);
-        } elseif ($kind === 'delivery') {
-            $query->whereIn('type', [
-                TaskType::DeliverToLaundry->value,
-                TaskType::DeliverToCustomer->value,
-            ]);
-        }
-
-        // «ابحث برقم الطلب أو اسم العميل»
-        if ($term = $request->get('query')) {
-            $query->whereHas('order', function ($q) use ($term) {
-                $q->where('code', 'like', "%{$term}%")
-                    ->orWhereHas('customer', fn ($c) => $c->where('name', 'like', "%{$term}%"));
-            });
-        }
+        $this->applyKind($query, $request->get('kind'));
+        $this->applySearch($query, $request->get('query'));
 
         $tasks = $query->inDueOrder()
             ->paginate(min((int) $request->get('per_page', 20), 50));
@@ -126,19 +107,38 @@ class DriverTaskController extends Controller
 
     /**
      * «السجل» — what is already done.
+     *
+     * Takes the same three filters as the live list plus a day, because the
+     * screen draws all four and the app was applying three of them to the page
+     * it happened to be holding. Client-side filtering of a paginated list is
+     * wrong by exactly the rows it has not loaded: past fifty finished legs, a
+     * search for an old order code found nothing and a date in a previous week
+     * came back empty — both of them confidently, which is the worst way to be
+     * wrong.
      */
     public function history(Request $request): JsonResponse
     {
-        $query = $this->scope($request)->whereIn('status', [
-            TaskStatus::Completed->value,
-            TaskStatus::Failed->value,
+        $request->validate([
+            'state' => ['nullable', Rule::in(['all', 'completed', 'failed', 'cancelled'])],
+            'kind' => ['nullable', Rule::in(['collection', 'delivery'])],
+            // The driver's own day, not a timestamp: the screen offers a date
+            // picker. Validated rather than parsed leniently so a malformed
+            // value is a 422 the app can show, not a silently ignored filter.
+            'date' => ['nullable', 'date_format:Y-m-d'],
+            'per_page' => ['nullable', 'integer', 'min:1', 'max:50'],
         ]);
 
-        if ($request->get('state') === 'completed') {
-            $query->where('status', TaskStatus::Completed->value);
-        } elseif ($request->get('state') === 'failed') {
-            $query->where('status', TaskStatus::Failed->value);
+        $query = $this->scope($request)->finished();
+
+        $state = $request->get('state', 'all');
+
+        if ($state !== 'all' && $state !== null) {
+            $query->where('status', TaskStatus::from($state)->value);
         }
+
+        $this->applyKind($query, $request->get('kind'));
+        $this->applySearch($query, $request->get('query'));
+        $this->applyDay($query, $request->get('date'));
 
         // `id` behind `updated_at` for the same reason the live list is tie-broken:
         // a batch of legs finished in one transaction shares a timestamp to the
@@ -370,6 +370,84 @@ class DriverTaskController extends Controller
                 'order.deliveryAddress:id,street,lat,lng',
                 'order.laundry:id,name,address,lat,lng',
             ]);
+    }
+
+    /**
+     * «الكل / استلام / تسليم».
+     *
+     * One definition shared by the live list and the history, because two copies
+     * of this mapping is two answers to «is collecting from the laundry a
+     * pickup?» — it is, and the four legs pair up two and two.
+     *
+     * @param  mixed  $kind
+     */
+    private function applyKind($query, $kind): void
+    {
+        if ($kind === 'collection') {
+            $query->whereIn('type', [
+                TaskType::PickupFromCustomer->value,
+                TaskType::CollectFromLaundry->value,
+            ]);
+        } elseif ($kind === 'delivery') {
+            $query->whereIn('type', [
+                TaskType::DeliverToLaundry->value,
+                TaskType::DeliverToCustomer->value,
+            ]);
+        }
+    }
+
+    /**
+     * «ابحث برقم الطلب أو اسم العميل».
+     *
+     * @param  mixed  $term
+     */
+    private function applySearch($query, $term): void
+    {
+        if (blank($term)) {
+            return;
+        }
+
+        $term = trim((string) $term);
+
+        $query->whereHas('order', function ($q) use ($term) {
+            $q->where('code', 'like', "%{$term}%")
+                ->orWhereHas('customer', fn ($c) => $c->where('name', 'like', "%{$term}%"));
+        });
+    }
+
+    /**
+     * One day of history, as the driver reckons a day.
+     *
+     * The columns are UTC and the driver is not, so this resolves the requested
+     * date in the display timezone and compares against the half-open range it
+     * covers. `whereDate` on a UTC column would have answered a different
+     * question — everything either side of midnight lands in the wrong day by
+     * exactly the offset, which is three hours of work filed under yesterday.
+     *
+     * The timestamp compared is the one the row reports as its own: a completed
+     * leg carries `completed_at`, while a failed or cancelled one never got that
+     * far and is stamped only by the write that ended it. Same expression the
+     * list is ordered by, so the filter and the ordering cannot disagree.
+     *
+     * @param  mixed  $date
+     */
+    private function applyDay($query, $date): void
+    {
+        if (blank($date)) {
+            return;
+        }
+
+        $zone = displayTimezone();
+        $start = Carbon::createFromFormat('Y-m-d', (string) $date, $zone)->startOfDay();
+
+        $query->whereRaw(
+            'coalesce(order_tasks.completed_at, order_tasks.updated_at) >= ?'
+            .' and coalesce(order_tasks.completed_at, order_tasks.updated_at) < ?',
+            [
+                $start->copy()->utc()->toDateTimeString(),
+                $start->copy()->addDay()->utc()->toDateTimeString(),
+            ]
+        );
     }
 
     private function find(Request $request, $id): ?OrderTask

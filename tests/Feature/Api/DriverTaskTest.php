@@ -643,6 +643,172 @@ class DriverTaskTest extends TestCase
         $this->assertTrue($other['requires_note']);
     }
 
+    // ------------------------------- the history filters the driver app asked for
+
+    #[Test]
+    public function the_history_filters_by_leg_kind(): void
+    {
+        $driver = $this->eligibleDriver();
+        $order = $this->placedOrder();
+
+        // Leg 1 is a collection, leg 2 a delivery.
+        $this->walk($order, TaskType::PickupFromCustomer, $driver, ['piece_count' => 3], signed: true);
+        $this->walk($order, TaskType::DeliverToLaundry, $driver, ['piece_count' => 3]);
+
+        Sanctum::actingAs($driver);
+
+        $collection = $this->getJson('/api/v1/driver/tasks/history?kind=collection', $this->apiHeaders());
+        $delivery = $this->getJson('/api/v1/driver/tasks/history?kind=delivery', $this->apiHeaders());
+
+        $collection->assertOk();
+        $this->assertSame(['pickup_from_customer'], collect($collection->json('data'))->pluck('type')->all());
+        $this->assertSame(['deliver_to_laundry'], collect($delivery->json('data'))->pluck('type')->all());
+    }
+
+    #[Test]
+    public function the_history_searches_by_order_code(): void
+    {
+        $driver = $this->eligibleDriver();
+        $mine = $this->placedOrder();
+        $other = $this->placedOrder('+201099887755');
+
+        $this->walk($mine, TaskType::PickupFromCustomer, $driver, ['piece_count' => 1], signed: true);
+        $this->walk($other, TaskType::PickupFromCustomer, $driver, ['piece_count' => 1], signed: true);
+
+        Sanctum::actingAs($driver);
+
+        $response = $this->getJson(
+            '/api/v1/driver/tasks/history?query='.$mine->code,
+            $this->apiHeaders()
+        );
+
+        $response->assertOk();
+        $this->assertSame([$mine->code], collect($response->json('data'))->pluck('order_code')->all());
+    }
+
+    /**
+     * The one that cannot be got right by accident.
+     *
+     * The columns are UTC and the driver is not. A leg finished at 22:30 UTC
+     * happened at half past one the **next** morning in a +03:00 city, and the
+     * date picker is showing the driver their own calendar — so `whereDate` on
+     * the raw column files three hours of every night under the wrong day.
+     */
+    #[Test]
+    public function the_history_reckons_a_day_in_the_drivers_timezone(): void
+    {
+        config(['app.display_timezone' => 'Asia/Riyadh']);
+
+        $driver = $this->eligibleDriver();
+        $order = $this->placedOrder();
+
+        $this->walk($order, TaskType::PickupFromCustomer, $driver, ['piece_count' => 1], signed: true);
+
+        // 22:30 on the 20th in UTC is 01:30 on the 21st where the driver is.
+        OrderTask::where('order_id', $order->id)
+            ->where('type', TaskType::PickupFromCustomer->value)
+            ->update(['completed_at' => '2026-09-20 22:30:00', 'updated_at' => '2026-09-20 22:30:00']);
+
+        Sanctum::actingAs($driver);
+
+        $local = $this->getJson('/api/v1/driver/tasks/history?date=2026-09-21', $this->apiHeaders());
+        $utc = $this->getJson('/api/v1/driver/tasks/history?date=2026-09-20', $this->apiHeaders());
+
+        $this->assertCount(1, $local->json('data'), 'The leg belongs to the day the driver lived it.');
+        $this->assertCount(0, $utc->json('data'), 'A UTC-shaped day filter would have matched here.');
+    }
+
+    #[Test]
+    public function a_malformed_day_is_refused_rather_than_ignored(): void
+    {
+        $driver = $this->eligibleDriver();
+        Sanctum::actingAs($driver);
+
+        // Silently dropping it would answer with the whole history and look like
+        // a filter that found everything.
+        $this->getJson('/api/v1/driver/tasks/history?date=20-09-2026', $this->apiHeaders())
+            ->assertStatus(422);
+    }
+
+    // ------------------------------------------- an order that stops mid-journey
+
+    #[Test]
+    public function cancelling_an_order_stands_down_the_legs_nobody_will_drive(): void
+    {
+        $driver = $this->eligibleDriver();
+        $order = $this->placedOrder();
+
+        $this->assertSame(4, OrderTask::where('order_id', $order->id)->open()->count());
+
+        app(OrderStateMachine::class)->transition($order, OrderStatus::Cancelled, 'customer');
+
+        $tasks = OrderTask::where('order_id', $order->id)->get();
+
+        $this->assertTrue(
+            $tasks->every(fn ($t) => $t->status === TaskStatus::Cancelled),
+            'Every open leg of a cancelled order is closed.'
+        );
+        // Not failed: nobody went anywhere, and a failure would be booked
+        // against the driver in the monthly bonus gates.
+        $this->assertTrue($tasks->every(fn ($t) => $t->failure_reason === null));
+        // The holder is kept, or «ملغاة» in their history would be empty.
+        $this->assertTrue($tasks->every(fn ($t) => $t->driver_id === $driver->id));
+        $this->assertSame(0, OrderTask::where('order_id', $order->id)->open()->count());
+    }
+
+    #[Test]
+    public function a_cancelled_leg_leaves_the_dispatch_board_and_joins_the_history(): void
+    {
+        $driver = $this->eligibleDriver();
+        $order = $this->placedOrder();
+
+        app(OrderStateMachine::class)->transition($order, OrderStatus::Cancelled, 'customer');
+
+        // The board counts work waiting on a person. Nobody is waiting on these.
+        $this->assertSame(0, OrderTask::where('order_id', $order->id)->needingAPerson()->count());
+
+        Sanctum::actingAs($driver);
+
+        $response = $this->getJson('/api/v1/driver/tasks/history?state=cancelled', $this->apiHeaders());
+
+        $response->assertOk();
+        $this->assertSame(4, $response->json('meta.total'));
+        $this->assertTrue(
+            collect($response->json('data'))->every(fn ($row) => $row['status'] === 'cancelled')
+        );
+    }
+
+    #[Test]
+    public function a_completed_leg_survives_the_order_being_returned(): void
+    {
+        $driver = $this->eligibleDriver();
+        $order = $this->placedOrder();
+
+        // The pieces really were collected and really did reach the laundry.
+        $this->walk($order, TaskType::PickupFromCustomer, $driver, ['piece_count' => 2], signed: true);
+        $this->walk($order, TaskType::DeliverToLaundry, $driver, ['piece_count' => 2]);
+
+        app(OrderReviewService::class)->review(
+            $order->fresh(),
+            [['item_id' => $this->catalog['items'][0]->id, 'qty' => 2]],
+            null,
+            $this->tenant['owner']
+        );
+
+        // «returned» is not «cancelled»: the pieces go back, and the two legs
+        // already walked are work the driver is owed for.
+        app(OrderStateMachine::class)->transition($order->fresh(), OrderStatus::Returned, 'admin');
+
+        $tasks = OrderTask::where('order_id', $order->id)->orderBy('sequence')->get();
+
+        $this->assertSame(TaskStatus::Completed, $tasks[0]->status);
+        $this->assertSame(TaskStatus::Completed, $tasks[1]->status);
+        $this->assertSame($driver->id, $tasks[0]->driver_id);
+        // The two that were never going to happen now say so.
+        $this->assertSame(TaskStatus::Cancelled, $tasks[2]->status);
+        $this->assertSame(TaskStatus::Cancelled, $tasks[3]->status);
+    }
+
     // ------------------------------------------------------------------ helpers
 
     // ------------------------------------- what the mobile team asked us about

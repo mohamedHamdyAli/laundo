@@ -4,8 +4,11 @@ namespace Tests\Feature\Api;
 
 use App\Modules\Complaint\Enums\ComplaintStatus;
 use App\Modules\Complaint\Models\Complaint;
+use App\Modules\Order\Enums\TaskStatus;
+use App\Modules\Order\Enums\TaskType;
 use App\Modules\Order\Models\Order;
 use App\Modules\Order\Models\OrderRating;
+use App\Modules\Order\Models\OrderTask;
 use App\Modules\Order\Services\OrderService;
 use App\Modules\User\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -114,6 +117,55 @@ class ComplaintTest extends TestCase
         $this->assertNull($complaint->order_id);
         $this->assertNull($complaint->laundry_id);
         $this->assertSame($this->driver->id, $complaint->user_id);
+    }
+
+    #[Test]
+    public function a_driver_can_name_the_order_they_were_sent_on(): void
+    {
+        $order = $this->order();
+
+        // The four legs already exist — placing the order generates them — so
+        // this hands one to the driver rather than inventing a fifth.
+        OrderTask::where('order_id', $order->id)
+            ->where('type', TaskType::PickupFromCustomer->value)
+            ->update(['driver_id' => $this->driver->id, 'status' => TaskStatus::Completed->value]);
+
+        // «مشكلة مع العميل» is about a specific doorstep or it is about nothing.
+        // The check used to run through the complainant's *placed* orders, so a
+        // driver quoting the job they had just been on was told it did not exist.
+        $this->actingAs($this->driver)
+            ->postJson('/api/v1/complaints', [
+                'category' => 'driver_conduct',
+                'body' => 'العميل مكانش موجود واتصلت عليه خمس مرات',
+                'order_id' => $order->id,
+            ])
+            ->assertCreated();
+
+        $complaint = Complaint::firstOrFail();
+
+        $this->assertSame($order->id, $complaint->order_id);
+        $this->assertSame($this->driver->id, $complaint->user_id);
+        // Still copied from the order, never from the payload: it is what counts
+        // the complaint against the right laundry.
+        $this->assertSame($order->laundry_id, $complaint->laundry_id);
+    }
+
+    #[Test]
+    public function a_driver_cannot_name_an_order_they_were_never_sent_on(): void
+    {
+        $order = $this->order();
+
+        // No task, no standing. Widening the check to "any driver, any order"
+        // would have handed every driver every order in the system.
+        $this->actingAs($this->driver)
+            ->postJson('/api/v1/complaints', [
+                'category' => 'driver_conduct',
+                'body' => 'an order I have never been near',
+                'order_id' => $order->id,
+            ])
+            ->assertNotFound();
+
+        $this->assertSame(0, Complaint::count());
     }
 
     #[Test]

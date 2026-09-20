@@ -138,11 +138,35 @@ class OrderTask extends Model
      *
      * `queued()` stays what it is: dispatch uses it to mean «in the pool», which
      * is a different question from «needs a person».
+     *
+     * Written against the finished statuses rather than against `completed`
+     * alone: a leg of a cancelled order has no driver and is not completed, so
+     * the original test counted it as work waiting on somebody. Nobody is going
+     * to drive it, and a dispatch board that lists it teaches an operator to
+     * scroll past the ones that are real.
      */
     public function scopeNeedingAPerson(Builder $query): Builder
     {
         return $query->whereNull('driver_id')
-            ->where('status', '!=', TaskStatus::Completed->value);
+            ->whereNotIn('status', [
+                TaskStatus::Completed->value,
+                TaskStatus::Cancelled->value,
+            ]);
+    }
+
+    /**
+     * «السجل» — the legs that are over, however they ended.
+     *
+     * One definition because the driver app's history screen and its filter have
+     * to agree on what «الكل» contains.
+     */
+    public function scopeFinished(Builder $query): Builder
+    {
+        return $query->whereIn('status', [
+            TaskStatus::Completed->value,
+            TaskStatus::Failed->value,
+            TaskStatus::Cancelled->value,
+        ]);
     }
 
     /**

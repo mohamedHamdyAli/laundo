@@ -35,6 +35,31 @@ class ComplaintService
     public const MAX_ATTACHMENTS = 5;
 
     /**
+     * The orders this complainant is entitled to name.
+     *
+     * Two ways in, because two apps reach this endpoint. A customer may name an
+     * order they placed. A **driver** may name one they were given a leg of —
+     * which is the whole reason `order_id` is optional in the request, and was
+     * exactly the case that could not be filed: the check ran through
+     * `$user->orders()`, the orders a user *placed*, so a driver quoting the job
+     * they had just been on was told their own order did not exist. «مشكلة مع
+     * العميل» is a complaint about a specific delivery or it is nothing.
+     *
+     * Still a whitelist rather than a plain lookup, and that is the point: an
+     * order nobody involved you in is a refusal, not a complaint filed against a
+     * stranger's laundry.
+     */
+    private function orderTheyCanName(User $complainant, int $orderId): ?Order
+    {
+        return Order::where('id', $orderId)
+            ->where(function ($query) use ($complainant) {
+                $query->where('user_id', $complainant->id)
+                    ->orWhereHas('tasks', fn ($task) => $task->where('driver_id', $complainant->id));
+            })
+            ->first();
+    }
+
+    /**
      * @param  array{category: string, body: string, order_id?: int|null, photos?: array<int, UploadedFile>}  $data
      */
     public function submit(User $complainant, array $data): Complaint
@@ -42,9 +67,7 @@ class ComplaintService
         $order = null;
 
         if (filled($data['order_id'] ?? null)) {
-            // Through the user's own orders, so naming somebody else's order id is
-            // a refusal rather than a complaint filed against a stranger's laundry.
-            $order = $complainant->orders()->find($data['order_id']);
+            $order = $this->orderTheyCanName($complainant, (int) $data['order_id']);
 
             if ($order === null) {
                 throw new RuntimeException('order_not_found');

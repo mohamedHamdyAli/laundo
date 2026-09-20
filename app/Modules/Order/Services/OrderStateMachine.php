@@ -4,8 +4,10 @@ namespace App\Modules\Order\Services;
 
 use App\Modules\Notification\Services\OrderNotifier;
 use App\Modules\Order\Enums\OrderStatus;
+use App\Modules\Order\Enums\TaskStatus;
 use App\Modules\Order\Models\Order;
 use App\Modules\Order\Models\OrderStatusLog;
+use App\Modules\Order\Models\OrderTask;
 use App\Modules\Payment\Services\EarningService;
 use App\Modules\Payment\Services\SettlementService;
 use App\Modules\User\Models\User;
@@ -65,6 +67,7 @@ class OrderStateMachine
             ]);
 
             $this->settleMoney($order, $to);
+            $this->standDownTasks($order, $to);
             $this->announce($order, $to);
 
             return $order->refresh();
@@ -192,6 +195,48 @@ class OrderStateMachine
             $earnings->cancelFor($order);
             $settlements->cancelFor($order);
         }
+    }
+
+    /**
+     * Close the legs nobody is going to drive.
+     *
+     * An order that stops still had its four legs generated, and nothing ever
+     * closed them: cancelling an order moved the money and left every open task
+     * exactly where it was. The driver holding one kept it in «مهامي» with no way
+     * to finish it — start and complete both refuse, because the order is no
+     * longer in a status that accepts them — and an unassigned one sat on the
+     * dispatch board as work waiting for somebody.
+     *
+     * `Cancelled` rather than `Failed`, for the reason the enum gives: a failure
+     * is a driver who went and could not do it, and booking one against every
+     * driver holding a leg of a called-off order would be a lie told to the
+     * monthly bonus gates.
+     *
+     * Completed legs are left alone. On a `Returned` order the pieces really were
+     * collected and really did reach the laundry, and rewriting that history
+     * would erase the work the driver is owed for.
+     *
+     * `driver_id` is kept, unlike on a failure. Failure nulls it to put the leg
+     * back in the pool for somebody else; a cancelled leg is going back nowhere,
+     * so clearing it would buy nothing and cost the driver the row — «ملغاة» in
+     * their history is the screen that tells them why the job they were holding
+     * disappeared, and it is scoped to the legs that were theirs.
+     *
+     * In the transaction with the status change and the money, because a cancelled
+     * order whose tasks survived the rollback is the state this exists to prevent.
+     */
+    private function standDownTasks(Order $order, OrderStatus $to): void
+    {
+        if ($to !== OrderStatus::Cancelled && $to !== OrderStatus::Returned) {
+            return;
+        }
+
+        // Straight at the model rather than through `$order->tasks()`, whose
+        // relation carries an `orderBy('sequence')`. SQLite has no
+        // `UPDATE ... ORDER BY`, and the suite runs on SQLite.
+        OrderTask::where('order_id', $order->id)->open()->update([
+            'status' => TaskStatus::Cancelled->value,
+        ]);
     }
 
     /**

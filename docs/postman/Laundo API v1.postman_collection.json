@@ -5396,7 +5396,25 @@
                     {
                       "key": "state",
                       "value": "completed",
-                      "description": "completed | failed. Omit for both.",
+                      "description": "all | completed | failed | cancelled. Omit for all three.",
+                      "disabled": true
+                    },
+                    {
+                      "key": "kind",
+                      "value": "collection",
+                      "description": "collection | delivery. collection is pickup_from_customer + collect_from_laundry; delivery is the other two.",
+                      "disabled": true
+                    },
+                    {
+                      "key": "date",
+                      "value": "2026-09-20",
+                      "description": "YYYY-MM-DD. The driver's own day: resolved in the display timezone and converted to a UTC range server-side, so send the date as the date picker shows it. A malformed value is a 422, not an ignored filter.",
+                      "disabled": true
+                    },
+                    {
+                      "key": "query",
+                      "value": "10014",
+                      "description": "Order code or customer name.",
                       "disabled": true
                     },
                     {
@@ -5412,7 +5430,7 @@
                     }
                   ]
                 },
-                "description": "«السجل» — what is already done, with durations and any failure reason.",
+                "description": "«السجل» — what is already done, with durations and any failure reason. Takes the same kind/query filters as the live list plus a day, so the app never has to filter a page on the handset.",
                 "auth": {
                   "type": "bearer",
                   "bearer": [

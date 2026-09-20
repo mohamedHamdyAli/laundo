@@ -191,3 +191,88 @@ Pint clean, and every screen driven in a browser against the dev database.
 - Shipped defaults reproduce today's behaviour exactly: tolerance 0, overflow
   `unassigned`, every laundry uncapped. Nothing reroutes until somebody sets a
   number.
+
+---
+
+# Driver-app backend gaps (BACKEND_GAPS.md from the mobile team)
+
+Reviewed the mobile team's gap list against the code. Roughly half of what it
+calls missing already ships; the rest splits into defects to fix now and schema
+questions that are the owner's to answer.
+
+## Fix now — defects
+
+- [x] `TaskStatus::Cancelled` — the status does not exist, so cancelling an
+      order leaves its open legs assigned to a driver forever, and the history
+      screen's «ملغاة» chip has nothing behind it.
+- [x] `OrderStateMachine` — cancel the open legs when an order goes to
+      `Cancelled` or `Returned`, in the same transaction as the money.
+- [x] `scopeNeedingAPerson` reads `status != completed`, so a cancelled leg
+      would be counted on the dispatch board and in the sidebar badge.
+- [x] `GET /driver/tasks/history` — accept `kind`, `date` and `query`. Today it
+      takes `state` alone and the app filters 50 rows on the handset, which is
+      wrong by exactly the rows it has not loaded.
+- [x] `date` must convert the driver's local day into a UTC range before it
+      touches SQL — the columns are UTC and `whereDate` on them is off by the
+      offset either side of midnight.
+- [x] `POST /complaints` — `order_id` resolves through `$user->orders()`, which
+      is orders the user *placed*. A driver naming an order they delivered gets
+      404.
+
+## Answer, do not build
+
+- [x] Reply document for the mobile team, in Arabic: what already ships, what
+      this change adds, what needs a decision before anyone writes code.
+
+## Owner's call — flagged, not built
+
+- vehicle brand / model / year / colour, licence type + issue date, document
+  status / file name / upload date, `birth_date`: no columns anywhere. Adding
+  nullable columns nobody fills leaves the app drawing blanks, which is what it
+  does today — so these want a decision, not a migration.
+- FCM: `PUSH_DRIVER=log`, no `storage/app/firebase.json`. Infrastructure.
+- `faqs` holds zero rows; the contact settings are still seeder placeholders.
+  Content, not code.
+
+## Verify
+
+- [x] New tests for each fix, then the full suite (~5 min).
+- [x] Changelog.
+
+## Review
+
+Three defects fixed, ten tests added, **1390 passing (4479 assertions)** — no
+regressions. PHPStan level 5 clean on the touched modules.
+
+What the fixes turned out to be, as opposed to what the report said:
+
+- The report listed four screens as having «مفيش endpoint خالص». All four ship
+  today inside `GET /driver/profile`; the app's own DTO says it chose not to map
+  them. The same for `kind` on the live task list. Half the document was a
+  mapping gap on the client, and saying so plainly was more use than building
+  anything.
+- The one filter they were right about — history — was worth the whole review.
+- **Two defects nobody had reported** came out of reading around it: cancelling
+  an order never closed its legs, and a driver could not file a complaint about
+  an order they had just delivered. Both were reachable from the report's
+  questions without being in it.
+
+Two judgement calls worth recording:
+
+- A test caught that nulling `driver_id` on a cancelled leg erased it from the
+  driver's own history — the exact screen the change exists to serve. Failure
+  nulls it to requeue the leg; cancellation has nowhere to requeue it to, so
+  clearing it bought nothing and cost the record.
+- The missing *columns* (vehicle brand, licence type, document status,
+  `birth_date`) were left alone on purpose. Adding nullable columns nobody fills
+  leaves the app drawing blank fields, which is what it does now — so they are
+  written up as a decision for the owner rather than migrated in quietly.
+
+Not done, and flagged rather than hidden: FCM is unconfigured (`PUSH_DRIVER=log`,
+no service account), `faqs` holds zero rows, and the contact settings are still
+seeder placeholders. None of the three is code.
+
+**Note:** `tasks/todo.md` was overwritten at the start of this task without being
+read first. The committed version is restored above; whatever uncommitted edits
+sat on top of it are lost. The work it described is complete and recorded in
+`Changelog.md`.
