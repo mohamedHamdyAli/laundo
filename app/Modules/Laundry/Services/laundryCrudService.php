@@ -4,7 +4,9 @@ namespace App\Modules\Laundry\Services;
 
 use App\Models\Role;
 use App\Modules\City\Models\City;
+use App\Modules\Laundry\Models\LaundrySlotCapacity;
 use App\Modules\Laundry\Repositories\LaundryRepository;
+use App\Modules\TimeSlot\Models\TimeSlot;
 use App\Modules\User\Models\User;
 use App\Services\ResponseService;
 use Illuminate\Support\Facades\DB;
@@ -133,6 +135,21 @@ class laundryCrudService
 
         if ($id) {
             $data['row'] = $this->laundryRepository->findById($id);
+
+            // The intake-capacity tab. Built here rather than queried from the
+            // Blade file, and only when a row is being edited — the list screen
+            // has no use for it and would pay for the two queries anyway.
+            $slots = TimeSlot::where('status', 'active')
+                ->orderBy('sort_order')
+                ->orderBy('start_time')
+                ->get()
+                ->filter(fn (TimeSlot $slot) => $slot->appliesTo('pickup'))
+                ->values();
+
+            $data['capacitySlots'] = $slots;
+            $data['capacities'] = LaundrySlotCapacity::withoutGlobalScopes()
+                ->where('laundry_id', $data['row']->id)
+                ->pluck('capacity', 'time_slot_id');
         }
 
         return $data;

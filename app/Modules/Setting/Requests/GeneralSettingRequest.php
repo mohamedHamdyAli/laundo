@@ -106,6 +106,30 @@ class GeneralSettingRequest extends FormRequest
                 // rather than promising a download that does not exist.
                 'App_Store_Url' => 'nullable|url|max:191',
                 'Play_Store_Url' => 'nullable|url|max:191',
+
+                /*
+                 * Distance and dispatch.
+                 *
+                 * The key lives here rather than in a config file so that
+                 * whoever is awake when it leaks can rotate it from the panel.
+                 * It is a server-side key and must be IP-restricted in the
+                 * Google console — a Distance Matrix key that anybody can call
+                 * is somebody else's quota bill.
+                 */
+                'Google_Maps_Key' => 'nullable|string|max:191',
+                /*
+                 * How much further than the nearest laundry we will send an
+                 * order to reach a less busy one.
+                 *
+                 * Capped at 50 rather than left open: the tolerance is measured
+                 * from the *nearest* candidate, so a fat-fingered 500 would put
+                 * every laundry in the country in one tie group and hand the
+                 * order to whichever happened to be emptiest. Zero switches
+                 * balancing off, which is the shipped default.
+                 */
+                'Balance_Tolerance_Km' => 'nullable|numeric|min:0|max:50',
+                // A closed list; `SlotOverflowBehavior` is the vocabulary.
+                'Slot_Overflow_Behavior' => 'nullable|in:unassigned,nearest,hide_slot',
             ];
         } elseif (Route::is('admin.generalSetting.updatePrivacyAndTerms')) {
             $rules = [

@@ -2397,3 +2397,93 @@ export, and the screen still shipped two faults that only a browser shows:
 
 **Rule:** for a screen with an icon or a dialog, drive it. The assertion
 `assertOk()` cannot see either of these, and neither can PHPStan.
+
+---
+
+## A vendor's current API is not the one its docs rank first
+
+Google's Distance Matrix was wired up, the key was valid, and every call came
+back `REQUEST_DENIED`: «You're calling a legacy API, which is not enabled for
+your project». A Google Cloud project created recently **cannot enable the
+legacy endpoint at all** — there is no console switch to fix it. The working
+endpoint is the Routes API,
+`routes.googleapis.com/distanceMatrix/v2:computeRouteMatrix`, and the same key
+answers it immediately.
+
+Two minutes of `curl` found this. An afternoon of re-reading the client code
+would not have, because the client code was correct.
+
+**Rule:** before building against a third-party API, `curl` one real request
+with the real key and read the real body. Do it first, not after the integration
+fails. And read the `error_message` field — it named the replacement endpoint.
+
+---
+
+## An HTTP 200 is not a success, and an array's order is not an index
+
+Both halves of the Routes API integration would have shipped as silent bugs:
+
+- The **legacy** Distance Matrix returns `200 OK` with `"status":
+  "REQUEST_DENIED"` in the body. Checking `$response->successful()` is necessary
+  and nowhere near sufficient. The same is true one level down — a
+  `ZERO_RESULTS` element sits inside an `OK` row inside an `OK` body.
+- The **Routes** API returns its elements **unordered**, each carrying its own
+  `originIndex` / `destinationIndex`. Asking for two destinations came back with
+  the second one first. Matching on array position passes every
+  one-destination test and silently swaps laundries in the zone that has three.
+
+**Rule:** when a response carries its own identifiers, match on them. When a
+vendor has a status field inside a successful response, check it. Write the test
+with the *actual captured response*, out-of-order and all — `RoutingTest` does.
+
+---
+
+## Never cache a fallback
+
+`RoutingService` caches a measured leg for a day and substitutes a straight line
+when the provider cannot be reached. Caching that substitute too would have
+turned a thirty-second outage into a **day** of straight-line distances — and
+because the delivery fee now measures the road, a day of undercharged
+deliveries, with nothing in the log after the first minute.
+
+**Rule:** a cache stores what a system *knows*, never what it *guessed because
+it could not find out*. The guess must be recomputed next time, which is also
+what makes recovery automatic.
+
+---
+
+## `Http::fake()` merges; it does not replace
+
+A test faked a success, asserted it, then faked a 500 and asserted the fallback.
+The second assertion passed for the wrong reason: `Http::fake()` **merges** into
+the existing stub list and the *first* matching stub wins, so the original
+success answered every later request too. The test proved nothing and would have
+kept proving nothing.
+
+**Rule:** one `Http::fake(function () use (&$state) { ... })` holding the state,
+for any test where the provider has to answer and then fail. Two `fake()` calls
+in one test is the bug.
+
+---
+
+## Cache objects as arrays, or a new property fatals every hit
+
+`RouteLeg` was first cached as a serialized instance. Adding a property to it
+would leave every entry written before the deploy unserializing into an object
+with an uninitialized readonly property — a fatal error on every cache hit, for
+as long as the entries live. Exactly the shape of `LandingContentService`'s
+`filemtime()` cache key, one layer down.
+
+**Rule:** cache arrays and rebuild. A key that is not there reads as null; a
+class shape that has moved does not.
+
+---
+
+## A tolerance measured pairwise lets the answer drift
+
+The load-balancing rule compares every candidate against **the nearest one**, and
+not against the previous candidate. Pairwise, a chain of laundries each within
+the tolerance of the last would let an order travel arbitrarily far from the
+customer, one hop at a time, while every individual comparison looked reasonable.
+
+**Rule:** a tolerance is a radius around a fixed point, not a step size.

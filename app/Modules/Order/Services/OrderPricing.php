@@ -27,7 +27,7 @@ class OrderPricing
      * when the order was placed and must not be re-read, but the fee is measured
      * from the laundry and so could not be worked out until now.
      *
-     * @return array{fee: float|null, distance_km: float|null, reason: string|null}
+     * @return array{fee: float|null, distance_km: float|null, reason: string|null, distance_source: string|null, distance_minutes: float|null}
      */
     public function deliveryFeeFor(?Laundry $laundry, Address $pickup, ?Address $delivery = null): array
     {
@@ -45,6 +45,7 @@ class OrderPricing
      *     delivery_fee: float|null,
      *     delivery_distance_km: float|null,
      *     delivery_fee_reason: string|null,
+     *     delivery_distance_source: string|null,
      *     discount: float,
      *     cash_surcharge: float,
      *     tax_rate: float,
@@ -130,6 +131,10 @@ class OrderPricing
             'delivery_fee' => $fee['fee'],
             'delivery_distance_km' => $fee['distance_km'],
             'delivery_fee_reason' => $fee['reason'],
+            // Which measurement produced the fee. Carried through so a screen
+            // can mark a straight-line fallback rather than presenting it as a
+            // road distance somebody drove.
+            'delivery_distance_source' => $fee['distance_source'],
             'discount' => $discount,
             // Its own line, never folded into the delivery fee: the customer can
             // remove it by paying another way, and a charge you cannot see is a

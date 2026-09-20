@@ -51,7 +51,17 @@ class OrderService
     {
         [$service, $pickup, $delivery] = $this->resolveContext($customer, $data);
 
-        $laundry = $this->assigner->assign($pickup, $service);
+        // The window and date go in too, and both call sites must pass them.
+        // The choice now depends on how full each laundry is in that window, so
+        // a quote that omitted them would rank on distance alone and could name
+        // a different laundry — and therefore a different delivery fee — than
+        // the submit a minute later.
+        $laundry = $this->assigner->assign(
+            $pickup,
+            $service,
+            $data['pickup_slot_id'] ?? null,
+            $data['pickup_date'] ?? null,
+        );
 
         // Validated, not redeemed: most baskets a code is checked against are
         // never ordered, and consuming one here would spend a customer's single
@@ -97,7 +107,17 @@ class OrderService
     {
         [$service, $pickup, $delivery] = $this->resolveContext($customer, $data);
 
-        $laundry = $this->assigner->assign($pickup, $service);
+        // The window and date go in too, and both call sites must pass them.
+        // The choice now depends on how full each laundry is in that window, so
+        // a quote that omitted them would rank on distance alone and could name
+        // a different laundry — and therefore a different delivery fee — than
+        // the submit a minute later.
+        $laundry = $this->assigner->assign(
+            $pickup,
+            $service,
+            $data['pickup_slot_id'] ?? null,
+            $data['pickup_date'] ?? null,
+        );
 
         [$coupon, $discount] = $this->resolveCoupon(
             $this->discountCode($data),

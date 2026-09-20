@@ -22,6 +22,7 @@ use App\Modules\Item\Controllers\ItemController;
 use App\Modules\ItemCategory\Controllers\ItemCategoryController;
 use App\Modules\JourneyStep\Controllers\JourneyStepController;
 use App\Modules\Laundry\Controllers\LaundryController;
+use App\Modules\Laundry\Controllers\LaundrySlotCapacityController;
 use App\Modules\LaundryService\Controllers\LaundryServiceController;
 use App\Modules\LaundryStaff\Controllers\LaundryStaffController;
 use App\Modules\LaundryZone\Controllers\LaundryZoneController;
@@ -1082,6 +1083,25 @@ Route::middleware(['auth', 'dashboard.only'])->prefix('/admin')->group(function 
     Route::controller(LaundryZoneController::class)->group(function () {
         Route::get('/laundry-zone', 'index')->middleware('permission:laundry_zone.view')->name('admin.laundry_zone.index');
         Route::put('/laundry-zone/update', 'update')->middleware('permission:laundry_zone.update')->name('admin.laundry_zone.update');
+    });
+
+    /*
+    |--------------------------------------------------------------------------
+    | Laundry intake capacity — how many orders each laundry takes per window
+    |--------------------------------------------------------------------------
+    |
+    | Deliberately NOT gated on `laundry.update`. Capacity decides how much work
+    | a laundry is handed, so an owner holding the dial can starve themselves of
+    | orders or hoover up every one in the zone. Same boundary as the commission
+    | rate, and for the same reason.
+    */
+    Route::controller(LaundrySlotCapacityController::class)->group(function () {
+        Route::get('/laundry-slot-capacity', 'index')
+            ->middleware('permission:laundry_slot_capacity.view')
+            ->name('admin.laundry_slot_capacity.index');
+        Route::put('/laundry-slot-capacity/update', 'update')
+            ->middleware('permission:laundry_slot_capacity.update')
+            ->name('admin.laundry_slot_capacity.update');
     });
 
     /*

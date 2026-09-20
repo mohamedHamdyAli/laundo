@@ -7,7 +7,7 @@ use App\Modules\Laundry\Models\Laundry;
 use App\Modules\Order\Services\DeliveryFeeCalculator;
 use App\Modules\Zone\Models\Zone;
 use PHPUnit\Framework\Attributes\Test;
-use PHPUnit\Framework\TestCase;
+use Tests\TestCase;
 
 /**
  * The fee arithmetic, exercised without a database.
@@ -15,6 +15,12 @@ use PHPUnit\Framework\TestCase;
  * The models are built in memory and their relations set by hand, so the maths
  * and the "unknown fee" reporting can be checked in isolation from schema and
  * seeding.
+ *
+ * It extends the Laravel TestCase — but still declares no `RefreshDatabase`, so
+ * there is still no schema and nothing is seeded. The application is booted
+ * only because the calculator now measures through `RoutingService`, which
+ * reads `config('routing.driver')`. phpunit.xml pins that to `haversine`, so
+ * these figures stay arithmetic and no test here reaches the network.
  */
 class DeliveryFeeCalculatorTest extends TestCase
 {
@@ -23,7 +29,7 @@ class DeliveryFeeCalculatorTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->calculator = new DeliveryFeeCalculator;
+        $this->calculator = app(DeliveryFeeCalculator::class);
     }
 
     #[Test]

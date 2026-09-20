@@ -17,6 +17,7 @@ use App\Modules\Item\Models\Item;
 use App\Modules\ItemCategory\Models\ItemCategory;
 use App\Modules\JourneyStep\Models\JourneyStep;
 use App\Modules\Laundry\Models\Laundry;
+use App\Modules\Laundry\Models\LaundrySlotCapacity;
 use App\Modules\LaundryService\Models\LaundryService;
 use App\Modules\LaundryStaff\Models\LaundryStaff;
 use App\Modules\LaundryZone\Models\LaundryZone;
@@ -63,6 +64,7 @@ return [
         Zone::class,
         TimeSlot::class,
         LaundryZone::class,
+        LaundrySlotCapacity::class,
         Driver::class,
         DriverApplication::class,
         DriverBonusRule::class,

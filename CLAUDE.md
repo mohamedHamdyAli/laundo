@@ -45,6 +45,7 @@ getting their own — so **do not go looking for `app/Modules/Settlement/`**:
 | --- | --- |
 | `payment`, `driver_earning`, `refund`, `order_settlement`, `commission_rule`, invoices | `app/Modules/Payment/` |
 | `dispatch`, `order_task` | `app/Modules/Order/` |
+| `laundry_slot_capacity` (intake capacity) | `app/Modules/Laundry/` |
 | `driver_application`, `driver_bonus_rule`, `driver_bonus_award` | `app/Modules/Driver/` |
 | `role`, `language`, `notification_log` | `app/Http/Controllers/Admin/` + `app/Models/` |
 
@@ -85,6 +86,68 @@ from the code) and **`docs/order-cycle-explained.md`**; the rules that bind code
   moves the *order*; the others move only the task.
 - `cleaning`, `ready_for_delivery`, `completed` and `returned` currently have
   **no endpoint driving them** — a known gap, not something to paper over.
+
+### Which laundry gets the order
+
+`Order/Services/LaundryAssigner` decides, at placement and again whenever an
+operator reassigns. Three filters then two rules, and the filters are not
+negotiable:
+
+1. **active**, 2. **has claimed the pickup address's zone** (`laundry_zones`),
+3. **offers the requested service** (`laundry_services`, active). Nothing that
+fails these is ever chosen, by any path, including the panel's picker.
+
+Then, among what is left: **the nearest by road wins, unless a nearly-as-close
+one has more room.**
+
+- **Distance is the road, through `app/Services/Routing/`.** It was a straight
+  line for the life of the project, which is the wrong answer on any map with a
+  river in it. `RoutingService` resolves the driver, caches per
+  origin/destination pair and falls back; `Router` is the contract,
+  `HaversineRouter` the local arithmetic and the fallback,
+  `GoogleDistanceMatrixRouter` the real measurement. **`phpunit.xml` pins
+  `ROUTING_DRIVER=haversine`** so the suite runs offline and a fee a test
+  asserts is arithmetic.
+- **It is the Routes API**, `routes.googleapis.com/distanceMatrix/v2:computeRouteMatrix`
+  — the legacy `maps.googleapis.com/maps/api/distancematrix` endpoint **cannot
+  be enabled on a recently created Google project at all**. Its elements come
+  back **unordered**, carrying their own `destinationIndex`, so results are
+  matched on that and never on array position.
+- **The key is a settings row, `Google_Maps_Key`**, so it can be rotated from
+  the panel. `config('routing.google.key')` wins when set. It is deliberately
+  not in the seeder.
+- **A fallback is never cached.** Caching a straight line for the 24-hour TTL
+  turns a brief outage into a day of wrong distances and — since the fee
+  measures the road too — a day of undercharged deliveries that nothing flags.
+- **`Balance_Tolerance_Km`** (default **0**, which is the old behaviour exactly):
+  everything within that distance **of the nearest** forms one group, and inside
+  it the laundry with the **most free places** in the customer's pickup window
+  takes the order. Measured from the nearest and never pairwise — a chain each
+  within the tolerance of the last would let an order drift arbitrarily far.
+- **Free places, not fewest orders.** Four of twenty beats none of two.
+
+**Capacity is per laundry per window** — `laundry_slot_capacities`, edited from
+`admin/laundry-slot-capacity` and from a tab on the laundry's edit screen, both
+through one `sync()`. Blank is uncapped, `0` is «closed for this window», and
+they are different answers. It counts the **pickup** leg only: it is about
+washing machines, where `time_slots.capacity` is about vans and counts both
+legs across the whole platform. The two do not constrain each other.
+
+**Nothing here ever refuses an order at checkout.** A zone whose laundries are
+all full is the same shape of problem as a zone nothing covers, and
+`SlotOverflowBehavior` (`Slot_Overflow_Behavior`) is where an operator says what
+to do: accept it unassigned (default), give it to the nearest anyway, or hide
+the window from the customer. The last needs `GET /api/v1/time-slots` to be sent
+an `address_id` — until an app sends one it behaves like the first, which the
+settings field says on its face.
+
+**Capacity gates on `laundry_slot_capacity.update`, not `laundry.update`** — a
+laundry owner holds the latter by design, and capacity decides how much work
+they are handed. Same boundary as the commission rate.
+
+`LaundryAssigner::evaluate()` is the whole decision — each candidate's leg, load
+and the reason it lost — and `assign()` is that method keeping only the answer.
+The order screen renders the rest, so the picker and the router cannot disagree.
 
 ### Money: who owns which share
 

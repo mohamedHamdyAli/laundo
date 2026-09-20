@@ -355,6 +355,63 @@
     </div>
 </div>
 
+{{-- Distance measurement, and how orders are handed to laundries. --}}
+<div class="row g-3 border rounded p-3 mb-3">
+    <h5 class="mb-3">{{ __('Distance and dispatch') }}</h5>
+    <p class="text-muted small">
+        {{ __('How the system measures the road between a customer and a laundry, and how it chooses between the laundries that cover the same area.') }}
+    </p>
+
+    <div class="col-md-6">
+        <div class="form-group">
+            <label for="setting-maps-key" class="form-label">{{ __('Google Maps API key') }}</label>
+            <div class="controls">
+                <input type="text" name="Google_Maps_Key" id="setting-maps-key" class="form-control"
+                    autocomplete="off" placeholder="{{ __('Leave empty to use straight-line distance') }}"
+                    value="{{ getSettingValue('Google_Maps_Key') }}">
+            </div>
+            <div class="form-text">
+                {{ __('Needs the Distance Matrix API enabled. Restrict the key to this server IP in the Google console — an unrestricted key is billed to you by whoever finds it. Without a key, distances fall back to a straight line and delivery fees come out lower than the real road.') }}
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6">
+        <div class="form-group">
+            <label for="setting-balance-tolerance" class="form-label">{{ __('Load balancing tolerance') }}</label>
+            <div class="input-group">
+                <input type="number" step="0.1" min="0" max="50" name="Balance_Tolerance_Km"
+                    id="setting-balance-tolerance" class="form-control" placeholder="0"
+                    value="{{ getSettingValue('Balance_Tolerance_Km') }}">
+                <span class="input-group-text">{{ __('km') }}</span>
+            </div>
+            <div class="form-text">
+                {{ __('How much further than the nearest laundry an order may travel to reach a less busy one. A laundry within this distance of the nearest takes the order when it has more free places in the pickup window the customer chose. Zero switches balancing off — the nearest always wins.') }}
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6">
+        <div class="form-group">
+            <label for="setting-slot-overflow" class="form-label">{{ __('When every laundry in the area is full') }}</label>
+            <div class="controls">
+                <select name="Slot_Overflow_Behavior" id="setting-slot-overflow" class="form-select">
+                    @foreach (\App\Modules\Order\Enums\SlotOverflowBehavior::cases() as $behavior)
+                        <option value="{{ $behavior->value }}"
+                            @selected(getSettingValue('Slot_Overflow_Behavior') === $behavior->value)>
+                            {{ $behavior->label() }}
+                        </option>
+                    @endforeach
+                </select>
+            </div>
+            <div class="form-text">
+                {{ __('Capacity is set per laundry per window, from the laundry own screen or from the capacity grid. The order is never refused at checkout — this only decides who gets it.') }}
+                <strong>{{ __('Hiding the window needs the mobile apps to send the address when they ask for windows; until they do, it behaves like the first option.') }}</strong>
+            </div>
+        </div>
+    </div>
+</div>
+
 {{-- «ادعُ أصدقاءك» --}}
 <div class="row g-3 border rounded p-3 mb-3">
     <h5 class="mb-3">{{ __('Referrals') }}</h5>

@@ -90,6 +90,7 @@ return [
                 'laundry_staff' => 2,
                 'laundry_service' => 3,
                 'laundry_zone' => 4,
+                'laundry_slot_capacity' => 5,
             ],
         ],
 
@@ -236,6 +237,7 @@ return [
         'laundry_staff' => 'bi bi-person-workspace',
         'laundry_service' => 'bi bi-ui-checks',
         'laundry_zone' => 'bi bi-geo',
+        'laundry_slot_capacity' => 'bi bi-speedometer2',
 
         'order_task' => 'bi bi-signpost-split',
         'driver' => 'bi bi-truck',
@@ -291,6 +293,7 @@ return [
         'laundry_staff' => 'Laundry Staff',
         'laundry_service' => 'My Services',
         'laundry_zone' => 'My Areas',
+        'laundry_slot_capacity' => 'Intake Capacity',
 
         'order_task' => 'Dispatch',
         'driver' => 'Drivers',
@@ -345,6 +348,7 @@ return [
         'laundry_staff' => 'admin.laundry_staff.index',
         'laundry_service' => 'admin.laundry_service.index',
         'laundry_zone' => 'admin.laundry_zone.index',
+        'laundry_slot_capacity' => 'admin.laundry_slot_capacity.index',
 
         'order_task' => 'admin.dispatch.index',
         'driver' => 'admin.driver.index',

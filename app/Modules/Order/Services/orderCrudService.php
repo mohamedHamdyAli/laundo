@@ -6,11 +6,15 @@ use App\Modules\Driver\Models\Driver;
 use App\Modules\Item\Models\Item;
 use App\Modules\Laundry\Models\Laundry;
 use App\Modules\Order\Enums\OrderStatus;
+use App\Modules\Order\Enums\TaskType;
 use App\Modules\Order\Models\Order;
 use App\Modules\Order\Models\OrderTask;
 use App\Modules\Order\Repositories\OrderRepository;
 use App\Modules\Pricing\Models\ItemPrice;
 use App\Modules\User\Models\User;
+use App\Services\Routing\Coordinate;
+use App\Services\Routing\RouteLeg;
+use App\Services\Routing\RoutingService;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
 
@@ -75,6 +79,14 @@ class orderCrudService
                 ? []
                 : $this->assignableFor($row);
 
+            // The same decision the assigner took, with its reasoning kept: what
+            // each candidate measured, how full it is, and what it would cost.
+            // An operator overriding the automatic choice should be disagreeing
+            // with something they can read.
+            $data['assignment'] = $row->status->isInCustody()
+                ? null
+                : $this->assignmentPanel($row);
+
             // Only built when the form will actually render — it costs a query
             // over the whole price matrix for the service.
             $data['reviewItems'] = $row->status->isReviewable()
@@ -118,6 +130,120 @@ class orderCrudService
         }
 
         return app(LaundryAssigner::class)->candidates($order->pickupAddress, $order->service);
+    }
+
+    /**
+     * Everything the assign panel draws.
+     *
+     * Three things an operator needs and had none of: how far each laundry
+     * actually is by road, how full it already is in the window this customer
+     * chose, and how far the driver who will carry the clothes there is from
+     * it. Without them the dropdown was a list of names and «choose one» meant
+     * «guess».
+     *
+     * The driver measured against is the one on the **`deliver_to_laundry`**
+     * leg, because that is the leg that drives to a laundry. When no driver is
+     * on it yet the card says so rather than showing a number for somebody who
+     * was picked for a different journey.
+     *
+     * @return array<string, mixed>|null
+     */
+    public function assignmentPanel(Order $order): ?array
+    {
+        if (! $order->pickupAddress || ! $order->service) {
+            return null;
+        }
+
+        $evaluation = app(LaundryAssigner::class)->evaluate(
+            $order->pickupAddress,
+            $order->service,
+            $order->pickup_slot_id,
+            $order->pickup_date,
+        );
+
+        if ($evaluation['candidates'] === []) {
+            return $evaluation + ['driver' => null, 'driver_legs' => [], 'fees' => []];
+        }
+
+        $laundries = array_map(fn (array $row) => $row['laundry'], $evaluation['candidates']);
+        $driver = $this->carryingDriver($order);
+
+        return $evaluation + [
+            'driver' => $driver,
+            'driver_legs' => $this->driverLegsTo($driver, $laundries),
+            'fees' => $this->feesFor($order, $laundries),
+        ];
+    }
+
+    /**
+     * The driver on the leg that drives to the laundry, if one is on it yet.
+     */
+    private function carryingDriver(Order $order): ?Driver
+    {
+        // `driver.profile` only: Driver extends User, so the name is on the
+        // model itself and there is no `user` relation to load.
+        return OrderTask::with(['driver.profile'])
+            ->where('order_id', $order->id)
+            ->where('type', TaskType::DeliverToLaundry)
+            ->first()?->driver;
+    }
+
+    /**
+     * Road distance from that driver's last known position to each candidate.
+     *
+     * Empty when there is no driver or the driver has never reported a
+     * position. A driver who has not pinged is not at the depot — they are
+     * unknown, and a screen that drew 0 km would be inventing it.
+     *
+     * @param  array<int, Laundry>  $laundries
+     * @return array<int, RouteLeg>
+     */
+    private function driverLegsTo(?Driver $driver, array $laundries): array
+    {
+        $profile = $driver?->profile;
+        $origin = $profile ? Coordinate::from($profile->last_lat, $profile->last_lng) : null;
+
+        if ($origin === null) {
+            return [];
+        }
+
+        $destinations = [];
+
+        foreach ($laundries as $laundry) {
+            $point = Coordinate::from($laundry->lat, $laundry->lng);
+
+            if ($point !== null) {
+                $destinations[$laundry->id] = $point;
+            }
+        }
+
+        return app(RoutingService::class)->matrix($origin, $destinations);
+    }
+
+    /**
+     * What the delivery fee would come to for each candidate.
+     *
+     * The same assembler the assignment itself uses, so the number on the card
+     * is the number the operator gets after pressing the button — and not a
+     * second calculation that can drift from the first.
+     *
+     * @param  array<int, Laundry>  $laundries
+     * @return array<int, float|null>
+     */
+    private function feesFor(Order $order, array $laundries): array
+    {
+        $pricing = app(OrderPricing::class);
+        $out = [];
+
+        foreach ($laundries as $laundry) {
+            $out[$laundry->id] = $pricing->deliveryFeeFor(
+                $laundry,
+                $order->pickupAddress,
+                $order->deliveryAddress,
+            )['fee'];
+        }
+
+        return $out;
     }
 
     public function assign(int|string $id, int $laundryId, ?User $actor = null): Order

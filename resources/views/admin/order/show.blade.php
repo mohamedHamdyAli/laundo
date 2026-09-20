@@ -419,29 +419,150 @@
                     </div>
                 </div>
 
-                {{-- Assignment, offered only while the order is still assignable and
-                     only to laundries that actually cover it. --}}
+                {{-- Assignment.
+                     Offered only while the order can still be moved, and only
+                     to laundries that cover the zone and offer the service.
+                     Each candidate is shown with what the assigner measured, so
+                     an operator overriding the automatic choice is disagreeing
+                     with something they can read rather than with a name. --}}
                 @if (canDo('order.update') && ! $row->status->isInCustody())
                     <div class="card">
-                        <div class="card-header"><h6 class="mb-0">{{ __('Assign to laundry') }}</h6></div>
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h6 class="mb-0">{{ __('Assign to laundry') }}</h6>
+                            @if ($assignment && $assignment['tolerance_km'] > 0)
+                                <span class="badge bg-light text-dark">
+                                    {{ __('Balancing within :km km', ['km' => rtrim(rtrim(number_format($assignment['tolerance_km'], 1), '0'), '.')]) }}
+                                </span>
+                            @endif
+                        </div>
                         <div class="card-body">
-                            @if (empty($assignable))
+                            @if (! $assignment || empty($assignment['candidates']))
                                 <p class="text-muted small mb-0">
                                     {{ __('No laundry covers this zone and offers this service. Extend a laundry\'s areas or services first.') }}
                                 </p>
                             @else
+                                @if ($assignment['all_full'])
+                                    <div class="alert alert-warning py-2 small">
+                                        {{ __('Every laundry here is full for this pickup window.') }}
+                                        {{ $assignment['overflow']->label() }}
+                                    </div>
+                                @endif
+
+                                @php
+                                    $panelDriver = $assignment['driver'];
+                                    $panelDriverProfile = $panelDriver?->profile;
+                                @endphp
+
+                                <p class="text-muted small">
+                                    {{ __('Driver for the run to the laundry:') }}
+                                    @if ($panelDriver)
+                                        <strong>{{ $panelDriver->name ?? __('Unnamed') }}</strong>
+                                        @if ($panelDriverProfile?->located_at)
+                                            <span>({{ __('last seen :when', ['when' => humanDate($panelDriverProfile->located_at)]) }})</span>
+                                        @else
+                                            <span>({{ __('never reported a position') }})</span>
+                                        @endif
+                                    @else
+                                        <em>{{ __('not assigned yet') }}</em>
+                                    @endif
+                                </p>
+
                                 <form method="POST" action="{{ route('admin.order.assign', $row->id) }}">
                                     @csrf
                                     @method('PUT')
-                                    <select name="laundry_id" class="form-select mb-2" required>
-                                        <option value="">{{ __('Choose a laundry') }}</option>
-                                        @foreach ($assignable as $candidate)
-                                            <option value="{{ $candidate->id }}"
-                                                @selected($row->laundry_id === $candidate->id)>
-                                                {{ getLocalizedValueDashboard($candidate, 'name') }}
-                                            </option>
-                                        @endforeach
-                                    </select>
+
+                                    @foreach ($assignment['candidates'] as $candidate)
+                                        @php
+                                            $candLaundry = $candidate['laundry'];
+                                            $candLeg = $candidate['leg'];
+                                            $candDriverLeg = $assignment['driver_legs'][$candLaundry->id] ?? null;
+                                            $candFee = $assignment['fees'][$candLaundry->id] ?? null;
+                                        @endphp
+                                        <label class="d-block border rounded p-2 mb-2 {{ $candidate['chosen'] ? 'border-primary' : '' }}"
+                                            for="laundry-{{ $candLaundry->id }}" style="cursor: pointer">
+                                            <div class="d-flex align-items-start gap-2">
+                                                <input class="form-check-input mt-1 flex-shrink-0" type="radio"
+                                                    name="laundry_id" id="laundry-{{ $candLaundry->id }}"
+                                                    value="{{ $candLaundry->id }}"
+                                                    @checked($row->laundry_id === $candLaundry->id || (! $row->laundry_id && $candidate['chosen']))>
+                                                <div class="flex-grow-1">
+                                                    <div class="d-flex justify-content-between align-items-center">
+                                                        <span class="fw-semibold">
+                                                            {{ getLocalizedValueDashboard($candLaundry, 'name') }}
+                                                        </span>
+                                                        <span>
+                                                            @if ($candidate['chosen'])
+                                                                <span class="badge bg-primary">{{ __('Recommended') }}</span>
+                                                            @endif
+                                                            @if ($row->laundry_id === $candLaundry->id)
+                                                                <span class="badge bg-success">{{ __('Current') }}</span>
+                                                            @endif
+                                                            @if ($candidate['full'])
+                                                                <span class="badge bg-danger">{{ __('Full') }}</span>
+                                                            @endif
+                                                        </span>
+                                                    </div>
+
+                                                    <div class="small text-muted mt-1">
+                                                        {{-- Customer to laundry. --}}
+                                                        <div>
+                                                            <i class="bi bi-geo-alt"></i>
+                                                            @if ($candLeg)
+                                                                {{ __(':km km from the customer', ['km' => number_format($candLeg->km, 1)]) }}
+                                                                @if ($candLeg->minutes !== null)
+                                                                    &middot; {{ __(':n min drive', ['n' => (int) round($candLeg->minutes)]) }}
+                                                                @endif
+                                                                @if ($candLeg->isEstimate())
+                                                                    <span class="badge bg-warning text-dark">{{ __('straight line') }}</span>
+                                                                @endif
+                                                            @else
+                                                                {{ __('Distance unknown - this laundry has no coordinates') }}
+                                                            @endif
+                                                        </div>
+
+                                                        {{-- Driver to laundry. --}}
+                                                        @if ($panelDriver)
+                                                            <div>
+                                                                <i class="bi bi-truck"></i>
+                                                                @if ($candDriverLeg)
+                                                                    {{ __(':km km from the driver', ['km' => number_format($candDriverLeg->km, 1)]) }}
+                                                                    @if ($candDriverLeg->minutes !== null)
+                                                                        &middot; {{ __(':n min drive', ['n' => (int) round($candDriverLeg->minutes)]) }}
+                                                                    @endif
+                                                                @else
+                                                                    {{ __('Driver position unknown') }}
+                                                                @endif
+                                                            </div>
+                                                        @endif
+
+                                                        {{-- Load in the window this customer chose. --}}
+                                                        <div>
+                                                            <i class="bi bi-speedometer2"></i>
+                                                            @if ($candidate['capacity'] === null)
+                                                                {{ __(':n booked in this window, no limit set', ['n' => $candidate['booked']]) }}
+                                                            @else
+                                                                {{ __(':booked of :capacity booked in this window', ['booked' => $candidate['booked'], 'capacity' => $candidate['capacity']]) }}
+                                                                &middot; {{ __(':n free', ['n' => $candidate['remaining']]) }}
+                                                            @endif
+                                                        </div>
+
+                                                        {{-- What this choice would cost. --}}
+                                                        @if ($candFee !== null)
+                                                            <div>
+                                                                <i class="bi bi-cash"></i>
+                                                                {{ __('Delivery fee would be :fee', ['fee' => moneyFormat($candFee)]) }}
+                                                            </div>
+                                                        @endif
+
+                                                        @if ($candidate['reason'])
+                                                            <div class="fst-italic">{{ $candidate['reason'] }}</div>
+                                                        @endif
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </label>
+                                    @endforeach
+
                                     <button type="submit" class="btn btn-primary btn-sm w-100">
                                         {{ __('Assign') }}
                                     </button>

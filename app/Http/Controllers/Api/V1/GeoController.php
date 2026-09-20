@@ -3,7 +3,11 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
+use App\Modules\Address\Models\Address;
 use App\Modules\City\Models\City;
+use App\Modules\Laundry\Services\LaundryLoad;
+use App\Modules\Order\Enums\SlotOverflowBehavior;
+use App\Modules\Order\Services\LaundryAssigner;
 use App\Modules\TimeSlot\Repositories\TimeSlotRepository;
 use App\Modules\TimeSlot\Services\SlotCapacity;
 use Illuminate\Http\JsonResponse;
@@ -19,6 +23,8 @@ class GeoController extends Controller
     public function __construct(
         private readonly TimeSlotRepository $timeSlotRepository,
         private readonly SlotCapacity $capacity,
+        private readonly LaundryAssigner $assigner,
+        private readonly LaundryLoad $load,
     ) {}
 
     /**
@@ -70,15 +76,37 @@ class GeoController extends Controller
     /**
      * The pickup / delivery windows.
      *
-     * `capacity` is returned as configured, but no "remaining" figure is: that
-     * needs a count of orders already booked into the window, and orders arrive
-     * in P6. Returning a made-up number would be worse than returning none.
+     * With a `date`, `remaining` and `is_full` describe the **platform's** own
+     * per-window capacity — how many visits can be made that day.
+     *
+     * With an `address_id` as well, `laundries_full` additionally says whether
+     * every laundry that could serve that address has filled its intake for
+     * the window. It is null when the question cannot be asked: no address, an
+     * address with no zone, a zone nothing covers, or a delivery-only window.
+     * `is_full` folds it in only when `Slot_Overflow_Behavior` is `hide_slot`,
+     * because on the other two settings the order is still accepted and
+     * withholding the window would refuse business the server would take.
+     *
+     * Both new parameters are optional and a client that sends neither gets
+     * exactly the response it got before.
      */
     public function timeSlots(Request $request): JsonResponse
     {
         $data = $request->validate([
             'type' => ['nullable', 'in:pickup,delivery'],
             'date' => ['nullable', 'date'],
+            /*
+             * Optional, and the whole reason the endpoint can answer
+             * «this window has nowhere to go» rather than only «the
+             * platform is at capacity». Without it the laundry half is
+             * unknowable: capacity is per laundry, and which laundries
+             * matter depends on the address's zone.
+             *
+             * `service_id` narrows it further, because a laundry that
+             * does not offer the service was never a candidate.
+             */
+            'address_id' => ['nullable', 'integer', 'exists:addresses,id'],
+            'service_id' => ['nullable', 'integer', 'exists:services,id'],
         ]);
 
         $type = $data['type'] ?? null;
@@ -89,7 +117,18 @@ class GeoController extends Controller
 
         $date = isset($data['date']) ? Carbon::parse($data['date']) : null;
 
-        $payload = $slots->map(function ($slot) use ($date) {
+        // Which laundries could take work at this address at all. Empty
+        // when no address was sent, when it has no zone, or when nothing
+        // covers it — and an empty list is deliberately NOT «all full».
+        $covering = $this->coveringFor($data['address_id'] ?? null, $data['service_id'] ?? null);
+
+        // Only this setting turns a full set of laundries into a hidden
+        // window. On the other two the order is still accepted, so
+        // withholding the window would refuse business the server would
+        // have taken.
+        $hideWhenFull = SlotOverflowBehavior::current() === SlotOverflowBehavior::HideSlot;
+
+        $payload = $slots->map(function ($slot) use ($date, $covering, $hideWhenFull) {
             $row = [
                 'id' => $slot->id,
                 'start_time' => substr((string) $slot->start_time, 0, 5),
@@ -110,12 +149,51 @@ class GeoController extends Controller
             // `remaining: null` is «as many as you like», `0` is «choose another
             // window» — the app has to draw those differently, so they are not
             // collapsed into one number here.
+            $platformFull = $remaining !== null && $remaining < 1;
+
+            // Reported separately from `remaining`, which keeps meaning
+            // exactly what it meant: places left across the platform. A
+            // client that ignores this field behaves as it always did.
+            //
+            // Only for a window clothes are *collected* in. Laundry
+            // capacity counts intake, so asking it about a
+            // delivery-only window would measure the wrong thing and
+            // report a clear evening as full because the morning was.
+            $laundriesFull = $covering === [] || ! $slot->appliesTo('pickup')
+                ? false
+                : $this->load->everyOneFull($covering, $slot->id, $date);
+
             return $row + [
                 'remaining' => $remaining,
-                'is_full' => $remaining !== null && $remaining < 1,
+                'is_full' => $platformFull || ($hideWhenFull && $laundriesFull),
+                'laundries_full' => $covering === [] || ! $slot->appliesTo('pickup') ? null : $laundriesFull,
             ];
         })->values();
 
         return successReturnData($payload);
+    }
+
+    /**
+     * The laundries that could serve this address, through the same
+     * definition the assigner uses.
+     *
+     * Shared rather than re-queried: a window this endpoint hides must be
+     * a window the assigner would also have had nowhere to send.
+     *
+     * @return array<int, int>
+     */
+    private function coveringFor(?int $addressId, ?int $serviceId): array
+    {
+        if ($addressId === null) {
+            return [];
+        }
+
+        $zoneId = Address::whereKey($addressId)->value('zone_id');
+
+        if ($zoneId === null) {
+            return [];
+        }
+
+        return $this->assigner->coveringLaundryIds((int) $zoneId, $serviceId);
     }
 }

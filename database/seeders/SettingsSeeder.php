@@ -64,6 +64,41 @@ class SettingsSeeder extends Seeder
         $this->create_new_config('Hotline', null);
         $this->create_new_config('Call', null);
         $this->create_new_config('Email', 'nahrPhpTeam@nahrPhpTeam.com');
+
+        /*
+         * Distance and dispatch — seeded only when absent.
+         *
+         * `create_new_config` is an `updateOrCreate`, so every key above is
+         * reset to its template value each time this seeder runs. That is
+         * tolerable for a social URL and unacceptable for these three: it would
+         * wipe a live install's Google key, and silently switch off a tolerance
+         * somebody had tuned. `create_missing_config` writes the default once
+         * and never touches the row again.
+         *
+         * The key itself is deliberately **not** in this file. A secret in a
+         * seeder is a secret in the repository, in every clone of it, and in
+         * the history forever. It is entered on the general settings screen.
+         */
+        $this->create_missing_config('Google_Maps_Key', null);
+        // Zero is «no balancing»: nearest wins, exactly as it did before this
+        // existed. An install that upgrades and changes nothing must not start
+        // routing its orders somewhere new on its own.
+        $this->create_missing_config('Balance_Tolerance_Km', 0);
+        $this->create_missing_config('Slot_Overflow_Behavior', 'unassigned');
+    }
+
+    /**
+     * Seed a default without ever overwriting a value somebody set.
+     *
+     * For rows where the operator's number matters more than the template's —
+     * secrets, and dials that change behaviour.
+     */
+    public function create_missing_config($key, $value)
+    {
+        Setting::firstOrCreate(
+            ['key' => $key],
+            ['value' => $value]
+        );
     }
 
     public function create_new_config($key, $value)

@@ -4,6 +4,8 @@ namespace App\Modules\Order\Services;
 
 use App\Modules\Address\Models\Address;
 use App\Modules\Laundry\Models\Laundry;
+use App\Services\Routing\Coordinate;
+use App\Services\Routing\RoutingService;
 
 /**
  * Works out the delivery fee.
@@ -17,6 +19,15 @@ use App\Modules\Laundry\Models\Laundry;
  * legitimately be *unknown*: an unassigned laundry has no location to measure
  * from, and a zone may not have been priced yet. Returning 0.00 in those cases
  * would quietly tell a customer delivery is free.
+ *
+ * **The distance is the road, not the straight line.** It was the straight line
+ * for the life of the project, which under-measured every fee by roughly a
+ * third — a driver crosses a river at the bridge. `RoutingService` owns that
+ * measurement now, and it always answers: when the provider cannot be reached
+ * the fee falls back to the straight line and so comes out *low*, which is the
+ * right direction for a failure to go. `distance_source` says which happened,
+ * and the panel shows it, because a fee somebody is asked to explain has to be
+ * explainable.
  */
 class DeliveryFeeCalculator
 {
@@ -31,8 +42,10 @@ class DeliveryFeeCalculator
      */
     private const EARTH_RADIUS_KM = 6371.0;
 
+    public function __construct(private readonly RoutingService $routing) {}
+
     /**
-     * @return array{fee: float|null, distance_km: float|null, reason: string|null}
+     * @return array{fee: float|null, distance_km: float|null, reason: string|null, distance_source: string|null, distance_minutes: float|null}
      */
     public function calculate(?Laundry $laundry, Address $pickup, ?Address $delivery = null): array
     {
@@ -54,12 +67,18 @@ class DeliveryFeeCalculator
             return $this->unknown('zone_has_no_rate');
         }
 
-        $distance = $this->distanceKm(
-            (float) $laundry->lat,
-            (float) $laundry->lng,
-            (float) $pickup->lat,
-            (float) $pickup->lng,
-        );
+        $from = Coordinate::from($laundry->lat, $laundry->lng);
+        $to = Coordinate::from($pickup->lat, $pickup->lng);
+
+        if ($from === null || $to === null) {
+            // The laundry's coordinates were checked above; this is the pickup
+            // address having none. Measuring from a point that does not exist
+            // would price the delivery at the zone minimum and call it measured.
+            return $this->unknown('address_has_no_coordinates');
+        }
+
+        $leg = $this->routing->between($from, $to);
+        $distance = $leg->km;
 
         $fee = $distance * (float) $zone->price_per_km;
 
@@ -77,16 +96,19 @@ class DeliveryFeeCalculator
             'fee' => round($fee, 2),
             'distance_km' => round($distance, 2),
             'reason' => null,
+            'distance_source' => $leg->source,
+            'distance_minutes' => $leg->minutes,
         ];
     }
 
     /**
      * Great-circle distance between two points.
      *
-     * Haversine rather than a routing service: it needs no network call and no
-     * API key, and for pricing a short urban delivery the straight-line figure is
-     * the honest approximation. Swapping in real road distance later only changes
-     * this method.
+     * Kept after the move to road distance because it is still the honest answer
+     * to a different question — «how far apart are these two points», with no
+     * network call and no key. `RoutingService` owns the road measurement and
+     * `HaversineRouter` owns the same formula for its own use; this one remains
+     * for callers that hold four floats rather than two coordinates.
      */
     public function distanceKm(float $lat1, float $lng1, float $lat2, float $lng2): float
     {
@@ -100,10 +122,19 @@ class DeliveryFeeCalculator
     }
 
     /**
-     * @return array{fee: null, distance_km: null, reason: string}
+     * @return array{fee: null, distance_km: null, reason: string, distance_source: null, distance_minutes: null}
      */
     private function unknown(string $reason): array
     {
-        return ['fee' => null, 'distance_km' => null, 'reason' => $reason];
+        // Same keys as the measured branch. A result shape that varies by branch
+        // is how a caller comes to read an undefined index on the one path it
+        // never tested.
+        return [
+            'fee' => null,
+            'distance_km' => null,
+            'reason' => $reason,
+            'distance_source' => null,
+            'distance_minutes' => null,
+        ];
     }
 }
