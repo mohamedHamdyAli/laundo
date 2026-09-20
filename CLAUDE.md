@@ -20,8 +20,10 @@ npm run build / npm run dev
 
 Single test: `php artisan test --filter=TestName` · one file: `php artisan test tests/Feature/Api/OrderTest.php` · one suite: `php artisan test --testsuite=Unit`. One browser spec: `npx playwright test tests/Browser/<name>.spec.js`.
 
-The full PHPUnit suite takes **~5 minutes**. Use `--filter` while iterating and
-run the whole thing before you call the task done.
+The full PHPUnit suite takes **about eight minutes**. That is long enough to
+plan around: use `--filter` while iterating and run the whole thing once, before
+you call the task done. It has grown steadily — if it feels much longer than
+this, re-measure and correct the figure here rather than working around it.
 
 PHPUnit runs against in-memory SQLite (`phpunit.xml`); the app itself runs on MySQL. Anything relying on MySQL-only SQL will pass in tests and fail in the app.
 
@@ -37,7 +39,7 @@ Laravel 13 · PHP ^8.3 · MySQL · Sanctum (mobile API) · `laravel/ui` (Bootstr
 
 `app/Modules/{Name}/` — Controllers, Models, Repositories, Services, Requests, and often `Enums`. 31 modules: Address, Banner, City, Complaint, Country, Coupon, Driver, Faq, Intro, Item, ItemCategory, JourneyStep, Laundry, LaundryService, LaundryStaff, LaundryZone, Moderator, Notification, Offer, Order, Payment, Pricing, Rating, Recurrence, Report, Service, Setting, TimeSlot, User, Wallet, Zone.
 
-**A sidebar screen is not a module directory.** There are 31 module dirs and 40
+**A sidebar screen is not a module directory.** There are 31 module dirs and 42
 panel screens, and the newer ones live inside an existing module rather than
 getting their own — so **do not go looking for `app/Modules/Settlement/`**:
 
@@ -84,6 +86,20 @@ from the code) and **`docs/order-cycle-explained.md`**; the rules that bind code
   from `complete` on purpose — merging them meant a failed photo upload threw
   away a good scan. `TaskType::startsInto()` / `completesInto()` decide which leg
   moves the *order*; the others move only the task.
+- A leg's own status is `TaskStatus`, and it has **six** cases:
+  `pending` · `assigned` · `started` · `completed` · `failed` · `cancelled`.
+  **`cancelled` is not `failed`.** A failure is a driver who went and could not
+  do it: it counts an attempt, feeds the monthly bonus gates, and returns the leg
+  to the queue with `driver_id` nulled. A cancellation is a leg nobody is going
+  to drive because the order stopped — so it keeps its `driver_id`, which is what
+  leaves it in that driver's history where «ملغاة» can explain where the job went.
+- **An order that stops closes its open legs**, in `OrderStateMachine::standDownTasks()`
+  and in the same transaction as the status change. Completed legs are left alone:
+  on a `returned` order the pieces really were collected and really did reach the
+  laundry, and that is work the driver is owed for. Before this, cancelling moved
+  the money and left every leg exactly where it was — the holder kept a task they
+  could not finish, and an unassigned one sat on the dispatch board as work
+  waiting for somebody who was never coming.
 - `cleaning`, `ready_for_delivery`, `completed` and `returned` currently have
   **no endpoint driving them** — a known gap, not something to paper over.
 
@@ -218,7 +234,7 @@ Scoped: `Order`, `OrderRating`, `LaundryService`, `LaundryZone`, `LaundryStaff`,
 Pricing, Zone, Setting, Coupon), `User`, and **`OrderTask` — driver work carries
 no `laundry_id` at all**, so the home page withholds the dispatch and driver-money
 panels *by permission* instead. Adding a `laundry_id` model without the trait
-leaks across tenants; `withoutGlobalScopes()` is legitimate in ~20 places and is
+leaks across tenants; `withoutGlobalScopes()` is legitimate in dozens of places and is
 exactly the line that gets copy-pasted into a tenant-facing query.
 `TenancyIsolationTest` and `tests/Browser/tenancy.spec.js` guard this.
 
@@ -326,11 +342,11 @@ Adding a translatable field means touching four places: migration, `$fillable`, 
 `languages.default` and `languages.is_rtl` are **enum string `'true'`/`'false'`**, not booleans — `where('default', 'true')`.
 
 **The Web File — where the public site's copy lives.** Four JSON files per
-language: `{code}.json` (the panel's own, 1,249 hand-authored entries),
+language: `{code}.json` (the panel's own, ~1,800 hand-authored entries),
 `{code}_panel.json`, `{code}_mobile.json` and `{code}_web.json`.
 
 ```
-storage/app/webFile.php         the key list + English defaults (173 keys)
+storage/app/webFile.php         the key list + English defaults (~190 keys)
    -> php artisan laundo:sync-web-lang    merges new keys into every language
 resources/lang/{code}_web.json  edited from the languages row's dropdown
    -> webText('landing.hero.title')       locale -> default -> template -> key
@@ -421,8 +437,10 @@ user's `*.view` permissions. Four top-level keys:
   `marketing`(6), `operations`(8), `money`(9), `system`(99).
 - **`singles`** — a `model => order` **map** (`user`:5, `order`:7, `report`:10),
   interleaved with the groups by that number.
-- **`icons` / `titles` / `routes`** — three parallel 40-entry maps keyed by model
-  name.
+- **`icons` / `titles` / `routes`** — three parallel maps keyed by model name,
+  one entry each per screen (42 today, matching `groups` + `singles` exactly).
+  A key present in two of the three renders with a null in the third, so the
+  three counts agreeing is the cheap check that a new module is fully wired.
 
 A new module needs an entry in a group's `items` (or in `singles`) **and** in all
 three UI maps, or it renders with nulls. **Menu keys are not always the module
@@ -544,6 +562,7 @@ five Playwright specs** — leave it alone.
 - Domain vocabulary lives in **PHP enums** under `app/Modules/{Name}/Enums/` (`OrderStatus`, `TaskType`, `PaymentMethod`, `PaymentStatus`, `TransactionReason`, …). Prefer these over string literals.
 - Password reset is **two steps**, for the panel and both apps: `verify-reset-code` spends the code and issues a single-use ticket, `reset-password` takes the ticket. Shared in `app/Services/Auth/PasswordResetTicket.php`. Never accept code + new password in one call.
 - Cross-field rules shared between requests go in `app/Http/Requests/Api/V1/Concerns/` (see `OneDiscountPerOrder`).
+- **`POST /complaints` serves both apps, and `order_id` is optional for that reason.** A customer reaches it from an order; a driver reaches it from the account screen with no order in sight. When one *is* named it resolves through `ComplaintService::orderTheyCanName()` — orders the complainant **placed or was given a leg of**. Widening that to any order files a complaint against a stranger's laundry; narrowing it back to `$user->orders()` is the bug it replaced, where a driver naming the job they had just delivered got a 404.
 
 ### Money, phones and dates
 
@@ -552,11 +571,17 @@ five Playwright specs** — leave it alone.
 - One discount per order: `coupon_code` and `offer_id` are mutually exclusive, the offer wins, and a code sent beside it is **refused with a message** rather than dropped. Enforced at the quote as well as at submit.
 - **Timestamps are stored UTC and shifted only at render.** `config('app.timezone')`
   is `UTC`; `displayTimezone()` reads `app.display_timezone` and falls back to it.
-  `humanDate()` is **the only place** the conversion belongs — doing it in the
-  application timezone corrupts what gets written back. `isoDate()` is the
-  machine-readable counterpart for API payloads. This is also why date columns
-  are deliberately not searchable: matching the text somebody reads would need a
-  timezone conversion in SQL.
+  `humanDate()` is where the conversion belongs for anything **rendered** —
+  doing it in the application timezone corrupts what gets written back.
+  `isoDate()` is the machine-readable counterpart for API payloads. This is also
+  why date columns are deliberately not searchable: matching the text somebody
+  reads would need a timezone conversion in SQL.
+  **There is one other legitimate conversion, and it goes the other way**:
+  `DriverTaskController::applyDay()` takes the day the driver picked, resolves it
+  in `displayTimezone()` and compares against the UTC range it covers. Filtering
+  is not rendering, so `humanDate()` cannot do it — and a `whereDate` on the raw
+  column files every hour either side of midnight under the wrong date, which
+  looks right in every test written in UTC. Do not simplify it back.
 
 ### Helpers (`app/Helpers/`, auto-loaded via composer `files`)
 
@@ -577,14 +602,15 @@ Two overlapping caches exist:
 
 ## Testing
 
-1,187 PHPUnit tests, 3,825 assertions, currently green — but **~5 minutes now**,
-not the minute and a half it used to be. Budget for that before you start a run.
-Real coverage exists — treat a failure as a regression, not as a flaky stub.
+Around 1,390 PHPUnit tests and 4,480 assertions, currently green, in roughly
+eight minutes. Real coverage exists — treat a failure as a regression, not as a
+flaky stub.
 
-- 85 PHP test files: `tests/Feature/Api/` (30) · `tests/Feature/Dashboard/` (36) ·
-  `tests/Feature/Landing/` · `tests/Feature/Console/` · `tests/Unit/` (11), plus
-  15 Playwright specs in **`tests/Browser/`** — capital B, which is what
-  `playwright.config.js` points at and what a case-sensitive CI will demand.
+- Roughly a hundred PHP test files, the bulk of them in `tests/Feature/Dashboard/`
+  and `tests/Feature/Api/`, with `tests/Feature/Landing/`, `tests/Feature/Console/`
+  and `tests/Unit/` behind them, plus a couple of dozen Playwright specs in
+  **`tests/Browser/`** — capital B, which is what `playwright.config.js` points at
+  and what a case-sensitive CI will demand.
 - **The browser suite is not isolated.** It drives the real dashboard against the
   **development MySQL database** and the fixtures already in it
   (`DevFixturesSeeder`, `CatalogSeeder`, `GeoSeeder`, `TimeSlotSeeder`), so it
@@ -625,6 +651,15 @@ Real coverage exists — treat a failure as a regression, not as a flaky stub.
   — running notes handed to the app teams when an endpoint's contract changed.
   Append to these rather than rewriting, and only when a mobile client is
   affected.
+- **`docs/mobile-{date}-{topic}.md` is the send-as-it-is note**, one file per
+  release an app team has to act on — the same content as the append to the
+  running log, but standalone so it can be handed over beside the Postman
+  collection without a covering explanation. `mobile-2026-09-20-slots-and-capacity.md`
+  and `mobile-2026-09-20-driver-app.md` are the pattern.
+- `docs/driver-app-backend-answers.md` — the driver app team's `BACKEND_GAPS.md`
+  answered against the code. Worth reading before building anything an app team
+  reports as missing: about half that report was already shipping and its own DTO
+  said it had chosen not to map it.
 
 ## Known rough edges
 
@@ -685,6 +720,13 @@ Don't "fix" these blind, but know they're there:
   is `LogSmsDriver`), so `OtpService` issues one static value and logs a loud
   `[OTP:STATIC-CODE — NOT RANDOM]` warning each time. Set `OTP_STATIC_CODE=` in
   the env to restore random codes once an SMS provider exists.
+- **`app.display_timezone` is unset on the deployed box**, so `displayTimezone()`
+  falls back to `UTC` and every `humanDate()` in the panel — and the driver app's
+  day filter — renders and matches a UTC day while the business runs on Cairo
+  time. Consistent, but three hours out at the edges of each day. It is one env
+  line to change and it moves rendering everywhere at once, so it is the owner's
+  call rather than a tidy-up. Worth knowing before reading a timestamp on
+  production and concluding something is wrong.
 - `public/storage` must be the **symlink**, not a real directory. If it is a directory, every uploaded file 404s and signed routes 403; fix with `rmdir` then `php artisan storage:link`.
 
 ## Frontend
@@ -709,7 +751,7 @@ Vite/Tailwind are near-unused but **not dead**: `@vite` appears only in `layouts
 ### Dashboard forms keep what you typed
 
 `public/assets/js/custom/form-validation.js` binds to **`form.needs-validation`**
-— the class all 41 create and edit forms already carried — intercepts the
+— the class every create and edit form already carried — intercepts the
 submit, and posts in the background. On a 422 it paints each message beside its
 field and scrolls to the first; on success it follows the controller's redirect.
 
@@ -742,7 +784,7 @@ only a genuinely new domain earns a directory.
 
 1. `app/Modules/{Name}/` — Controller, Model (+ `App\Trait\DashboardModel` and `App\Trait\Scopes\Searchable`), Repository, `{name}CrudService.php` (with `shredData()`), Request (branch rules on `$this->getMethod() === 'PUT'`: required on create, nullable on update), plus `Enums/` if it has a closed vocabulary.
 2. Migration (`status` enum `active|inactive`, translatable columns as `text` — **not `json`**, see the rough edges), then `php artisan migrate`. Add `laundry_id` + `use BelongsToLaundry` if a laundry owner must only see their own rows.
-3. Register the model class in `config/dashboard.php` (40 entries today) so `PermissionSeeder` generates its five permissions, then `php artisan db:seed --class=PermissionSeeder`.
+3. Register the model class in `config/dashboard.php` so `PermissionSeeder` generates its five permissions, then `php artisan db:seed --class=PermissionSeeder`.
 4. Route group in `routes/web.php` with `permission:` middleware on each action, including `search` and `status`. **Money terms gate on `setting.update`**, not the module's own `update`.
 5. `config/menu.php`: add the key to a group's **`items`** array (or to the `singles` map with an order number) **plus** `icons`, `titles`, `routes`.
 6. Views under `resources/views/admin/{name}/` — `index` (with `setupAjaxSearch` in `@push('scripts')`, or `setupClientFilter` if it is a bulk-edit grid), `create`, `edit`, `show`, `partials/_{name}_table_body`, `forms/formInput`, `shared/controlBut`.
