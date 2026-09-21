@@ -36,7 +36,17 @@ class DriverRecordNotifier
             $this->reviewers(),
             __('A driver sent their papers'),
             __(':name updated their vehicle or licence details.', ['name' => $driver->name]),
-            route('admin.driver_record_submission.index'),
+            // A path, not `route()`. The stored value is rendered in the bell
+            // and clicked later, so an absolute URL bakes in whichever host
+            // generated it — and that is not always the one the reader is on:
+            // anything raised from the console or from tinker gets `APP_URL` or
+            // `localhost`, and one written by a request behind Cloudflare gets
+            // whatever scheme survived the edge. A live notification already
+            // shipped pointing at `http://localhost/admin/...`.
+            //
+            // `OrderNotifier` has always stored paths. This is the rest of the
+            // codebase catching up with it.
+            '/admin/driver-record-submission',
             ['driver_record_submission_id' => (string) $submission->id],
         );
     }

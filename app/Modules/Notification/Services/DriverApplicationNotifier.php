@@ -35,7 +35,10 @@ class DriverApplicationNotifier
                 'name' => $application->name,
                 'phone' => $application->phone,
             ]),
-            route('admin.driver_application.index'),
+            // A path rather than `route()`, for the reason DriverRecordNotifier
+            // records: an absolute URL stores the host that generated it, which
+            // is not always the host the reader is on.
+            '/admin/driver-application',
             ['driver_application_id' => (string) $application->id],
         ));
     }

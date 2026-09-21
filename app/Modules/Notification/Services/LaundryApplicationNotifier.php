@@ -44,7 +44,9 @@ class LaundryApplicationNotifier
             __(':name is waiting to be reviewed.', [
                 'name' => getLocalizedValueDashboard($laundry, 'name'),
             ]),
-            route('admin.laundry.show', $laundry->id),
+            // Same reason as the two driver notifiers: a stored absolute URL
+            // carries whichever host built it.
+            '/admin/laundry/show/'.$laundry->id,
             ['laundry_id' => (string) $laundry->id],
         ));
     }
