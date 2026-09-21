@@ -40,15 +40,6 @@
             <div class="card-body">
                 @forelse ($queue as $item)
                     @php
-                        // A PHP comment, not a Blade one: inside @php the block
-                        // is raw PHP, so {{-- --}} is compiled rather than
-                        // stripped -- and a backtick in it becomes shell-exec
-                        // syntax and takes the whole page down with a ParseError.
-                        //
-                        // `params` lets a queue item open a *filtered* screen.
-                        // Without it every order-shaped item landed on the
-                        // unfiltered list, and the operator had to go and find
-                        // the rows the number was counting.
                         $target = ($item['route'] ?? null) && Route::has($item['route'])
                             ? route($item['route'], $item['params'] ?? [])
                             : null;
