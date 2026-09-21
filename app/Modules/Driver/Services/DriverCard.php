@@ -75,6 +75,17 @@ class DriverCard
             // the dot had gone.
             'phone' => $this->reachableWhileLive($task) ? $driver->phone : null,
             'location' => $this->location($task),
+            // The last thing the server knows, however old it is — and the age,
+            // so the client can say how old. `location` is the recommendation
+            // («fresh enough to draw as live»); this is the fact behind it.
+            //
+            // Both exist because `location: null` answered two different
+            // questions with the same word: «this driver has never reported»
+            // and «this driver reported four minutes ago». The customer's screen
+            // could only ever say «موقع المندوب غير متاح», and the map went
+            // blank the moment the driver locked their phone — then stayed blank
+            // when they unlocked it, until a new reading landed.
+            'last_seen' => $this->lastSeen($task),
         ];
     }
 
@@ -160,6 +171,45 @@ class DriverCard
             'lat' => (float) $profile->last_lat,
             'lng' => (float) $profile->last_lng,
             'updated_at' => $profile->located_at->toIso8601String(),
+        ];
+    }
+
+    /**
+     * The last stored reading, at whatever age, while the leg is still live.
+     *
+     * Gated exactly as `location()` is, and that is the whole of the privacy
+     * story: the same three legs, the same live statuses. What is relaxed here
+     * is freshness alone — a position the customer was already entitled to see
+     * does not become secret because it is four minutes old. It becomes *stale*,
+     * which is a different thing, and `age_seconds` is how the client is told
+     * which one it is holding.
+     *
+     * `is_stale` is the server's own answer against `FRESH_FOR_SECONDS`, so a
+     * client that does not want to hardcode the threshold does not have to —
+     * and so the two halves of this payload cannot drift apart.
+     *
+     * @return array<string, mixed>|null
+     */
+    private function lastSeen(OrderTask $task): ?array
+    {
+        if (! $this->reachableWhileLive($task)) {
+            return null;
+        }
+
+        $profile = $task->driver?->profile;
+
+        if (! $profile?->located_at || $profile->last_lat === null || $profile->last_lng === null) {
+            return null;
+        }
+
+        $age = (int) $profile->located_at->diffInSeconds(now());
+
+        return [
+            'lat' => (float) $profile->last_lat,
+            'lng' => (float) $profile->last_lng,
+            'at_iso' => $profile->located_at->toIso8601String(),
+            'age_seconds' => $age,
+            'is_stale' => $age > self::FRESH_FOR_SECONDS,
         ];
     }
 

@@ -1,64 +1,63 @@
-# Let a signed-in user see the landing page
+# The customer's map, when the driver's phone goes quiet
 
-Today bare `/` redirects anyone with a session to `/admin/home`, so an operator,
-a laundry owner or a staff member cannot look at the marketing site at all
-without signing out. `/ar` and `/en` already let them through — only `/` does
-this — which makes the behaviour inconsistent as well as unhelpful.
+The dot vanishes two minutes after the driver app stops reporting, and the app
+reports only while the driver is sitting on its map screen. Closing the app, or
+walking to the door, takes the map away from the customer — and reopening it
+leaves the customer on «موقع المندوب غير متاح حاليًا» until a fresh reading lands.
 
-Replace the redirect with a bar across the top of the landing page offering the
-way in, pointed at the panel the signer-in actually has.
+The reporting gap is the app's to close. What the server can stop doing is
+throwing away the last thing it knew.
 
 ## Plan
 
-- [x] `User::canReachPanel()` — one definition of "may reach /admin", used by
-      `EnsureDashboardRole` **and** the bar. Two copies would eventually offer a
-      button that 403s.
-- [x] Drop the redirect in `LandingController::index()`.
-- [x] `landing/partials/_account_bar.blade.php` — full-width, above the sticky
-      header, scrolls away. Name, role, and a button to the panel.
-- [x] Render it from `layouts.landing`, so the legal pages get it too.
-- [x] `landing.css` — theme-aware tokens, logical properties (one stylesheet
-      serves both directions), and it must not break at 400px.
-- [x] Web File keys + `laundo:sync-web-lang`. No copy hardcoded in a Blade file.
-- [x] Rewrite the two tests that pin the redirect; add tests for the bar,
-      including that a customer is not offered a panel they cannot open.
+- [x] `DriverCard` — add `last_seen` beside `location`: the last stored reading
+      with its age, whatever that age is.
+- [x] `location` stays exactly as it is — fresh-only. Widening it would draw a
+      five-minute-old dot as though it were live, which is worse than drawing
+      nothing, because nobody reports a wrong answer they cannot see is wrong.
+- [x] Same privacy gate as `location`: the three customer-facing legs, live.
+      A position that outlives the leg is a driver being followed off the clock.
+- [x] Tests: fresh, stale, off-leg, never-reported.
+- [x] `docs/mobile-2026-09-21-driver-tracking.md` — the contract, the 120-second
+      window and why it exists, and the background-location requirement on both
+      platforms.
+- [x] Postman + `generate-reference.py` + Changelog.
 
-## Decisions
+## The decision behind it
 
-- **Both panel role types land on `/admin/home`.** That *is* each one's own
-  dashboard — the home page renders its panels from the viewer's permissions,
-  and a laundry owner sees their half of it. There is no second URL to send
-  anyone to.
-- **An `app` role (customer, driver) gets no bar.** They have no panel, so a
-  «go to your dashboard» button would be a 403 dressed as an invitation.
-- Not sticky. The header already is, and two stacked sticky bars eat a phone
-  screen.
+The server was making a display decision — «this is too old to draw» — and
+answering `null`, which is indistinguishable from «never reported». The app
+cannot tell those apart and so cannot say anything useful. `last_seen` hands the
+client the fact and its age; `location` keeps the recommendation. The app draws a
+live dot from one and a faded «آخر ظهور منذ ٣ دقائق» from the other.
+
+Non-breaking: `location` is untouched, so the shipped app keeps working.
+
 
 ## Review
 
-Done and driven in a real browser, signed in as each account type.
+`last_seen` ships beside `location`, twelve tests green on the file, and the
+120-second window is written down for the first time — in the API reference, the
+Postman description, the running mobile log and a standalone note for both app
+teams.
 
-- Super admin and laundry owner both get the bar; the owner's reads «Signed in
-  as Owner A · Laundry Owner», which is the point of the role chip — on a shared
-  browser it answers *whose* dashboard is about to open.
-- The redirect is gone: `/` stays on `/` for a signed-in user.
-- RTL mirrors with no extra rules, because the bar is built from logical
-  properties and `.btn-icon` was already flipped by the stylesheet's RTL block.
-- Dark mode needed the same hairline `.band--navy` gets — without it the navy
-  strip and the dark header ran together.
+The judgement worth recording: the obvious fix was to widen `FRESH_FOR_SECONDS`,
+and it would have looked like a fix. It would have drawn a five-minute-old
+position as though it were live, which is the failure nobody reports because
+nobody can see it is wrong. The problem was never the threshold — it was that the
+server answered a display question (`null`) where the client needed a fact. The
+threshold stays; the fact is now sent alongside it, and the client decides.
 
-Two things the browser caught that the tests could not:
+Two things I got wrong on the way here, both corrected:
 
-- The button label wrapped to two lines and took the strip from 54px to 108px.
-  `flex: none` + `white-space: nowrap`; the sentence beside it is the half that
-  may wrap.
-- The arrow rendered at zero width. `.btn-icon` had a hover transform and an RTL
-  flip but no size — nothing in the views had ever rendered one, so the gap had
-  never shown. Sized on the class.
+- I first read the whole thing as «the driver app never reports». It does — the
+  owner corrected me — but only while the driver is looking at the map screen,
+  which is why it worked in every manual test and never in the field.
+- I then called `liveTask()` picking `deliver_to_laundry` a bug and wrote the
+  fix. Two existing tests failed, and they were right: that leg being named
+  without a phone or a dot is a deliberate decision, and the card is not blank —
+  it names the person holding the clothes. Reverted in full.
 
-Not chased, and not caused here: `staffa@test.local` and `customer@test.local`
-do not accept the password `tests/Browser/helpers.js` lists for them, so the
-customer case could not be walked in the browser. Both accounts are `active`, so
-it is the dev database's passwords rather than the sign-in gate, and
-`a_customer_is_not_offered_a_panel_they_cannot_open` covers the behaviour through
-`actingAs()`.
+Still the app's to fix, and not something the server can paper over: reporting
+has to run off a live task, not a visible screen. The note spells out the
+foreground-service and background-permission requirements for both platforms.

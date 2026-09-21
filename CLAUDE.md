@@ -20,8 +20,8 @@ npm run build / npm run dev
 
 Single test: `php artisan test --filter=TestName` · one file: `php artisan test tests/Feature/Api/OrderTest.php` · one suite: `php artisan test --testsuite=Unit`. One browser spec: `npx playwright test tests/Browser/<name>.spec.js`.
 
-The full PHPUnit suite takes **five to eight minutes** — two measured runs on
-the same machine came in at 317s and 477s, so budget for the longer one. Use
+The full PHPUnit suite takes **four to eight minutes** — three measured runs on
+the same machine came in at 251s, 317s and 477s, so budget for the longest. Use
 `--filter` while iterating and run the whole thing once, before you call the
 task done. It has grown steadily; if it runs much longer than this, re-measure
 and correct the figure here rather than working around it.

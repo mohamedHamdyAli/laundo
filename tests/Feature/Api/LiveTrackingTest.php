@@ -322,6 +322,91 @@ class LiveTrackingTest extends TestCase
      * There is no chat. Nothing in the system carries a message between a
      * customer and a driver, and the card must not imply otherwise.
      */
+    // ------------------------------------------- the last thing we knew, and when
+
+    #[Test]
+    public function a_stale_reading_is_still_handed_over_with_its_age(): void
+    {
+        $order = $this->order();
+        $this->leg($order, TaskType::PickupFromCustomer);
+        $this->report();
+
+        $this->driver->profile->forceFill(['located_at' => now()->subMinutes(5)])->save();
+
+        $card = $this->card($order);
+
+        // `location` is the recommendation and still refuses: five minutes old is
+        // not a live dot.
+        $this->assertNull($card['location']);
+
+        // `last_seen` is the fact. The map comes back the moment the customer
+        // reopens the screen — faded, and labelled with how old it is, rather
+        // than «موقع المندوب غير متاح» over an empty page.
+        $this->assertNotNull($card['last_seen']);
+        $this->assertSame(30.05, $card['last_seen']['lat']);
+        $this->assertTrue($card['last_seen']['is_stale']);
+        $this->assertGreaterThanOrEqual(290, $card['last_seen']['age_seconds']);
+        $this->assertLessThan(400, $card['last_seen']['age_seconds']);
+    }
+
+    #[Test]
+    public function a_fresh_reading_is_not_marked_stale(): void
+    {
+        $order = $this->order();
+        $this->leg($order, TaskType::PickupFromCustomer);
+        $this->report();
+
+        $card = $this->card($order);
+
+        $this->assertNotNull($card['location'], 'a reading seconds old is a live dot');
+        $this->assertFalse($card['last_seen']['is_stale']);
+        $this->assertLessThan(120, $card['last_seen']['age_seconds']);
+    }
+
+    #[Test]
+    public function a_driver_who_never_reported_has_nothing_to_hand_over(): void
+    {
+        $order = $this->order();
+        $this->leg($order, TaskType::PickupFromCustomer);
+
+        $card = $this->card($order);
+
+        // Null here means «never», which is the other question `location: null`
+        // used to answer with the same word.
+        $this->assertNull($card['location']);
+        $this->assertNull($card['last_seen']);
+    }
+
+    #[Test]
+    public function the_last_position_is_withheld_on_the_legs_the_dot_is(): void
+    {
+        // Same gate as the live dot, and that is the point: relaxing freshness
+        // must not relax privacy. A driver whose last position outlived the leg
+        // is a driver being followed off the clock.
+        $order = $this->order();
+        $this->leg($order, TaskType::DeliverToLaundry, TaskStatus::Started);
+        $this->report();
+
+        $card = $this->card($order);
+
+        $this->assertNull($card['location']);
+        $this->assertNull($card['last_seen']);
+    }
+
+    #[Test]
+    public function a_finished_leg_hands_over_neither(): void
+    {
+        $order = $this->order();
+        $this->leg($order, TaskType::PickupFromCustomer);
+        $this->report();
+        $this->leg($order, TaskType::PickupFromCustomer, TaskStatus::Completed);
+
+        $card = $this->card($order);
+
+        $this->assertNull($card['location']);
+        $this->assertNull($card['last_seen'], 'the handover is over; the position goes with it');
+    }
+
     #[Test]
     public function the_card_promises_no_chat(): void
     {

@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-09-21
+
+### Feature
+
+- **`driver.last_seen` on the customer's tracking payload.** `driver.location` is withheld once a reading passes 120 seconds old, because a stationary marker reads as «السائق واقف» and sends the customer to the phone. That decision stands — but it left `location: null` answering two different questions with the same word: «this driver has never reported» and «this driver reported four minutes ago». The app could only ever say «موقع المندوب غير متاح» and the map went blank the moment the driver locked their phone. `last_seen` carries the last stored reading whatever its age, with `age_seconds` and `is_stale`, so the client draws a live dot from one and a faded «آخر ظهور منذ ٥ دقائق» from the other. Additive: `location` is untouched and the shipped app keeps working (Service / API).
+- Same privacy gate as the dot, deliberately — the three customer-facing legs, `assigned` or `started`. What is relaxed is **freshness alone**: a position the customer was already entitled to see does not become secret because it is four minutes old, but a driver who has finished their leg is not followed (Service).
+- Documented for both app teams in `docs/mobile-2026-09-21-driver-tracking.md`, with the 120-second window — which had never been written down anywhere — and the background-location requirements that the driver app needs on each platform. Its reporting is currently bound to the map screen, so it stops the moment the driver navigates away, which is why the dot appeared during manual testing and never in the field (Docs).
+
 ## 2026-09-20
 
 ### Feature
