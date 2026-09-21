@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Modules\Complaint\Models\Complaint;
 use App\Modules\Driver\Models\DriverApplication;
 use App\Modules\Driver\Models\DriverBonusAward;
+use App\Modules\Driver\Models\DriverRecordSubmission;
 use App\Modules\Laundry\Models\Laundry;
 use App\Modules\Order\Enums\OrderStatus;
 use App\Modules\Order\Models\Order;
@@ -91,6 +92,12 @@ class MenuBadges
             // second is the worse of the two: approved is a promise.
             'refund' => Refund::pending()->count()
                 + Refund::where('status', Refund::APPROVED)->whereNull('settled_at')->count(),
+
+            // Papers a driver has sent about their own vehicle or licence and
+            // nobody has looked at. Nothing about them takes effect until
+            // somebody does, so this is a driver waiting on a person — and a
+            // queue nobody is reminded of is a record that quietly goes stale.
+            'driver_record_submission' => DriverRecordSubmission::pending()->count(),
 
             // Months worked out and waiting on somebody to approve. Only the
             // ones that would actually pay: a driver who missed every target

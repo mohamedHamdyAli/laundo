@@ -3,6 +3,7 @@
 namespace Tests\Feature\Api;
 
 use App\Modules\Complaint\Models\Complaint;
+use App\Modules\Driver\Models\DriverRecordSubmission;
 use App\Modules\Order\Enums\TaskStatus;
 use App\Modules\Order\Models\Order;
 use App\Modules\Order\Models\OrderRating;
@@ -434,7 +435,12 @@ class FigmaGapsTest extends TestCase
 
         $fresh = $driver->fresh(['profile', 'zones']);
 
-        $this->assertSame('DL-THEIRS', $fresh->profile?->license_number);
+        // Staged, not written: the licence is a claim until somebody checks it.
+        $this->assertSame('DL-9911', $fresh->profile?->license_number);
+        $this->assertSame(
+            'DL-THEIRS',
+            DriverRecordSubmission::where('driver_id', $driver->id)->pending()->firstOrFail()->payload['license_number']
+        );
         $this->assertSame($zoneBefore, $fresh->zones->pluck('id')->all());
     }
 
@@ -455,7 +461,11 @@ class FigmaGapsTest extends TestCase
             ])
             ->assertSuccessful();
 
+        // Neither record moved — one because it is not theirs to touch, the
+        // other because nothing is written before it is reviewed. What matters
+        // here is that the submission was filed against the sender.
         $this->assertSame('THEIRS-1', $theirs->fresh()->profile?->license_number);
-        $this->assertSame('FORGED-1', $mine->fresh()->profile?->license_number);
+        $this->assertSame(0, DriverRecordSubmission::where('driver_id', $theirs->id)->count());
+        $this->assertSame(1, DriverRecordSubmission::where('driver_id', $mine->id)->count());
     }
 }

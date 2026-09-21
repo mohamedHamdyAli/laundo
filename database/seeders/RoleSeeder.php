@@ -102,6 +102,67 @@ class RoleSeeder extends Seeder
             // Staff read orders; assigning one is the owner's call.
             'order.view',
         ]);
+
+        /*
+         * «مسؤول المندوبين» — the person who actually runs the couriers.
+         *
+         * Added because driver work had grown a queue of its own: papers a
+         * driver has sent about their vehicle wait on somebody to check them,
+         * and the notification is addressed to whoever holds
+         * `driver_record_submission.update`. Without a role that ships with it,
+         * that is nobody until an operator builds one by hand — and a queue
+         * nobody is told about is a driver waiting on a screen that never moves.
+         *
+         * **Not `is_system`.** The structural roles are flagged so they cannot be
+         * deleted; this one is a starting point an install is meant to adjust —
+         * hand it the dispatch board or take it away, rename it, or delete it
+         * entirely if one person does everything. Locking it would be asserting
+         * we know how their operations desk is divided.
+         */
+        $driverSupervisor = Role::updateOrCreate(
+            ['slug' => 'driver_supervisor'],
+            ['name' => 'Driver Supervisor', 'type' => 'dashboard']
+        );
+
+        $this->syncPermissions($driverSupervisor, [
+            // The couriers themselves: read them, create one after the call, keep
+            // shifts and zones current, and suspend somebody who has stopped
+            // turning up.
+            'driver.view',
+            'driver.create',
+            'driver.update',
+            'driver.toggle',
+
+            // The queue this role exists for. `.update` is what the submitted
+            // paperwork notification is addressed to.
+            'driver_record_submission.view',
+            'driver_record_submission.update',
+
+            // Leads from «انضم لنا» — the same person rings them and creates the
+            // driver, so splitting the two across roles would split one job.
+            'driver_application.view',
+            'driver_application.toggle',
+
+            // The dispatch board. Reading it is not enough: handing a stranded
+            // leg to somebody is the daily work of running couriers, and a
+            // supervisor who has to fetch an admin to do it is not supervising.
+            'order_task.view',
+            'order_task.update',
+
+            // Deliberately absent, and each for its own reason:
+            //
+            //   driver_earning.*, driver_bonus_rule.*, driver_bonus_award.*
+            //     Money. The codebase gates every driver money term on
+            //     `setting.update` precisely so the person managing a driver is
+            //     not the person setting what that driver is paid.
+            //
+            //   order.*
+            //     A driver supervisor needs the legs, not the customers' orders,
+            //     their prices or their addresses beyond the stop itself.
+            //
+            //   user.*, report.update
+            //     Neither is driver work, and both read far past it.
+        ]);
     }
 
     /**

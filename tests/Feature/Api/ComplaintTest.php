@@ -188,6 +188,59 @@ class ComplaintTest extends TestCase
     }
 
     #[Test]
+    public function the_dashboard_queue_can_be_narrowed_to_one_side_of_the_platform(): void
+    {
+        // Both apps file here now, and «مشكلة مع العميل» is not the same work as
+        // «الهدوم اتخربت» — rarely the same person's morning either.
+        $this->actingAs($this->customer)->postJson('/api/v1/complaints', [
+            'category' => 'not_clean', 'body' => 'came back with the stain still on it',
+        ])->assertCreated();
+
+        $this->actingAs($this->driver)->postJson('/api/v1/complaints?audience=driver', [
+            'category' => 'customer_conduct', 'body' => 'nobody answered the door',
+        ])->assertCreated();
+
+        $admin = $this->superAdmin();
+
+        $everyone = $this->actingAs($admin)->get('/admin/complaint')->assertOk();
+        $this->assertStringContainsString('stain still on it', $everyone->getContent());
+        $this->assertStringContainsString('nobody answered the door', $everyone->getContent());
+
+        $drivers = $this->actingAs($admin)->get('/admin/complaint?audience=driver&status=all')->assertOk();
+        $this->assertStringContainsString('nobody answered the door', $drivers->getContent());
+        $this->assertStringNotContainsString('stain still on it', $drivers->getContent());
+
+        $customers = $this->actingAs($admin)->get('/admin/complaint?audience=customer&status=all')->assertOk();
+        $this->assertStringContainsString('stain still on it', $customers->getContent());
+        $this->assertStringNotContainsString('nobody answered the door', $customers->getContent());
+    }
+
+    #[Test]
+    public function the_queue_survives_a_search_with_the_filter_on(): void
+    {
+        // The filter has to ride the AJAX search too, or typing a word silently
+        // widens the queue back to everybody — the trap `extraParams` exists for.
+        $this->actingAs($this->driver)->postJson('/api/v1/complaints?audience=driver', [
+            'category' => 'customer_conduct', 'body' => 'nobody answered the door',
+        ])->assertCreated();
+
+        $this->actingAs($this->customer)->postJson('/api/v1/complaints', [
+            'category' => 'not_clean', 'body' => 'nobody cleaned it properly',
+        ])->assertCreated();
+
+        $response = $this->actingAs($this->superAdmin())
+            ->getJson('/admin/complaint/search?query=nobody&audience=driver&status=all', [
+                'X-Requested-With' => 'XMLHttpRequest',
+            ])
+            ->assertOk();
+
+        $table = $response->json('table');
+
+        $this->assertStringContainsString('nobody answered the door', $table);
+        $this->assertStringNotContainsString('nobody cleaned it properly', $table);
+    }
+
+    #[Test]
     public function every_reference_is_unique(): void
     {
         $this->actingAs($this->customer);
@@ -358,6 +411,76 @@ class ComplaintTest extends TestCase
             $this->assertTrue($customer->contains($shared), "{$shared} is the customer's too");
             $this->assertTrue($driver->contains($shared), "{$shared} is the driver's too");
         }
+    }
+
+    #[Test]
+    public function the_contact_us_message_box_files_a_support_request(): void
+    {
+        // «تواصل معنا» is a message box with a send button and no category
+        // chooser — the app sets the category itself. It used to confirm without
+        // sending anything at all.
+        $this->actingAs($this->driver)
+            ->postJson('/api/v1/complaints?audience=driver', [
+                'category' => 'support_request',
+                'body' => 'عايز أعرف المكافأة بتتحسب إزاي',
+            ])
+            ->assertCreated();
+
+        $complaint = Complaint::firstOrFail();
+
+        $this->assertSame('support_request', $complaint->category);
+        // The reference is the point: it is what the courier quotes on the call
+        // back, and what stops the message being a black hole.
+        $this->assertNotNull($complaint->reference);
+        $this->assertNull($complaint->order_id, 'a general question names no order');
+    }
+
+    #[Test]
+    public function support_request_is_accepted_but_never_offered_in_the_list(): void
+    {
+        // What a person may choose and what the endpoint may be sent are two
+        // different sets the moment one category is set by a screen rather than
+        // picked from a dropdown. «طلب دعم» in the complaint-type list would be
+        // a screen's name offered as a kind of problem.
+        foreach (['', '?audience=customer', '?audience=driver'] as $query) {
+            $offered = collect($this->getJson('/api/v1/complaint-categories'.$query)
+                ->assertOk()->json('data'))->pluck('value');
+
+            $this->assertFalse(
+                $offered->contains('support_request'),
+                "support_request must not be listed for '{$query}'"
+            );
+        }
+
+        // Both apps draw the screen, so both may post it.
+        foreach ([$this->customer, $this->driver] as $sender) {
+            Complaint::query()->delete();
+
+            $this->actingAs($sender)
+                ->postJson('/api/v1/complaints', [
+                    'category' => 'support_request',
+                    'body' => 'a question from the contact screen',
+                ])
+                ->assertCreated();
+        }
+    }
+
+    #[Test]
+    public function support_requests_are_countable_apart_from_everything_else(): void
+    {
+        // The reason it is not folded into «أخرى»: «كام واحد كتبلنا من تواصل
+        // معنا» is a question somebody will ask, and Other is where an answer
+        // goes to stop being countable.
+        $this->actingAs($this->customer)->postJson('/api/v1/complaints', [
+            'category' => 'support_request', 'body' => 'a question',
+        ])->assertCreated();
+
+        $this->actingAs($this->customer)->postJson('/api/v1/complaints', [
+            'category' => 'other', 'body' => 'something else entirely',
+        ])->assertCreated();
+
+        $this->assertSame(1, Complaint::where('category', 'support_request')->count());
+        $this->assertSame(1, Complaint::where('category', 'other')->count());
     }
 
     #[Test]

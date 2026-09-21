@@ -11,6 +11,7 @@ use App\Modules\Driver\Models\Driver;
 use App\Modules\Driver\Models\DriverApplication;
 use App\Modules\Driver\Models\DriverBonusAward;
 use App\Modules\Driver\Models\DriverBonusRule;
+use App\Modules\Driver\Models\DriverRecordSubmission;
 use App\Modules\Faq\Models\Faq;
 use App\Modules\Intro\Models\intro;
 use App\Modules\Item\Models\Item;
@@ -66,6 +67,7 @@ return [
         LaundryZone::class,
         LaundrySlotCapacity::class,
         Driver::class,
+        DriverRecordSubmission::class,
         DriverApplication::class,
         DriverBonusRule::class,
         DriverBonusAward::class,

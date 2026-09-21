@@ -32,6 +32,21 @@ enum ComplaintCategory: string
      * countable. Operations cannot act on a pattern it cannot see.
      */
     case CustomerConduct = 'customer_conduct';
+
+    /**
+     * «تواصل معنا» — the free-text box under the phone, WhatsApp and email rows.
+     *
+     * Not a complaint anybody picks: both apps draw a message box with a send
+     * button and no category chooser at all, so the app sets this itself. It
+     * exists rather than folding into `Other` because «كام واحد كتبلنا من تواصل
+     * معنا» is a question somebody will ask, and `Other` is where an answer goes
+     * to stop being countable.
+     *
+     * It is deliberately **not selectable**: offering «طلب دعم» inside the
+     * complaint-type dropdown would be offering a screen's name as a kind of
+     * problem.
+     */
+    case SupportRequest = 'support_request';
     case Other = 'other';
 
     public function label(): string
@@ -45,6 +60,7 @@ enum ComplaintCategory: string
             self::Payment => 'Payment problem',
             self::AppProblem => 'App problem',
             self::CustomerConduct => 'Problem with the customer',
+            self::SupportRequest => 'Support request',
             self::Other => 'Something else',
         };
     }
@@ -80,6 +96,7 @@ enum ComplaintCategory: string
             self::Late,
             self::Payment,
             self::AppProblem,
+            self::SupportRequest,
             self::Other => 'both',
         };
     }
@@ -101,11 +118,43 @@ enum ComplaintCategory: string
     }
 
     /**
-     * The cases one audience may use.
+     * Whether a person ever picks this from the complaint-type list.
+     *
+     * `support_request` is the only one that is not: «تواصل معنا» is a message
+     * box with a send button and no chooser, so the app sets the category
+     * itself. Listing it in the dropdown would put a screen's name among kinds
+     * of problem.
+     */
+    public function isSelectable(): bool
+    {
+        return $this !== self::SupportRequest;
+    }
+
+    /**
+     * What the complaint-type list **offers** this audience.
+     *
+     * Kept apart from `acceptedFrom()` on purpose: what a person may choose and
+     * what the endpoint may be sent are two different sets the moment one
+     * category is set by a screen rather than picked from a list. Collapsing
+     * them would either hide «تواصل معنا» from the API or show it in the
+     * dropdown.
      *
      * @return array<int, self>
      */
-    public static function forAudience(?string $audience): array
+    public static function offeredTo(?string $audience): array
+    {
+        return array_values(array_filter(
+            self::cases(),
+            fn (self $case) => $case->isSelectable() && $case->servesAudience($audience)
+        ));
+    }
+
+    /**
+     * What the endpoint **accepts** from this audience.
+     *
+     * @return array<int, self>
+     */
+    public static function acceptedFrom(?string $audience): array
     {
         return array_values(array_filter(
             self::cases(),

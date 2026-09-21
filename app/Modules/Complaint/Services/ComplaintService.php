@@ -300,6 +300,6 @@ class ComplaintService
             // Which app this belongs to, for anything that wants the whole list
             // and its own labelling rather than a narrowed one.
             'audience' => $c->audience(),
-        ], ComplaintCategory::forAudience($audience));
+        ], ComplaintCategory::offeredTo($audience));
     }
 }

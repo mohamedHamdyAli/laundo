@@ -13,6 +13,7 @@ use App\Modules\Complaint\Controllers\ComplaintController;
 use App\Modules\Country\Controllers\CountryController;
 use App\Modules\Coupon\Controllers\CouponController;
 use App\Modules\Driver\Controllers\DriverApplicationController;
+use App\Modules\Driver\Controllers\DriverRecordSubmissionController;
 use App\Modules\Driver\Controllers\DriverBonusAwardController;
 use App\Modules\Driver\Controllers\DriverBonusRuleController;
 use App\Modules\Driver\Controllers\DriverController;
@@ -469,6 +470,30 @@ Route::middleware(['auth', 'dashboard.only'])->prefix('/admin')->group(function 
     | because a two-state flag on one row is exactly what that action means
     | everywhere else in this panel.
     */
+    /*
+    | «مستندات بانتظار المراجعة» — what drivers have sent about their own records.
+    |
+    | Gated on its own permission, not on `driver.update`. Checking a licence
+    | photograph against the person who sent it is a different job from keeping a
+    | driver's shift current, and an install should be able to give it to a
+    | different person.
+    |
+    | There is no create and no edit: the rows arrive from the app, and the only
+    | two actions are approve and refuse.
+    */
+    Route::controller(DriverRecordSubmissionController::class)->group(function () {
+        Route::get('/driver-record-submission', 'index')
+            ->middleware('permission:driver_record_submission.view')->name('admin.driver_record_submission.index');
+        Route::get('/driver-record-submission/search', 'search')
+            ->middleware('permission:driver_record_submission.view')->name('admin.driver_record_submission.search');
+        Route::get('/driver-record-submission/show/{id}', 'show')
+            ->middleware('permission:driver_record_submission.view')->name('admin.driver_record_submission.show');
+        Route::post('/driver-record-submission/approve/{id}', 'approve')
+            ->middleware('permission:driver_record_submission.update')->name('admin.driver_record_submission.approve');
+        Route::post('/driver-record-submission/reject/{id}', 'reject')
+            ->middleware('permission:driver_record_submission.update')->name('admin.driver_record_submission.reject');
+    });
+
     Route::controller(DriverApplicationController::class)->group(function () {
         Route::get('/driver-application', 'index')
             ->middleware('permission:driver_application.view')->name('admin.driver_application.index');

@@ -110,10 +110,16 @@ return [
                 // that grows on its own, and a queue nobody is reminded of is
                 // a queue of couriers who took another job.
                 'driver_application' => 3,
-                'driver_earning' => 4,
+                'driver_record_submission' => 'Document Reviews',
+                // Beside the applications for the same reason they are third:
+                // it grows on its own, and a driver waiting on somebody to look
+                // at his licence is a driver who cannot be dispatched with a
+                // record anybody trusts.
+                'driver_record_submission' => 4,
+                'driver_earning' => 5,
                 // The terms, then what those terms came to this month.
-                'driver_bonus_rule' => 5,
-                'driver_bonus_award' => 6,
+                'driver_bonus_rule' => 6,
+                'driver_bonus_award' => 7,
             ],
         ],
 
@@ -242,6 +248,7 @@ return [
         'order_task' => 'bi bi-signpost-split',
         'driver' => 'bi bi-truck',
         'driver_application' => 'bi bi-person-plus',
+        'driver_record_submission' => 'bi bi-file-earmark-check',
         // Was `bi bi-cash-stack`, which is now the Money group's own icon.
         'driver_earning' => 'bi bi-coin',
         'driver_bonus_rule' => 'bi bi-sliders2',
@@ -298,6 +305,7 @@ return [
         'order_task' => 'Dispatch',
         'driver' => 'Drivers',
         'driver_application' => 'Applicants',
+        'driver_record_submission' => 'Document Reviews',
         'driver_earning' => 'Driver Earnings',
         'driver_bonus_rule' => 'Bonus Rules',
         'driver_bonus_award' => 'Monthly Bonuses',
@@ -353,6 +361,7 @@ return [
         'order_task' => 'admin.dispatch.index',
         'driver' => 'admin.driver.index',
         'driver_application' => 'admin.driver_application.index',
+        'driver_record_submission' => 'admin.driver_record_submission.index',
         'driver_earning' => 'admin.earning.index',
         'driver_bonus_rule' => 'admin.driver_bonus_rule.index',
         'driver_bonus_award' => 'admin.driver_bonus.index',

@@ -3,6 +3,7 @@
 namespace Tests\Feature\Api;
 
 use App\Modules\Driver\Models\Driver;
+use App\Modules\Driver\Models\DriverRecordSubmission;
 use App\Services\Auth\OtpService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
@@ -261,8 +262,11 @@ class DriverApiTest extends TestCase
         $this->assertSame([$this->zoneIds[0]], $fresh->zones->pluck('id')->all(), 'territory is assigned, not chosen');
     }
 
-    public function test_a_driver_maintains_their_own_vehicle_licence_and_documents(): void
+    public function test_a_driver_submits_their_vehicle_and_licence_for_review(): void
     {
+        // Nothing here lands on the record. An expiry the driver typed is a
+        // claim, and a record nobody checks is not a record — the whole of
+        // DriverRecordReviewTest is about what happens after somebody looks.
         $driver = $this->driverUser('+201033330097');
         $token = $driver->createToken('t')->plainTextToken;
 
@@ -278,23 +282,26 @@ class DriverApiTest extends TestCase
             'license_issued_at' => '2020-01-01',
             'license_expiry' => '2030-01-01',
         ])->assertOk()
-            ->assertJsonPath('data.vehicle.brand', 'Toyota')
-            ->assertJsonPath('data.vehicle.year', '2022')
-            ->assertJsonPath('data.license.type', 'Private');
+            ->assertJsonPath('data.pending_review.status', 'pending');
 
-        $profile = $driver->fresh('profile')->profile;
+        $payload = DriverRecordSubmission::where('driver_id', $driver->id)
+            ->pending()->firstOrFail()->payload;
 
-        $this->assertSame('car', $profile->vehicle_type);
-        $this->assertSame('Corolla', $profile->vehicle_model);
-        $this->assertSame('DL-4455', $profile->license_number);
-        $this->assertSame('2030-01-01', $profile->license_expiry->toDateString());
+        $this->assertSame('car', $payload['vehicle_type']);
+        $this->assertSame('Corolla', $payload['vehicle_model']);
+        $this->assertSame('DL-4455', $payload['license_number']);
+
+        // And the record itself has not moved.
+        $this->assertSame('Motorcycle', $driver->fresh('profile')->profile->vehicle_type);
     }
 
-    public function test_saving_one_screen_does_not_blank_the_next(): void
+    public function test_one_screens_submission_carries_only_that_screen(): void
     {
         // The design has three screens with three save buttons. A field the
         // screen never drew is absent from its payload, and absent has to mean
-        // «leave it alone» — otherwise saving the licence wipes the vehicle.
+        // «leave it alone» — so it must not reach the submission either, or
+        // approving the licence would re-assert the vehicle at whatever it was
+        // when that form loaded.
         $driver = $this->driverUser('+201033330096');
         $driver->profile->forceFill([
             'plate_number' => 'KEEP 111',
@@ -307,17 +314,21 @@ class DriverApiTest extends TestCase
             ->postJson('/api/v1/driver/profile', ['license_number' => 'DL-ONLY'])
             ->assertOk();
 
-        $profile = $driver->fresh('profile')->profile;
+        $payload = DriverRecordSubmission::where('driver_id', $driver->id)
+            ->pending()->firstOrFail()->payload;
 
-        $this->assertSame('DL-ONLY', $profile->license_number);
+        $this->assertSame(['license_number'], array_keys($payload));
+
+        $profile = $driver->fresh('profile')->profile;
         $this->assertSame('KEEP 111', $profile->plate_number, 'the vehicle screen was never posted');
         $this->assertSame('Keep', $profile->vehicle_brand);
     }
 
-    public function test_a_field_posted_empty_is_cleared_rather_than_ignored(): void
+    public function test_a_field_submitted_empty_is_a_deletion_not_an_omission(): void
     {
         // The other half of partial saving: absent means untouched, but present
-        // and empty is the driver deleting something, and it has to stick.
+        // and empty is the driver deleting something. It has to survive into the
+        // payload, or approving it would leave the old value standing.
         $driver = $this->driverUser('+201033330095');
         $token = $driver->createToken('t')->plainTextToken;
 
@@ -325,7 +336,11 @@ class DriverApiTest extends TestCase
             ->postJson('/api/v1/driver/profile', ['plate_number' => null])
             ->assertOk();
 
-        $this->assertNull($driver->fresh('profile')->profile->plate_number);
+        $payload = DriverRecordSubmission::where('driver_id', $driver->id)
+            ->pending()->firstOrFail()->payload;
+
+        $this->assertArrayHasKey('plate_number', $payload);
+        $this->assertNull($payload['plate_number']);
     }
 
     public function test_every_record_field_is_optional(): void
@@ -341,8 +356,10 @@ class DriverApiTest extends TestCase
             ->assertJsonPath('data.name', 'Just the name');
     }
 
-    public function test_an_upload_replaces_only_the_document_it_was_sent_for(): void
+    public function test_an_upload_is_stored_but_the_record_still_points_at_the_old_one(): void
     {
+        // The file is written on submit because the reviewer has to be able to
+        // look at it. The profile does not point at it until they have.
         $driver = $this->driverUser('+201033330093');
         $driver->profile->forceFill(['national_id_image' => 'images/drivers/documents/keep.png'])->save();
 
@@ -352,13 +369,19 @@ class DriverApiTest extends TestCase
             'license_image' => UploadedFile::fake()->image('licence.png'),
         ], $this->tokenHeaders($token))->assertOk();
 
+        $payload = DriverRecordSubmission::where('driver_id', $driver->id)
+            ->pending()->firstOrFail()->payload;
+
+        $this->assertSame(['license_image'], array_keys($payload));
+        $this->assertNotNull($payload['license_image'], 'the file was stored for the reviewer');
+
         $profile = $driver->fresh('profile')->profile;
 
-        $this->assertNotNull($profile->license_image, 'the licence was uploaded');
+        $this->assertNull($profile->license_image, 'nothing is applied before it is approved');
         $this->assertSame(
             'images/drivers/documents/keep.png',
             $profile->national_id_image,
-            'a document nobody sent a file for is left where it was'
+            'and a document nobody sent a file for is untouched either way'
         );
     }
 

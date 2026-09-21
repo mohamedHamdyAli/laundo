@@ -63,6 +63,15 @@
         <div class="card mb-3">
             <div class="card-body">
                 <div class="d-flex justify-content-end mb-3 gap-2">
+                    {{-- Who filed it, beside what state it is in. The two
+                         narrow different things and an operator usually wants
+                         one of them, not both. --}}
+                    <select id="complaintAudienceFilter" class="form-select" style="max-width: 200px;">
+                        <option value="all" @selected(($audience ?? 'all') === 'all')>{{ __('Everyone') }}</option>
+                        <option value="customer" @selected(($audience ?? '') === 'customer')>{{ __('From customers') }}</option>
+                        <option value="driver" @selected(($audience ?? '') === 'driver')>{{ __('From drivers') }}</option>
+                    </select>
+
                     <select id="complaintStatusFilter" class="form-select" style="max-width: 240px;">
                         <option value="open" @selected($status === 'open')>{{ __('Open') }}</option>
                         @foreach ($statuses as $case)
@@ -87,7 +96,9 @@
 
                         <div class="stack-head" style="--stack-cols: {{ $stackCols }}">
                             <span>{{ __('Reference') }}</span>
-                            <span>{{ __('Customer') }}</span>
+                            {{-- Not «Customer» any more: drivers file here too,
+                                 and «مشكلة مع العميل» is one of theirs. --}}
+                            <span>{{ __('Complainant') }}</span>
                             <span>{{ __('Complaint') }}</span>
                             <span>{{ __('Laundry') }}</span>
                             <span>{{ __('Status') }}</span>
@@ -194,6 +205,7 @@
                 // once at page load.
                 extraParams: () => ({
                     status: $('#complaintStatusFilter').val(),
+                    audience: $('#complaintAudienceFilter').val(),
                 }),
                 // Card rows, not a table: the helper's default
                 // <tr><td colspan> failure message would be stray

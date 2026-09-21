@@ -7,12 +7,13 @@ use App\Models\Role;
 use App\Modules\Driver\Enums\VehicleType;
 use App\Modules\Driver\Models\Driver;
 use App\Modules\Driver\Models\DriverProfile;
+use App\Modules\Driver\Models\DriverRecordSubmission;
+use App\Modules\Driver\Services\DriverRecordReview;
 use App\Modules\Order\Enums\TaskStatus;
 use App\Services\Auth\OtpService;
 use App\Services\Auth\PasswordResetTicket;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rule;
 
@@ -140,20 +141,29 @@ class DriverController extends Controller
             unset($data['image_profile']);
         }
 
-        $profile = $this->profilePayload($request, $driver);
+        $record = $this->profilePayload($request, $driver);
 
-        DB::transaction(function () use ($driver, $data, $profile) {
-            $driver->update(array_intersect_key($data, array_flip(['name', 'email', 'image_profile'])));
+        // The identity half applies at once. A name, an email and a photograph
+        // are the driver's own and nothing about them is verified — holding
+        // those for review would be asking somebody to approve a nickname.
+        $driver->update(array_intersect_key($data, array_flip(['name', 'email', 'image_profile'])));
 
-            if ($profile !== []) {
-                // updateOrCreate rather than update: a driver whose profile row
-                // never existed would otherwise save into nothing and be told it
-                // had worked.
-                $driver->profile()->updateOrCreate(['user_id' => $driver->id], $profile);
-            }
-        });
+        // The record half does not. Writing a licence expiry straight through
+        // makes it whatever the driver last typed, and a record nobody checks is
+        // not a record — so it is staged and an operator is told.
+        $submitted = false;
 
-        return successReturnData($this->payload($driver->fresh(['profile', 'zones'])), __('Profile updated.'));
+        if ($record !== []) {
+            app(DriverRecordReview::class)->submit($driver, $record);
+            $submitted = true;
+        }
+
+        return successReturnData(
+            $this->payload($driver->fresh(['profile', 'zones'])),
+            $submitted
+                ? __('Sent for review. Your details will update once they are approved.')
+                : __('Profile updated.')
+        );
     }
 
     /**
@@ -436,6 +446,39 @@ class DriverController extends Controller
     }
 
     /**
+     * The submission this driver is waiting on, if any.
+     *
+     * `fields` is what they sent, so the screen can mark exactly those rows
+     * rather than greying out the whole page — a driver who corrected a plate
+     * number should still be able to see their licence.
+     *
+     * A rejection is carried too, once, with its note: a driver told nothing
+     * sends the same photograph again and it is refused for the same unstated
+     * reason. It disappears as soon as they send anything new.
+     *
+     * @return array<string, mixed>|null
+     */
+    private function pendingReview(Driver $driver): ?array
+    {
+        $submission = DriverRecordSubmission::where('driver_id', $driver->id)
+            ->whereIn('status', [DriverRecordSubmission::PENDING, DriverRecordSubmission::REJECTED])
+            ->latest('id')
+            ->first();
+
+        if (! $submission) {
+            return null;
+        }
+
+        return [
+            'status' => $submission->status,
+            'status_label' => __($submission->statusLabel()),
+            'fields' => array_keys($submission->payload),
+            'note' => $submission->note,
+            'at_iso' => isoDate($submission->created_at),
+        ];
+    }
+
+    /**
      * «مستندات المركبة» — the six slots, in the order the screen draws them.
      *
      * Always all six, whether or not anything has been uploaded: the screen shows
@@ -531,6 +574,11 @@ class DriverController extends Controller
             // no way to upload it. `field` is the key to post it back under.
             'documents' => $this->documents($profile),
             'shift' => $profile?->shiftLabel(),
+            // What the driver has sent and nobody has decided on yet. Without
+            // it the screen saves, redraws the old values and looks broken —
+            // «قيد المراجعة» is the difference between a slow answer and no
+            // answer. Null when there is nothing waiting.
+            'pending_review' => $this->pendingReview($driver),
             'zones' => $driver->zones->map(fn ($zone) => [
                 'id' => $zone->id,
                 'name' => getLocalizedValue($zone, 'name'),

@@ -14,6 +14,14 @@
         </div>
         <div>
             <span class="row-main">{{ $row->complainant?->name ?? '—' }}</span>
+                    {{-- Which side of the platform this came from. Two apps file
+                         here now, and a name alone does not say whether the
+                         person is waiting for their clothes or delivering them. --}}
+                    @if ($row->complainant?->role?->slug === \App\Models\Role::DRIVER)
+                        <span class="badge text-bg-info">{{ __('Driver') }}</span>
+                    @else
+                        <span class="badge text-bg-light">{{ __('Customer') }}</span>
+                    @endif
             <span class="row-sub">{{ $row->complainant?->phone }}</span>
         </div>
         <div>

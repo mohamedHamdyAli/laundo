@@ -3,6 +3,7 @@
 namespace App\Modules\Complaint\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Models\Role;
 use App\Modules\Complaint\Enums\ComplaintCategory;
 use App\Modules\Complaint\Enums\ComplaintStatus;
 use App\Modules\Complaint\Models\Complaint;
@@ -37,10 +38,12 @@ class ComplaintController extends Controller
     public function index(Request $request)
     {
         $status = (string) $request->get('status', 'open');
+        $audience = (string) $request->get('audience', 'all');
 
         $view = view('admin.complaint.index', [
-            'complaints' => $this->listing($status)->paginate(15),
+            'complaints' => $this->listing($status, $audience)->paginate(15),
             'status' => $status,
+            'audience' => $audience,
             'counts' => $this->counts(),
             'byCategory' => $this->byCategory(),
             // The other half of the queue. Not merged into the paginator: they are
@@ -61,7 +64,10 @@ class ComplaintController extends Controller
 
         $term = (string) $request->get('query');
 
-        $complaints = $this->listing((string) $request->get('status', 'open'))
+        $complaints = $this->listing(
+            (string) $request->get('status', 'open'),
+            (string) $request->get('audience', 'all')
+        )
             // `laundry.name` and `handler.name` are the two halves of the
             // Laundry column and neither was searchable; `category` is what the
             // Reference cell falls back to when a complaint has no order. The
@@ -143,9 +149,37 @@ class ComplaintController extends Controller
     /**
      * @return Builder<Complaint>
      */
-    private function listing(string $status): Builder
+    /**
+     * Narrow the queue to one side of the platform.
+     *
+     * Both apps file here now, and «مشكلة مع العميل» reads very differently from
+     * «الهدوم اتخربت» — they are not the same work and they are rarely the same
+     * person's morning. Filtered on the complainant's **role**, not on the
+     * category, because a driver and a customer can both file `late` and the
+     * category would not tell them apart.
+     */
+    private function forAudience(Builder $query, string $audience): Builder
     {
-        return Complaint::with(['complainant:id,name,phone', 'order:id,code', 'laundry:id,name', 'handler:id,name'])
+        $slug = $audience === 'driver' ? Role::DRIVER : Role::USER;
+
+        return $query->whereHas(
+            'complainant.role',
+            fn (Builder $role) => $role->where('slug', $slug)
+        );
+    }
+
+    private function listing(string $status, string $audience = 'all'): Builder
+    {
+        return Complaint::with([
+            // `role` because the list now says whether each complaint came from
+            // a customer or a driver; without it that badge is a query per row.
+            'complainant:id,name,phone,role_id', 'complainant.role:id,slug',
+            'order:id,code', 'laundry:id,name', 'handler:id,name',
+        ])
+            ->when(
+                in_array($audience, ['customer', 'driver'], true),
+                fn (Builder $q) => $this->forAudience($q, $audience)
+            )
             ->when($status === 'open', fn (Builder $q) => $q->open())
             ->when(
                 in_array($status, ComplaintStatus::values(), true),

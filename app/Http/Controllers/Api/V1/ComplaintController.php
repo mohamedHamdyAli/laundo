@@ -60,11 +60,16 @@ class ComplaintController extends Controller
         // a client that sends it is telling us which list it drew from, and a
         // value outside that list is a category it never offered. Filtering the
         // list without checking it here would make the narrowing decoration.
+        //
+        // `acceptedFrom()`, not `offeredTo()`: «تواصل معنا» posts
+        // `support_request`, which no dropdown lists because the screen has no
+        // chooser — the app sets it. What may be sent is a superset of what is
+        // shown, and conflating the two would refuse the message box.
         $audience = $request->get('audience');
 
         $allowed = array_map(
             fn (ComplaintCategory $c) => $c->value,
-            ComplaintCategory::forAudience($audience)
+            ComplaintCategory::acceptedFrom($audience)
         );
 
         $validated = $request->validate([
