@@ -25,6 +25,10 @@
 
 ### Improvement
 
+- `CLAUDE.md` reconciled against the code again, after a day in which several of its statements stopped being true. The one that mattered: it still said a signed-in user hitting bare `/` is redirected to `/admin/home`, which was removed and deployed — a reader would have restored behaviour that was deliberately taken out. Six rules that shipped today were missing entirely and are now written down: driver record changes are staged for approval rather than written, a notification's `url` is a path and never `route()`, `ComplaintCategory` has a wider accept set than offer set, `config/tracking.php` and the order its window must move in, the `driver_supervisor` role and why it carries no money permission, and the two new rate-limiter values (Docs).
+- The counts that carry no decision are gone from it — panel screens and endpoint totals both moved twice in one day, and a number nothing verifies is a line that quietly becomes false. The one that carries a decision stays: 31 module directories against rather more screens is the contradiction its section exists to explain (Docs).
+
+
 - `birth_date` is settled rather than left open: the platform does not record a driver's date of birth and the column is not coming. It was the last unanswered question from the app team's original gap list, and a question nobody closes is a screen that keeps drawing an empty field. Both notes now say so, and tell the app to drop the `birth_date` / `date_of_birth` fallback along with it — it reads two names for something that exists under neither (Docs).
 - `driver-app-backend-answers.md` carries a banner naming the four of its answers that have since been overtaken — vehicle and licence are now editable, documents are six not three, the complaint categories take `?audience=`, and driver support numbers are separate. It is a record of what was said on 20 September, so it is marked rather than rewritten; a doc that reads «read only» about an endpoint that now writes is worse than no doc (Docs).
 

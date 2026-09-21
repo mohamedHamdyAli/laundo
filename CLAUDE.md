@@ -40,9 +40,9 @@ Laravel 13 · PHP ^8.3 · MySQL · Sanctum (mobile API) · `laravel/ui` (Bootstr
 
 `app/Modules/{Name}/` — Controllers, Models, Repositories, Services, Requests, and often `Enums`. 31 modules: Address, Banner, City, Complaint, Country, Coupon, Driver, Faq, Intro, Item, ItemCategory, JourneyStep, Laundry, LaundryService, LaundryStaff, LaundryZone, Moderator, Notification, Offer, Order, Payment, Pricing, Rating, Recurrence, Report, Service, Setting, TimeSlot, User, Wallet, Zone.
 
-**A sidebar screen is not a module directory.** There are 31 module dirs and 42
-panel screens, and the newer ones live inside an existing module rather than
-getting their own — so **do not go looking for `app/Modules/Settlement/`**:
+**A sidebar screen is not a module directory.** There are 31 module dirs and
+rather more panel screens than that, and the newer ones live inside an existing
+module rather than getting their own — so **do not go looking for `app/Modules/Settlement/`**:
 
 | Screen | Lives in |
 | --- | --- |
@@ -103,6 +103,41 @@ from the code) and **`docs/order-cycle-explained.md`**; the rules that bind code
   waiting for somebody who was never coming.
 - `cleaning`, `ready_for_delivery`, `completed` and `returned` currently have
   **no endpoint driving them** — a known gap, not something to paper over.
+
+### What a driver may change about themselves
+
+`POST /api/v1/driver/profile` takes the vehicle, the licence and six documents —
+and **writes none of them**. They are staged in `driver_record_submissions` and
+apply when somebody approves them, through `Driver/Services/DriverRecordReview`.
+
+- **The line is identity against record.** Name, email and profile photograph
+  apply at once: they are the driver's own and nothing about them is verified,
+  so holding them for review would be asking somebody to approve a nickname. A
+  licence expiry is a claim about a document, and a record nobody checks is not
+  a record.
+- **Zones are refused outright**, from the app and from the queue alike.
+  Territory decides who is handed work, so a driver choosing their own would keep
+  the short trips and drop the rest. Availability has its own endpoint.
+- **The dashboard still writes directly.** An operator editing a driver *is* the
+  approval; routing them through their own queue would be theatre.
+- **One pending row per driver** — a second submission supersedes the first
+  rather than queueing two versions of the same car. Superseded rows are marked,
+  not deleted.
+- **The diff is computed at review time**, never stored at submit time: an
+  operator may have corrected the same driver in between, and approving a diff
+  worked out hours ago would silently undo them. Approval writes only the fields
+  actually submitted.
+- A rejection **requires** a note, and it reaches the driver. Told only
+  «rejected», they send the same photograph again. The uploaded file is kept —
+  a refused photograph is evidence of what was sent.
+- `GET /driver/profile` carries `pending_review` with the exact `fields` waiting,
+  so the app can mark those rows rather than greying the page. Without it the
+  screen saves, redraws the old values and looks broken.
+
+The screen is `admin/driver-record-submission`, gated on
+`driver_record_submission.*` rather than `driver.update` — checking a licence
+photograph is a different job from keeping a shift current — and `MenuBadges`
+counts what is pending.
 
 ### Which laundry gets the order
 
@@ -277,6 +312,15 @@ event delivers on **both** channels — `NotificationEvent::channels()` returns
   at zero, which handed the muted user unlimited push. Absent preference = on.
 - Rate limit `config('push.rate_limit_per_hour', 3)` per subject, counted off the
   `database` rows; `isTransactional()` events bypass both the cap and the mute.
+- **A notification's `url` is a path, never `route()`.** It is stored now and
+  clicked later, somewhere else, so an absolute URL bakes in whichever host built
+  it: anything raised from the console or from tinker gets `APP_URL` or
+  `localhost`, and one written behind Cloudflare's Flexible SSL gets whatever
+  scheme survived the edge. A live notification shipped reading
+  `http://localhost/admin/driver-record-submission`. `NotificationUrlTest` reads
+  the notifier source and refuses `route(` or `url(` in that position — and
+  checks the hand-written paths still match real routes, because writing one by
+  hand means nothing validates it any more.
 - **The FCM gotcha**: `data` is a *map* in FCM v1 and PHP's empty array encodes as
   `[]`, so Google 400'd every data-less message — and the driver read 400 as
   "device gone", so the dispatcher deleted every handset it notified. `data` is
@@ -401,6 +445,15 @@ Three enforcement points, all bypassing checks for `role.slug === 'super_admin'`
 
 `EnsureDashboardRole` (`dashboard.only`) additionally gates all `/admin` routes on `role.type`, which must be **`dashboard` or `laundry`** — not `dashboard` alone. A laundry owner and their staff sign in to the same panel and are confined by their permission set and by the tenant scope, not by the gate; `app` (customers, drivers) stays locked out. System roles/permissions are flagged `is_system = true` and should not be deleted.
 
+`RoleSeeder` also ships **`driver_supervisor`**, which is deliberately *not*
+`is_system`: it is a starting point an install adjusts, not a structure. It
+carries the driver, application, record-review and dispatch permissions and
+**no money permission at all** — every driver money term gates on
+`setting.update` precisely so the person managing a driver is not the person
+setting what that driver is paid. It exists because the record-review
+notification is addressed to whoever holds `driver_record_submission.update`,
+and without a role that has it, that is nobody.
+
 Laundries therefore have a **second front door**: `GET /laundry/login`, whose form posts to the same `login` route — one authentication path, so throttling, the session and the `/admin/home` redirect cannot drift. `/login` still works for them; the separate page exists because it was headed «Admin Control Panel» and nothing told an owner the account they were handed belonged there. `auth/passwords/{email,reset}` and the admin login extend **`layouts.auth`** — the shell lifted out of the old `login.blade.php`, deliberately *not* `layouts.app`, which is the panel's only Vite chain.
 
 The **laundry** pages (`/laundry/login`, `/laundry/register`, `/laundry/applied`) extend **`layouts.auth-card`** instead: a card on a navy ground, loading `landing.css` + `auth-card.css` and nothing else. They read as a continuation of the marketing site the applicant arrived from, and they get IBM Plex Sans Arabic — the panel's own shell still has no Arabic webfont. `class="landing"` on `<html>` is load-bearing there: landing.css scopes its dark tokens and its 100% root font size to it.
@@ -439,9 +492,11 @@ user's `*.view` permissions. Four top-level keys:
 - **`singles`** — a `model => order` **map** (`user`:5, `order`:7, `report`:10),
   interleaved with the groups by that number.
 - **`icons` / `titles` / `routes`** — three parallel maps keyed by model name,
-  one entry each per screen (42 today, matching `groups` + `singles` exactly).
-  A key present in two of the three renders with a null in the third, so the
-  three counts agreeing is the cheap check that a new module is fully wired.
+  one entry each per screen and exactly as many as `groups` + `singles`. A key
+  present in two of the three renders with a null in the third, so the three
+  counts agreeing is the cheap check that a new module is fully wired. **Deliberately
+  not written down as a number here**: it moved twice in one day, and a count
+  nothing verifies is a line that quietly becomes false.
 
 A new module needs an entry in a group's `items` (or in `singles`) **and** in all
 three UI maps, or it renders with nulls. **Menu keys are not always the module
@@ -475,9 +530,14 @@ Admin routes in `routes/web.php`, prefixed `/admin`, mostly `admin.{module}.{act
 A third surface, added after the panel and the API: a marketing page at `/`,
 `/ar` and `/en`, plus `/{locale}/terms` and `/{locale}/privacy`. `/` used to
 return `view('auth.login')`; the login form is at `/login`, which
-`Auth::routes()` has always registered. A signed-in user hitting bare `/` still
-redirects to `/admin/home` — `/ar` does not, because that is an explicit request
-for a language.
+`Auth::routes()` has always registered. **A signed-in user is shown the page.**
+Bare `/` used to redirect them to `/admin/home`, which meant an operator had to
+sign out to look at the marketing site — and `/ar` let them through anyway, so
+the rule was inconsistent as well as unhelpful. The way in is offered instead, by
+`landing/partials/_account_bar`, and only to an account that has a panel:
+`User::canReachPanel()` is the one definition of that and `EnsureDashboardRole`
+calls it, because two copies of the test is how the button comes to invite a
+customer into the 403 the middleware is about to throw.
 
 **It does not extend `layouts.main`.** That chain loads ~22 stylesheets and ~30
 scripts (`app.css` 399 KB, `theme.css` 93 KB, `bootstrap-icons.woff2` 110 KB,
@@ -547,7 +607,7 @@ five Playwright specs** — leave it alone.
 
 ### The API layer
 
-`routes/api.php`, 103 endpoints under `/api/v1`, controllers in `app/Http/Controllers/Api/V1/`, requests in `app/Http/Requests/Api/V1/`.
+`routes/api.php`, a hundred-odd endpoints under `/api/v1`, controllers in `app/Http/Controllers/Api/V1/`, requests in `app/Http/Requests/Api/V1/`. `php artisan route:list --path=api/v1` is the count; `docs/postman/generate-reference.py` prints it on every run.
 
 - **Responses** go through `app/Helpers/ApiResponse.php` — `successReturnData()`, `successReturnCreated()`, `successReturnPaginated()`. The envelope is `key`, `status`, `msg`, `code` plus `data`/`errors`/`meta`. **`status` is `success`/`error` derived from the code by `apiResponseStatus()` — never pass it in**, or a call site will eventually disagree with its own HTTP status; `key` is the one that says *which* outcome. The panel's `ResponseService` is a different thing (it `throw`s / returns `never`); don't mix them.
 - **`successReturnPaginated($items, $paginator = null, $msg = '')`** — items
@@ -558,7 +618,11 @@ five Playwright specs** — leave it alone.
   the API was once written that way. `ApiContractTest` guards it now.
 - **Auth** is Sanctum on the `api` guard, one `users` table for both apps. Customer tokens are named `mobile`, driver tokens `driver-app`.
 - **Driver endpoints are not gated by middleware.** `$request->user()` returns a plain `User`, so each driver controller resolves the driver record and does `abort_unless($driver !== null, 403, …)` itself. Adding a driver endpoint means repeating that, not adding a middleware.
-- **Named rate limiters** beyond `api`: `otp`, `otp-verify`, `login`, `location`. Auth routes carry them individually.
+- **Named rate limiters** beyond `api`: `otp`, `otp-verify`, `login`, `location`, `tracking`. Auth routes carry them individually. `location` is 60/minute because the driver reports every four seconds — it was 30, sized for a thirty-second cadence, which left no headroom for a retry on the very stream the map is drawn from. `tracking` is the customer polling that map, on its own bucket so it cannot spend the 60/minute the rest of the app shares.
+- **`ComplaintCategory` has two sets, not one.** `offeredTo($audience)` is what the picker lists; `acceptedFrom($audience)` is what submit accepts, and it is wider. `support_request` — the «تواصل معنا» message box — is accepted and **never offered**, because that screen has no category chooser and the app sets it; listing it would put a screen's name among kinds of problem. `?audience=customer|driver` narrows both, mirroring `GET /faqs`, and narrowing the list without checking it on submit would make the whole thing decoration.
+- **`GET /orders/{id}/driver-location`** is the moving marker's own endpoint, split from `/track` because the two are asked at completely different rates. It answers `tracking`, `poll_after_seconds` (null means stop asking), and `location` / `last_seen` in the shape `/track` uses. `location` is the recommendation — fresh enough to draw live — and `last_seen` is the fact behind it, with `age_seconds` and `is_stale`. Both sit behind the same privacy gate as the dot: the three customer-facing legs, `assigned` or `started`.
+- **`config/tracking.php`** holds the freshness window and the poll cadence, both env-tunable, **and the order matters**: the window comes down *after* the apps report faster, never before. Tightening it first blinks the dot off between reports, which looks exactly like the bug it is meant to fix.
+- **`?audience=driver` on `/app-settings`** swaps the four support lines for the driver's own, under the same keys so one parser serves both apps. A blank driver line falls back to the customer's — a courier stranded at a doorstep has to reach somebody, so blank means «no separate line», never «no line».
 - Controllers keep a private `present*()` method per payload shape (e.g. `OrderController::presentSummary()` vs `presentDetail()`). A field added to a summary must be eager-loaded in the corresponding `index()` or it is an N+1 — there are query-count tests guarding this.
 - Domain vocabulary lives in **PHP enums** under `app/Modules/{Name}/Enums/` (`OrderStatus`, `TaskType`, `PaymentMethod`, `PaymentStatus`, `TransactionReason`, …). Prefer these over string literals.
 - Password reset is **two steps**, for the panel and both apps: `verify-reset-code` spends the code and issues a single-use ticket, `reset-password` takes the ticket. Shared in `app/Services/Auth/PasswordResetTicket.php`. Never accept code + new password in one call.
@@ -603,8 +667,8 @@ Two overlapping caches exist:
 
 ## Testing
 
-Around 1,400 PHPUnit tests and 4,500 assertions, currently green. Real coverage
-exists — treat a failure as a regression, not as a flaky stub.
+Around fourteen hundred PHPUnit tests, currently green. Real coverage exists —
+treat a failure as a regression, not as a flaky stub.
 
 - Roughly a hundred PHP test files, the bulk of them in `tests/Feature/Dashboard/`
   and `tests/Feature/Api/`, with `tests/Feature/Landing/`, `tests/Feature/Console/`
@@ -659,7 +723,17 @@ exists — treat a failure as a regression, not as a flaky stub.
 - `docs/driver-app-backend-answers.md` — the driver app team's `BACKEND_GAPS.md`
   answered against the code. Worth reading before building anything an app team
   reports as missing: about half that report was already shipping and its own DTO
-  said it had chosen not to map it.
+  said it had chosen not to map it. **It carries a banner naming the answers that
+  have since been overtaken** — it is a record of what was said on a date, so it
+  is marked rather than rewritten, and a doc that says «read only» about an
+  endpoint that now writes is worse than no doc at all. Mark the next one the
+  same way rather than editing the answer under it.
+- The `mobile-2026-09-21-*` notes are the current contract for the driver app:
+  `-driver-tracking` (the 120-second window and background location),
+  `-driver-records-and-audience` (the record screens, the six documents,
+  `?audience=`) and `-driver-record-review` (**the one that reverses the
+  previous day's**: driver edits are now staged for approval, and the save
+  response deliberately returns the old values).
 
 ## Known rough edges
 
