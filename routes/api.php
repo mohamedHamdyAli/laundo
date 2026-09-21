@@ -214,6 +214,18 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/orders', [OrderController::class, 'store'])->name('api.v1.orders.store');
     Route::get('/orders/{id}', [OrderController::class, 'show'])->name('api.v1.orders.show');
     Route::get('/orders/{id}/track', [OrderController::class, 'track'])->name('api.v1.orders.track');
+
+    /*
+    | Just the dot, for the screen that asks every few seconds.
+    |
+    | Split from `track` because the two are asked at completely different rates:
+    | the screen is fetched when it opens, the marker for as long as somebody
+    | watches it. Its own limiter for the same reason — polling must not eat the
+    | 60/minute every other call in the app shares.
+    */
+    Route::get('/orders/{id}/driver-location', [OrderController::class, 'driverLocation'])
+        ->middleware('throttle:tracking')
+        ->name('api.v1.orders.driver-location');
     Route::get('/orders/{id}/reorder', [OrderController::class, 'reorder'])->name('api.v1.orders.reorder');
 
     /*

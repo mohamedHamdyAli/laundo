@@ -1,63 +1,71 @@
-# The customer's map, when the driver's phone goes quiet
+# Live tracking, step two: a cheap endpoint and a fast cadence
 
-The dot vanishes two minutes after the driver app stops reporting, and the app
-reports only while the driver is sitting on its map screen. Closing the app, or
-walking to the door, takes the map away from the customer — and reopening it
-leaves the customer on «موقع المندوب غير متاح حاليًا» until a fresh reading lands.
+Step one is the driver app's — reporting has to run off a live task rather than a
+visible screen, and nothing on the server substitutes for it. This is the half
+that makes the dot *move* once it does, and it is the half that survives a later
+move to WebSockets untouched, because the payload shape does not change.
 
-The reporting gap is the app's to close. What the server can stop doing is
-throwing away the last thing it knew.
+## Why not just poll `/track`
+
+It carries the timeline, both addresses, the ETA, the steps and the driver card —
+the whole screen. Asking for all of it every four seconds to move one marker is
+the wrong trade. A dedicated endpoint is one query and a few dozen bytes.
 
 ## Plan
 
-- [x] `DriverCard` — add `last_seen` beside `location`: the last stored reading
-      with its age, whatever that age is.
-- [x] `location` stays exactly as it is — fresh-only. Widening it would draw a
-      five-minute-old dot as though it were live, which is worse than drawing
-      nothing, because nobody reports a wrong answer they cannot see is wrong.
-- [x] Same privacy gate as `location`: the three customer-facing legs, live.
-      A position that outlives the leg is a driver being followed off the clock.
-- [x] Tests: fresh, stale, off-leg, never-reported.
-- [x] `docs/mobile-2026-09-21-driver-tracking.md` — the contract, the 120-second
-      window and why it exists, and the background-location requirement on both
-      platforms.
-- [x] Postman + `generate-reference.py` + Changelog.
+- [x] `config/tracking.php` — the freshness window and the poll interval, both
+      env-tunable. The window has to stay at 120s until the apps actually report
+      faster: tightening it first would blink the dot off between reports.
+- [x] `DriverCard::trackingFor()` — public, and built on the **same** private gate
+      the card uses. A second copy of "may this customer watch this leg" is how a
+      position leaks from a leg that is none of their business.
+- [x] `GET /api/v1/orders/{id}/driver-location` on `OrderController`.
+- [x] The server drives the cadence: `poll_after_seconds` in the response, so the
+      interval is tuned from the box rather than in an app release.
+- [x] Rate limits. `location` is **30/min**, sized for a 30-second cadence; at
+      4 seconds a driver sends 15/min and has almost no headroom for a retry.
+      Raise it, and give the customer's polling its own limiter so it cannot eat
+      the 60/min every other call shares.
+- [x] Tests, docs, Postman, reference, the mobile note, Changelog.
 
-## The decision behind it
+## Shape
 
-The server was making a display decision — «this is too old to draw» — and
-answering `null`, which is indistinguishable from «never reported». The app
-cannot tell those apart and so cannot say anything useful. `last_seen` hands the
-client the fact and its age; `location` keeps the recommendation. The app draws a
-live dot from one and a faded «آخر ظهور منذ ٣ دقائق» from the other.
+```
+GET /api/v1/orders/42/driver-location
+{
+  "tracking": true,            // a leg the customer may watch is live
+  "poll_after_seconds": 4,     // null when there is nothing to follow
+  "location":  {...} | null,   // fresh enough to draw as live
+  "last_seen": {...} | null    // last known, any age
+}
+```
 
-Non-breaking: `location` is untouched, so the shipped app keeps working.
+Same two fields as the card, so the app parses one shape in both places.
 
 
 ## Review
 
-`last_seen` ships beside `location`, twelve tests green on the file, and the
-120-second window is written down for the first time — in the API reference, the
-Postman description, the running mobile log and a standalone note for both app
-teams.
+Shipped. Twenty-six tests green on the tracking file, and the endpoint is in the
+reference (104), the Postman collection (104) and the note for both app teams.
 
-The judgement worth recording: the obvious fix was to widen `FRESH_FOR_SECONDS`,
-and it would have looked like a fix. It would have drawn a five-minute-old
-position as though it were live, which is the failure nobody reports because
-nobody can see it is wrong. The problem was never the threshold — it was that the
-server answered a display question (`null`) where the client needed a fact. The
-threshold stays; the fact is now sent alongside it, and the client decides.
+Two things the investigation turned up that would have bitten on the first busy
+day, neither of them part of the ask:
 
-Two things I got wrong on the way here, both corrected:
+- The `location` limiter was **30/minute** — sized when the cadence was thirty
+  seconds. At four seconds a driver sends fifteen a minute, so a single retry
+  storm would have started throttling the exact stream the map is drawn from.
+  Raised, and the customer's polling given a bucket of its own.
+- The freshness window had to stay at 120s. Tightening it in the same release
+  would have been the obvious tidy-up and would have made the dot blink off
+  between the app's current thirty-second reports — the bug, reintroduced while
+  claiming to fix it. It is config now, so it comes down when the apps are ready,
+  from the env, without a deploy.
 
-- I first read the whole thing as «the driver app never reports». It does — the
-  owner corrected me — but only while the driver is looking at the map screen,
-  which is why it worked in every manual test and never in the field.
-- I then called `liveTask()` picking `deliver_to_laundry` a bug and wrote the
-  fix. Two existing tests failed, and they were right: that leg being named
-  without a phone or a dot is a deliberate decision, and the card is not blank —
-  it names the person holding the clothes. Reverted in full.
+What this does not do, and the note says so twice: make the driver app report in
+the background. Until that lands there is a fast, cheap channel carrying a
+position that only updates while somebody is looking at a screen.
 
-Still the app's to fix, and not something the server can paper over: reporting
-has to run off a live task, not a visible screen. The note spells out the
-foreground-service and background-permission requirements for both platforms.
+The WebSocket question stays open and is unblocked by this rather than
+foreclosed: the payload shape does not change, so moving to a socket later is a
+transport swap. Self-hosting Reverb needs `Linger=no` fixed on the box, which is
+one root command the owner can get; a hosted service needs none.

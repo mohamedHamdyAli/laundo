@@ -92,12 +92,18 @@ class DriverCard
     /**
      * How long a reading stays worth drawing.
      *
-     * The app reports every thirty seconds, so four missed reports is a phone
-     * that has lost signal, been closed, or run out of battery. Past that the
-     * dot is removed rather than left where it was: a stationary marker reads as
-     * «السائق واقف» and sends the customer to the phone.
+     * Past this the dot is removed rather than left where it was: a stationary
+     * marker reads as «السائق واقف» and sends the customer to the phone.
+     *
+     * Read from config rather than fixed here, because it only makes sense
+     * against how often the driver app reports — and those two do not ship
+     * together. See `config/tracking.php`: it comes down *after* the apps speed
+     * up, never before.
      */
-    private const FRESH_FOR_SECONDS = 120;
+    private function freshForSeconds(): int
+    {
+        return (int) config('tracking.fresh_for_seconds', 120);
+    }
 
     /**
      * Whether this leg is one the customer is currently waiting on.
@@ -163,7 +169,7 @@ class DriverCard
             return null;
         }
 
-        if ($profile->located_at->lt(now()->subSeconds(self::FRESH_FOR_SECONDS))) {
+        if ($profile->located_at->lt(now()->subSeconds($this->freshForSeconds()))) {
             return null;
         }
 
@@ -209,7 +215,42 @@ class DriverCard
             'lng' => (float) $profile->last_lng,
             'at_iso' => $profile->located_at->toIso8601String(),
             'age_seconds' => $age,
-            'is_stale' => $age > self::FRESH_FOR_SECONDS,
+            'is_stale' => $age > $this->freshForSeconds(),
+        ];
+    }
+
+    /**
+     * Just the dot, for the screen that asks every few seconds.
+     *
+     * `/track` carries the timeline, both addresses, the ETA, the steps and the
+     * whole driver card — the screen. Fetching all of it every four seconds to
+     * move one marker is the wrong trade, so this is the same two fields on
+     * their own, plus the two things a polling client needs to know: whether
+     * there is anything to follow, and when to ask again.
+     *
+     * **Built on the same private gate the card uses**, not on a copy of it. The
+     * question «may this customer watch this leg» now has two callers, and two
+     * answers to it is how a driver's position leaks out of `deliver_to_laundry`
+     * or outlives the handover.
+     *
+     * `poll_after_seconds` is null when there is nothing live, which is the
+     * signal to stop asking — a phone polling a finished order is battery spent
+     * on a marker nobody is drawing.
+     *
+     * @return array<string, mixed>
+     */
+    public function trackingFor(Order $order): array
+    {
+        $task = $this->liveTask($order);
+        $live = $task !== null && $this->reachableWhileLive($task);
+
+        return [
+            'tracking' => $live,
+            'poll_after_seconds' => $live ? (int) config('tracking.poll_seconds', 4) : null,
+            // Both already refuse anything the gate refuses, so a finished or
+            // laundry-bound leg answers null without a second check here.
+            'location' => $task ? $this->location($task) : null,
+            'last_seen' => $task ? $this->lastSeen($task) : null,
         ];
     }
 

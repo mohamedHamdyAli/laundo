@@ -2187,6 +2187,53 @@
               "response": []
             },
             {
+              "name": "Driver location (poll)",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Responds with the API envelope', function () {",
+                      "    const body = pm.response.json();",
+                      "    pm.expect(body).to.have.property('key');",
+                      "    pm.expect(body).to.have.property('code', pm.response.code);",
+                      "});"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "lang",
+                    "value": "{{lang}}",
+                    "description": "ar | en — read by the ApiLocale middleware. Optional; falls back to the default language."
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/v1/orders/{{order_id}}/driver-location",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "orders",
+                    "{{order_id}}",
+                    "driver-location"
+                  ]
+                },
+                "description": "«فين المندوب دلوقتي» — the polling endpoint the moving marker is drawn from.\n\nDeliberately separate from `/track`: the screen is fetched when it opens, this is fetched every few seconds for as long as somebody is watching. Serving the timeline, both addresses, the ETA and the eight steps on every marker update is the wrong trade — this is one query and a few dozen bytes.\n\nReturns `tracking` (is a leg the customer may watch live), `poll_after_seconds` (when to ask again — `null` means stop asking, and a phone polling a finished handover is battery spent on a marker nobody is drawing), and `location` / `last_seen` in exactly the shape `/track` uses, so one parser serves both.\n\n`poll_after_seconds` comes from the server so the cadence can be tuned without an app release.\n\nSame privacy gate as `driver.location`, built on the same method rather than a copy of it: the three customer-facing legs, `assigned` or `started`. The run to the laundry and a finished leg both answer `tracking: false` with no coordinates.\n\nRate limited on its own bucket (`throttle:tracking`) so polling cannot spend the 60/minute the rest of the app shares."
+              },
+              "response": []
+            },
+            {
               "name": "Track order",
               "event": [
                 {

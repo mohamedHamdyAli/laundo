@@ -407,6 +407,100 @@ class LiveTrackingTest extends TestCase
         $this->assertNull($card['last_seen'], 'the handover is over; the position goes with it');
     }
 
+    // ------------------------------------- the endpoint the marker is drawn from
+
+    private function poll(Order $order): array
+    {
+        return $this->actingAs($this->customer)
+            ->getJson('/api/v1/orders/'.$order->id.'/driver-location')
+            ->assertOk()
+            ->json('data');
+    }
+
+    #[Test]
+    public function the_polling_endpoint_carries_the_dot_and_when_to_ask_again(): void
+    {
+        $order = $this->order();
+        $this->leg($order, TaskType::PickupFromCustomer);
+        $this->report();
+
+        $data = $this->poll($order);
+
+        $this->assertTrue($data['tracking']);
+        $this->assertSame(config('tracking.poll_seconds'), $data['poll_after_seconds']);
+        $this->assertSame(30.05, $data['location']['lat']);
+        $this->assertFalse($data['last_seen']['is_stale']);
+    }
+
+    #[Test]
+    public function nothing_to_follow_tells_the_app_to_stop_asking(): void
+    {
+        $order = $this->order();
+        $this->leg($order, TaskType::PickupFromCustomer);
+        $this->report();
+        $this->leg($order, TaskType::PickupFromCustomer, TaskStatus::Completed);
+
+        $data = $this->poll($order);
+
+        // A phone polling a finished handover is battery spent on a marker
+        // nobody is drawing.
+        $this->assertFalse($data['tracking']);
+        $this->assertNull($data['poll_after_seconds']);
+        $this->assertNull($data['location']);
+        $this->assertNull($data['last_seen']);
+    }
+
+    #[Test]
+    public function the_polling_endpoint_keeps_the_same_gate_as_the_card(): void
+    {
+        // The whole reason it is built on the card's own gate rather than a copy:
+        // the run to the laundry is nobody's business through either door.
+        $order = $this->order();
+        $this->leg($order, TaskType::DeliverToLaundry, TaskStatus::Started);
+        $this->report();
+
+        $data = $this->poll($order);
+
+        $this->assertFalse($data['tracking']);
+        $this->assertNull($data['location']);
+        $this->assertNull($data['last_seen']);
+    }
+
+    #[Test]
+    public function a_stranger_cannot_poll_somebody_elses_driver(): void
+    {
+        $order = $this->order();
+        $this->leg($order, TaskType::PickupFromCustomer);
+        $this->report();
+
+        $stranger = $this->customer('+201055559999');
+
+        $this->actingAs($stranger)
+            ->getJson('/api/v1/orders/'.$order->id.'/driver-location')
+            ->assertNotFound();
+    }
+
+    #[Test]
+    public function the_freshness_window_follows_its_config(): void
+    {
+        // It is config rather than a constant so it can come down once the apps
+        // report faster — and it must not come down before then, or the dot
+        // blinks off between reports.
+        $order = $this->order();
+        $this->leg($order, TaskType::PickupFromCustomer);
+        $this->report();
+
+        $this->driver->profile->forceFill(['located_at' => now()->subSeconds(45)])->save();
+
+        config(['tracking.fresh_for_seconds' => 120]);
+        $this->assertNotNull($this->poll($order)['location'], '45s is live at a 120s window');
+
+        config(['tracking.fresh_for_seconds' => 30]);
+        $polled = $this->poll($order);
+        $this->assertNull($polled['location'], '45s is stale at a 30s window');
+        $this->assertTrue($polled['last_seen']['is_stale']);
+    }
+
     #[Test]
     public function the_card_promises_no_chat(): void
     {

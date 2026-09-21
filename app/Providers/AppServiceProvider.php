@@ -118,7 +118,18 @@ class AppServiceProvider extends ServiceProvider
          * a looping build from flooding the table, not to police a driver, and a
          * refused report is a driver who vanishes from the customer's map.
          */
-        RateLimiter::for('location', fn (Request $request) => Limit::perMinute(30)
+        // The driver reporting where they are. Sized at 30 for a thirty-second
+        // cadence, which left no headroom at all once the tracking cadence came
+        // down to four seconds — 15 reports a minute, and a single retry storm
+        // would have started throttling the very thing the map is drawn from.
+        // A ceiling of one a second is still a ceiling.
+        RateLimiter::for('location', fn (Request $request) => Limit::perMinute(60)
+            ->by($request->user()?->id ?: $request->ip()));
+
+        // The customer watching that dot. Its own bucket so a screen polling
+        // every few seconds cannot spend the general allowance the rest of the
+        // app is sharing — and so it can be tuned without touching that.
+        RateLimiter::for('tracking', fn (Request $request) => Limit::perMinute(60)
             ->by($request->user()?->id ?: $request->ip()));
 
         RateLimiter::for('login', function (Request $request) {

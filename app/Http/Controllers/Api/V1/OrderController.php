@@ -235,6 +235,32 @@ class OrderController extends Controller
     }
 
     /**
+     * «فين المندوب دلوقتي» — the polling endpoint behind the moving marker.
+     *
+     * Separate from `track()` because the two are asked at completely different
+     * rates. The tracking screen is fetched when it opens and when something
+     * changes; the dot is fetched every few seconds for as long as somebody is
+     * watching it. Serving the timeline, both addresses, the ETA and the eight
+     * steps on every one of those is the wrong trade — this is one query and a
+     * few dozen bytes.
+     *
+     * Scoped through the customer's own orders, like everything else here, so
+     * somebody else's order id is a 404 rather than a stranger's driver on a map.
+     */
+    public function driverLocation(Request $request, $id): JsonResponse
+    {
+        // No eager loads: `DriverCard` loads the legs and their driver itself,
+        // and nothing else on the order is read.
+        $order = $request->user()->orders()->find($id);
+
+        if (! $order) {
+            return failReturnNotFound(__('Order not found.'));
+        }
+
+        return successReturnData($this->driverCard->trackingFor($order));
+    }
+
+    /**
      * An address as a map point, or null when nobody placed the pin.
      *
      * Null rather than zeroes: (0, 0) is a spot in the Atlantic and an app that
