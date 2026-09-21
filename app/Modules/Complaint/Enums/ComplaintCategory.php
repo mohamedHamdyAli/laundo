@@ -21,6 +21,17 @@ enum ComplaintCategory: string
     case DriverConduct = 'driver_conduct';
     case Payment = 'payment';
     case AppProblem = 'app_problem';
+
+    /**
+     * «مشكلة مع العميل» — the driver's side of `DriverConduct`.
+     *
+     * Added because it was missing entirely: every other case here describes
+     * something done to a customer, so a driver with a real problem at a doorstep
+     * — nobody home for the fourth time, an address that is a field, somebody
+     * abusive — had nothing to file it under but «أخرى», where it stops being
+     * countable. Operations cannot act on a pattern it cannot see.
+     */
+    case CustomerConduct = 'customer_conduct';
     case Other = 'other';
 
     public function label(): string
@@ -33,8 +44,73 @@ enum ComplaintCategory: string
             self::DriverConduct => 'Driver conduct',
             self::Payment => 'Payment problem',
             self::AppProblem => 'App problem',
+            self::CustomerConduct => 'Problem with the customer',
             self::Other => 'Something else',
         };
+    }
+
+    /**
+     * Who may file this, because the two apps are not complaining about the
+     * same things.
+     *
+     * Half of this list is meaningless to a driver — «هدوم اتخربت», «قطعة
+     * ناقصة», «مش نضيفة» describe the laundry's work on somebody's clothes, and
+     * offering them on the driver's screen is offering the wrong words to
+     * somebody with a real problem. `driver_conduct` is a customer complaining
+     * about a driver, and `customer_conduct` is its mirror.
+     *
+     * The rest — late, payment, the app itself, anything else — genuinely happen
+     * to both, so they are `both` rather than duplicated per audience.
+     *
+     * Mirrors `faqs.audience`, which has worked this way since that table was
+     * created, so an app reads the same `?audience=` on both endpoints.
+     *
+     * @return 'both'|'customer'|'driver'
+     */
+    public function audience(): string
+    {
+        return match ($this) {
+            self::DamagedItem,
+            self::MissingItem,
+            self::NotClean,
+            self::DriverConduct => 'customer',
+
+            self::CustomerConduct => 'driver',
+
+            self::Late,
+            self::Payment,
+            self::AppProblem,
+            self::Other => 'both',
+        };
+    }
+
+    /**
+     * Whether this case is offered to the given audience.
+     *
+     * One definition, because two things ask: the list an app is shown, and the
+     * check on submit. A category a driver was never offered is a category a
+     * driver may not file, or the filtering would be decoration.
+     */
+    public function servesAudience(?string $audience): bool
+    {
+        if (! in_array($audience, ['customer', 'driver'], true)) {
+            return true;
+        }
+
+        return $this->audience() === 'both' || $this->audience() === $audience;
+    }
+
+    /**
+     * The cases one audience may use.
+     *
+     * @return array<int, self>
+     */
+    public static function forAudience(?string $audience): array
+    {
+        return array_values(array_filter(
+            self::cases(),
+            fn (self $case) => $case->servesAudience($audience)
+        ));
     }
 
     /**
@@ -52,6 +128,9 @@ enum ComplaintCategory: string
             self::NotClean,
             self::Late,
             self::DriverConduct,
+            // The driver's mirror of it. «مشكلة مع العميل» is always about one
+            // doorstep, so the order is what makes it actionable.
+            self::CustomerConduct,
         ], true);
     }
 

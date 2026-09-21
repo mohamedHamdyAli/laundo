@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\V1;
 use App\Http\Controllers\Controller;
 use App\Modules\Setting\Models\Setting;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 
 /**
@@ -20,6 +21,11 @@ use Illuminate\Support\Facades\Cache;
  *   Tax          — a rate the server applies to totals; a client that reads it
  *                  is a client that can be argued with about the maths
  *   Login_Cover  — dashboard chrome, not app content
+ *
+ * `Driver_Hotline`, `Driver_Call`, `Driver_Email` and `Driver_Whats_App` are not
+ * in the allow-list because they are never served under their own names: they
+ * replace the four public ones when `?audience=driver` asks, so the driver app
+ * reads `hotline` like everybody else and gets the right number.
  *
  * Note the table is key/value rows. `Setting`'s getAboutAttribute() and friends
  * imply columns named about/privacy_policy/terms; there are none, so those
@@ -78,9 +84,10 @@ class AppSettingController extends Controller
      * to populate a settings menu wastes the customer's data. `pages` names them
      * so a client can fetch one when it is opened.
      */
-    public function index(): JsonResponse
+    public function index(Request $request): JsonResponse
     {
         $stored = $this->stored();
+        $audience = $request->get('audience');
 
         $payload = [];
 
@@ -112,7 +119,7 @@ class AppSettingController extends Controller
 
             // A key absent from the table reads as null rather than throwing. An
             // install that has not filled in its WhatsApp number is normal.
-            $payload[$this->slug($key)] = $stored[$key] ?? null;
+            $payload[$this->slug($key)] = $this->contact($key, $stored, $audience);
         }
 
         // The white mark, for anywhere the app draws on a dark surface. Shipped
@@ -122,6 +129,40 @@ class AppSettingController extends Controller
         $payload['pages'] = array_keys(self::PAGES);
 
         return successReturnData($payload);
+    }
+
+    /**
+     * The four contact keys a driver may be given their own numbers for.
+     *
+     * @var array<int, string>
+     */
+    private const DRIVER_OVERRIDES = ['Hotline', 'Call', 'Email', 'Whats_App'];
+
+    /**
+     * A contact value, with the driver's own number when there is one.
+     *
+     * `?audience=driver` is what the driver app sends, and the fallback is the
+     * point of the design rather than a convenience: a courier stranded at a
+     * doorstep needs to reach somebody, and an install that has only filled in
+     * one set of numbers must not answer him with null. So a blank driver line
+     * reads as «no separate number», not as «no number».
+     *
+     * Only these four are overridable. The social links and the brand are the
+     * company's, not an audience's.
+     *
+     * @param  array<string, string|null>  $stored
+     */
+    private function contact(string $key, array $stored, ?string $audience): ?string
+    {
+        if ($audience === 'driver' && in_array($key, self::DRIVER_OVERRIDES, true)) {
+            $override = $stored['Driver_'.$key] ?? null;
+
+            if (filled($override)) {
+                return $override;
+            }
+        }
+
+        return $stored[$key] ?? null;
     }
 
     /**

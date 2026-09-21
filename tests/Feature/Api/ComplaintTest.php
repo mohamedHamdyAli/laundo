@@ -322,10 +322,84 @@ class ComplaintTest extends TestCase
     {
         $data = $this->getJson('/api/v1/complaint-categories')->assertOk()->json('data');
 
-        $this->assertCount(8, $data);
+        // Everything, when nobody says which app is asking: guessing from an
+        // absent token would serve one app the other's words.
+        $this->assertCount(9, $data);
         $this->assertSame('damaged_item', $data[0]['value']);
         // A hint for the client, not a rule.
         $this->assertTrue($data[0]['needs_order']);
+    }
+
+    #[Test]
+    public function the_two_apps_are_offered_different_words(): void
+    {
+        $customer = collect($this->getJson('/api/v1/complaint-categories?audience=customer')
+            ->assertOk()->json('data'))->pluck('value');
+
+        $driver = collect($this->getJson('/api/v1/complaint-categories?audience=driver')
+            ->assertOk()->json('data'))->pluck('value');
+
+        // «هدوم اتخربت» describes the laundry's work on somebody's clothes, and
+        // offering it on a driver's screen is offering the wrong words to
+        // somebody with a real problem.
+        $this->assertTrue($customer->contains('damaged_item'));
+        $this->assertFalse($driver->contains('damaged_item'));
+        $this->assertFalse($driver->contains('not_clean'));
+
+        // Each side complains about the other, and only one direction existed.
+        $this->assertTrue($customer->contains('driver_conduct'));
+        $this->assertFalse($customer->contains('customer_conduct'));
+        $this->assertTrue($driver->contains('customer_conduct'));
+        $this->assertFalse($driver->contains('driver_conduct'));
+
+        // Late, payment, the app and «أخرى» happen to both, so they are shared
+        // rather than duplicated per audience.
+        foreach (['late', 'payment', 'app_problem', 'other'] as $shared) {
+            $this->assertTrue($customer->contains($shared), "{$shared} is the customer's too");
+            $this->assertTrue($driver->contains($shared), "{$shared} is the driver's too");
+        }
+    }
+
+    #[Test]
+    public function a_category_the_audience_was_never_offered_is_refused(): void
+    {
+        // Otherwise the narrowing is decoration: a client could draw the driver's
+        // list and still file «الهدوم اتخربت» against a laundry.
+        $this->actingAs($this->driver)
+            ->postJson('/api/v1/complaints?audience=driver', [
+                'category' => 'damaged_item',
+                'body' => 'filed from the wrong list entirely',
+            ])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('category');
+
+        $this->assertSame(0, Complaint::count());
+    }
+
+    #[Test]
+    public function a_driver_can_finally_complain_about_a_customer(): void
+    {
+        // The case that had nowhere to go: every other category describes
+        // something done *to* a customer, so a driver with a real problem at a
+        // doorstep had only «أخرى», where it stops being countable.
+        $order = $this->order();
+
+        OrderTask::where('order_id', $order->id)
+            ->where('type', TaskType::PickupFromCustomer->value)
+            ->update(['driver_id' => $this->driver->id, 'status' => TaskStatus::Completed->value]);
+
+        $this->actingAs($this->driver)
+            ->postJson('/api/v1/complaints?audience=driver', [
+                'category' => 'customer_conduct',
+                'body' => 'محدش رد عليا وقفت نص ساعة قدام العمارة',
+                'order_id' => $order->id,
+            ])
+            ->assertCreated();
+
+        $complaint = Complaint::firstOrFail();
+
+        $this->assertSame('customer_conduct', $complaint->category);
+        $this->assertSame($order->id, $complaint->order_id);
     }
 
     // ----------------------------------------------------------------- validation

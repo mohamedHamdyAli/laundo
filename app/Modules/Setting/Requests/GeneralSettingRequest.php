@@ -50,6 +50,16 @@ class GeneralSettingRequest extends FormRequest
                 'Hotline' => 'nullable|string|max:20',
                 'Call' => 'nullable|string|max:20',
                 'Email' => 'nullable|string|max:191',
+
+                // Driver support. Blank is the normal state and means «no
+                // separate line» — AppSettingController falls back to the four
+                // above — so these must stay nullable, and they must be listed
+                // here at all: updateSettings() saves `validated()`, and a key
+                // without a rule is dropped without a word.
+                'Driver_Hotline' => 'nullable|string|max:20',
+                'Driver_Call' => 'nullable|string|max:20',
+                'Driver_Email' => 'nullable|string|max:191',
+                'Driver_Whats_App' => 'nullable|string|max:191',
                 // The state's tax, as a percentage added on the order total.
                 // Capped, because it was uncapped and a fat-fingered 1000 would
                 // have multiplied every invoice in the country by eleven.

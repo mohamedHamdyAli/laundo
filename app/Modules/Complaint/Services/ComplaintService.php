@@ -289,7 +289,7 @@ class ComplaintService
      *
      * @return array<int, array{value: string, label: string, needs_order: bool}>
      */
-    public function categories(): array
+    public function categories(?string $audience = null): array
     {
         return array_map(fn (ComplaintCategory $c) => [
             'value' => $c->value,
@@ -297,6 +297,9 @@ class ComplaintService
             // A hint for the client, not a rule: a complaint that names no order
             // still has to be accepted, or it is lost entirely.
             'needs_order' => $c->usuallyAboutAnOrder(),
-        ], ComplaintCategory::cases());
+            // Which app this belongs to, for anything that wants the whole list
+            // and its own labelling rather than a narrowed one.
+            'audience' => $c->audience(),
+        ], ComplaintCategory::forAudience($audience));
     }
 }

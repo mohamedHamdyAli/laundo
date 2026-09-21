@@ -143,21 +143,34 @@ class driverCrudService
      */
     protected function profilePayload(array $request, $existing = null): array
     {
-        $data = array_filter([
-            'vehicle_type' => $request['vehicle_type'] ?? null,
-            'plate_number' => $request['plate_number'] ?? null,
-            'license_number' => $request['license_number'] ?? null,
-            'license_expiry' => $request['license_expiry'] ?? null,
-            'vehicle_registration_expiry' => $request['vehicle_registration_expiry'] ?? null,
-            'shift_start' => $request['shift_start'] ?? null,
-            'shift_end' => $request['shift_end'] ?? null,
-            'notes' => $request['notes'] ?? null,
-        ], fn ($value) => ! is_null($value));
+        $data = [];
 
-        // Outside the array_filter, because both must be clearable back to null:
-        // a cap that can be set but never removed is a driver permanently
-        // throttled by a typo.
-        foreach (['max_concurrent_orders', 'city_id'] as $field) {
+        /*
+         * Written when the request carried the key, whatever it carried.
+         *
+         * This used to be an `array_filter` that dropped nulls, with two fields
+         * lifted out of it because they «must be clearable back to null». That
+         * exception was the rule: **every** one of these is optional, so every
+         * one of them can be emptied. An operator correcting a licence number
+         * typed into the wrong driver could set it and never unset it — the form
+         * posted a blank, the filter dropped it, and the screen came back showing
+         * the old value as though the save had not happened.
+         *
+         * `array_key_exists`, not `isset`: a cleared field arrives as an empty
+         * string (or null once ConvertEmptyStringsToNull has run) and `isset`
+         * would call that «absent» and skip it, which is the whole bug.
+         */
+        $fields = [
+            'vehicle_type', 'plate_number', 'vehicle_brand', 'vehicle_model',
+            'vehicle_year', 'vehicle_color',
+            'license_number', 'license_type', 'license_issued_at', 'license_expiry',
+            'vehicle_registration_expiry', 'vehicle_insurance_expiry',
+            'vehicle_inspection_expiry',
+            'shift_start', 'shift_end', 'notes',
+            'max_concurrent_orders', 'city_id',
+        ];
+
+        foreach ($fields as $field) {
             if (array_key_exists($field, $request)) {
                 $data[$field] = $request[$field] === '' ? null : $request[$field];
             }
@@ -168,7 +181,10 @@ class driverCrudService
         // could never be turned off.
         $data['is_available'] = (bool) ($request['is_available'] ?? false);
 
-        foreach (['license_image', 'vehicle_registration_image', 'national_id_image'] as $field) {
+        foreach ([
+            'license_image', 'vehicle_registration_image', 'vehicle_insurance_image',
+            'vehicle_inspection_image', 'national_id_image', 'other_document_image',
+        ] as $field) {
             if (isset($request[$field])) {
                 $data[$field] = uploadOrUpdateImage(
                     $request[$field], 'images/drivers/documents', $existing?->{$field}

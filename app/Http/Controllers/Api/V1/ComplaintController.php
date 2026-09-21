@@ -27,10 +27,16 @@ class ComplaintController extends Controller
 
     /**
      * The categories to offer, so two apps do not maintain the same list.
+     *
+     * `?audience=customer|driver` narrows it, exactly as `GET /faqs` does — half
+     * of this vocabulary is meaningless on the other app's screen, and «مشكلة مع
+     * العميل» exists only on the driver's. Without the parameter the caller gets
+     * everything, because guessing from an absent token would serve one app the
+     * other's words.
      */
-    public function categories(): JsonResponse
+    public function categories(Request $request): JsonResponse
     {
-        return successReturnData($this->complaints->categories());
+        return successReturnData($this->complaints->categories($request->get('audience')));
     }
 
     /**
@@ -50,8 +56,20 @@ class ComplaintController extends Controller
 
     public function store(Request $request): JsonResponse
     {
+        // `audience` narrows the vocabulary rather than describing the sender:
+        // a client that sends it is telling us which list it drew from, and a
+        // value outside that list is a category it never offered. Filtering the
+        // list without checking it here would make the narrowing decoration.
+        $audience = $request->get('audience');
+
+        $allowed = array_map(
+            fn (ComplaintCategory $c) => $c->value,
+            ComplaintCategory::forAudience($audience)
+        );
+
         $validated = $request->validate([
-            'category' => ['required', 'string', 'in:'.implode(',', ComplaintCategory::values())],
+            'category' => ['required', 'string', 'in:'.implode(',', $allowed)],
+            'audience' => ['nullable', 'in:customer,driver'],
             'body' => ['required', 'string', 'min:5', 'max:2000'],
             // Optional: the driver complains about no order in particular, and the
             // customer reaches this from an order screen.
@@ -67,6 +85,11 @@ class ComplaintController extends Controller
         // `validate()` returns the uploaded files as arrays on some clients; the
         // service wants UploadedFile objects, and this is where they live.
         $validated['photos'] = $request->file('photos', []);
+
+        // It narrowed the vocabulary above; the service's payload does not
+        // include it, and a complaint does not record which list it was drawn
+        // from — the category already says who could have filed it.
+        unset($validated['audience']);
 
         try {
             $complaint = $this->complaints->submit($request->user(), $validated);

@@ -915,3 +915,75 @@ GET /api/v1/time-slots?type=pickup&date=2026-09-22&address_id=42
 تطبيق المندوب دلوقتي بيبعت وهو فاتح شاشة الماب بس، فالإرسال بيقف أول ما المندوب
 يخرج من الشاشة. ده محتاج foreground service على أندرويد و`allowsBackgroundLocationUpdates`
 على iOS — التفاصيل في الملف المنفصل.
+
+---
+
+# ٢٠٢٦-٠٩-٢١ — المندوب يعدّل بياناته · والتفرقة بين العميل والمندوب
+
+> الملف الكامل للفريقين في
+> [`mobile-2026-09-21-driver-records-and-audience.md`](mobile-2026-09-21-driver-records-and-audience.md).
+> ده ملخص تغييرات العقد بس.
+>
+> **مفيش حاجة كاسرة.** كل الباراميترات اختيارية والحقول إضافية.
+
+## ١. `POST /driver/profile` بقى بياخد المركبة والرخصة والمستندات
+
+كان بياخد `name` و`email` و`image_profile` بس وبيتجاهل الباقي في صمت.
+
+**بيانات المركبة:** `vehicle_type` · `plate_number` · `vehicle_brand` ·
+`vehicle_model` · `vehicle_year` · `vehicle_color`
+
+**رخصة القيادة:** `license_number` · `license_type` · `license_issued_at` ·
+`license_expiry` · `license_image`
+
+**المستندات (ملفات):** `vehicle_registration_image` + `_expiry` ·
+`vehicle_insurance_image` + `_expiry` · `vehicle_inspection_image` + `_expiry` ·
+`national_id_image` · `other_document_image`
+
+**كل حقل اختياري وكل حفظة جزئية:** الحقل المش مبعوت بيفضل زي ما هو، والمبعوت
+فاضي بيتمسح. فحفظ شاشة الرخصة مش بيمسح المركبة. والرفع بيبدّل المستند اللي
+اتبعت باسمه بس.
+
+⚠️ **`zones` و`is_available` لسه مرفوضين.** المناطق بتحدد مين ياخد شغل — قرار
+توزيع مش تفضيل. الإتاحة ليها `PUT /driver/availability`.
+
+## ٢. `GET /driver/profile` — حقول جديدة وستة مستندات
+
+`vehicle` فيها `brand` و`model` و`year` و`color` كمان. و`license` فيها `type`
+و`issued_at` و`image`.
+
+`documents[]` بقت **ستة وبترجع كلها دايمًا** (مرفوعة أو لأ):
+`license` · `vehicle_registration` · `vehicle_insurance` ·
+`vehicle_inspection` · `national_id` · `other`
+
+كل عنصر فيه `key` · `label` · **`field`** (الاسم اللي ترفع بيه) · `url` ·
+`uploaded` · `expiry` · `is_expired` · `required`.
+
+`required` تلميح للشاشة **ومش متطبّق**.
+
+## ٣. `?audience=` على الشكاوى
+
+```
+GET  /complaint-categories?audience=customer|driver
+POST /complaints?audience=customer|driver
+```
+
+زي `GET /faqs?audience=` بالظبط. من غيرها بترجّع الكل.
+
+| التصنيف | العميل | المندوب |
+|---|---|---|
+| `damaged_item` · `missing_item` · `not_clean` · `driver_conduct` | ✅ | ❌ |
+| **`customer_conduct`** 🆕 | ❌ | ✅ |
+| `late` · `payment` · `app_problem` · `other` | ✅ | ✅ |
+
+تصنيف برّه ليستة الجمهور بيترفض بـ**422** على الإرسال.
+
+## ٤. `?audience=driver` على `/app-settings`
+
+بتبدّل `hotline` و`call` و`email` و`whats_app` بأرقام دعم المندوبين لو اتسجّلت،
+**تحت نفس المفاتيح**. الفاضي بيقع على أرقام العملاء عن قصد. الأرقام دي فاضية
+دلوقتي على السيرفر.
+
+## ٥. الأسئلة الشائعة — ماكنش محتاج أي حاجة
+
+`GET /faqs?audience=driver` شغال من يوم ما الجدول اتعمل. الجدول فاضي، وده محتوى.

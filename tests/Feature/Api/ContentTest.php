@@ -245,6 +245,54 @@ class ContentTest extends TestCase
     // ------------------------------------------------------- app settings
 
     #[Test]
+    public function the_driver_app_gets_the_drivers_own_support_line(): void
+    {
+        $this->setting('Hotline', '19999');
+        $this->setting('Whats_App', 'https://wa.me/201000000000');
+        $this->setting('Driver_Hotline', '16111');
+        $this->setting('Driver_Whats_App', 'https://wa.me/201555555555');
+
+        $customer = $this->getJson('/api/v1/app-settings')->assertOk()->json('data');
+        $driver = $this->getJson('/api/v1/app-settings?audience=driver')->assertOk()->json('data');
+
+        $this->assertSame('19999', $customer['hotline']);
+        $this->assertSame('16111', $driver['hotline'], 'the courier reaches operations, not the customer desk');
+        $this->assertSame('https://wa.me/201555555555', $driver['whats_app']);
+
+        // Read under the ordinary key, so the driver app parses one shape.
+        $this->assertArrayNotHasKey('driver_hotline', $driver);
+    }
+
+    #[Test]
+    public function a_blank_driver_line_falls_back_rather_than_answering_nothing(): void
+    {
+        // The fallback is the design, not a convenience: a courier stranded at a
+        // doorstep has to reach somebody, and an install that filled in one set
+        // of numbers must not answer him with null.
+        $this->setting('Hotline', '19999');
+        $this->setting('Driver_Hotline', '');
+
+        $driver = $this->getJson('/api/v1/app-settings?audience=driver')->assertOk()->json('data');
+
+        $this->assertSame('19999', $driver['hotline']);
+    }
+
+    #[Test]
+    public function the_audience_cannot_reach_past_the_four_contact_keys(): void
+    {
+        // Only the support lines are an audience's. The brand and the social
+        // links are the company's, and `?audience=` must not become a second way
+        // to ask for arbitrary settings.
+        $this->setting('App_Name', 'Laundo');
+        $this->setting('Driver_App_Name', 'Should never be served');
+
+        $driver = $this->getJson('/api/v1/app-settings?audience=driver')->assertOk()->json('data');
+
+        $this->assertSame('Laundo', $driver['app_name']);
+        $this->assertArrayNotHasKey('driver_app_name', $driver);
+    }
+
+    #[Test]
     public function app_settings_expose_the_contact_details_the_account_screen_needs(): void
     {
         $this->setting('App_Name', 'Laundo');

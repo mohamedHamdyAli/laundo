@@ -72,6 +72,125 @@ class DriverManagementTest extends TestCase
         $this->assertNotNull($driver->phone_verified_at);
     }
 
+    public function test_a_driver_can_be_created_with_no_documents_at_all(): void
+    {
+        // «Documents» is a record of what has been collected, not a gate on
+        // creating the account. Operations onboards a courier on the phone and
+        // photographs the licence later; a form that refuses until every scan is
+        // in hand means the driver is not in the system on the day they start.
+        $this->actingAs($this->superAdmin())->post('/admin/driver/store', [
+            'name' => 'Undocumented',
+            'phone' => '+201055550077',
+            'password' => 'password',
+            'password_confirmation' => 'password',
+            'status' => 'active',
+            // Not one of: license_number, license_expiry, license_image,
+            // vehicle_registration_image, vehicle_registration_expiry,
+            // national_id_image, vehicle_type, plate_number.
+        ])->assertRedirect(route('admin.driver.index'))
+            ->assertSessionHasNoErrors();
+
+        $driver = Driver::where('phone', '+201055550077')->first();
+
+        $this->assertNotNull($driver, 'the account exists without a single document');
+        $this->assertNotNull($driver->profile, 'and still gets its profile row');
+        $this->assertNull($driver->profile->license_number);
+        $this->assertNull($driver->profile->license_expiry);
+        $this->assertNull($driver->profile->license_image);
+        $this->assertNull($driver->profile->vehicle_registration_image);
+        $this->assertNull($driver->profile->vehicle_registration_expiry);
+        $this->assertNull($driver->profile->national_id_image);
+    }
+
+    public function test_documents_can_be_left_out_of_an_update_without_being_demanded(): void
+    {
+        $driver = $this->driverUser('+201055550078');
+        $driver->profile->forceFill([
+            'license_number' => 'DL-9',
+            'license_expiry' => '2030-01-01',
+        ])->save();
+
+        $this->actingAs($this->superAdmin())->put("/admin/driver/update/{$driver->id}", [
+            'name' => 'Renamed',
+            'status' => 'active',
+            // The documents block is absent, exactly as a browser posts it when
+            // the operator only touched the name.
+        ])->assertRedirect()->assertSessionHasNoErrors();
+
+        $this->assertSame('Renamed', $driver->fresh()->name);
+    }
+
+    public function test_a_document_field_can_be_emptied_again(): void
+    {
+        // «Optional» has to mean both directions. The payload used to run through
+        // an array_filter that dropped nulls, so a licence number typed into the
+        // wrong driver could be set and never unset: the form posted a blank, the
+        // filter discarded it, and the screen came back showing the old value as
+        // though the save had not happened.
+        $driver = $this->driverUser('+201055550079');
+        $driver->profile->forceFill([
+            'license_number' => 'DL-WRONG',
+            'plate_number' => 'TYPO 1',
+            'vehicle_brand' => 'Wrong',
+        ])->save();
+
+        $this->actingAs($this->superAdmin())->put("/admin/driver/update/{$driver->id}", [
+            'name' => $driver->name,
+            'status' => 'active',
+            'license_number' => '',
+            'plate_number' => '',
+            'vehicle_brand' => '',
+        ])->assertRedirect()->assertSessionHasNoErrors();
+
+        $profile = $driver->fresh('profile')->profile;
+
+        $this->assertNull($profile->license_number);
+        $this->assertNull($profile->plate_number);
+        $this->assertNull($profile->vehicle_brand);
+    }
+
+    public function test_the_new_vehicle_and_document_fields_save(): void
+    {
+        $this->actingAs($this->superAdmin())->post('/admin/driver/store', [
+            'name' => 'Fully Documented',
+            'phone' => '+201055550080',
+            'password' => 'password',
+            'password_confirmation' => 'password',
+            'status' => 'active',
+            'vehicle_brand' => 'Toyota',
+            'vehicle_model' => 'Corolla',
+            'vehicle_year' => '2022',
+            'vehicle_color' => 'White',
+            'license_type' => 'Private',
+            'license_issued_at' => '2020-01-01',
+            'vehicle_insurance_expiry' => '2027-06-01',
+            'vehicle_inspection_expiry' => '2027-09-01',
+        ])->assertRedirect(route('admin.driver.index'))->assertSessionHasNoErrors();
+
+        $profile = Driver::where('phone', '+201055550080')->first()->profile;
+
+        $this->assertSame('Toyota', $profile->vehicle_brand);
+        $this->assertSame('2022', $profile->vehicle_year);
+        $this->assertSame('Private', $profile->license_type);
+        $this->assertSame('2027-06-01', $profile->vehicle_insurance_expiry->toDateString());
+    }
+
+    public function test_every_dated_document_is_watched_for_expiry(): void
+    {
+        // A new document with an expiry nothing looks at lapses in silence, which
+        // is the one thing recording the date was for.
+        $driver = $this->driverUser('+201055550081');
+        $driver->profile->forceFill([
+            'vehicle_insurance_expiry' => now()->subDay()->toDateString(),
+            'vehicle_inspection_expiry' => now()->addYear()->toDateString(),
+        ])->save();
+
+        $expired = $driver->fresh('profile')->profile->expiredDocuments();
+
+        $this->assertArrayHasKey('vehicle_insurance_expiry', $expired);
+        $this->assertArrayNotHasKey('vehicle_inspection_expiry', $expired);
+    }
+
     public function test_the_availability_switch_can_be_turned_off(): void
     {
         // An unchecked checkbox is absent from the payload entirely, so a naive

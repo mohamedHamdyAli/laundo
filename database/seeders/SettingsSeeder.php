@@ -66,6 +66,20 @@ class SettingsSeeder extends Seeder
         $this->create_new_config('Email', 'nahrPhpTeam@nahrPhpTeam.com');
 
         /*
+         * Driver support — deliberately seeded empty.
+         *
+         * Blank means «no separate line for couriers», and AppSettingController
+         * falls back to the four above, so an install that never fills these in
+         * still answers the driver app with a number somebody picks up. Seeding
+         * them with the customer values would look identical and be a lie the
+         * first time the two diverge.
+         */
+        $this->create_new_config('Driver_Hotline', null);
+        $this->create_new_config('Driver_Call', null);
+        $this->create_new_config('Driver_Email', null);
+        $this->create_new_config('Driver_Whats_App', null);
+
+        /*
          * Distance and dispatch — seeded only when absent.
          *
          * `create_new_config` is an `updateOrCreate`, so every key above is

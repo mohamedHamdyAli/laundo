@@ -29,12 +29,23 @@ class DriverProfile extends Model
         'user_id',
         'vehicle_type',
         'plate_number',
+        'vehicle_brand',
+        'vehicle_model',
+        'vehicle_year',
+        'vehicle_color',
         'license_number',
+        'license_type',
+        'license_issued_at',
         'license_expiry',
         'license_image',
         'vehicle_registration_image',
         'vehicle_registration_expiry',
+        'vehicle_insurance_image',
+        'vehicle_insurance_expiry',
+        'vehicle_inspection_image',
+        'vehicle_inspection_expiry',
         'national_id_image',
+        'other_document_image',
         'shift_start',
         'shift_end',
         'is_available',
@@ -57,8 +68,11 @@ class DriverProfile extends Model
     protected function casts(): array
     {
         return [
+            'license_issued_at' => 'date',
             'license_expiry' => 'date',
             'vehicle_registration_expiry' => 'date',
+            'vehicle_insurance_expiry' => 'date',
+            'vehicle_inspection_expiry' => 'date',
             'is_available' => 'boolean',
             'last_lat' => 'float',
             'last_lng' => 'float',
@@ -85,6 +99,26 @@ class DriverProfile extends Model
     }
 
     /**
+     * Every dated document, so a new one cannot be added and quietly go unwatched.
+     *
+     * Listed once because two things read it: the dashboard's «Expired» badge and
+     * the field-level warning beneath each date. A document with an expiry that
+     * is not in here lapses in silence, which is the one thing recording the date
+     * was for.
+     *
+     * «مستندات أخرى» has no expiry on purpose — nobody knows what it is, so
+     * nothing about it can be said to have lapsed.
+     *
+     * @var array<int, string>
+     */
+    public const EXPIRY_FIELDS = [
+        'license_expiry',
+        'vehicle_registration_expiry',
+        'vehicle_insurance_expiry',
+        'vehicle_inspection_expiry',
+    ];
+
+    /**
      * Documents that have lapsed, keyed by field, for the dashboard warning.
      *
      * By decision an expired document does not stop assignment — it is surfaced
@@ -98,7 +132,7 @@ class DriverProfile extends Model
         $today = now()->startOfDay();
         $expired = [];
 
-        foreach (['license_expiry', 'vehicle_registration_expiry'] as $field) {
+        foreach (self::EXPIRY_FIELDS as $field) {
             $date = $this->{$field};
 
             if ($date && $date->startOfDay()->lessThan($today)) {

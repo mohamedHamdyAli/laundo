@@ -1,71 +1,104 @@
-# Live tracking, step two: a cheap endpoint and a fast cadence
+# The driver's own records, and telling the two apps apart
 
-Step one is the driver app's — reporting has to run off a live task rather than a
-visible screen, and nothing on the server substitutes for it. This is the half
-that makes the dot *move* once it does, and it is the half that survives a later
-move to WebSockets untouched, because the payload shape does not change.
+Two requests, decided with the owner:
 
-## Why not just poll `/track`
+1. The driver app's «بيانات المركبة», «رخصة القيادة» and «مستندات المركبة» screens
+   each carry a save button and none of them has an endpoint. The driver may now
+   edit all three — **zones stay operator-assigned**, because territory decides
+   who is handed work and that is an operations decision, not a preference.
+2. The FAQ, «تواصل معنا» and «تقديم شكوى» must tell a customer from a driver.
 
-It carries the timeline, both addresses, the ETA, the steps and the driver card —
-the whole screen. Asking for all of it every four seconds to move one marker is
-the wrong trade. A dedicated endpoint is one query and a few dozen bytes.
+Everything the driver submits is **optional**. A document is a record of what has
+been collected, not a precondition for having an account — operations onboards a
+courier on the phone and photographs the licence later.
 
-## Plan
+## A — the columns the design draws and the schema never had
 
-- [x] `config/tracking.php` — the freshness window and the poll interval, both
-      env-tunable. The window has to stay at 120s until the apps actually report
-      faster: tightening it first would blink the dot off between reports.
-- [x] `DriverCard::trackingFor()` — public, and built on the **same** private gate
-      the card uses. A second copy of "may this customer watch this leg" is how a
-      position leaks from a leg that is none of their business.
-- [x] `GET /api/v1/orders/{id}/driver-location` on `OrderController`.
-- [x] The server drives the cadence: `poll_after_seconds` in the response, so the
-      interval is tuned from the box rather than in an app release.
-- [x] Rate limits. `location` is **30/min**, sized for a 30-second cadence; at
-      4 seconds a driver sends 15/min and has almost no headroom for a retry.
-      Raise it, and give the customer's polling its own limiter so it cannot eat
-      the 60/min every other call shares.
-- [x] Tests, docs, Postman, reference, the mobile note, Changelog.
+One migration on `driver_profiles`, every column nullable:
 
-## Shape
+- vehicle: `vehicle_brand`, `vehicle_model`, `vehicle_year`, `vehicle_color`
+- licence: `license_type`, `license_issued_at`
+- documents: `vehicle_insurance_image` + `_expiry`,
+  `vehicle_inspection_image` + `_expiry`, `other_document_image`
 
-```
-GET /api/v1/orders/42/driver-location
-{
-  "tracking": true,            // a leg the customer may watch is live
-  "poll_after_seconds": 4,     // null when there is nothing to follow
-  "location":  {...} | null,   // fresh enough to draw as live
-  "last_seen": {...} | null    // last known, any age
-}
-```
+- [x] Migration + `$fillable` + casts
+- [x] `expiredDocuments()` learns the two new expiries
 
-Same two fields as the card, so the app parses one shape in both places.
+## B — the driver edits their own record
+
+- [x] Extend `POST /api/v1/driver/profile` rather than adding three endpoints:
+      one resource, one request class, one place the «all optional» rule lives.
+      Each screen posts only its own fields; absent means untouched, so one
+      screen's save cannot wipe another's.
+- [x] **Zones stay refused**, and the test that pins it stays — narrowed to zones.
+- [x] `GET /driver/profile` returns the new fields, and the five documents.
+
+## C — customer and driver are not the same complainant
+
+`ComplaintCategory` is a PHP enum with no notion of audience, and half of it is
+meaningless to a driver («هدوم اتخربت»). Worse, the design's «مشكلة مع العميل»
+does not exist at all — a driver has no way to complain about a customer.
+
+- [x] `CustomerConduct` case, driver-only.
+- [x] `audience()` on the enum; `GET /complaint-categories?audience=driver`,
+      mirroring `GET /faqs?audience=` which already works this way.
+- [x] Submitting a category the audience cannot use is refused.
+
+## D — separate support numbers
+
+- [x] `Driver_Hotline`, `Driver_Call`, `Driver_Whats_App`, `Driver_Email`
+      settings, fields on the general settings screen, and
+      `GET /app-settings?audience=driver` answering them — **falling back to the
+      customer numbers when blank**, so a half-filled install still reaches
+      somebody.
+
+## E — the dashboard has to be able to set all of it
+
+- [x] The new columns on the driver form, all optional, matching the existing
+      convention: a red `*` marks required and the documents block carries none.
+
+## F — verify
+
+- [x] Tests per part, full suite, drive the form, then docs: reference, Postman,
+      the mobile note, Changelog.
+
+## Already done, no work needed
+
+`GET /faqs?audience=driver` has worked since the table was created —
+`enum('both','customer','driver')`. The `faqs` table is empty, which is content
+for the dashboard, not code.
 
 
 ## Review
 
-Shipped. Twenty-six tests green on the tracking file, and the endpoint is in the
-reference (104), the Postman collection (104) and the note for both app teams.
+All six parts shipped. The pieces worth recording:
 
-Two things the investigation turned up that would have bitten on the first busy
-day, neither of them part of the ask:
+**Two things were already done and needed saying, not building.** `GET /faqs`
+has taken `?audience=` since its table was created, and every document field in
+the dashboard was already nullable with no `required` in the form — I proved the
+second by driving the real browser before touching it, and the only 422 I could
+produce was Chrome autofilling the email field of my own probe. Guarded with
+tests now so nobody has to ask again.
 
-- The `location` limiter was **30/minute** — sized when the cadence was thirty
-  seconds. At four seconds a driver sends fifteen a minute, so a single retry
-  storm would have started throttling the exact stream the map is drawn from.
-  Raised, and the customer's polling given a bucket of its own.
-- The freshness window had to stay at 120s. Tightening it in the same release
-  would have been the obvious tidy-up and would have made the dot blink off
-  between the app's current thirty-second reports — the bug, reintroduced while
-  claiming to fix it. It is config now, so it comes down when the apps are ready,
-  from the env, without a deploy.
+**One real defect surfaced on the way.** «Optional» was only half true: the crud
+service filtered nulls out of its payload, so a licence number typed into the
+wrong driver could be set and never unset. The form posted a blank, the filter
+discarded it, the screen came back unchanged. The two fields already lifted out
+of that filter had a comment explaining they «must be clearable» — that was the
+rule, written as an exception.
 
-What this does not do, and the note says so twice: make the driver app report in
-the background. Until that lands there is a fast, cheap channel carrying a
-position that only updates while somebody is looking at a screen.
+**The decision that was reversed, deliberately.** Vehicle, licence and documents
+were read-only on the API, documented as «a driver editing their own licence
+expiry would defeat the point of recording it». The owner's call reverses it and
+the practical case is stronger: these are the things only the driver has. The
+expiry was never a gate anyway — `expiredDocuments()` surfaces a lapse for a
+human and does not stop assignment. Zones stayed refused, which is the line that
+actually matters, because territory decides who is handed work.
 
-The WebSocket question stays open and is unblocked by this rather than
-foreclosed: the payload shape does not change, so moving to a socket later is a
-transport swap. Self-hosting Reverb needs `Linger=no` fixed on the box, which is
-one root command the owner can get; a hosted service needs none.
+**The gap nobody had reported.** Splitting complaints by audience exposed that
+«مشكلة مع العميل» did not exist: every category described something done *to* a
+customer, so a driver's complaint had only «أخرى» to land in, and a complaint in
+«أخرى» stops being countable.
+
+Left for content rather than code: `faqs` holds zero rows, and the four driver
+support numbers are seeded empty on purpose.

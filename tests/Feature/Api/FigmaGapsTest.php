@@ -399,27 +399,63 @@ class FigmaGapsTest extends TestCase
             ->json('data.documents');
 
         // The columns have existed since P5 and the payload never returned them,
-        // so «مستندات المركبة» opened on an empty page.
-        $this->assertCount(3, $documents);
+        // so «مستندات المركبة» opened on an empty page. Six slots now, and all
+        // six are always listed: the screen draws a row per document so the
+        // driver can upload the missing ones, and a list that omitted what has
+        // not been collected would leave them nothing to tap.
+        $this->assertCount(6, $documents);
         $this->assertNotNull(collect($documents)->firstWhere('key', 'license')['url']);
         $this->assertNull(collect($documents)->firstWhere('key', 'national_id')['url']);
+        $this->assertFalse(collect($documents)->firstWhere('key', 'national_id')['uploaded']);
     }
 
     #[Test]
-    public function documents_stay_read_only(): void
+    public function the_driver_maintains_their_own_papers_but_not_their_territory(): void
     {
+        // This used to assert the opposite — documents were read-only, on the
+        // reasoning that a verified record a driver can edit is not a verified
+        // record. The owner's decision reverses it: these are the things only the
+        // driver has, and the alternative was an operator typing a licence number
+        // off a photograph sent on WhatsApp. The expiry was never a gate anyway.
+        //
+        // **Zones are the line that stayed.** Territory decides who is handed
+        // work, so a driver choosing their own would keep the short trips and
+        // drop the rest — that is dispatch, not a preference.
         $driver = $this->driverUser('+201066660001');
+        $zoneBefore = $driver->zones->pluck('id')->all();
 
         $this->actingAs($driver, 'sanctum')
             ->postJson('/api/v1/driver/profile', [
                 'name' => 'New Name',
-                'license_image' => 'anything',
+                'license_number' => 'DL-THEIRS',
+                'zones' => [999],
+            ])
+            ->assertSuccessful();
+
+        $fresh = $driver->fresh(['profile', 'zones']);
+
+        $this->assertSame('DL-THEIRS', $fresh->profile?->license_number);
+        $this->assertSame($zoneBefore, $fresh->zones->pluck('id')->all());
+    }
+
+    #[Test]
+    public function a_driver_cannot_reach_another_drivers_record(): void
+    {
+        // The isolation that has nothing to do with the decision above: the
+        // endpoint is keyed on the authenticated user, so there is no id to aim
+        // at somebody else's papers in the first place.
+        $mine = $this->driverUser('+201066660002');
+        $theirs = $this->driverUser('+201066660003');
+        $theirs->profile->forceFill(['license_number' => 'THEIRS-1'])->save();
+
+        $this->actingAs($mine, 'sanctum')
+            ->postJson('/api/v1/driver/profile', [
+                'user_id' => $theirs->id,
                 'license_number' => 'FORGED-1',
             ])
             ->assertSuccessful();
 
-        // A verified record a driver can edit is not a verified record. Only the
-        // three fields they own are writable, and the rest are dashboard work.
-        $this->assertNotSame('FORGED-1', $driver->fresh()->profile?->license_number);
+        $this->assertSame('THEIRS-1', $theirs->fresh()->profile?->license_number);
+        $this->assertSame('FORGED-1', $mine->fresh()->profile?->license_number);
     }
 }

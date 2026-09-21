@@ -6,12 +6,15 @@ use App\Http\Controllers\Controller;
 use App\Models\Role;
 use App\Modules\Driver\Enums\VehicleType;
 use App\Modules\Driver\Models\Driver;
+use App\Modules\Driver\Models\DriverProfile;
 use App\Modules\Order\Enums\TaskStatus;
 use App\Services\Auth\OtpService;
 use App\Services\Auth\PasswordResetTicket;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\Rule;
 
 /**
  * The driver app's own surface.
@@ -70,21 +73,61 @@ class DriverController extends Controller
     }
 
     /**
-     * Only the fields a driver owns.
+     * The driver's own record — «بيانات المركبة», «رخصة القيادة», «مستندات المركبة».
      *
-     * Vehicle details, documents and zones are absent on purpose: they are
-     * verified records and territory assignments, so they are set in the
-     * dashboard. A driver editing their own licence expiry would defeat the point
-     * of recording it.
+     * Vehicle, licence and documents used to be refused here, on the reasoning
+     * that a driver editing their own licence expiry defeats the point of
+     * recording it. The owner's decision reverses that, and the practical case is
+     * the stronger one: these are the things only the driver has — their car,
+     * their papers — and the alternative was an operator typing a plate number
+     * off a photograph somebody sent on WhatsApp. The expiry was never a gate
+     * anyway: `expiredDocuments()` surfaces a lapse for a human and, by the
+     * decision recorded there, does not stop assignment by itself.
+     *
+     * **Zones are still refused.** Territory decides who is handed work, so a
+     * driver choosing their own would let them keep the short trips and drop the
+     * rest. That is dispatch, not a preference.
+     *
+     * **Everything is optional, and every save is partial.** The design has three
+     * screens with three save buttons, and each posts only what it owns —
+     * `sometimes` means an absent field is left alone rather than cleared, so
+     * saving the licence screen cannot blank the vehicle beside it.
      */
     public function updateProfile(Request $request): JsonResponse
     {
         $driver = $this->driver($request);
 
+        $image = ['nullable', 'image', 'mimes:jpg,png,jpeg,gif,svg', 'max:2048'];
+
         $data = $request->validate([
             'name' => ['sometimes', 'string', 'max:191'],
             'email' => ['nullable', 'email', 'max:191', 'unique:users,email,'.$driver->id],
-            'image_profile' => ['nullable', 'image', 'mimes:jpg,png,jpeg,gif,svg', 'max:2048'],
+            'image_profile' => $image,
+
+            // بيانات المركبة
+            'vehicle_type' => ['sometimes', 'nullable', Rule::in(VehicleType::values())],
+            'plate_number' => ['sometimes', 'nullable', 'string', 'max:50'],
+            'vehicle_brand' => ['sometimes', 'nullable', 'string', 'max:100'],
+            'vehicle_model' => ['sometimes', 'nullable', 'string', 'max:100'],
+            'vehicle_year' => ['sometimes', 'nullable', 'string', 'max:10'],
+            'vehicle_color' => ['sometimes', 'nullable', 'string', 'max:50'],
+
+            // رخصة القيادة
+            'license_number' => ['sometimes', 'nullable', 'string', 'max:100'],
+            'license_type' => ['sometimes', 'nullable', 'string', 'max:100'],
+            'license_issued_at' => ['sometimes', 'nullable', 'date'],
+            'license_expiry' => ['sometimes', 'nullable', 'date'],
+            'license_image' => $image,
+
+            // مستندات المركبة
+            'vehicle_registration_image' => $image,
+            'vehicle_registration_expiry' => ['sometimes', 'nullable', 'date'],
+            'vehicle_insurance_image' => $image,
+            'vehicle_insurance_expiry' => ['sometimes', 'nullable', 'date'],
+            'vehicle_inspection_image' => $image,
+            'vehicle_inspection_expiry' => ['sometimes', 'nullable', 'date'],
+            'national_id_image' => $image,
+            'other_document_image' => $image,
         ]);
 
         if (! empty($data['image_profile'])) {
@@ -97,9 +140,72 @@ class DriverController extends Controller
             unset($data['image_profile']);
         }
 
-        $driver->update($data);
+        $profile = $this->profilePayload($request, $driver);
+
+        DB::transaction(function () use ($driver, $data, $profile) {
+            $driver->update(array_intersect_key($data, array_flip(['name', 'email', 'image_profile'])));
+
+            if ($profile !== []) {
+                // updateOrCreate rather than update: a driver whose profile row
+                // never existed would otherwise save into nothing and be told it
+                // had worked.
+                $driver->profile()->updateOrCreate(['user_id' => $driver->id], $profile);
+            }
+        });
 
         return successReturnData($this->payload($driver->fresh(['profile', 'zones'])), __('Profile updated.'));
+    }
+
+    /**
+     * What of this request belongs on `driver_profiles`.
+     *
+     * Assembled key by key from what was actually sent, and that is the whole of
+     * the partial-update behaviour: `has()` is true for a field posted empty —
+     * the driver clearing a plate number — and false for one the screen never
+     * drew, so a licence save cannot blank the vehicle beside it.
+     *
+     * The six file fields are handled apart, because a file is only a change when
+     * one was uploaded. `uploadOrUpdateImage()` hands back the existing path when
+     * given null, and an absent file has to leave the stored document alone.
+     *
+     * @return array<string, mixed>
+     */
+    private function profilePayload(Request $request, Driver $driver): array
+    {
+        $payload = [];
+
+        $scalars = [
+            'vehicle_type', 'plate_number', 'vehicle_brand', 'vehicle_model',
+            'vehicle_year', 'vehicle_color',
+            'license_number', 'license_type', 'license_issued_at', 'license_expiry',
+            'vehicle_registration_expiry', 'vehicle_insurance_expiry',
+            'vehicle_inspection_expiry',
+        ];
+
+        foreach ($scalars as $field) {
+            if ($request->has($field)) {
+                $payload[$field] = $request->input($field);
+            }
+        }
+
+        $documents = [
+            'license_image', 'vehicle_registration_image', 'vehicle_insurance_image',
+            'vehicle_inspection_image', 'national_id_image', 'other_document_image',
+        ];
+
+        foreach ($documents as $field) {
+            if (! $request->hasFile($field)) {
+                continue;
+            }
+
+            $payload[$field] = uploadOrUpdateImage(
+                $request->file($field),
+                'images/drivers/documents',
+                $driver->profile?->{$field}
+            );
+        }
+
+        return $payload;
     }
 
     /**
@@ -330,6 +436,58 @@ class DriverController extends Controller
     }
 
     /**
+     * «مستندات المركبة» — the six slots, in the order the screen draws them.
+     *
+     * Always all six, whether or not anything has been uploaded: the screen shows
+     * a row per document so the driver can add the missing ones, and a payload
+     * that listed only what exists would leave them nothing to tap.
+     *
+     * `field` is the name to post the file back under, so the app does not keep
+     * its own mapping from a display key to a form field — the two drifting apart
+     * is how an upload silently lands on the wrong document.
+     *
+     * `required` marks the three the business actually wants; it is a hint for
+     * the screen, never enforced. Nothing here gates having an account: operations
+     * onboards a courier on the phone and photographs the papers afterwards.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    private function documents(?DriverProfile $profile): array
+    {
+        $slots = [
+            ['license', 'Driving licence', 'license_image', 'license_expiry', true],
+            ['vehicle_registration', 'Vehicle registration', 'vehicle_registration_image', 'vehicle_registration_expiry', true],
+            ['vehicle_insurance', 'Vehicle insurance', 'vehicle_insurance_image', 'vehicle_insurance_expiry', true],
+            ['vehicle_inspection', 'Technical inspection', 'vehicle_inspection_image', 'vehicle_inspection_expiry', false],
+            ['national_id', 'National ID', 'national_id_image', null, true],
+            ['other', 'Other documents', 'other_document_image', null, false],
+        ];
+
+        $documents = [];
+
+        foreach ($slots as [$key, $label, $field, $expiryField, $required]) {
+            $path = $profile?->{$field};
+            $expiry = $expiryField ? $profile?->{$expiryField} : null;
+
+            $documents[] = [
+                'key' => $key,
+                'label' => __($label),
+                'field' => $field,
+                'url' => $path ? getImageassetUrl($path) : null,
+                'uploaded' => $path !== null,
+                'expiry' => $expiry?->toDateString(),
+                // Lapsed, rather than merely dated: the screen paints this red,
+                // and it is worked out here so the two apps cannot disagree with
+                // the dashboard about what «expired» means.
+                'is_expired' => $expiry !== null && $expiry->startOfDay()->isPast(),
+                'required' => $required,
+            ];
+        }
+
+        return $documents;
+    }
+
+    /**
      * @return array<string, mixed>
      */
     private function payload(Driver $driver, bool $withToken = false): array
@@ -350,38 +508,28 @@ class DriverController extends Controller
                 'type' => $profile?->vehicle_type,
                 'type_label' => VehicleType::parse($profile?->vehicle_type)?->label(),
                 'plate_number' => $profile?->plate_number,
+                'brand' => $profile?->vehicle_brand,
+                'model' => $profile?->vehicle_model,
+                'year' => $profile?->vehicle_year,
+                'color' => $profile?->vehicle_color,
             ],
             'license' => [
                 'number' => $profile?->license_number,
+                'type' => $profile?->license_type,
+                'issued_at' => $profile?->license_issued_at?->toDateString(),
                 'expiry' => $profile?->license_expiry?->toDateString(),
+                'image' => $profile?->license_image ? getImageassetUrl($profile->license_image) : null,
             ],
             // «مستندات المركبة» — a row in the driver's account screen that had
             // nothing behind it: the columns have existed since P5 and the
             // payload never returned them, so the screen opened on an empty
             // page. Read-only, like the rest of the verified record — a driver
             // editing their own licence expiry would defeat the point of it.
-            'documents' => [
-                [
-                    'key' => 'license',
-                    'label' => __('Driving licence'),
-                    'url' => $profile?->license_image ? getImageassetUrl($profile->license_image) : null,
-                    'expiry' => $profile?->license_expiry?->toDateString(),
-                ],
-                [
-                    'key' => 'vehicle_registration',
-                    'label' => __('Vehicle registration'),
-                    'url' => $profile?->vehicle_registration_image
-                        ? getImageassetUrl($profile->vehicle_registration_image)
-                        : null,
-                    'expiry' => $profile?->vehicle_registration_expiry?->toDateString(),
-                ],
-                [
-                    'key' => 'national_id',
-                    'label' => __('National ID'),
-                    'url' => $profile?->national_id_image ? getImageassetUrl($profile->national_id_image) : null,
-                    'expiry' => null,
-                ],
-            ],
+            // **Every slot is always listed, filled or not.** The screen draws a
+            // row per document with «لم يتم الرفع» beside the empty ones, so a
+            // list that omitted what has not been collected would give the driver
+            // no way to upload it. `field` is the key to post it back under.
+            'documents' => $this->documents($profile),
             'shift' => $profile?->shiftLabel(),
             'zones' => $driver->zones->map(fn ($zone) => [
                 'id' => $zone->id,

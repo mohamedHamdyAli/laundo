@@ -42,12 +42,23 @@ class DriverRequest extends FormRequest
             // operations will ask, and it cannot be answered over typing.
             'vehicle_type' => ['nullable', Rule::in(VehicleType::values())],
             'plate_number' => ['nullable', 'string', 'max:50'],
+            'vehicle_brand' => ['nullable', 'string', 'max:100'],
+            'vehicle_model' => ['nullable', 'string', 'max:100'],
+            'vehicle_year' => ['nullable', 'string', 'max:10'],
+            'vehicle_color' => ['nullable', 'string', 'max:50'],
             'license_number' => ['nullable', 'string', 'max:100'],
+            'license_type' => ['nullable', 'string', 'max:100'],
+            'license_issued_at' => ['nullable', 'date'],
             'license_expiry' => ['nullable', 'date'],
             'license_image' => ['nullable', 'image', 'mimes:jpg,png,jpeg,gif,svg', 'max:2048'],
             'vehicle_registration_image' => ['nullable', 'image', 'mimes:jpg,png,jpeg,gif,svg', 'max:2048'],
             'vehicle_registration_expiry' => ['nullable', 'date'],
+            'vehicle_insurance_image' => ['nullable', 'image', 'mimes:jpg,png,jpeg,gif,svg', 'max:2048'],
+            'vehicle_insurance_expiry' => ['nullable', 'date'],
+            'vehicle_inspection_image' => ['nullable', 'image', 'mimes:jpg,png,jpeg,gif,svg', 'max:2048'],
+            'vehicle_inspection_expiry' => ['nullable', 'date'],
             'national_id_image' => ['nullable', 'image', 'mimes:jpg,png,jpeg,gif,svg', 'max:2048'],
+            'other_document_image' => ['nullable', 'image', 'mimes:jpg,png,jpeg,gif,svg', 'max:2048'],
 
             // Both columns were added in P6 and never given a field, so every
             // driver has null for both — and the dispatch rules P8 enforces are

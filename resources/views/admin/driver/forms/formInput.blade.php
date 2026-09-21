@@ -130,15 +130,36 @@
         </div>
     </div>
 
+    @foreach ([
+        'vehicle_brand' => 'Brand',
+        'vehicle_model' => 'Model',
+        'vehicle_year' => 'Year',
+        'vehicle_color' => 'Colour',
+    ] as $field => $label)
+        <div class="col-md-3">
+            <div class="mb-3">
+                <label class="form-label">{{ __($label) }}</label>
+                <input type="text" name="{{ $field }}" class="form-control"
+                    value="{{ old($field, $profile?->{$field}) }}" {{ $readonly ? 'readonly' : '' }}>
+            </div>
+        </div>
+    @endforeach
+
     <div class="col-12 mt-3">
         <h6 class="border-bottom pb-2">
             {{ __('Documents') }}
+            {{-- Said on the section rather than on each of the nine fields: the
+                 form marks what is required with a red asterisk, and the absence
+                 of one is easy to miss when a block looks like paperwork. An
+                 operator onboarding a courier on the phone needs to know they can
+                 save now and photograph the licence later. --}}
+            <span class="badge text-bg-secondary fw-normal">{{ __('All optional') }}</span>
             @if ($profile && $profile->hasExpiredDocuments())
                 <span class="badge bg-danger">{{ __('Expired') }}</span>
             @endif
         </h6>
         <small class="text-muted">
-            {{ __('Expiry dates are recorded and flagged here. They do not automatically stop task assignment.') }}
+            {{ __('Nothing in this section is required — a driver can be saved without any of it, and the papers added later. Expiry dates are recorded and flagged here; they do not automatically stop task assignment.') }}
         </small>
     </div>
 
@@ -147,6 +168,23 @@
             <label class="form-label">{{ __('License Number') }}</label>
             <input type="text" name="license_number" class="form-control"
                 value="{{ old('license_number', $profile?->license_number) }}" {{ $readonly ? 'readonly' : '' }}>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="mb-3">
+            <label class="form-label">{{ __('License Type') }}</label>
+            <input type="text" name="license_type" class="form-control"
+                value="{{ old('license_type', $profile?->license_type) }}" {{ $readonly ? 'readonly' : '' }}>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="mb-3">
+            <label class="form-label">{{ __('License Issue Date') }}</label>
+            <input type="date" name="license_issued_at" class="form-control"
+                value="{{ old('license_issued_at', $profile?->license_issued_at?->toDateString()) }}"
+                {{ $readonly ? 'readonly' : '' }}>
         </div>
     </div>
 
@@ -162,22 +200,33 @@
         </div>
     </div>
 
-    <div class="col-md-4">
-        <div class="mb-3">
-            <label class="form-label">{{ __('Vehicle Registration Expiry') }}</label>
-            <input type="date" name="vehicle_registration_expiry" class="form-control"
-                value="{{ old('vehicle_registration_expiry', $profile?->vehicle_registration_expiry?->toDateString()) }}"
-                {{ $readonly ? 'readonly' : '' }}>
-            @if ($profile && isset($profile->expiredDocuments()['vehicle_registration_expiry']))
-                <div class="text-danger small">{{ __('This registration has expired.') }}</div>
-            @endif
+    @foreach ([
+        'vehicle_registration_expiry' => 'Vehicle Registration Expiry',
+        'vehicle_insurance_expiry' => 'Vehicle Insurance Expiry',
+        'vehicle_inspection_expiry' => 'Technical Inspection Expiry',
+    ] as $field => $label)
+        <div class="col-md-4">
+            <div class="mb-3">
+                <label class="form-label">{{ __($label) }}</label>
+                <input type="date" name="{{ $field }}" class="form-control"
+                    value="{{ old($field, $profile?->{$field}?->toDateString()) }}"
+                    {{ $readonly ? 'readonly' : '' }}>
+                {{-- Driven by the model's own list, so a document added later
+                     cannot lapse without the warning that goes with it. --}}
+                @if ($profile && isset($profile->expiredDocuments()[$field]))
+                    <div class="text-danger small">{{ __('This document has expired.') }}</div>
+                @endif
+            </div>
         </div>
-    </div>
+    @endforeach
 
     @foreach ([
         'license_image' => 'License Image',
         'vehicle_registration_image' => 'Vehicle Registration',
+        'vehicle_insurance_image' => 'Vehicle insurance',
+        'vehicle_inspection_image' => 'Technical inspection',
         'national_id_image' => 'National ID',
+        'other_document_image' => 'Other documents',
     ] as $field => $label)
         <div class="col-md-4">
             <div class="mb-3">

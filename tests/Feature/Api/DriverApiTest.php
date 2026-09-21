@@ -5,6 +5,7 @@ namespace Tests\Feature\Api;
 use App\Modules\Driver\Models\Driver;
 use App\Services\Auth\OtpService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Hash;
 use Tests\TestCase;
 
@@ -128,6 +129,83 @@ class DriverApiTest extends TestCase
             ->assertJsonCount(1, 'data.zones');
     }
 
+    public function test_the_profile_is_well_formed_for_a_driver_with_no_documents(): void
+    {
+        // Documents are a record of what has been collected, not a precondition
+        // for having an account — operations onboards a courier on the phone and
+        // photographs the licence later. The app has to render that driver, so
+        // every key is present and null rather than absent: a missing key is a
+        // crash in a typed client, and «not collected yet» is a normal state.
+        $driver = $this->driverUser('+201033330099');
+        $driver->profile->forceFill([
+            'vehicle_type' => null,
+            'plate_number' => null,
+            'license_number' => null,
+            'license_expiry' => null,
+            'license_image' => null,
+            'vehicle_registration_image' => null,
+            'vehicle_registration_expiry' => null,
+            'national_id_image' => null,
+            'shift_start' => null,
+            'shift_end' => null,
+        ])->save();
+
+        $token = $driver->createToken('t')->plainTextToken;
+
+        $response = $this->withHeaders($this->tokenHeaders($token))
+            ->getJson('/api/v1/driver/profile')
+            ->assertOk()
+            ->assertJsonStructure([
+                'data' => [
+                    'vehicle' => ['type', 'type_label', 'plate_number'],
+                    'license' => ['number', 'expiry'],
+                    'documents' => [['key', 'label', 'url', 'expiry']],
+                    'shift', 'zones',
+                ],
+            ]);
+
+        $response->assertJsonPath('data.vehicle.type', null)
+            ->assertJsonPath('data.license.number', null)
+            ->assertJsonPath('data.shift', null);
+
+        // The three slots are still named, so the screen can draw «لم يتم الرفع»
+        // beside each one rather than an empty page with no explanation.
+        $this->assertCount(6, $response->json('data.documents'));
+        $this->assertSame(
+            ['license', 'vehicle_registration', 'vehicle_insurance',
+                'vehicle_inspection', 'national_id', 'other'],
+            collect($response->json('data.documents'))->pluck('key')->all()
+        );
+        // Every slot names the field to post it back under, so the app does not
+        // keep its own mapping for the upload to drift out of.
+        $this->assertSame(
+            'license_image',
+            collect($response->json('data.documents'))->firstWhere('key', 'license')['field']
+        );
+        $this->assertTrue(
+            collect($response->json('data.documents'))->every(fn ($d) => $d['url'] === null)
+        );
+    }
+
+    public function test_a_driver_with_no_profile_row_still_has_a_profile_payload(): void
+    {
+        // Every path that creates a driver makes the row, but nothing in the
+        // schema requires it — and the app must not 500 on the one that slipped
+        // through, it must show an account with nothing filled in.
+        $driver = $this->driverUser('+201033330098');
+        $driver->profile()->delete();
+
+        $token = $driver->createToken('t')->plainTextToken;
+
+        $this->withHeaders($this->tokenHeaders($token))
+            ->getJson('/api/v1/driver/profile')
+            ->assertOk()
+            ->assertJsonPath('data.vehicle.plate_number', null)
+            ->assertJsonPath('data.license.expiry', null)
+            ->assertJsonPath('data.is_available', false)
+            ->assertJsonCount(6, 'data.documents');
+    }
+
     public function test_availability_toggles_and_persists(): void
     {
         $driver = $this->driverUser(available: false);
@@ -163,16 +241,17 @@ class DriverApiTest extends TestCase
         $this->assertFalse($driver->fresh()->profile->is_available);
     }
 
-    public function test_a_driver_cannot_change_their_own_zones_or_documents(): void
+    public function test_a_driver_cannot_change_their_own_zones(): void
     {
+        // Territory decides who is handed work, so a driver choosing their own
+        // would let them keep the short trips and drop the rest. Vehicle, licence
+        // and documents are theirs to maintain — only this is not.
         $driver = $this->driverUser(zoneIds: [$this->zoneIds[0]]);
         $token = $driver->createToken('t')->plainTextToken;
 
         $this->withHeaders($this->tokenHeaders($token))->postJson('/api/v1/driver/profile', [
             'name' => 'Renamed',
             'zones' => [$this->zoneIds[1]],
-            'license_number' => 'FORGED-1',
-            'license_expiry' => '2099-01-01',
             'is_available' => true,
         ])->assertOk();
 
@@ -180,7 +259,107 @@ class DriverApiTest extends TestCase
 
         $this->assertSame('Renamed', $fresh->name, 'the name is the driver own to change');
         $this->assertSame([$this->zoneIds[0]], $fresh->zones->pluck('id')->all(), 'territory is assigned, not chosen');
-        $this->assertSame('DL-9911', $fresh->profile->license_number, 'documents are verified records');
+    }
+
+    public function test_a_driver_maintains_their_own_vehicle_licence_and_documents(): void
+    {
+        $driver = $this->driverUser('+201033330097');
+        $token = $driver->createToken('t')->plainTextToken;
+
+        $this->withHeaders($this->tokenHeaders($token))->postJson('/api/v1/driver/profile', [
+            'vehicle_type' => 'car',
+            'plate_number' => 'س ن ر 4821',
+            'vehicle_brand' => 'Toyota',
+            'vehicle_model' => 'Corolla',
+            'vehicle_year' => '2022',
+            'vehicle_color' => 'White',
+            'license_number' => 'DL-4455',
+            'license_type' => 'Private',
+            'license_issued_at' => '2020-01-01',
+            'license_expiry' => '2030-01-01',
+        ])->assertOk()
+            ->assertJsonPath('data.vehicle.brand', 'Toyota')
+            ->assertJsonPath('data.vehicle.year', '2022')
+            ->assertJsonPath('data.license.type', 'Private');
+
+        $profile = $driver->fresh('profile')->profile;
+
+        $this->assertSame('car', $profile->vehicle_type);
+        $this->assertSame('Corolla', $profile->vehicle_model);
+        $this->assertSame('DL-4455', $profile->license_number);
+        $this->assertSame('2030-01-01', $profile->license_expiry->toDateString());
+    }
+
+    public function test_saving_one_screen_does_not_blank_the_next(): void
+    {
+        // The design has three screens with three save buttons. A field the
+        // screen never drew is absent from its payload, and absent has to mean
+        // «leave it alone» — otherwise saving the licence wipes the vehicle.
+        $driver = $this->driverUser('+201033330096');
+        $driver->profile->forceFill([
+            'plate_number' => 'KEEP 111',
+            'vehicle_brand' => 'Keep',
+        ])->save();
+
+        $token = $driver->createToken('t')->plainTextToken;
+
+        $this->withHeaders($this->tokenHeaders($token))
+            ->postJson('/api/v1/driver/profile', ['license_number' => 'DL-ONLY'])
+            ->assertOk();
+
+        $profile = $driver->fresh('profile')->profile;
+
+        $this->assertSame('DL-ONLY', $profile->license_number);
+        $this->assertSame('KEEP 111', $profile->plate_number, 'the vehicle screen was never posted');
+        $this->assertSame('Keep', $profile->vehicle_brand);
+    }
+
+    public function test_a_field_posted_empty_is_cleared_rather_than_ignored(): void
+    {
+        // The other half of partial saving: absent means untouched, but present
+        // and empty is the driver deleting something, and it has to stick.
+        $driver = $this->driverUser('+201033330095');
+        $token = $driver->createToken('t')->plainTextToken;
+
+        $this->withHeaders($this->tokenHeaders($token))
+            ->postJson('/api/v1/driver/profile', ['plate_number' => null])
+            ->assertOk();
+
+        $this->assertNull($driver->fresh('profile')->profile->plate_number);
+    }
+
+    public function test_every_record_field_is_optional(): void
+    {
+        // Nothing here gates having an account: operations onboards a courier on
+        // the phone and photographs the papers afterwards.
+        $driver = $this->driverUser('+201033330094');
+        $token = $driver->createToken('t')->plainTextToken;
+
+        $this->withHeaders($this->tokenHeaders($token))
+            ->postJson('/api/v1/driver/profile', ['name' => 'Just the name'])
+            ->assertOk()
+            ->assertJsonPath('data.name', 'Just the name');
+    }
+
+    public function test_an_upload_replaces_only_the_document_it_was_sent_for(): void
+    {
+        $driver = $this->driverUser('+201033330093');
+        $driver->profile->forceFill(['national_id_image' => 'images/drivers/documents/keep.png'])->save();
+
+        $token = $driver->createToken('t')->plainTextToken;
+
+        $this->withHeaders($this->tokenHeaders($token))->post('/api/v1/driver/profile', [
+            'license_image' => UploadedFile::fake()->image('licence.png'),
+        ], $this->tokenHeaders($token))->assertOk();
+
+        $profile = $driver->fresh('profile')->profile;
+
+        $this->assertNotNull($profile->license_image, 'the licence was uploaded');
+        $this->assertSame(
+            'images/drivers/documents/keep.png',
+            $profile->national_id_image,
+            'a document nobody sent a file for is left where it was'
+        );
     }
 
     public function test_logout_revokes_only_the_calling_token(): void
