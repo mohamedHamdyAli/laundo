@@ -110,7 +110,6 @@ return [
                 // that grows on its own, and a queue nobody is reminded of is
                 // a queue of couriers who took another job.
                 'driver_application' => 3,
-                'driver_record_submission' => 'Document Reviews',
                 // Beside the applications for the same reason they are third:
                 // it grows on its own, and a driver waiting on somebody to look
                 // at his licence is a driver who cannot be dispatched with a

@@ -103,6 +103,21 @@ enum NotificationEvent: string
     case ManualMessage = 'manual_message';
 
     /**
+     * A driver's papers were refused.
+     *
+     * Transactional, and it is the clearest case of it in the list: the driver
+     * is waiting on a screen that will not move until they send something else,
+     * and they cannot know to until they are told. Silence here is not a quiet
+     * app, it is a driver who re-sends the same blurred photograph and has it
+     * refused for the same reason nobody gave them.
+     *
+     * There is no matching case for an approval on purpose. That one shows up as
+     * the record simply being right on their own screen, and «your car is still
+     * a Corolla» is the kind of message that teaches people to stop reading.
+     */
+    case DriverRecordRejected = 'driver_record_rejected';
+
+    /**
      * Whether silence would stall something.
      */
     public function isTransactional(): bool
@@ -116,6 +131,8 @@ enum NotificationEvent: string
             self::TaskAssigned,
             // Nobody is watching the queue counter.
             self::TaskQueuedTooLong,
+            // The driver is blocked until they send something else.
+            self::DriverRecordRejected,
             // A muted operator is still the person who has to answer a complaint.
             // This is an internal alert, not marketing.
             self::ComplaintReceived,
@@ -164,6 +181,7 @@ enum NotificationEvent: string
             self::OrderAssignedToLaundry => 'Order assigned to your laundry',
             self::DriverBonusReady => 'Driver bonuses ready',
             self::ManualMessage => 'Message from the team',
+            self::DriverRecordRejected => 'Driver details refused',
         };
     }
 

@@ -82,7 +82,9 @@ class DriverRecordReview
             throw new RuntimeException('already_reviewed');
         }
 
-        return DB::transaction(function () use ($submission, $reviewer) {
+        $superseded = [];
+
+        $approved = DB::transaction(function () use ($submission, $reviewer, &$superseded) {
             $driver = $submission->driver;
 
             if (! $driver) {
@@ -93,6 +95,24 @@ class DriverRecordReview
                 $submission->payload,
                 DriverRecordSubmission::FIELDS
             );
+
+            // The photographs this approval is about to replace, read *before*
+            // the write. Until this transaction commits, the old licence is
+            // still the record — which is why the upload endpoint no longer
+            // touches it and why the deletion belongs here rather than there.
+            $profile = $driver->profile;
+
+            foreach ($payload as $field => $path) {
+                if (DriverRecordSubmission::FIELDS[$field] !== 'image') {
+                    continue;
+                }
+
+                $existing = $profile?->{$field};
+
+                if ($existing && $existing !== $path) {
+                    $superseded[] = $existing;
+                }
+            }
 
             // updateOrCreate, not update: a driver whose profile row never
             // existed would otherwise be approved into nothing.
@@ -106,6 +126,16 @@ class DriverRecordReview
 
             return $submission->fresh();
         });
+
+        // After the commit, never inside it: a rolled-back approval replaced
+        // nothing, and a file deleted on the way to that rollback is gone all
+        // the same. A delete that fails here orphans a file, which is the
+        // cheaper of the two failures by a distance.
+        foreach ($superseded as $path) {
+            DeleteImage($path);
+        }
+
+        return $approved;
     }
 
     /**
@@ -125,15 +155,22 @@ class DriverRecordReview
             throw new RuntimeException('already_reviewed');
         }
 
-        $submission->update([
-            'status' => DriverRecordSubmission::REJECTED,
-            'reviewed_by' => $reviewer->id,
-            'reviewed_at' => now(),
-            'note' => $note,
-        ]);
+        $rejected = DB::transaction(function () use ($submission, $reviewer, $note) {
+            $submission->update([
+                'status' => DriverRecordSubmission::REJECTED,
+                'reviewed_by' => $reviewer->id,
+                'reviewed_at' => now(),
+                'note' => $note,
+            ]);
 
-        $this->notifier->decided($submission->fresh());
+            return $submission->fresh();
+        });
 
-        return $submission->fresh();
+        // Read once and handed on, rather than re-read for the notifier and
+        // again for the caller: two instances of the same row can disagree, and
+        // the one the driver is told about should be the one returned.
+        $this->notifier->decided($rejected);
+
+        return $rejected;
     }
 }

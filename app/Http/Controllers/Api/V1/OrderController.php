@@ -241,8 +241,9 @@ class OrderController extends Controller
      * rates. The tracking screen is fetched when it opens and when something
      * changes; the dot is fetched every few seconds for as long as somebody is
      * watching it. Serving the timeline, both addresses, the ETA and the eight
-     * steps on every one of those is the wrong trade — this is one query and a
-     * few dozen bytes.
+     * steps on every one of those is the wrong trade — this fetches the one leg
+     * somebody is on and that driver's stored position, and answers in a few
+     * dozen bytes.
      *
      * Scoped through the customer's own orders, like everything else here, so
      * somebody else's order id is a 404 rather than a stranger's driver on a map.

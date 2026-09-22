@@ -61,7 +61,21 @@ class LiveTrackingTest extends TestCase
     private function leg(Order $order, TaskType $type, TaskStatus $status = TaskStatus::Started): OrderTask
     {
         $task = $order->tasks()->where('type', $type->value)->firstOrFail();
-        $task->forceFill(['driver_id' => $this->driver->id, 'status' => $status->value])->save();
+        // Stamped, because `DriverDispatcher::assignTo()` stamps it and
+        // `release()` nulls it: a leg carrying a driver but no handover time is
+        // a row production cannot produce, and `DriverCard::lastSeen()` reads
+        // that time to decide whether a stored position belongs to this journey
+        // or to the one before it. An hour back so a reading made "now" in a
+        // test is unambiguously after the handover.
+        $task->forceFill([
+            'driver_id' => $this->driver->id,
+            'status' => $status->value,
+            'assigned_at' => now()->subHour(),
+            // Only a *started* leg carries this: `TaskService::start()` is the
+            // one writer, so an assigned leg with a start time is a row
+            // production cannot produce.
+            'started_at' => $status === TaskStatus::Started ? now()->subHour() : null,
+        ])->save();
 
         return $task->fresh();
     }
@@ -347,6 +361,69 @@ class LiveTrackingTest extends TestCase
         $this->assertTrue($card['last_seen']['is_stale']);
         $this->assertGreaterThanOrEqual(290, $card['last_seen']['age_seconds']);
         $this->assertLessThan(400, $card['last_seen']['age_seconds']);
+    }
+
+    #[Test]
+    public function a_reading_from_before_the_handover_is_not_this_customer_s_to_see(): void
+    {
+        // `last_seen` relaxes freshness, and freshness was the only thing
+        // keeping a previous journey out of it: `last_lat/last_lng/located_at`
+        // are written on every report and never cleared, so the stored point
+        // outlives the order it was taken on — and the last report of a
+        // delivery is somebody's doorstep.
+        //
+        // Driver finishes a delivery at 22:00 standing at customer A's door,
+        // and is handed customer B's morning pickup. Before they move, B opens
+        // the map. Without the bound, B reads A's home address to six decimals.
+        $order = $this->order();
+        $task = $this->leg($order, TaskType::PickupFromCustomer);
+
+        // The reading itself has to be made through the endpoint: `last_lat`,
+        // `last_lng` and `located_at` are deliberately not fillable, so setting
+        // them through the relation writes nothing and the test would pass on
+        // an empty profile rather than on the leak.
+        $this->report();
+        $this->driver->profile->forceFill(['located_at' => now()->subHours(9)])->save();
+
+        // Last night's delivery is over; this pickup was handed over two
+        // minutes ago. The stored point predates the handover, so it belongs to
+        // the order before this one.
+        $task->forceFill([
+            'status' => TaskStatus::Assigned->value,
+            'assigned_at' => now()->subMinutes(2),
+            'started_at' => null,
+        ])->save();
+
+        $this->assertNotNull($this->driver->fresh()->profile->last_lat);
+
+        $card = $this->card($order->fresh());
+
+        $this->assertNull($card['location']);
+        $this->assertNull($card['last_seen']);
+    }
+
+    #[Test]
+    public function the_drive_to_the_door_counts_even_before_the_driver_taps_start(): void
+    {
+        // The other edge of the same bound, and the reason it is `assigned_at`
+        // rather than `started_at`. A leg is handed over, the driver sets off,
+        // and «start» is tapped on arrival — so every reading of the journey
+        // itself predates `started_at`. Bounding on that stamp would blank the
+        // map for exactly the stretch the customer is watching.
+        $order = $this->order();
+        $task = $this->leg($order, TaskType::PickupFromCustomer);
+
+        $this->report();
+
+        $task->forceFill([
+            'assigned_at' => now()->subMinutes(20),
+            'started_at' => now(),
+        ])->save();
+
+        $card = $this->card($order->fresh());
+
+        $this->assertNotNull($card['last_seen']);
+        $this->assertSame(30.05, $card['last_seen']['lat']);
     }
 
     #[Test]

@@ -208,10 +208,20 @@ class DriverController extends Controller
                 continue;
             }
 
+            // **No third argument, and that is the point.** `uploadOrUpdateImage`
+            // deletes whatever path it is handed as the existing one, so passing
+            // the driver's approved document here would have the *submission*
+            // destroy it — before anybody looked at the replacement, and without
+            // that being undone by a rejection. The operator would then open the
+            // review screen and be shown a placeholder where the licence they
+            // are comparing against used to be, with nothing saying so.
+            //
+            // The staged file is stored beside the approved one. The approved
+            // one is deleted in `DriverRecordReview::approve()`, which is the
+            // only moment it stops being the record.
             $payload[$field] = uploadOrUpdateImage(
                 $request->file($field),
-                'images/drivers/documents',
-                $driver->profile?->{$field}
+                'images/drivers/documents'
             );
         }
 
@@ -460,12 +470,18 @@ class DriverController extends Controller
      */
     private function pendingReview(Driver $driver): ?array
     {
+        // The latest row of **any** status, and then a look at what it is.
+        // Filtering the query to pending-or-rejected instead would skip straight
+        // past an approval to whatever came before it — and what comes before an
+        // approval is very often a rejection, or the row the driver's own second
+        // attempt superseded. The screen would then paint those fields as
+        // refused for ever, with a note about a submission that no longer
+        // stands, while the values it is complaining about are already applied.
         $submission = DriverRecordSubmission::where('driver_id', $driver->id)
-            ->whereIn('status', [DriverRecordSubmission::PENDING, DriverRecordSubmission::REJECTED])
             ->latest('id')
             ->first();
 
-        if (! $submission) {
+        if (! $submission || $submission->status === DriverRecordSubmission::APPROVED) {
             return null;
         }
 

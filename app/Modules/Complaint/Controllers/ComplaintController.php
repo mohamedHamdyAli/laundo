@@ -44,8 +44,12 @@ class ComplaintController extends Controller
             'complaints' => $this->listing($status, $audience)->paginate(15),
             'status' => $status,
             'audience' => $audience,
-            'counts' => $this->counts(),
-            'byCategory' => $this->byCategory(),
+            // Both narrowed by the same audience as the rows. A headline of
+            // «48 open» over three driver complaints is not a summary of what
+            // the operator is looking at — it is a different question answered
+            // in the same box, and it is read as the size of the queue on screen.
+            'counts' => $this->counts($audience),
+            'byCategory' => $this->byCategory($audience),
             // The other half of the queue. Not merged into the paginator: they are
             // a different table with different actions, and pretending otherwise
             // would mean a "resolve" button that has nothing to resolve.
@@ -147,8 +151,22 @@ class ComplaintController extends Controller
     }
 
     /**
+     * Apply the audience filter when there is one to apply.
+     *
+     * The «all» case has to live somewhere, and putting it here rather than at
+     * each call site is what keeps the rows and the figures above them answering
+     * the same question.
+     *
+     * @param  Builder<Complaint>  $query
      * @return Builder<Complaint>
      */
+    private function scopedToAudience(Builder $query, string $audience): Builder
+    {
+        return in_array($audience, ['customer', 'driver'], true)
+            ? $this->forAudience($query, $audience)
+            : $query;
+    }
+
     /**
      * Narrow the queue to one side of the platform.
      *
@@ -168,6 +186,9 @@ class ComplaintController extends Controller
         );
     }
 
+    /**
+     * @return Builder<Complaint>
+     */
     private function listing(string $status, string $audience = 'all'): Builder
     {
         return Complaint::with([
@@ -176,10 +197,7 @@ class ComplaintController extends Controller
             'complainant:id,name,phone,role_id', 'complainant.role:id,slug',
             'order:id,code', 'laundry:id,name', 'handler:id,name',
         ])
-            ->when(
-                in_array($audience, ['customer', 'driver'], true),
-                fn (Builder $q) => $this->forAudience($q, $audience)
-            )
+            ->tap(fn (Builder $q) => $this->scopedToAudience($q, $audience))
             ->when($status === 'open', fn (Builder $q) => $q->open())
             ->when(
                 in_array($status, ComplaintStatus::values(), true),
@@ -197,15 +215,21 @@ class ComplaintController extends Controller
     /**
      * @return array<string, int>
      */
-    private function counts(): array
+    private function counts(string $audience = 'all'): array
     {
+        $scoped = fn () => $this->scopedToAudience(Complaint::query(), $audience);
+
         return [
-            'new' => Complaint::where('status', ComplaintStatus::New->value)->count(),
-            'in_progress' => Complaint::where('status', ComplaintStatus::InProgress->value)->count(),
-            'resolved' => Complaint::where('status', ComplaintStatus::Resolved->value)->count(),
+            'new' => $scoped()->where('status', ComplaintStatus::New->value)->count(),
+            'in_progress' => $scoped()->where('status', ComplaintStatus::InProgress->value)->count(),
+            'resolved' => $scoped()->where('status', ComplaintStatus::Resolved->value)->count(),
             // Open for more than a day. The figure that says the queue is not
             // being worked, which a total never says.
-            'stale' => Complaint::open()->where('created_at', '<', now()->subDay())->count(),
+            'stale' => $scoped()->open()->where('created_at', '<', now()->subDay())->count(),
+            // Not narrowed, and it cannot be: these arrive through the rating
+            // form, which only a customer ever sees. Under «From drivers» it is
+            // therefore shown as what it is — the other queue — rather than
+            // filtered to a zero that would read as «no ratings this week».
             'from_ratings' => $this->ratingComplaintsQuery()->count(),
         ];
     }
@@ -215,9 +239,10 @@ class ComplaintController extends Controller
      *
      * @return array<int, array{category: ComplaintCategory, count: int}>
      */
-    private function byCategory(): array
+    private function byCategory(string $audience = 'all'): array
     {
-        $counts = Complaint::selectRaw('category, count(*) as total')
+        $counts = $this->scopedToAudience(Complaint::query(), $audience)
+            ->selectRaw('category, count(*) as total')
             ->groupBy('category')
             ->pluck('total', 'category');
 

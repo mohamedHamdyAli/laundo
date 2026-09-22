@@ -5,12 +5,16 @@ namespace Tests\Feature\Dashboard;
 use App\Models\Role;
 use App\Modules\Driver\Models\DriverRecordSubmission;
 use App\Modules\Driver\Services\DriverRecordReview;
+use App\Modules\Notification\Enums\NotificationEvent;
+use App\Modules\Notification\Models\NotificationLog;
 use App\Modules\User\Models\User;
 use App\Services\MenuBadges;
+use Database\Seeders\DatabaseSeeder;
 use Database\Seeders\PermissionSeeder;
 use Database\Seeders\RoleSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use Laravel\Sanctum\Sanctum;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
@@ -32,6 +36,7 @@ class DriverRecordReviewTest extends TestCase
     {
         parent::setUp();
         $this->seedCore();
+        Storage::fake('public');
     }
 
     private function submit(array $payload, string $phone = '+201077770001'): array
@@ -44,6 +49,27 @@ class DriverRecordReviewTest extends TestCase
         $this->postJson('/api/v1/driver/profile', $payload, $this->apiHeaders())->assertOk();
 
         return [$driver, DriverRecordSubmission::where('driver_id', $driver->id)->latest('id')->firstOrFail()];
+    }
+
+    /**
+     * Permissions before roles, because that is the order `DatabaseSeeder` uses
+     * and the whole point of these two tests is what a fresh install gets.
+     */
+    private function seedRolesAsTheInstallerDoes(): void
+    {
+        $order = (new \ReflectionClass(DatabaseSeeder::class))
+            ->getFileName();
+
+        $source = file_get_contents($order);
+
+        $this->assertLessThan(
+            strpos($source, 'RoleSeeder::class'),
+            strpos($source, 'PermissionSeeder::class'),
+            'DatabaseSeeder must seed permissions before roles, or every role ships with none.'
+        );
+
+        $this->seed(PermissionSeeder::class);
+        $this->seed(RoleSeeder::class);
     }
 
     #[Test]
@@ -177,6 +203,119 @@ class DriverRecordReviewTest extends TestCase
     }
 
     #[Test]
+    public function a_submission_cannot_destroy_the_approved_document(): void
+    {
+        // The queue exists so that nothing a driver says about their papers
+        // takes effect until somebody looks. That has to cover the file as well
+        // as the row: `uploadOrUpdateImage()` deletes whatever path it is handed
+        // as the existing one, so handing it the approved licence made the
+        // *submission* destroy it — before the review, and not undone by a
+        // rejection. The operator would then open the comparison and be shown a
+        // placeholder where the licence used to be, with nothing saying so.
+        $driver = $this->driverUser('+201077770010');
+
+        $approved = UploadedFile::fake()->image('approved.png')
+            ->store('images/drivers/documents', 'public');
+
+        $driver->profile()->updateOrCreate(
+            ['user_id' => $driver->id],
+            ['license_image' => $approved]
+        );
+
+        Sanctum::actingAs($driver);
+
+        $this->post('/api/v1/driver/profile', [
+            'license_image' => UploadedFile::fake()->image('claimed.png'),
+        ], $this->apiHeaders())->assertOk();
+
+        // Still on disk, and still what the record points at.
+        Storage::disk('public')->assertExists($approved);
+        $this->assertSame($approved, $driver->fresh('profile')->profile->license_image);
+
+        $submission = DriverRecordSubmission::where('driver_id', $driver->id)->pending()->firstOrFail();
+        $this->assertNotSame($approved, $submission->payload['license_image']);
+        Storage::disk('public')->assertExists($submission->payload['license_image']);
+    }
+
+    #[Test]
+    public function approval_is_what_retires_the_old_document(): void
+    {
+        // The other half of the rule above. The approved photograph stops being
+        // the record at exactly one moment — when a reviewer replaces it — and
+        // leaving it on disk for ever would grow the storage by a file per
+        // correction with nothing pointing at any of them.
+        $driver = $this->driverUser('+201077770011');
+
+        $approved = UploadedFile::fake()->image('approved.png')
+            ->store('images/drivers/documents', 'public');
+
+        $driver->profile()->updateOrCreate(
+            ['user_id' => $driver->id],
+            ['license_image' => $approved]
+        );
+
+        Sanctum::actingAs($driver);
+
+        $this->post('/api/v1/driver/profile', [
+            'license_image' => UploadedFile::fake()->image('claimed.png'),
+        ], $this->apiHeaders())->assertOk();
+
+        $submission = DriverRecordSubmission::where('driver_id', $driver->id)->pending()->firstOrFail();
+        $staged = $submission->payload['license_image'];
+
+        app(DriverRecordReview::class)->approve($submission, $this->superAdmin());
+
+        $this->assertSame($staged, $driver->fresh('profile')->profile->license_image);
+        Storage::disk('public')->assertExists($staged);
+        Storage::disk('public')->assertMissing($approved);
+    }
+
+    #[Test]
+    public function a_refused_photograph_is_kept(): void
+    {
+        // «The uploaded file is kept — a refused photograph is evidence of what
+        // was sent.» A driver told only «rejected» sends the same one again, and
+        // the conversation about why needs something to look at.
+        $driver = $this->driverUser('+201077770012');
+
+        Sanctum::actingAs($driver);
+
+        $this->post('/api/v1/driver/profile', [
+            'license_image' => UploadedFile::fake()->image('blurred.png'),
+        ], $this->apiHeaders())->assertOk();
+
+        $submission = DriverRecordSubmission::where('driver_id', $driver->id)->pending()->firstOrFail();
+        $staged = $submission->payload['license_image'];
+
+        app(DriverRecordReview::class)->reject($submission, $this->superAdmin(), 'Illegible.');
+
+        Storage::disk('public')->assertExists($staged);
+    }
+
+    #[Test]
+    public function a_refusal_reaches_the_driver_s_phone(): void
+    {
+        // The note is mandatory because a driver told only «rejected» sends the
+        // same photograph again — which only holds if the note actually
+        // arrives. `AdminNotification` declares `via() = ['database']`, so
+        // sending an app user through it writes a row in a bell they have no
+        // reason to open and no push at all: the silence the note exists to
+        // prevent, with a record saying it was prevented.
+        [$driver, $submission] = $this->submit(['plate_number' => 'ABC 123'], '+201077770013');
+
+        app(DriverRecordReview::class)->reject($submission, $this->superAdmin(), 'Illegible.');
+
+        $channels = NotificationLog::where('user_id', $driver->id)
+            ->where('event', NotificationEvent::DriverRecordRejected->value)
+            ->pluck('channel')
+            ->all();
+
+        sort($channels);
+
+        $this->assertSame(['database', 'push'], $channels);
+    }
+
+    #[Test]
     public function the_queue_is_gated_on_its_own_permission(): void
     {
         // Checking a licence photograph is a different job from keeping a
@@ -212,8 +351,12 @@ class DriverRecordReviewTest extends TestCase
         // `driver_record_submission.update`. Without a role that ships with it,
         // that is nobody until somebody builds one by hand — and a queue nobody
         // is told about is a driver waiting on a screen that never moves.
-        $this->seed(PermissionSeeder::class);
-        $this->seed(RoleSeeder::class);
+        // In the order `DatabaseSeeder` actually runs them. Seeding these two by
+        // hand in the convenient order is how «out of the box» stopped meaning
+        // it: `RoleSeeder::syncPermissions()` resolves slugs against the
+        // permissions table, so running it first attaches nothing at all — and
+        // `sync([])` is not an error, so the role shipped empty and silently.
+        $this->seedRolesAsTheInstallerDoes();
 
         $supervisor = User::create([
             'name' => 'Supervisor',
@@ -240,8 +383,12 @@ class DriverRecordReviewTest extends TestCase
         // The codebase gates every driver money term on `setting.update`, so the
         // person managing a driver is not the person setting what that driver
         // earns. A supervisor role that quietly carried it would undo that.
-        $this->seed(PermissionSeeder::class);
-        $this->seed(RoleSeeder::class);
+        // In the order `DatabaseSeeder` actually runs them. Seeding these two by
+        // hand in the convenient order is how «out of the box» stopped meaning
+        // it: `RoleSeeder::syncPermissions()` resolves slugs against the
+        // permissions table, so running it first attaches nothing at all — and
+        // `sync([])` is not an error, so the role shipped empty and silently.
+        $this->seedRolesAsTheInstallerDoes();
 
         $held = Role::where('slug', 'driver_supervisor')->firstOrFail()
             ->permissions->pluck('slug');

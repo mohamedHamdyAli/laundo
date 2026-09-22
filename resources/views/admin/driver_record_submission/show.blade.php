@@ -40,6 +40,20 @@
                             </div>
                         </div>
 
+                        {{-- Somebody edited this driver after the submission
+                             arrived. The «Now» column is read fresh, so it is
+                             correct — but that is exactly what hides the
+                             problem: an operator who fixed a plate number an
+                             hour ago sees their own correction sitting in the
+                             column the driver's value is about to replace, and
+                             the two read identically whether that happened or
+                             not. --}}
+                        @if ($row->isPending() && $row->recordMovedSinceSubmitted())
+                            <div class="alert alert-warning py-2 small">
+                                {{ __('This driver's record was edited after this submission arrived. Check the current values before approving — approving will overwrite them.') }}
+                            </div>
+                        @endif
+
                         <table class="table align-middle">
                             <thead>
                                 <tr>

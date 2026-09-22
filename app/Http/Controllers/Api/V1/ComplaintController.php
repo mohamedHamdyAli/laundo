@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
+use App\Models\Role;
 use App\Modules\Complaint\Enums\ComplaintCategory;
 use App\Modules\Complaint\Models\Complaint;
 use App\Modules\Complaint\Services\ComplaintService;
@@ -56,16 +57,22 @@ class ComplaintController extends Controller
 
     public function store(Request $request): JsonResponse
     {
-        // `audience` narrows the vocabulary rather than describing the sender:
-        // a client that sends it is telling us which list it drew from, and a
-        // value outside that list is a category it never offered. Filtering the
-        // list without checking it here would make the narrowing decoration.
+        // **Taken from the token, not from the body.** The point of narrowing is
+        // that a driver may not file «الهدوم اتخربت» and a customer may not file
+        // «مشكلة مع العميل» — and a check built from a field the caller sends is
+        // not a check, because the caller simply omits it and gets the whole
+        // vocabulary back. The dashboard's own audience filter runs off the
+        // complainant's role, so deriving it from the same fact is also what
+        // stops the two screens disagreeing about which side a complaint is on.
+        //
+        // The `audience` field is still accepted and still ignored here; it says
+        // which list the app drew from, which is not evidence of anything.
         //
         // `acceptedFrom()`, not `offeredTo()`: «تواصل معنا» posts
         // `support_request`, which no dropdown lists because the screen has no
         // chooser — the app sets it. What may be sent is a superset of what is
         // shown, and conflating the two would refuse the message box.
-        $audience = $request->get('audience');
+        $audience = $request->user()?->role?->slug === Role::DRIVER ? 'driver' : 'customer';
 
         $allowed = array_map(
             fn (ComplaintCategory $c) => $c->value,

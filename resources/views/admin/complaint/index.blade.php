@@ -213,9 +213,23 @@
                 errorHtml: '<div class="stack-empty text-danger">Error during search</div>'
             });
 
-            $('#complaintStatusFilter').on('change', function () {
-                window.location = "{{ route('admin.complaint.index') }}?status=" + $(this).val();
-            });
+            // Both dropdowns reload through the same function, carrying both
+            // values. Before this the audience select had no handler at all —
+            // choosing it did nothing until somebody happened to type in the
+            // search box — and the status handler rebuilt the URL with `status`
+            // alone, so any audience choice was discarded by the next status
+            // change. A filter that silently resets is worse than no filter:
+            // the operator believes they are looking at the driver queue.
+            function reloadComplaints() {
+                var params = $.param({
+                    status: $('#complaintStatusFilter').val(),
+                    audience: $('#complaintAudienceFilter').val(),
+                });
+
+                window.location = "{{ route('admin.complaint.index') }}?" + params;
+            }
+
+            $('#complaintStatusFilter, #complaintAudienceFilter').on('change', reloadComplaints);
         });
     </script>
 @endpush

@@ -133,9 +133,14 @@ class ComplaintTest extends TestCase
         // «مشكلة مع العميل» is about a specific doorstep or it is about nothing.
         // The check used to run through the complainant's *placed* orders, so a
         // driver quoting the job they had just been on was told it did not exist.
+        // `customer_conduct`, not `driver_conduct`: the driver is complaining
+        // *about* the customer. Both read the same in a hurry, which is why the
+        // category the endpoint accepts is now decided by the token's role and
+        // not by a field the caller sends — this test filed under the customer's
+        // side of the platform for as long as nothing checked.
         $this->actingAs($this->driver)
             ->postJson('/api/v1/complaints', [
-                'category' => 'driver_conduct',
+                'category' => 'customer_conduct',
                 'body' => 'العميل مكانش موجود واتصلت عليه خمس مرات',
                 'order_id' => $order->id,
             ])
@@ -151,6 +156,44 @@ class ComplaintTest extends TestCase
     }
 
     #[Test]
+    public function the_side_a_complaint_is_filed_under_comes_from_the_token(): void
+    {
+        // The narrowing has to be decided by something the caller cannot set,
+        // or it is decoration: a client that simply omits `audience` used to get
+        // the whole vocabulary back, so a driver could file «الهدوم اتخربت» and
+        // a customer could file «مشكلة مع العميل». The dashboard's audience
+        // filter runs off the complainant's role, so the list and the badge
+        // would then disagree about which side the complaint was on.
+        $this->actingAs($this->driver)
+            ->postJson('/api/v1/complaints', [
+                'category' => 'damaged_item',
+                'body' => 'a category that belongs to the other side',
+                'audience' => 'customer',
+            ])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('category');
+
+        $this->actingAs($this->customer)
+            ->postJson('/api/v1/complaints', [
+                'category' => 'customer_conduct',
+                'body' => 'a category that belongs to the other side',
+                'audience' => 'driver',
+            ])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('category');
+
+        $this->assertSame(0, Complaint::count());
+
+        // And what each side may say still goes through untouched.
+        $this->actingAs($this->driver)
+            ->postJson('/api/v1/complaints', [
+                'category' => 'customer_conduct',
+                'body' => 'the customer was not at the door',
+            ])
+            ->assertCreated();
+    }
+
+    #[Test]
     public function a_driver_cannot_name_an_order_they_were_never_sent_on(): void
     {
         $order = $this->order();
@@ -159,7 +202,7 @@ class ComplaintTest extends TestCase
         // would have handed every driver every order in the system.
         $this->actingAs($this->driver)
             ->postJson('/api/v1/complaints', [
-                'category' => 'driver_conduct',
+                'category' => 'customer_conduct',
                 'body' => 'an order I have never been near',
                 'order_id' => $order->id,
             ])

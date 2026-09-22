@@ -14,8 +14,11 @@ use Illuminate\Support\Carbon;
  * @property string|null $vehicle_type
  * @property string|null $plate_number
  * @property string|null $license_number
+ * @property Carbon|null $license_issued_at
  * @property Carbon|null $license_expiry
  * @property Carbon|null $vehicle_registration_expiry
+ * @property Carbon|null $vehicle_insurance_expiry
+ * @property Carbon|null $vehicle_inspection_expiry
  * @property float|null $last_lat
  * @property float|null $last_lng
  * @property Carbon|null $located_at

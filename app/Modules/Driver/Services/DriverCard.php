@@ -183,14 +183,33 @@ class DriverCard
     /**
      * The last stored reading, at whatever age, while the leg is still live.
      *
-     * Gated exactly as `location()` is, and that is the whole of the privacy
-     * story: the same three legs, the same live statuses. What is relaxed here
-     * is freshness alone — a position the customer was already entitled to see
-     * does not become secret because it is four minutes old. It becomes *stale*,
-     * which is a different thing, and `age_seconds` is how the client is told
-     * which one it is holding.
+     * Gated as `location()` is — the same three legs, the same live statuses —
+     * and then bounded to this leg. What is relaxed here is freshness alone: a
+     * position the customer was already entitled to see does not become secret
+     * because it is four minutes old. It becomes *stale*, which is a different
+     * thing, and `age_seconds` is how the client is told which one it is
+     * holding.
      *
-     * `is_stale` is the server's own answer against `FRESH_FOR_SECONDS`, so a
+     * **But «already entitled to see» is the whole of it, and it is not the
+     * same as «stored».** `driver_profiles.last_lat/last_lng/located_at` are
+     * written on every report and never cleared, so the stored point survives
+     * the order it was recorded on. A driver handed a morning pickup while the
+     * dot from last night's delivery is still on their profile would otherwise
+     * answer this customer with the *previous* customer's doorstep — a leg gate
+     * that lets through a reading taken before the leg existed is not a gate.
+     * So the reading must post-date the handover; `location()` needs no such
+     * check because its freshness window already outruns any previous journey.
+     *
+     * The bound is **`assigned_at`**, not `started_at`. The leg becomes this
+     * driver's when it is handed to them, and the drive to the customer's door
+     * happens before they tap start — so bounding on `started_at` would throw
+     * away the readings made on the way, which are the ones the map is for.
+     * `started_at` is only the fallback for a row that somehow lacks the other.
+     *
+     * No handover timestamp at all, no stale reading: such a task falls back to
+     * the fresh window, which is `location()`'s answer and cannot be wrong.
+     *
+     * `is_stale` is the server's own answer against the configured window, so a
      * client that does not want to hardcode the threshold does not have to —
      * and so the two halves of this payload cannot drift apart.
      *
@@ -205,6 +224,12 @@ class DriverCard
         $profile = $task->driver?->profile;
 
         if (! $profile?->located_at || $profile->last_lat === null || $profile->last_lng === null) {
+            return null;
+        }
+
+        $since = $task->assigned_at ?? $task->started_at ?? now()->subSeconds($this->freshForSeconds());
+
+        if ($profile->located_at->lt($since)) {
             return null;
         }
 
@@ -241,7 +266,22 @@ class DriverCard
      */
     public function trackingFor(Order $order): array
     {
-        $task = $this->liveTask($order);
+        // **Not `liveTask()`.** That one loads every leg of the order with its
+        // driver's name, phone and photograph, and falls back to the last
+        // completed leg so the card can still show who delivered — all of which
+        // this endpoint throws away, four times a minute per watcher. What it
+        // needs is the first leg somebody is currently on, and that driver's
+        // stored position.
+        //
+        // The status list is the fetch, not the gate: `reachableWhileLive()` is
+        // still the only thing that decides whether the dot may be seen, so the
+        // question «may this customer watch this leg» keeps one answer.
+        $task = $order->tasks()
+            ->whereIn('status', [TaskStatus::Assigned->value, TaskStatus::Started->value])
+            ->with('driver.profile')
+            ->orderBy('sequence')
+            ->first();
+
         $live = $task !== null && $this->reachableWhileLive($task);
 
         return [

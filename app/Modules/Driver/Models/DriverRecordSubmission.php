@@ -116,11 +116,15 @@ class DriverRecordSubmission extends Model
      * What this submission proposes, against what the driver's record says now.
      *
      * Computed at **review time**, not at submit time, and that is the point. An
-     * operator may have corrected the same driver in between — approving a diff
-     * worked out hours ago would silently undo them. A field whose stored value
-     * has moved since the driver sent theirs comes back flagged `conflict`, so
-     * the person deciding sees that two people changed the same thing rather
-     * than one of them losing quietly.
+     * operator may have corrected the same driver in between, and a diff worked
+     * out hours ago would show the operator's own correction as the thing being
+     * replaced without saying so. Reading the record now means the «Now» column
+     * is what is actually there when the decision is made.
+     *
+     * `changed` is `current !== proposed` and nothing cleverer — it marks the
+     * rows worth looking at, not a concurrent edit. Whether somebody else has
+     * touched this driver since the submission is a separate question, and
+     * `recordMovedSinceSubmitted()` is the one that answers it.
      *
      * @return array<int, array<string, mixed>>
      */
@@ -150,6 +154,29 @@ class DriverRecordSubmission extends Model
         }
 
         return $rows;
+    }
+
+    /**
+     * Has somebody edited this driver since the submission arrived?
+     *
+     * The diff shows *what* the record says now; this says whether «now» is
+     * still «when they sent it». An operator who corrected a plate number an
+     * hour ago and then approves the driver's own value for the same field is
+     * undoing their own work, and the two columns alone read identically
+     * whether that happened or not.
+     *
+     * Row-level rather than per-field, because the prior values are deliberately
+     * not stored: a per-field answer would need a snapshot taken at submit time,
+     * which is the very thing that goes stale. «Something here moved, look
+     * before you approve» is the honest resolution available.
+     */
+    public function recordMovedSinceSubmitted(): bool
+    {
+        $profile = $this->driver?->profile;
+
+        return $profile?->updated_at !== null
+            && $this->created_at !== null
+            && $profile->updated_at->gt($this->created_at);
     }
 
     public function statusLabel(): string

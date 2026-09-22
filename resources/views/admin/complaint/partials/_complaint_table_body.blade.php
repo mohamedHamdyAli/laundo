@@ -16,10 +16,17 @@
             <span class="row-main">{{ $row->complainant?->name ?? '—' }}</span>
                     {{-- Which side of the platform this came from. Two apps file
                          here now, and a name alone does not say whether the
-                         person is waiting for their clothes or delivering them. --}}
+                         person is waiting for their clothes or delivering them.
+
+                         Matched on the slug both ways rather than «driver or
+                         else customer»: a deleted complainant and a moderator
+                         both fall into that else, and the row would then assert
+                         a side that is not a fact — on the same screen whose
+                         audience filter runs off the real role, so a row badged
+                         «Customer» would be missing from «From customers». --}}
                     @if ($row->complainant?->role?->slug === \App\Models\Role::DRIVER)
                         <span class="badge text-bg-info">{{ __('Driver') }}</span>
-                    @else
+                    @elseif ($row->complainant?->role?->slug === \App\Models\Role::USER)
                         <span class="badge text-bg-light">{{ __('Customer') }}</span>
                     @endif
             <span class="row-sub">{{ $row->complainant?->phone }}</span>

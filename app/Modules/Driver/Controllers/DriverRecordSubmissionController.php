@@ -118,6 +118,9 @@ class DriverRecordSubmissionController extends Controller
             ->with('success', __('The driver has been told.'));
     }
 
+    /**
+     * @return Builder<DriverRecordSubmission>
+     */
     private function listing(string $status): Builder
     {
         return DriverRecordSubmission::with(['driver:id,name,phone', 'reviewer:id,name'])

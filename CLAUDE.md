@@ -927,6 +927,7 @@ Never leave the changelog empty after a task, never batch unrelated days into on
 - Diff behavior between main and your changes when relevant.
 - Ask yourself: "Would a staff engineer approve this?"
 - Run tests, check logs, demonstrate correctness. The suite is real now — run it, and drive the actual page or endpoint as well.
+- **Then §7.** Proving it works and having it reviewed are different jobs; passing tests is the entry condition for the review, not a substitute for it.
 
 ### 5. Demand Elegance (Balanced)
 
@@ -940,6 +941,36 @@ Never leave the changelog empty after a task, never batch unrelated days into on
 - When given a bug report: just fix it. Don't ask for hand-holding.
 - Point at logs, errors, failing tests—then resolve them.
 - Go fix failing CI tests without being told how.
+
+### 7. Review Before It Ships (MANDATORY)
+
+**Run `/code-review` and `/security-review` on the diff when the work is
+finished and the suite is green — and before it is committed, pushed or
+deployed.** Both, not one: the first looks for what the change got wrong, the
+second for what it exposed, and they do not find the same things.
+
+This is not the same as §4 and §5, and it exists because those two are not
+enough on their own. «Would a staff engineer approve this?» and «challenge your
+own work» are answered by the head that wrote the code, which has exactly the
+blind spots that produced it. A test proves what was thought of; a review is for
+what was not.
+
+**Always, no judgement call:**
+
+- permissions, roles, or anything gating a screen or an endpoint
+- anything that accepts input from either app — a new field counts
+- file uploads, and anywhere a stored path is written
+- money: settlement, commission, earnings, refunds, wallet
+- the tenant scope, or a model gaining `laundry_id`
+- who receives a notification
+- a new endpoint, or an existing one taking a new parameter
+
+**Not worth it:** copy, a translation, a comment, a changelog line, a rename
+with no behaviour behind it.
+
+**Findings are fixed before the deploy, not filed after it.** A review whose
+output is a list somebody will look at later is a review that cost time and
+changed nothing — and on this project «later» means the finding ships first.
 
 ## Task Management
 

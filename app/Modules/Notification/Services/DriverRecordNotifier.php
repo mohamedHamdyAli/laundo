@@ -3,6 +3,8 @@
 namespace App\Modules\Notification\Services;
 
 use App\Modules\Driver\Models\DriverRecordSubmission;
+use App\Modules\Notification\Data\NotificationMessage;
+use App\Modules\Notification\Enums\NotificationEvent;
 use App\Modules\User\Models\User;
 use App\Notifications\AdminNotification;
 use Illuminate\Support\Collection;
@@ -68,13 +70,26 @@ class DriverRecordNotifier
             return;
         }
 
-        $this->send(
-            collect([$driver]),
-            __('Your details were not accepted'),
-            $submission->note ?: __('Please check what you sent and try again.'),
-            null,
-            ['driver_record_submission_id' => (string) $submission->id],
-        );
+        // **Through the dispatcher, not `Notification::send()`.** The reviewers
+        // above are panel users already looking at the bell, so a database row
+        // reaches them; this one is addressed to a phone. `AdminNotification`
+        // declares `via() = ['database']` only, so sending a driver through it
+        // writes a row nobody is going to open and no push at all — which is
+        // exactly the silence the mandatory rejection note exists to prevent.
+        try {
+            app(NotificationDispatcher::class)->send($driver, new NotificationMessage(
+                event: NotificationEvent::DriverRecordRejected,
+                title: __('Your details were not accepted'),
+                body: $submission->note ?: __('Please check what you sent and try again.'),
+                url: '/driver/profile',
+                data: ['driver_record_submission_id' => (string) $submission->id],
+                subject: $submission,
+            ));
+        } catch (\Throwable $e) {
+            Log::warning('[notifications] driver record decision failed', [
+                'error' => $e->getMessage(),
+            ]);
+        }
     }
 
     /**

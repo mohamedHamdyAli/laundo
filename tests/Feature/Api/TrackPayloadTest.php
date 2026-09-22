@@ -76,7 +76,21 @@ class TrackPayloadTest extends TestCase
     private function leg(Order $order, TaskType $type, TaskStatus $status = TaskStatus::Started): OrderTask
     {
         $task = $order->tasks()->where('type', $type->value)->firstOrFail();
-        $task->forceFill(['driver_id' => $this->driver->id, 'status' => $status->value])->save();
+        // Stamped, because `DriverDispatcher::assignTo()` stamps it and
+        // `release()` nulls it: a leg carrying a driver but no handover time is
+        // a row production cannot produce, and `DriverCard::lastSeen()` reads
+        // that time to decide whether a stored position belongs to this journey
+        // or to the one before it. An hour back so a reading made "now" in a
+        // test is unambiguously after the handover.
+        $task->forceFill([
+            'driver_id' => $this->driver->id,
+            'status' => $status->value,
+            'assigned_at' => now()->subHour(),
+            // Only a *started* leg carries this: `TaskService::start()` is the
+            // one writer, so an assigned leg with a start time is a row
+            // production cannot produce.
+            'started_at' => $status === TaskStatus::Started ? now()->subHour() : null,
+        ])->save();
 
         return $task->fresh();
     }
