@@ -50,7 +50,7 @@
                              not. --}}
                         @if ($row->isPending() && $row->recordMovedSinceSubmitted())
                             <div class="alert alert-warning py-2 small">
-                                {{ __('This driver's record was edited after this submission arrived. Check the current values before approving — approving will overwrite them.') }}
+                                {{ __('The record for this driver was edited after the submission arrived. Check the current values before approving — approving will overwrite them.') }}
                             </div>
                         @endif
 

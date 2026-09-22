@@ -45,8 +45,10 @@ class DriverRecordReview
             throw new RuntimeException('nothing_submitted');
         }
 
-        $submission = DB::transaction(function () use ($driver, $payload) {
-            DriverRecordSubmission::where('driver_id', $driver->id)
+        $superseded = 0;
+
+        $submission = DB::transaction(function () use ($driver, $payload, &$superseded) {
+            $superseded = DriverRecordSubmission::where('driver_id', $driver->id)
                 ->pending()
                 ->update([
                     'status' => DriverRecordSubmission::REJECTED,
@@ -61,10 +63,25 @@ class DriverRecordReview
             ]);
         });
 
+        // **Only when this driver was not already in the queue.** The rows
+        // collapse — one pending submission per driver — and the notifications
+        // have to collapse with them, or a driver amending three screens in a
+        // minute puts three entries in the bell for one thing to do. That is the
+        // «only work waiting on a person» rule the badges are built on, and a
+        // notification list that inflates is one an operator learns to skim.
+        //
+        // The reviewers already hold an entry pointing at the same screen, the
+        // badge still reads one, and that screen shows the latest submission —
+        // so nothing is lost by staying quiet. A driver re-sending after a
+        // rejection supersedes nothing, which is a genuinely new item, and does
+        // notify.
+        //
         // Outside the transaction on purpose, and swallowing its own failures:
         // a notification that fails must not roll back the submission it was
         // describing, or a driver is told their upload did not work when it did.
-        $this->notifier->submitted($submission);
+        if ($superseded === 0) {
+            $this->notifier->submitted($submission);
+        }
 
         return $submission;
     }

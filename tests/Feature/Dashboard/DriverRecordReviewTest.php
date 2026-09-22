@@ -316,6 +316,110 @@ class DriverRecordReviewTest extends TestCase
     }
 
     #[Test]
+    public function the_review_screen_renders(): void
+    {
+        // It ships a 500 otherwise and nothing notices: the queue's own tests
+        // drove the list and the approve button and never once rendered the
+        // screen an operator actually reads the submission on. A Blade file is
+        // only compiled when somebody opens it, so a syntax error in it is a
+        // green suite and a broken page — which is exactly what happened.
+        [, $submission] = $this->submit([
+            'plate_number' => 'ABC 123',
+            'license_expiry' => '2099-01-01',
+            'license_image' => UploadedFile::fake()->image('licence.png'),
+        ], '+201077770014');
+
+        $this->actingAs($this->superAdmin())
+            ->get('/admin/driver-record-submission/show/'.$submission->id)
+            ->assertOk()
+            ->assertSee('ABC 123');
+    }
+
+    #[Test]
+    public function the_review_screen_says_when_the_record_moved_underneath_it(): void
+    {
+        // The warning branch, which is the half that carried the syntax error.
+        [$driver, $submission] = $this->submit(['plate_number' => 'ABC 123'], '+201077770015');
+
+        $this->travel(2)->minutes();
+
+        // An operator corrects the same driver while the submission is waiting.
+        $driver->profile()->updateOrCreate(
+            ['user_id' => $driver->id],
+            ['plate_number' => 'CORRECTED BY OPS']
+        );
+
+        $this->assertTrue($submission->fresh()->recordMovedSinceSubmitted());
+
+        $this->actingAs($this->superAdmin())
+            ->get('/admin/driver-record-submission/show/'.$submission->id)
+            ->assertOk()
+            ->assertSee('approving will overwrite them', false);
+    }
+
+    #[Test]
+    public function amending_a_waiting_submission_does_not_ring_the_bell_again(): void
+    {
+        // The rows collapse to one pending item per driver; the notifications
+        // have to collapse with them. A driver saving the vehicle screen, then
+        // the licence screen, then a document — which is one minute's work —
+        // put three entries in the bell for one thing to review. Four of them
+        // reached the live dashboard for a single pending submission.
+        // The reviewer has to exist before the driver sends anything —
+        // `reviewers()` addresses whoever holds the permission *at that moment*,
+        // so creating them afterwards notifies nobody.
+        $admin = $this->superAdmin();
+
+        $driver = $this->driverUser('+201077770016');
+        $this->app['auth']->forgetGuards();
+        Sanctum::actingAs($driver);
+
+        foreach (['FIRST', 'SECOND', 'THIRD'] as $plate) {
+            $this->postJson('/api/v1/driver/profile', ['plate_number' => $plate], $this->apiHeaders())
+                ->assertOk();
+        }
+
+        $this->assertSame(1, DriverRecordSubmission::where('driver_id', $driver->id)->pending()->count());
+        $this->assertSame(1, $admin->notifications()->count());
+
+        // And the screen still shows the newest of the three.
+        $this->assertSame(
+            'THIRD',
+            DriverRecordSubmission::where('driver_id', $driver->id)->pending()->firstOrFail()->payload['plate_number']
+        );
+    }
+
+    #[Test]
+    public function coming_back_after_a_rejection_does_ring_it(): void
+    {
+        // The other half: a refused submission leaves the queue, so the next one
+        // is a genuinely new item and there is no standing entry pointing at it.
+        // Staying quiet here would be a driver waiting on a screen nobody was
+        // told to look at.
+        $admin = $this->superAdmin();
+
+        $driver = $this->driverUser('+201077770017');
+        $this->app['auth']->forgetGuards();
+        Sanctum::actingAs($driver);
+
+        $this->postJson('/api/v1/driver/profile', ['plate_number' => 'FIRST'], $this->apiHeaders())->assertOk();
+
+        $submission = DriverRecordSubmission::where('driver_id', $driver->id)->pending()->firstOrFail();
+
+        app(DriverRecordReview::class)->reject($submission, $admin, 'Illegible.');
+
+        $this->app['auth']->forgetGuards();
+        Sanctum::actingAs($driver);
+        $this->postJson('/api/v1/driver/profile', ['plate_number' => 'SECOND'], $this->apiHeaders())->assertOk();
+
+        $waiting = $admin->notifications()
+            ->where('data->title', 'A driver sent their papers')
+            ->count();
+
+        $this->assertSame(2, $waiting);
+    }
+
+    #[Test]
     public function the_queue_is_gated_on_its_own_permission(): void
     {
         // Checking a licence photograph is a different job from keeping a
