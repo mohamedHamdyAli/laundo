@@ -18,7 +18,15 @@
                         {{ trans_choice(':count driver is on this rule|:count drivers are on this rule',
                             $row->profiles_count ?? 0, ['count' => $row->profiles_count ?? 0]) }}
                     </p>
-                    @include('admin.driver_bonus_rule.forms.formInput')
+                    {{-- `show-page` is what turns the module's own form into a
+                         read-only sheet. Without it these screens render as a
+                         locked form: every control still boxed, filled and at
+                         `opacity: .6`, which is the browser saying «you cannot
+                         type here» on a page whose whole job is to be read. The
+                         two money screens were the only ones built without it. --}}
+                    <div class="show-page">
+                        @include('admin.driver_bonus_rule.forms.formInput')
+                    </div>
                 </div>
             </div>
         </div>
