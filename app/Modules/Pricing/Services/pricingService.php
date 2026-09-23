@@ -52,6 +52,14 @@ class pricingService
             'prices' => $prices,
             'quotedServices' => $this->serviceRepository->allActive()
                 ->where('pricing_mode', 'quote'),
+            // The grid edits what the laundry is owed; the customer pays that
+            // plus the platform's fee. Both are handed to the view so it can
+            // show the second figure under the first — the rate as well as the
+            // helper, because the view needs the rate to decide whether there is
+            // anything to show and the browser needs it to keep the figure
+            // truthful while somebody is typing.
+            'platformFee' => $this->platformFee,
+            'platformFeeRate' => $this->platformFee->rate(),
         ];
     }
 

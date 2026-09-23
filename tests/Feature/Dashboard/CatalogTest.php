@@ -8,8 +8,10 @@ use App\Modules\Pricing\Models\ItemPrice;
 use App\Modules\Pricing\Services\pricingService;
 use App\Modules\Service\Models\Service;
 use App\Modules\Service\Services\serviceCrudService;
+use App\Modules\Setting\Models\Setting;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
@@ -53,6 +55,49 @@ class CatalogTest extends TestCase
             'name' => json_encode(['en' => 'Shirt on hanger', 'ar' => 'قميص على شماعة'], JSON_UNESCAPED_UNICODE),
             'sort_order' => 1, 'status' => 'active',
         ]);
+    }
+
+    public function test_the_grid_shows_what_the_customer_will_pay(): void
+    {
+        // The grid edits what the laundry is owed. The customer pays that plus
+        // the platform's fee, so without a second figure the person setting
+        // prices is working in a different currency from the one on the invoice
+        // and doing the arithmetic in their head.
+        Setting::updateOrCreate(['key' => 'Commission_Rate'], ['value' => '10']);
+        Cache::flush();
+
+        ItemPrice::create([
+            'item_id' => $this->shirt->id,
+            'service_id' => $this->washIron->id,
+            'price' => 17,
+        ]);
+
+        $this->actingAs($this->superAdmin())
+            ->get('/admin/pricing')
+            ->assertOk()
+            // The base stays in the box…
+            ->assertSee('value="17.00"', false)
+            // …and the customer's figure sits under it.
+            ->assertSee(moneyFormat(18.70), false);
+    }
+
+    public function test_the_grid_says_nothing_extra_when_no_fee_is_set(): void
+    {
+        // At zero the two numbers are the same, and a second line repeating the
+        // first is noise on a screen that is already a dense grid.
+        Setting::updateOrCreate(['key' => 'Commission_Rate'], ['value' => '0']);
+        Cache::flush();
+
+        ItemPrice::create([
+            'item_id' => $this->shirt->id,
+            'service_id' => $this->washIron->id,
+            'price' => 17,
+        ]);
+
+        $this->actingAs($this->superAdmin())
+            ->get('/admin/pricing')
+            ->assertOk()
+            ->assertDontSee('price-with-fee', false);
     }
 
     public function test_a_quoted_service_is_absent_from_the_grid_columns(): void

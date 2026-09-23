@@ -5,6 +5,11 @@
         <h5 class="card-title mb-0">{{ __('Prices') }}</h5>
         <span class="text-muted small">
             {{ __('One price per item and service. Prices are global — laundries never set them.') }}
+            @if ($platformFeeRate > 0)
+                <br>
+                {{ __('The figure under each box is what the customer pays, with the platform fee of') }}
+                {{ rtrim(rtrim(number_format($platformFeeRate, 2), '0'), '.') }}% {{ __('already in it.') }}
+            @endif
         </span>
     </div>
 
@@ -76,13 +81,32 @@
                                                     <tr>
                                                         <td>{{ getLocalizedValueDashboard($item, 'name') }}</td>
                                                         @foreach ($services as $service)
+                                                            @php
+                                                                $cell = $prices[$item->id . '-' . $service->id] ?? '';
+                                                            @endphp
                                                             <td>
                                                                 <input type="number" step="0.01" min="0"
-                                                                    class="form-control form-control-sm text-center"
+                                                                    class="form-control form-control-sm text-center price-cell"
                                                                     name="prices[{{ $item->id }}][{{ $service->id }}]"
-                                                                    value="{{ $prices[$item->id . '-' . $service->id] ?? '' }}"
+                                                                    value="{{ $cell }}"
                                                                     placeholder="—"
                                                                     {{ canDo('item_price.update') ? '' : 'readonly' }}>
+
+                                                                {{-- What the customer is actually charged, under the
+                                                                     figure the laundry is owed. The grid edits the base
+                                                                     price and the platform's fee is folded in on top, so
+                                                                     without this the person setting prices is working in
+                                                                     a different currency from the one on the invoice and
+                                                                     doing the arithmetic in their head.
+
+                                                                     Drawn only when a fee is set: at zero the two numbers
+                                                                     are the same and a second line saying so is noise. --}}
+                                                                @if ($platformFeeRate > 0)
+                                                                    <div class="form-text text-center small price-with-fee"
+                                                                        @if ($cell === '') style="visibility: hidden" @endif>
+                                                                        {{ $cell === '' ? '' : moneyFormat($platformFee->onUnit((float) $cell)) }}
+                                                                    </div>
+                                                                @endif
                                                             </td>
                                                         @endforeach
                                                     </tr>
@@ -129,5 +153,57 @@
             emptySelector: '#priceFilterInput-empty',
             countSelector: '#priceFilterInput-count',
         });
+
+        @if ($platformFeeRate > 0)
+            {{-- Keeps the customer figure true while somebody is typing. A
+                 label that only tells the truth after a save is a label an
+                 operator stops trusting, and the whole point of it is to be
+                 read *before* deciding on a number.
+
+                 Same arithmetic as `PlatformFee::onUnit()`, rounded the same
+                 way and to the same two places, because a preview that
+                 disagrees with the saved price by a piastre is worse than no
+                 preview. --}}
+            (function () {
+                const rate = {{ $platformFeeRate }};
+
+                // `moneyFormat()` decides where the currency sits — «EGP 18.70»
+                // here, the other way round in another locale — so the shape is
+                // taken from it rather than guessed. Without this the label
+                // renders one way from the server and flips the other way on the
+                // first keystroke, which reads as a bug in the number.
+                const sample = @json(moneyFormat(1));
+                const parts = sample.split('1.00');
+                const before = parts[0] ?? '';
+                const after = parts[1] ?? '';
+
+                function render(input) {
+                    const label = input.parentElement.querySelector('.price-with-fee');
+
+                    if (!label) return;
+
+                    const base = parseFloat(input.value);
+
+                    if (input.value === '' || isNaN(base)) {
+                        // An empty cell means the service is not offered, which
+                        // is not a price of zero — so there is nothing to
+                        // preview. Hidden rather than removed so the rows do
+                        // not change height as somebody types.
+                        label.style.visibility = 'hidden';
+                        label.textContent = '';
+                        return;
+                    }
+
+                    const withFee = Math.round(base * (1 + rate / 100) * 100) / 100;
+
+                    label.textContent = before + withFee.toFixed(2) + after;
+                    label.style.visibility = 'visible';
+                }
+
+                document.querySelectorAll('.price-cell').forEach(function (input) {
+                    input.addEventListener('input', function () { render(input); });
+                });
+            })();
+        @endif
     </script>
 @endpush
