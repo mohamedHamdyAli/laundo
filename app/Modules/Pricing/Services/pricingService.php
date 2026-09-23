@@ -3,7 +3,6 @@
 namespace App\Modules\Pricing\Services;
 
 use App\Modules\ItemCategory\Repositories\ItemCategoryRepository;
-use App\Modules\Order\Services\OrderPricing;
 use App\Modules\Pricing\Models\ItemPrice;
 use App\Modules\Service\Repositories\ServiceRepository;
 use Illuminate\Support\Facades\DB;
@@ -61,12 +60,6 @@ class pricingService
             // truthful while somebody is typing.
             'platformFee' => $this->platformFee,
             'platformFeeRate' => $this->platformFee->rate(),
-            // The state's tax as well, so the grid can show the figure a
-            // customer actually ends up paying rather than an intermediate one.
-            // Read through `OrderPricing` rather than the setting directly —
-            // that is where the clamping lives, and a fat-fingered 1000 in the
-            // settings must not multiply the preview by eleven either.
-            'taxRate' => app(OrderPricing::class)->taxRate(),
         ];
     }
 

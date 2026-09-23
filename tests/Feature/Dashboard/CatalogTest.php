@@ -64,6 +64,10 @@ class CatalogTest extends TestCase
         // prices is working in a different currency from the one on the invoice
         // and doing the arithmetic in their head.
         Setting::updateOrCreate(['key' => 'Commission_Rate'], ['value' => '10']);
+        // Tax is set and must stay out of the figure: it is charged on the whole
+        // order — delivery and the cash handling fee included — so a per-piece
+        // share of it appears on no invoice line and could not be checked
+        // against one. This label is the piece price the customer is quoted.
         Setting::updateOrCreate(['key' => 'Tax'], ['value' => '14']);
         Cache::flush();
 
@@ -78,13 +82,12 @@ class CatalogTest extends TestCase
             ->assertOk()
             // The base stays in the box…
             ->assertSee('value="17.00"', false)
-            // …and under it the figure the label actually names: the platform's
-            // fee first (17 → 18.70), then the state's tax on the result
-            // (18.70 → 21.32), which is the order an order applies them in.
-            // 18.70 on its own was never «after tax», and a label saying so over
-            // a number that is not is worse than no label.
-            ->assertSee(moneyFormat(21.32), false)
-            ->assertDontSee(moneyFormat(18.70), false);
+            // …and under it the price after the platform fee: 17 → 18.70.
+            ->assertSee(moneyFormat(18.70), false)
+            // Never the tax-inclusive 21.32. Tax belongs to the order, not to
+            // the piece, and folding it in here would put a number on the screen
+            // that matches nothing the customer is ever shown.
+            ->assertDontSee(moneyFormat(21.32), false);
     }
 
     public function test_the_grid_says_nothing_extra_when_no_fee_is_set(): void
@@ -92,10 +95,9 @@ class CatalogTest extends TestCase
         // At zero the two numbers are the same, and a second line repeating the
         // first is noise on a screen that is already a dense grid.
         Setting::updateOrCreate(['key' => 'Commission_Rate'], ['value' => '0']);
-        // Tax off too: the line is drawn whenever *either* charge applies,
-        // because a figure that is true is worth showing even when only one of
-        // its two parts is switched on.
-        Setting::where('key', 'Tax')->delete();
+        // Tax left on deliberately: it is not what this line is about, so it
+        // must not bring the line back.
+        Setting::updateOrCreate(['key' => 'Tax'], ['value' => '14']);
         Cache::flush();
 
         ItemPrice::create([
