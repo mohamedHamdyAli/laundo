@@ -11,10 +11,13 @@ use App\Modules\Order\Models\Order;
 use App\Modules\Order\Models\OrderTask;
 use App\Modules\Order\Repositories\OrderRepository;
 use App\Modules\Pricing\Models\ItemPrice;
+use App\Modules\Pricing\Services\PlatformFee;
 use App\Modules\User\Models\User;
 use App\Services\Routing\Coordinate;
 use App\Services\Routing\RouteLeg;
 use App\Services\Routing\RoutingService;
+use App\Support\LaundryContext;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
 
@@ -248,6 +251,21 @@ class orderCrudService
 
     public function assign(int|string $id, int $laundryId, ?User $actor = null): Order
     {
+        // **Which laundry gets an order is a platform decision.** The tenant
+        // scope stops an owner seeing somebody else's orders, and that was
+        // mistaken for a gate here: it never stopped them pushing their *own*
+        // order onto another laundry — declining work by handing it to a
+        // competitor, and picking which competitor. `LaundryAssigner` exists
+        // precisely so that choice is made on coverage, distance and capacity
+        // rather than by one of the parties.
+        //
+        // Refused in the service and not only by hiding the panel, because a
+        // hidden button is not a gate: the route is a PUT anyone holding
+        // `order.update` can send by hand.
+        if (LaundryContext::currentId() !== null) {
+            throw new RuntimeException('not_yours_to_route');
+        }
+
         return $this->orderService->assignLaundry($this->orders->findById($id), $laundryId, $actor);
     }
 
@@ -436,6 +454,29 @@ class orderCrudService
      *
      * @return array<int, array{item: Item, price: float|null, estimated_qty: int, final_qty: int}>
      */
+    /**
+     * The figure the laundry itself last typed for a quoted piece.
+     *
+     * Null when it has not priced this one yet — an empty box to fill in, which
+     * is a different thing from a zero somebody chose.
+     *
+     * @param  Collection<int, int>  $final
+     */
+    private function typedPriceFor(Order $order, int $itemId, $final): ?float
+    {
+        if (! $final->has($itemId)) {
+            return null;
+        }
+
+        $line = $order->items->where('phase', 'final')->firstWhere('item_id', $itemId);
+
+        if ($line === null) {
+            return null;
+        }
+
+        return (float) ($line->base_unit_price ?? $line->unit_price);
+    }
+
     private function reviewItems(Order $order): array
     {
         // «تنظيف جاف» has no matrix by design, so there is nothing to filter the
@@ -470,11 +511,32 @@ class orderCrudService
                 'item' => $item,
                 // Null, not zero. Zero is a price somebody chose; null is the
                 // empty box the laundry has to fill in.
+                // **`base_unit_price`, not `unit_price`.** The stored unit
+                // price carries the platform's fee, because that is what the
+                // customer agreed to — but this box is the laundry's own figure,
+                // and `price()` applies the fee to whatever is typed into it. A
+                // customer asking for a second count sends the laundry straight
+                // back to this form, so prefilling the inflated number charged
+                // the fee again: 100 became 110, then 121, then 133.10, once per
+                // dispute, while the laundry's own price never moved.
+                //
+                // Falling back to `unit_price` for rows written before the
+                // column existed, which carry no fee and so already hold the
+                // base.
                 'price' => $quoted
-                    ? ($final->has($item->id) ? (float) $order->items
-                        ->where('phase', 'final')
-                        ->firstWhere('item_id', $item->id)?->unit_price : null)
+                    ? $this->typedPriceFor($order, $item->id, $final)
                     : (float) $prices[$item->id],
+                // What the customer will actually be charged for this piece —
+                // the same figure at the same stamped rate the save will use.
+                // The screen used to total the *base* prices while the save
+                // stored the inflated ones, so a laundry counting the same
+                // pieces was shown a price drop that did not exist.
+                'customer_price' => $quoted
+                    ? null
+                    : app(PlatformFee::class)->onUnitAt(
+                        (float) $prices[$item->id],
+                        (float) $order->platform_fee_rate
+                    ),
                 'estimated_qty' => $estimatedQty,
                 'final_qty' => (int) ($final[$item->id] ?? $estimatedQty),
             ];

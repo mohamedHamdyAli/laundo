@@ -190,6 +190,12 @@ class OrderService
                 'delivery_fee' => $quote['delivery_fee'] ?? 0,
                 'discount_total' => $quote['discount'],
                 'cash_surcharge' => $quote['cash_surcharge'],
+                // Already inside `estimated_subtotal`; recorded separately so the
+                // settlement can take it back out. Same copy-at-placement rule as
+                // the tax rate below — raising the fee next month must not change
+                // how an order placed today is divided.
+                'platform_fee' => $quote['platform_fee'],
+                'platform_fee_rate' => $quote['platform_fee_rate'],
                 // Copied onto the order for the same reason the unit prices are:
                 // tax is charged at the rate in force on the day, and a state
                 // that raises it next quarter must not restate this invoice.

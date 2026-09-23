@@ -34,11 +34,23 @@
             </span>
         </div>
         <div>
-            <span class="row-main">{{ moneyFormat($row['commission']) }}</span>
-            {{-- The blended rate the window came to, derived from the result:
-                 stacking charges have no single rate to quote. --}}
+            {{-- Both of the platform's earnings on this laundry's orders, and
+                 the sum is what the column is headed. They are separated
+                 underneath because they are paid by different people: the fee
+                 comes off the customer, folded into the prices they were shown,
+                 and the commission comes off this laundry. A single figure
+                 answers neither «what are we charging our customers» nor «what
+                 are we charging this laundry». --}}
+            <span class="row-main">{{ moneyFormat($row['platform_fee'] + $row['commission']) }}</span>
             <span class="row-sub">
-                {{ __('at') }} {{ rtrim(rtrim(number_format($row['commission_rate'], 2), '0'), '.') }}%
+                {{ __('fee') }} {{ moneyFormat($row['platform_fee']) }}
+                ·
+                {{ __('commission') }} {{ moneyFormat($row['commission']) }}
+                @if ($row['commission'] > 0)
+                    {{-- The blended rate the window came to, derived from the
+                         result: stacking charges have no single rate to quote. --}}
+                    ({{ rtrim(rtrim(number_format($row['commission_rate'], 2), '0'), '.') }}%)
+                @endif
             </span>
         </div>
         <div>

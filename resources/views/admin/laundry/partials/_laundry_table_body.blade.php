@@ -22,19 +22,20 @@
             <span class="row-main">{{ $laundry->city ? getLocalizedValueDashboard($laundry->city, 'name') : '-' }}</span>
         </div>
         <div>
-            {{-- The effective rate, never a blank. A laundry on the general rate
-                 is charged just as surely as one with its own, and a column that
-                 shows nothing for the common case teaches an operator that most
-                 laundries pay no commission. --}}
-            {{-- Never a blank. A laundry on nothing is charged the general
-                 rate, which is a fact, and an empty cell would read as «not
-                 loaded» rather than «follows the default». --}}
+            {{-- The effective rate, and it used to fall back to the general
+                 setting. That setting is now the fee the *customer* pays, so
+                 showing it here would state a commission this laundry is not
+                 charged — on a screen a laundry owner can open, which makes it
+                 a dispute rather than a typo.
+
+                 Nothing attached now means nothing charged, and the cell says
+                 so in words rather than showing 0%: an operator reading «0%»
+                 cannot tell whether somebody decided that or nobody has looked,
+                 and those are different situations. --}}
             @php $charges = $laundry->commissionRules->where('status', 'active'); @endphp
             @if ($charges->isEmpty())
-                <span class="row-main">
-                    {{ rtrim(rtrim(number_format((float) (getSettingValue('Commission_Rate') ?? 0), 2), '0'), '.') }}%
-                </span>
-                <span class="row-sub">{{ __('General rate') }}</span>
+                <span class="row-main text-muted">{{ __('No charge') }}</span>
+                <span class="row-sub">{{ __('Nothing attached') }}</span>
             @else
                 {{-- Every charge, not a blended number: «10% + 5 ج» is what the
                      agreement says, and collapsing it to one figure is what made

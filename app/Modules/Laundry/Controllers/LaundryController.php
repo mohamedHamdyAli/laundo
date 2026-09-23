@@ -135,10 +135,12 @@ class LaundryController extends Controller
      * the general rate beside it.
      *
      * **Several may be chosen, and they add together** — the owner's decision.
-     * Choosing none returns the laundry to the general rate; a laundry that
-     * genuinely pays nothing is put on a rule of 0. «No special deal» and «free
-     * of charge» are different agreements and this is where the difference is
-     * expressed.
+     * **Choosing none charges this laundry nothing.** There is no general rate
+     * behind it any more: the setting that used to serve as one is now the fee
+     * the *customer* pays, and reading it here would bill the laundry for a
+     * charge the customer has already covered. A laundry that pays nothing and a
+     * laundry nobody has configured now cost the same, so the only way the
+     * platform gets paid by a laundry is somebody attaching a charge to it.
      *
      * `sync()` rather than `attach()`: the form posts the complete set every
      * time, so a rule the operator unticked has to come off. Attaching would
@@ -158,7 +160,7 @@ class LaundryController extends Controller
         $laundry->commissionRules()->sync($ids);
 
         return back()->with('success', $ids === []
-            ? __('Commission cleared. This laundry now follows the general rate.')
+            ? __('Commission cleared. This laundry is now charged nothing until a charge is attached.')
             : trans_choice(
                 ':count charge applies to this laundry.|:count charges apply to this laundry.',
                 count($ids),

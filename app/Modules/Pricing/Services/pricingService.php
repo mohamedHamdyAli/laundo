@@ -21,7 +21,8 @@ class pricingService
 
     public function __construct(
         ServiceRepository $serviceRepository,
-        ItemCategoryRepository $itemCategoryRepository
+        ItemCategoryRepository $itemCategoryRepository,
+        private readonly PlatformFee $platformFee = new PlatformFee,
     ) {
         $this->serviceRepository = $serviceRepository;
         $this->itemCategoryRepository = $itemCategoryRepository;
@@ -161,7 +162,18 @@ class pricingService
                         $items[] = [
                             'id' => $item->id,
                             'name' => getLocalizedValue($item, 'name'),
-                            'price' => $prices[$key],
+                            // The customer's price, not the laundry's. This
+                            // screen is where somebody decides whether to place
+                            // an order at all, so a figure here that the quote
+                            // later disagrees with is the worst kind of
+                            // surprise — it is read as a charge that appeared
+                            // at checkout.
+                            // Formatted back to the two-decimal string the
+                            // `decimal:2` cast produced before this. The number
+                            // changed; the shape the apps parse must not.
+                            'price' => number_format(
+                                $this->platformFee->onUnit((float) $prices[$key]), 2, '.', ''
+                            ),
                         ];
                     }
 

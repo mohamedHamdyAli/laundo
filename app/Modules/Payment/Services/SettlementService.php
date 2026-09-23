@@ -4,7 +4,6 @@ namespace App\Modules\Payment\Services;
 
 use App\Modules\Laundry\Models\Laundry;
 use App\Modules\Order\Models\Order;
-use App\Modules\Payment\Enums\CommissionBasis;
 use App\Modules\Payment\Models\CommissionRule;
 use App\Modules\Payment\Models\OrderSettlement;
 use App\Modules\Payment\Models\OrderSettlementLine;
@@ -80,13 +79,15 @@ class SettlementService
      * and each lands as its own line so a laundry disputing the total is shown
      * the arithmetic rather than a blended number it cannot reproduce.
      *
-     * **A laundry with nothing attached falls back to the general rate.** That
-     * is the one place `Commission_Rate` is still read: it is the safety net for
-     * a laundry nobody has configured, and it keeps the behaviour every existing
-     * laundry already had. A laundry that genuinely pays nothing is expressed by
-     * attaching a rule of 0, not by attaching none — which is exactly why the
-     * migration that retired `laundries.commission_rate` carried a stored 0
-     * across as a 0% rule rather than dropping it.
+     * **A laundry with nothing attached is charged nothing.** `Commission_Rate`
+     * used to be the safety net here, but that key is now the customer's
+     * platform fee — a charge on the other side of the order entirely — and
+     * reading it here would bill the laundry for what the customer already
+     * paid. The rule that «a laundry paying nothing is expressed by a 0% rule,
+     * not by no rule» still stands and now costs nothing to break: the
+     * migration that moved the key attached an explicit rule at the old rate to
+     * every laundry that was relying on the fallback, so no laundry's charge
+     * changed on the day the meaning did.
      *
      * The total is capped at the basis. Three stacking charges can otherwise sum
      * past the order, and a settlement that pays the laundry a negative number
@@ -100,27 +101,7 @@ class SettlementService
         $rules = $this->rulesFor($laundry);
 
         if ($rules->isEmpty()) {
-            $configured = getSettingValue('Commission_Rate');
-            $rate = ($configured === null || $configured === '') ? 0.0 : $this->clamp((float) $configured);
-            $amount = round(min($basis * $rate / 100, $basis), 2);
-
-            if ($amount <= 0) {
-                return ['total' => 0.0, 'lines' => []];
-            }
-
-            return [
-                'total' => $amount,
-                'lines' => [[
-                    'commission_rule_id' => null,
-                    'name' => json_encode([
-                        'en' => 'General rate',
-                        'ar' => 'النسبة العامة',
-                    ], JSON_UNESCAPED_UNICODE),
-                    'basis' => CommissionBasis::Percent->value,
-                    'rate' => $rate,
-                    'amount' => $amount,
-                ]],
-            ];
+            return ['total' => 0.0, 'lines' => []];
         }
 
         $lines = [];
@@ -192,7 +173,7 @@ class SettlementService
      * Everything the customer paid is still accounted for. It is just no longer
      * all of it that is divided:
      *
-     *     total = tax + delivery + cash surcharge + commission + laundry share
+     *     total = tax + delivery + cash surcharge + platform fee + commission + laundry share
      */
     public function basisFor(Order $order): float
     {
@@ -238,6 +219,12 @@ class SettlementService
             'commission_amount' => $commission['total'],
             'laundry_amount' => $laundryShare,
             'tax_amount' => $order->payableTax(),
+            // The platform's own charge, already inside what the customer paid
+            // and already outside `basis` — recorded so the revenue screen can
+            // say what the platform earned from the customer as against what it
+            // charged the laundry. The two are paid by different people and a
+            // single «commission» figure cannot answer either question.
+            'platform_fee_amount' => $order->platformFeeEarned(),
             'status' => OrderSettlement::PENDING,
         ];
 
@@ -296,6 +283,7 @@ class SettlementService
         return DB::transaction(function () use ($settlement, $order, $platform, $owner) {
             $commission = (float) $settlement->commission_amount;
             $share = (float) $settlement->laundry_amount;
+            $platformFee = (float) $settlement->platform_fee_amount;
 
             // Zero is skipped, not credited. WalletService refuses a zero move on
             // purpose — a transaction of nothing explains nothing — and a laundry
@@ -307,6 +295,24 @@ class SettlementService
                     TransactionReason::Commission,
                     $settlement,
                     __('Commission on order :code', ['code' => $order->code]),
+                );
+            }
+
+            // Credited, not merely recorded. The platform's wallet is the
+            // ledger of what the platform earned on orders — the commission
+            // lands there — so a fee that only ever appeared on the revenue
+            // screen would leave that wallet understating earnings. It also used
+            // to land there: before this, an install with a general rate set saw
+            // exactly this money arrive as commission, and a release that moves
+            // where the platform's money shows up without saying so is how
+            // somebody concludes the platform stopped being paid.
+            if ($platformFee > 0) {
+                $this->wallets->credit(
+                    $platform,
+                    $platformFee,
+                    TransactionReason::PlatformFee,
+                    $settlement,
+                    __('Platform fee on order :code', ['code' => $order->code]),
                 );
             }
 
@@ -388,8 +394,8 @@ class SettlementService
         return Laundry::withoutGlobalScope('own_laundry')->find($order->laundry_id);
     }
 
-    private function clamp(float $rate): float
-    {
-        return round(max(min($rate, 100.0), 0.0), 2);
-    }
+    // `clamp()` lived here to guard the general-rate fallback. That fallback is
+    // gone — the key it read is now the customer's fee — and `CommissionRule`
+    // has always clamped its own rate through `clampedRate()`, so there is
+    // nothing left for this to protect.
 }

@@ -176,11 +176,15 @@ class DispatchDashboardTest extends TestCase
 
         $intruder = $this->laundryWithOwner('B', '+201022220001', '+201022220002');
 
-        // Reached through the tenant-scoped Order, so another laundry's task is
-        // simply not found.
+        // **403 now, not 404, and the change of number is the change of
+        // reason.** This used to be answered by the tenant scope — another
+        // laundry's task is simply not found — which meant a laundry reaching
+        // its *own* leg got through. Driver work moved behind
+        // `order_task.update`, which no laundry role holds, so the refusal
+        // happens before the scope is ever consulted and covers both cases.
         $this->actingAs($intruder['owner'])
             ->post("/admin/order/task/release/{$task->id}")
-            ->assertNotFound();
+            ->assertForbidden();
 
         $this->assertSame($driver->id, $task->fresh()->driver_id);
     }

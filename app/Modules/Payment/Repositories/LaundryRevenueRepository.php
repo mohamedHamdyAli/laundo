@@ -125,6 +125,11 @@ class LaundryRevenueRepository
             // none of these.
             ->selectRaw("coalesce(sum(case when {$settlements}.status <> ? then {$settlements}.tax_amount else 0 end), 0) as tax_total", [$cancelled])
             ->selectRaw("coalesce(sum(case when {$settlements}.status <> ? then {$settlements}.commission_amount else 0 end), 0) as commission_total", [$cancelled])
+            // The platform's other earning on the same order, and a separate
+            // column because it is paid by somebody else: the commission comes
+            // off the laundry, this comes off the customer. Summed into one
+            // figure they would answer neither question.
+            ->selectRaw("coalesce(sum(case when {$settlements}.status <> ? then {$settlements}.platform_fee_amount else 0 end), 0) as platform_fee_total", [$cancelled])
             ->selectRaw("coalesce(sum(case when {$settlements}.status <> ? then {$settlements}.laundry_amount else 0 end), 0) as entitled_total", [$cancelled])
             // What has actually been credited to the owner's wallet, as against
             // what is merely recorded. The gap between these two columns is the
@@ -146,7 +151,7 @@ class LaundryRevenueRepository
      * describe the whole window, and adding up fifteen rows of a paginated list
      * would make them describe page one.
      *
-     * @return object{orders_count: int, user_paid: float, tax_total: float, commission_total: float, entitled_total: float, settled_total: float}
+     * @return object{orders_count: int, user_paid: float, tax_total: float, commission_total: float, platform_fee_total: float, entitled_total: float, settled_total: float}
      */
     public function summary(Carbon $from, Carbon $to): object
     {
@@ -161,6 +166,7 @@ class LaundryRevenueRepository
             'user_paid' => 0.0,
             'tax_total' => 0.0,
             'commission_total' => 0.0,
+            'platform_fee_total' => 0.0,
             'entitled_total' => 0.0,
             'settled_total' => 0.0,
         ]);

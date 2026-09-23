@@ -99,7 +99,7 @@
                                     <input type="number" min="0" max="999"
                                         class="form-control form-control-sm review-qty"
                                         name="lines[{{ $index }}][qty]"
-                                        data-price="{{ $entry['price'] }}"
+                                        data-price="{{ $entry['customer_price'] ?? $entry['price'] }}"
                                         value="{{ old("lines.$index.qty", $entry['final_qty']) }}">
                                 </td>
                                 <td>
@@ -110,11 +110,17 @@
                                             value="{{ old("lines.$index.unit_price", $entry['price']) }}"
                                             placeholder="0.00">
                                     @else
-                                        {{ moneyFormat($entry['price']) }}
+                                        {{-- What the customer pays, which is what
+                                             the invoice will show for this line.
+                                             The laundry's own price is the one in
+                                             the typed box on a quoted service; on
+                                             a catalogued one it is not a figure
+                                             this screen has any use for. --}}
+                                        {{ moneyFormat($entry['customer_price'] ?? $entry['price']) }}
                                     @endif
                                 </td>
                                 <td class="text-end review-line-total">
-                                    {{ moneyFormat((float) $entry['price'] * $entry['final_qty']) }}
+                                    {{ moneyFormat((float) ($entry['customer_price'] ?? $entry['price']) * $entry['final_qty']) }}
                                 </td>
                             </tr>
                         @endforeach
@@ -224,6 +230,9 @@
             const deliveryFee = {{ (float) $row->delivery_fee }};
             const discount = {{ (float) $row->discount_total }};
             const estimated = {{ (float) $row->estimated_total }};
+            // The order's own stamped rate, not the setting as it stands now —
+            // the save prices at the stamp, so the preview has to as well.
+            const feeMultiplier = 1 + ({{ (float) $row->platform_fee_rate }} / 100);
 
             function money(value) {
                 return value.toFixed(2);
@@ -239,8 +248,12 @@
                     // up, so the running total has to read the box the person is
                     // filling in — not the empty data attribute beside it.
                     const typed = row.find('.review-price');
+                    // A typed price is the *laundry's* figure and the save adds
+                    // the platform's fee to it at the order's stamped rate, so
+                    // the running total has to do the same or the screen
+                    // disagrees with what it is about to store.
                     const price = typed.length
-                        ? (parseFloat(typed.val()) || 0)
+                        ? (parseFloat(typed.val()) || 0) * feeMultiplier
                         : (parseFloat($(this).data('price')) || 0);
                     const line = qty * price;
 

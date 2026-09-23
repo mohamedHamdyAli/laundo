@@ -5,8 +5,13 @@ namespace Tests\Feature\Dashboard;
 use App\Models\Role;
 use App\Modules\Laundry\Models\Laundry;
 use App\Modules\LaundryStaff\Models\LaundryStaff;
+use App\Modules\Order\Models\Order;
+use App\Modules\Order\Services\orderCrudService;
+use App\Modules\Order\Services\OrderService;
 use App\Modules\User\Models\User;
 use App\Support\LaundryContext;
+use Database\Seeders\PermissionSeeder;
+use Database\Seeders\RoleSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -28,11 +33,18 @@ class TenancyIsolationTest extends TestCase
 
     private User $admin;
 
+    /** @var array<string, mixed> */
+    private array $catalog;
+
+    /** @var array<string, mixed> */
+    private array $geo;
+
     protected function setUp(): void
     {
         parent::setUp();
         $this->seedCore();
-        $this->seedGeo();
+        $this->geo = $this->seedGeo();
+        $this->catalog = $this->seedCatalog();
 
         $a = $this->laundryWithOwner('A', '+201011110001', '+201011110002');
         $b = $this->laundryWithOwner('B', '+201022220001', '+201022220002');
@@ -58,6 +70,126 @@ class TenancyIsolationTest extends TestCase
 
         $this->assertNull(LaundryContext::currentId());
         $this->assertSame(2, Laundry::count());
+    }
+
+    /**
+     * A real order on laundry A, placed the way a customer places one.
+     *
+     * Built through `OrderService` rather than by hand: an order has a dozen
+     * non-null columns and a fixture that lists them drifts from the schema the
+     * first time one is added.
+     */
+    private function placeOrderForA(): Order
+    {
+        $customer = $this->customer('+201099990001');
+        $address = $this->addressFor($customer, $this->geo['zones'][0]);
+
+        $this->cover($this->laundryA, $this->geo['zones'][0]->id, $this->catalog['service']->id);
+
+        $order = app(OrderService::class)->place($customer, [
+            'service_id' => $this->catalog['service']->id,
+            'pickup_address_id' => $address->id,
+            'items' => [['item_id' => $this->catalog['items'][0]->id, 'qty' => 1]],
+            'accepts_review_terms' => true,
+        ]);
+
+        return $order->fresh();
+    }
+
+    public function test_a_laundry_cannot_touch_a_drivers_leg(): void
+    {
+        // Which driver carries which order is the platform's to decide. A
+        // laundry holds `order.update` so it can review and price its own
+        // orders, and that quietly reached the driver routes too — assigning a
+        // leg, taking one off him, and re-running the dispatch sweep.
+        $order = $this->placeOrderForA();
+        $leg = $order->tasks()->first();
+
+        $this->assertNotNull($leg, 'placing an order generates its legs');
+
+        $this->actingAs($this->ownerA);
+
+        foreach ([
+            route('admin.order.tasks.assign', $leg->id),
+            route('admin.order.tasks.release', $leg->id),
+            route('admin.order.tasks.dispatch', $order->id),
+            route('admin.order.tasks.generate', $order->id),
+        ] as $url) {
+            $this->post($url, ['driver_id' => 1])->assertForbidden();
+        }
+
+        $this->post(route('admin.dispatch.redispatch'))->assertForbidden();
+    }
+
+    public function test_a_laundry_can_still_watch_its_own_legs(): void
+    {
+        // Read stays. A laundry seeing that a driver is on the way to it is
+        // useful and harms nobody — what it may not do is choose him.
+        $this->grant('laundry_owner', ['order_task.view']);
+
+        $this->actingAs($this->ownerA);
+
+        $this->get(route('admin.dispatch.index'))->assertOk();
+    }
+
+    public function test_the_driver_supervisor_can_do_the_work_the_role_exists_for(): void
+    {
+        // The other half of the same move. This role holds `order_task.update`
+        // and not `order.update`, so under the old gate it could open the
+        // dispatch board and act on nothing on it.
+        $this->seed(PermissionSeeder::class);
+        $this->seed(RoleSeeder::class);
+
+        $supervisor = User::create([
+            'name' => 'Supervisor',
+            'phone' => '+201088880001',
+            'email' => 'supervisor@test.local',
+            'password' => 'password',
+            'status' => 'active',
+            'role_id' => Role::where('slug', 'driver_supervisor')->value('id'),
+        ]);
+
+        $this->actingAs($supervisor);
+
+        $this->get(route('admin.dispatch.index'))->assertOk();
+        // Not forbidden. It may fail validation on a driver that does not fit
+        // the leg, which is a different answer entirely.
+        $this->post(route('admin.dispatch.redispatch'))->assertRedirect();
+    }
+
+    public function test_a_laundry_cannot_hand_its_own_order_to_another_laundry(): void
+    {
+        // The scope stops an owner *seeing* somebody else's orders, and that was
+        // mistaken for a gate on routing. It never stopped them pushing their
+        // own order onto a competitor — declining the work and choosing who got
+        // it — on a screen that also named every other laundry with its distance
+        // and how full it was.
+        $order = $this->placeOrderForA();
+
+        $this->actingAs($this->ownerA);
+
+        $this->expectExceptionMessage('not_yours_to_route');
+
+        app(orderCrudService::class)
+            ->assign($order->id, $this->laundryB->id, $this->ownerA);
+    }
+
+    public function test_the_platform_can_still_route_an_order(): void
+    {
+        // The other half: the refusal is about who is asking, not about the
+        // action. A super admin is unscoped and must still be able to assign.
+        $order = $this->placeOrderForA();
+
+        $this->actingAs($this->admin);
+        $this->assertNull(LaundryContext::currentId());
+
+        app(orderCrudService::class)
+            ->assign($order->id, $this->laundryB->id, $this->admin);
+
+        $this->assertSame(
+            $this->laundryB->id,
+            Order::withoutGlobalScopes()->find($order->id)->laundry_id
+        );
     }
 
     public function test_a_laundry_owner_sees_only_their_own_laundry(): void

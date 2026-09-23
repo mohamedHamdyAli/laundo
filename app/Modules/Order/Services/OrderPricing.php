@@ -6,6 +6,7 @@ use App\Modules\Address\Models\Address;
 use App\Modules\Laundry\Models\Laundry;
 use App\Modules\Payment\Enums\PaymentMethod;
 use App\Modules\Pricing\Models\ItemPrice;
+use App\Modules\Pricing\Services\PlatformFee;
 use App\Modules\Service\Models\Service;
 
 /**
@@ -18,7 +19,10 @@ use App\Modules\Service\Models\Service;
  */
 class OrderPricing
 {
-    public function __construct(private readonly DeliveryFeeCalculator $deliveryFee) {}
+    public function __construct(
+        private readonly DeliveryFeeCalculator $deliveryFee,
+        private readonly PlatformFee $platformFee,
+    ) {}
 
     /**
      * The delivery leg alone.
@@ -39,7 +43,7 @@ class OrderPricing
      *
      * @param  array<int, array{item_id: int, qty: int}>  $items
      * @return array{
-     *     lines: array<int, array{item_id: int, qty: int, unit_price: float, line_total: float}>,
+     *     lines: array<int, array{item_id: int, qty: int, unit_price: float, base_unit_price: float, line_total: float}>,
      *     items_count: int,
      *     subtotal: float,
      *     delivery_fee: float|null,
@@ -48,6 +52,8 @@ class OrderPricing
      *     delivery_distance_source: string|null,
      *     discount: float,
      *     cash_surcharge: float,
+     *     platform_fee: float,
+     *     platform_fee_rate: float,
      *     tax_rate: float,
      *     tax: float,
      *     pre_tax_total: float,
@@ -67,6 +73,12 @@ class OrderPricing
         $lines = [];
         $unpriced = [];
         $subtotal = 0.0;
+        // What the laundry prices the same basket at, carried alongside. The
+        // platform's fee is the gap between the two, taken by subtraction rather
+        // than as a second percentage — the per-piece rounding has already
+        // happened, so a re-derived figure would disagree with the lines the
+        // customer is looking at.
+        $baseSubtotal = 0.0;
         $count = 0;
 
         // A quoted service has no per-piece prices at all — it is costed after the
@@ -92,17 +104,32 @@ class OrderPricing
                     continue;
                 }
 
-                $unit = (float) $prices[$itemId];
+                $base = (float) $prices[$itemId];
+
+                // The price the customer is quoted already carries the
+                // platform's fee. It is folded in here, per piece, rather than
+                // added to the subtotal at the end: the customer multiplies this
+                // number by a quantity, so it is this number that has to be
+                // true, and a line that does not equal its own unit price times
+                // its own quantity is the first thing somebody checks when they
+                // think they have been overcharged.
+                $unit = $this->platformFee->onUnit($base);
                 $total = round($unit * $qty, 2);
 
                 $lines[] = [
                     'item_id' => $itemId,
                     'qty' => $qty,
                     'unit_price' => $unit,
+                    // The laundry's own figure, kept beside the customer's. It
+                    // cannot be recovered by dividing the fee back out — that is
+                    // rounded per piece — and the review form has to be able to
+                    // show the laundry what *it* charged.
+                    'base_unit_price' => $base,
                     'line_total' => $total,
                 ];
 
                 $subtotal += $total;
+                $baseSubtotal += round($base * $qty, 2);
                 $count += $qty;
             }
         }
@@ -140,6 +167,13 @@ class OrderPricing
             // remove it by paying another way, and a charge you cannot see is a
             // charge you cannot avoid.
             'cash_surcharge' => $surcharge,
+            // Inside `subtotal`, not beside it — so nothing that sums this array
+            // may add it again. It is carried out so the order can store it and
+            // the settlement can divide the right number; it is deliberately not
+            // returned to the customer's app, because the whole point is that
+            // there is one price.
+            'platform_fee' => $this->platformFee->within($subtotal, round($baseSubtotal, 2)),
+            'platform_fee_rate' => $this->platformFee->rate(),
             'tax_rate' => $money['tax_rate'],
             'tax' => $money['tax'],
             'pre_tax_total' => $money['pre_tax_total'],

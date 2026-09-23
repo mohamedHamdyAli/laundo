@@ -96,7 +96,8 @@ class Order extends Model
         'delivery_method', 'pickup_method', 'offer_id',
         'driver_note', 'special_instructions', 'review_terms_accepted_at',
         'estimated_items_count', 'estimated_subtotal', 'delivery_fee',
-        'discount_total', 'cash_surcharge', 'tax_rate', 'estimated_tax', 'estimated_total',
+        'discount_total', 'cash_surcharge', 'platform_fee', 'platform_fee_rate',
+        'tax_rate', 'estimated_tax', 'estimated_total',
         'final_items_count', 'final_subtotal', 'final_tax', 'final_total', 'review_note', 'reviewed_at',
         'review_round', 'confirmed_at',
         'coupon_code', 'payment_method', 'payment_status', 'paid_at',
@@ -117,6 +118,8 @@ class Order extends Model
             'delivery_fee' => 'decimal:2',
             'discount_total' => 'decimal:2',
             'cash_surcharge' => 'decimal:2',
+            'platform_fee' => 'decimal:2',
+            'platform_fee_rate' => 'decimal:2',
             'tax_rate' => 'decimal:2',
             'estimated_tax' => 'decimal:2',
             'estimated_total' => 'decimal:2',
@@ -396,10 +399,21 @@ class Order extends Model
      *     the same journey twice — on a 10% commission the platform booked a
      *     tenth of the fee and paid out a fifth of it.
      *   - the **cash handling fee** is what it costs the platform to take notes.
+     *   - the **platform fee** is the platform's charge on the order, folded
+     *     into the per-piece prices so the customer sees one number. It sits
+     *     inside the subtotal and it is not the laundry's, so it comes out
+     *     before anything is divided. An order placed before that fee existed
+     *     carries null, which subtracts nothing — the old arithmetic exactly.
      *
      * The discount comes off, because a coupon reduces what was collected for
      * the washing and `OrderPricing` already caps it at the subtotal — so this
      * can never go negative.
+     *
+     * **The discount is shared, not borne by one side.** It is taken off the
+     * customer-facing subtotal, which already has the fee inside it, so the
+     * laundry's base and the platform's fee are each reduced in proportion. Any
+     * other split would need a rule about who pays for a coupon, and a rule
+     * nobody wrote down is one that gets decided differently the next time.
      *
      * Final if the pieces have been counted, the estimate until then, the same
      * rule every other figure on this order follows.
@@ -407,8 +421,39 @@ class Order extends Model
     public function cleaningRevenue(): float
     {
         $subtotal = (float) ($this->hasFinalPrice() ? $this->final_subtotal : $this->estimated_subtotal);
+        $discount = (float) $this->discount_total;
 
-        return round(max($subtotal - (float) $this->discount_total, 0.0), 2);
+        $base = round(max($subtotal - (float) $this->platform_fee, 0.0), 2);
+
+        // The base's own share of the discount. Guarded on the subtotal rather
+        // than assumed positive: a zero subtotal with a discount on it is not a
+        // division anybody wants to perform.
+        $share = $subtotal > 0 ? round($discount * ($base / $subtotal), 2) : 0.0;
+
+        return round(max($base - $share, 0.0), 2);
+    }
+
+    /**
+     * The platform's fee on this order, as the settlement divides it.
+     *
+     * The stored figure less its own share of any discount — the mirror of what
+     * `cleaningRevenue()` keeps, so the two always sum back to the discounted
+     * subtotal and nothing falls between them.
+     */
+    public function platformFeeEarned(): float
+    {
+        $subtotal = (float) ($this->hasFinalPrice() ? $this->final_subtotal : $this->estimated_subtotal);
+        $fee = round(max((float) $this->platform_fee, 0.0), 2);
+
+        if ($fee <= 0 || $subtotal <= 0) {
+            return 0.0;
+        }
+
+        $discounted = round(max($subtotal - (float) $this->discount_total, 0.0), 2);
+
+        // By subtraction, never by its own percentage: the two halves have to
+        // reconcile to the penny, and two independent roundings do not.
+        return round(max($discounted - $this->cleaningRevenue(), 0.0), 2);
     }
 
     /**

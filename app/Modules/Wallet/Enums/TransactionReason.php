@@ -34,6 +34,18 @@ enum TransactionReason: string
     case LaundryPayout = 'laundry_payout';
 
     /**
+     * The platform's fee on an order, credited to the super admin.
+     *
+     * A separate reason from `Commission` on purpose, and the distinction is the
+     * whole point of the fee existing: the commission is charged to the laundry
+     * and comes out of what it earned, this is charged to the customer and is
+     * folded into the prices they were shown. Folding them together would make
+     * «what are we charging our customers» and «what are we charging our
+     * laundries» both unanswerable from the ledger.
+     */
+    case PlatformFee = 'platform_fee';
+
+    /**
      * A driver's monthly performance bonus.
      *
      * Separate from `Earning`, which is the per-journey half. They are paid at
@@ -53,7 +65,7 @@ enum TransactionReason: string
     public function group(): string
     {
         return match ($this) {
-            self::TopUp, self::Earning, self::Commission, self::LaundryPayout, self::Bonus => 'additions',
+            self::TopUp, self::Earning, self::Commission, self::PlatformFee, self::LaundryPayout, self::Bonus => 'additions',
             self::OrderPayment, self::Withdrawal => 'payments',
             self::Refund => 'refunds',
             self::Adjustment => 'adjustments',
@@ -71,6 +83,7 @@ enum TransactionReason: string
             self::Adjustment => 'Adjustment',
             self::Commission => 'Platform commission',
             self::LaundryPayout => 'Laundry share of an order',
+            self::PlatformFee => 'Platform fee from the customer',
             self::Bonus => 'Monthly bonus',
         };
     }

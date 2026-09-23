@@ -323,10 +323,46 @@ class PaymentTest extends TestCase
             'reference' => $payment->provider_reference, 'event' => 'captured',
         ], $this->apiHeaders())->assertOk();
 
+        // The message as well as the code. «It was refused» and «it was refused
+        // for the right reason» are different assertions, and only the second
+        // one tells the app what to put on the screen.
         $this->postJson("/api/v1/orders/{$order->id}/pay", ['method' => 'card'], $this->apiHeaders())
-            ->assertStatus(400);
+            ->assertStatus(400)
+            ->assertJsonPath('msg', 'This order has already been paid.');
 
         $this->assertSame(1, Payment::count());
+    }
+
+    #[Test]
+    public function repeated_attempts_never_leave_two_live_ones(): void
+    {
+        // What somebody testing against the fake gateway actually sees: `pay`
+        // keeps succeeding, because nothing settles a hosted checkout until its
+        // webhook arrives, so the order never reaches `paid` and the
+        // already-paid guard never gets a chance to fire.
+        //
+        // That is not a second payment. Each attempt supersedes the last, so
+        // there is only ever one live reference for an order — which is the
+        // thing that would actually take money twice.
+        $order = $this->reviewedOrder();
+
+        Sanctum::actingAs($this->customer);
+
+        foreach (range(1, 3) as $ignored) {
+            $this->postJson("/api/v1/orders/{$order->id}/pay", ['method' => 'card'], $this->apiHeaders())
+                ->assertStatus(201);
+        }
+
+        $this->assertSame(3, Payment::count());
+        $this->assertSame(1, Payment::where('status', PaymentStatus::Pending->value)->count());
+        $this->assertSame(
+            2,
+            Payment::where('failure_reason', 'superseded_by_a_new_attempt')->count()
+        );
+
+        // Nothing was charged and the order is still unpaid.
+        $this->assertSame('unpaid', $order->fresh()->payment_status);
+        $this->assertSame(0.0, app(PaymentService::class)->capturedTotal($order));
     }
 
     // ---------------------------------------------------- cash still works

@@ -22,12 +22,13 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  */
 class OrderItem extends Model
 {
-    protected $fillable = ['order_id', 'item_id', 'phase', 'qty', 'unit_price', 'line_total'];
+    protected $fillable = ['order_id', 'item_id', 'phase', 'qty', 'unit_price', 'base_unit_price', 'line_total'];
 
     protected function casts(): array
     {
         return [
             'unit_price' => 'decimal:2',
+            'base_unit_price' => 'decimal:2',
             'line_total' => 'decimal:2',
         ];
     }

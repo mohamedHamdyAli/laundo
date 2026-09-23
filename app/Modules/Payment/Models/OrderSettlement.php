@@ -32,6 +32,7 @@ use Illuminate\Support\Carbon;
  * @property string $commission_amount
  * @property string $laundry_amount
  * @property string $tax_amount
+ * @property string $platform_fee_amount
  * @property string $status
  * @property Carbon|null $settled_at
  * @property Carbon|null $created_at
@@ -66,7 +67,7 @@ class OrderSettlement extends Model
     protected $fillable = [
         'order_id', 'laundry_id',
         'basis', 'commission_rate', 'commission_amount', 'laundry_amount',
-        'tax_amount', 'status', 'settled_at',
+        'tax_amount', 'platform_fee_amount', 'status', 'settled_at',
     ];
 
     protected function casts(): array
@@ -77,6 +78,7 @@ class OrderSettlement extends Model
             'commission_amount' => 'decimal:2',
             'laundry_amount' => 'decimal:2',
             'tax_amount' => 'decimal:2',
+            'platform_fee_amount' => 'decimal:2',
             'settled_at' => 'datetime',
         ];
     }

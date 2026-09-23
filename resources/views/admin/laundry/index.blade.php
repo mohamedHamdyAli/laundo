@@ -123,9 +123,8 @@
 
                             <div class="form-text mt-2">
                                 {{ __('Ticked charges add together and are credited to the super admin wallet; the rest goes to this laundry.') }}
-                                <strong>{{ __('Tick nothing to follow the general rate') }}</strong>
-                                ({{ rtrim(rtrim(number_format((float) (getSettingValue('Commission_Rate') ?? 0), 2), '0'), '.') }}%).
-                                {{ __('To charge this laundry nothing, put it on a charge of 0.') }}
+                                <strong>{{ __('Tick nothing and this laundry is charged nothing.') }}</strong>
+                                {{ __('There is no general rate behind it — attaching a charge of 0 says the same thing on the record, which is worth doing so nobody later reads the blank as an oversight.') }}
                             </div>
                         </div>
                         <div class="modal-footer">

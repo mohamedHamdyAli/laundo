@@ -102,6 +102,7 @@ class LaundryRevenueService
             'user_paid' => round((float) $totals->user_paid, 2),
             'tax' => round((float) $totals->tax_total, 2),
             'commission' => round((float) $totals->commission_total, 2),
+            'platform_fee' => round((float) $totals->platform_fee_total, 2),
             // What the laundries are owed once what has been taken back is
             // taken off. Never below zero on the card: a negative headline reads
             // as a system fault rather than as an over-deduction, and the row it
@@ -174,7 +175,7 @@ class LaundryRevenueService
         $headers = [
             'id', 'laundry', 'email', 'areas',
             'orders', 'completed', 'cancelled', 'in_progress',
-            'user_paid', 'tax', 'platform_commission',
+            'user_paid', 'tax', 'platform_fee', 'laundry_commission',
             'laundry_entitled', 'laundry_received', 'deducted', 'net_payable',
             'reasons',
         ];
@@ -195,7 +196,7 @@ class LaundryRevenueService
             $rows[] = [
                 $row['id'], $row['name'], $row['email'], $row['areas'],
                 $row['orders'], $row['completed'], $row['cancelled'], $row['in_progress'],
-                $row['user_paid'], $row['tax'], $row['commission'],
+                $row['user_paid'], $row['tax'], $row['platform_fee'], $row['commission'],
                 $row['entitled'], $row['received'], $row['deducted'], $row['net_payable'],
                 // Newlines would break the cell; the separator is the one the
                 // panel already uses between composed values.
@@ -234,6 +235,7 @@ class LaundryRevenueService
         $entitled = round((float) ($total?->getAttribute('entitled_total') ?? 0), 2);
         $received = round((float) ($total?->getAttribute('settled_total') ?? 0), 2);
         $commission = round((float) ($total?->getAttribute('commission_total') ?? 0), 2);
+        $platformFee = round((float) ($total?->getAttribute('platform_fee_total') ?? 0), 2);
         $basis = round((float) ($total?->getAttribute('basis_total') ?? 0), 2);
         $deducted = round((float) ($deduction?->getAttribute('deducted_total') ?? 0), 2);
 
@@ -257,6 +259,7 @@ class LaundryRevenueService
             'user_paid' => round((float) ($total?->getAttribute('user_paid') ?? 0), 2),
             'tax' => round((float) ($total?->getAttribute('tax_total') ?? 0), 2),
             'commission' => $commission,
+            'platform_fee' => $platformFee,
             // The blended rate the month came to. Derived from the result, like
             // `SettlementService::effectiveRate()`, because stacking charges have
             // no single rate to quote.

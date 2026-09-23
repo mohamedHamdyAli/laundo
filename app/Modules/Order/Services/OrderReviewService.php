@@ -8,6 +8,7 @@ use App\Modules\Order\Models\Order;
 use App\Modules\Order\Models\OrderItem;
 use App\Modules\Order\Models\OrderPriceQuery;
 use App\Modules\Pricing\Models\ItemPrice;
+use App\Modules\Pricing\Services\PlatformFee;
 use App\Modules\Service\Models\Service;
 use App\Modules\User\Models\User;
 use Illuminate\Support\Facades\DB;
@@ -41,6 +42,7 @@ class OrderReviewService
         private readonly OrderStateMachine $machine,
         private readonly TaskGenerator $tasks,
         private readonly OrderPricing $pricing,
+        private readonly PlatformFee $platformFee,
     ) {}
 
     /**
@@ -62,7 +64,13 @@ class OrderReviewService
             throw new RuntimeException('service_not_found');
         }
 
-        [$priced, $count, $subtotal, $unpriced] = $this->price($service, $lines);
+        // The order's own stamped rate, not the setting as it stands now. A
+        // rate raised while the bag sat in the laundry must not reach an order
+        // somebody already agreed to — and an order placed before the fee
+        // existed carries null, which prices exactly as it always did.
+        [$priced, $count, $subtotal, $unpriced, $baseSubtotal] = $this->price(
+            $service, $lines, (float) $order->platform_fee_rate
+        );
 
         if ($unpriced !== []) {
             throw new RuntimeException('unpriced_items:'.implode(',', $unpriced));
@@ -74,7 +82,7 @@ class OrderReviewService
             throw new RuntimeException('empty_review');
         }
 
-        return DB::transaction(function () use ($order, $priced, $count, $subtotal, $note, $actor) {
+        return DB::transaction(function () use ($order, $priced, $count, $subtotal, $baseSubtotal, $note, $actor) {
             // A re-review replaces the previous final set rather than adding to
             // it. The estimated rows, and therefore the original agreement,
             // survive both.
@@ -104,6 +112,12 @@ class OrderReviewService
             $order->update([
                 'final_items_count' => $count,
                 'final_subtotal' => $subtotal,
+                // Recomputed, not carried over: the pieces changed, so the fee
+                // inside their prices changed with them. The *rate* is the one
+                // thing not re-read — it is whatever was stamped at placement,
+                // so a rate raised while the bag sat in the laundry cannot
+                // reach an order somebody already agreed to.
+                'platform_fee' => $this->platformFee->within($subtotal, $baseSubtotal),
                 'final_tax' => $money['tax'],
                 'final_total' => $money['total'],
                 'review_note' => $note,
@@ -270,9 +284,9 @@ class OrderReviewService
      * Price a basket — against the matrix, or against what the laundry typed.
      *
      * @param  array<int, array{item_id: int, qty: int, unit_price?: float|string|null}>  $lines
-     * @return array{0: array<int, array<string, mixed>>, 1: int, 2: float, 3: array<int, int>}
+     * @return array{0: array<int, array<string, mixed>>, 1: int, 2: float, 3: array<int, int>, 4: float}
      */
-    private function price(Service $service, array $lines): array
+    private function price(Service $service, array $lines, float $feeRate): array
     {
         // «تنظيف جاف» carries no catalogue prices by design — the cost of
         // cleaning a suit depends on the fabric and the stain, which is the whole
@@ -293,6 +307,9 @@ class OrderReviewService
         $unpriced = [];
         $count = 0;
         $subtotal = 0.0;
+        // What the laundry priced the same pieces at. The fee is the gap, taken
+        // by subtraction for the reason `OrderPricing` takes it that way.
+        $baseSubtotal = 0.0;
 
         foreach ($lines as $line) {
             $itemId = (int) $line['item_id'];
@@ -314,29 +331,38 @@ class OrderReviewService
                     continue;
                 }
 
-                $unit = round((float) $submitted, 2);
+                $base = round((float) $submitted, 2);
             } elseif (! isset($prices[$itemId])) {
                 $unpriced[] = $itemId;
 
                 continue;
             } else {
-                $unit = (float) $prices[$itemId];
+                $base = (float) $prices[$itemId];
             }
 
+            // The platform's fee is folded in here too, and on **both** branches.
+            // The price a laundry types beside a counted suit is its own price
+            // for the work, exactly as a catalogue row is — so leaving the
+            // quoted branch alone would hand the platform nothing on dry
+            // cleaning while charging it on everything else, which is not a rule
+            // anybody chose.
+            $unit = $this->platformFee->onUnitAt($base, $feeRate);
             $total = round($unit * $qty, 2);
 
             $priced[] = [
                 'item_id' => $itemId,
                 'qty' => $qty,
                 'unit_price' => $unit,
+                'base_unit_price' => $base,
                 'line_total' => $total,
             ];
 
             $count += $qty;
             $subtotal += $total;
+            $baseSubtotal += round($base * $qty, 2);
         }
 
-        return [$priced, $count, round($subtotal, 2), $unpriced];
+        return [$priced, $count, round($subtotal, 2), $unpriced, round($baseSubtotal, 2)];
     }
 
     /**

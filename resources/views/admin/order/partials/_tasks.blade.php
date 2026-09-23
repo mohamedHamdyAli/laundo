@@ -8,7 +8,7 @@
 <div class="card mb-3">
     <div class="card-header d-flex justify-content-between align-items-center">
         <h6 class="mb-0">{{ __('Transport') }}</h6>
-        @if ($row->tasks->isEmpty() && canDo('order.update') && $row->confirmed_at)
+        @if ($row->tasks->isEmpty() && canDo('order_task.update') && $row->confirmed_at)
             <form method="POST" action="{{ route('admin.order.tasks.generate', $row->id) }}">
                 @csrf
                 <button type="submit" class="btn btn-sm btn-outline-primary">
@@ -25,7 +25,7 @@
         @php
             $waiting = $row->tasks->filter(fn ($t) => $t->driver_id === null && ! $t->status->isFinished());
         @endphp
-        @if ($waiting->isNotEmpty() && canDo('order.update'))
+        @if ($waiting->isNotEmpty() && canDo('order_task.update'))
             <form method="POST" action="{{ route('admin.order.tasks.dispatch', $row->id) }}">
                 @csrf
                 <button type="submit" class="btn-quiet">
@@ -109,7 +109,7 @@
                                 <td>{{ $task->due_at ? humanDate($task->due_at) : '—' }}</td>
                                 <td>{{ $task->piece_count ?? '—' }}</td>
                                 <td class="text-end">
-                                    @if (canDo('order.update') && ! $task->status->isFinished())
+                                    @if (canDo('order_task.update') && ! $task->status->isFinished())
                                         @php $remainingLegs = $row->tasks->reject(fn ($t) => $t->status->isFinished())->count(); @endphp
                                         @php $eligible = $taskCandidates[$task->id] ?? []; @endphp
                                         @if (! empty($eligible))

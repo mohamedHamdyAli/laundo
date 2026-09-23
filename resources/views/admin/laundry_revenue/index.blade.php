@@ -31,9 +31,20 @@
             </div>
             <div class="col-md-3 col-xl">
                 <div class="card"><div class="card-body">
-                    <h6 class="text-muted mb-1">{{ __('Platform commission') }}</h6>
+                    <h6 class="text-muted mb-1">{{ __('Fee from customers') }}</h6>
+                    <h3 class="mb-0">{{ moneyFormat($summary['platform_fee']) }}</h3>
+                    {{-- Two cards rather than one total: the two are paid by different
+                         people, and added together they answer neither «what are
+                         we charging our customers» nor «what are we charging our
+                         laundries». --}}
+                    <small class="text-muted">{{ __('Folded into the prices they were shown') }}</small>
+                </div></div>
+            </div>
+            <div class="col-md-3 col-xl">
+                <div class="card"><div class="card-body">
+                    <h6 class="text-muted mb-1">{{ __('Commission from laundries') }}</h6>
                     <h3 class="mb-0">{{ moneyFormat($summary['commission']) }}</h3>
-                    <small class="text-muted">{{ __('The platform\'s own share') }}</small>
+                    <small class="text-muted">{{ __('Taken out of what they earned') }}</small>
                 </div></div>
             </div>
             <div class="col-md-3 col-xl">
@@ -143,7 +154,7 @@
                         <span>{{ __('Laundry') }}</span>
                         <span>{{ __('Orders') }}</span>
                         <span>{{ __('Customers paid') }}</span>
-                        <span>{{ __('Platform commission') }}</span>
+                        <span>{{ __('Platform earnings') }}</span>
                         <span>{{ __('Laundry entitled') }}</span>
                         <span>{{ __('Deducted') }}</span>
                         <span class="text-end">{{ __('Net payable') }}</span>

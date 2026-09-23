@@ -721,13 +721,13 @@
 
 <div class="row g-3 border rounded p-3 mb-3">
 
-    <h5 class="mb-3">{{ __('Platform commission') }}</h5>
+    <h5 class="mb-3">{{ __('Customer platform fee') }}</h5>
 
     <p class="text-muted small">
 
-        {{ __('What the platform takes from a laundry on each completed order, as a percentage of the order total before tax. The commission is credited to the super admin wallet and the rest to the laundry wallet.') }}
+        {{ __('Added on top of every piece price and paid by the customer, as a percentage. It is folded into the price shown in the app, so the customer sees one figure and no separate fee line — the laundry is still owed its own price in full.') }}
 
-        {{ __('A laundry that negotiated its own rate overrides this from the laundries list.') }}
+        {{ __('This is not what a laundry pays. That is set per laundry from the commission rules, and the two are charged to different people.') }}
 
     </p>
 
@@ -735,7 +735,7 @@
 
         <div class="form-group">
 
-            <label for="setting-commission" class="form-label">{{ __('General commission rate') }}</label>
+            <label for="setting-commission" class="form-label">{{ __('Customer platform fee') }}</label>
 
             <div class="input-group">
 
@@ -751,7 +751,7 @@
 
             <div class="form-text">
 
-                {{ __('Leave empty or zero to take no commission.') }}
+                {{ __('Leave empty or zero to add nothing. Changing it does not restate an order already placed — the rate is copied onto each order when it is made.') }}
 
             </div>
 

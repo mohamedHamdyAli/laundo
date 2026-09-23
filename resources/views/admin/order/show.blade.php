@@ -249,6 +249,24 @@
                         </div>
                         <div class="card-body">
                             <table class="table table-sm table-borderless mb-0">
+                                @if ((float) $settlement->platform_fee_amount > 0)
+                                    {{-- Named, because otherwise the card shows a
+                                         basis below what the customer paid and
+                                         nothing explaining the difference — the
+                                         «gap with no name on it» that folding the
+                                         fee into the prices exists to avoid. A
+                                         laundry owner can open this screen, so
+                                         the gap is theirs to ask about. --}}
+                                    <tr>
+                                        <td class="text-muted">
+                                            {{ __('Platform fee') }}
+                                            <small>({{ __('paid by the customer, inside the prices') }})</small>
+                                        </td>
+                                        <td class="text-end text-muted">
+                                            {{ moneyFormat($settlement->platform_fee_amount) }}
+                                        </td>
+                                    </tr>
+                                @endif
                                 <tr>
                                     <td>{{ __('Basis') }}</td>
                                     <td class="text-end">{{ moneyFormat($settlement->basis) }}</td>
@@ -425,7 +443,19 @@
                      Each candidate is shown with what the assigner measured, so
                      an operator overriding the automatic choice is disagreeing
                      with something they can read rather than with a name. --}}
-                @if (canDo('order.update') && ! $row->status->isInCustody())
+                {{-- Platform staff only, and `LaundryContext` is the test
+                     because it is the project's own definition of «not a
+                     tenant»: null means no restriction.
+
+                     `order.update` is not enough. A laundry owner holds it so it
+                     can review and price its own orders, and the tenant scope
+                     was mistaken for a gate here — it stops an owner seeing
+                     other people's orders, never stops them pushing their own
+                     onto somebody else. The panel also names every candidate
+                     laundry with its distance and how full it is, which is a
+                     competitor's book handed to the one party that must not
+                     have it. --}}
+                @if (canDo('order.update') && \App\Support\LaundryContext::currentId() === null && ! $row->status->isInCustody())
                     <div class="card">
                         <div class="card-header d-flex justify-content-between align-items-center">
                             <h6 class="mb-0">{{ __('Assign to laundry') }}</h6>

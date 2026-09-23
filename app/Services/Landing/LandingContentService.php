@@ -11,6 +11,7 @@ use App\Modules\Offer\Models\Offer;
 use App\Modules\Order\Enums\OrderStatus;
 use App\Modules\Order\Enums\TaskType;
 use App\Modules\Pricing\Models\ItemPrice;
+use App\Modules\Pricing\Services\PlatformFee;
 use App\Modules\Service\Models\Service;
 use App\Modules\TimeSlot\Models\TimeSlot;
 use App\Modules\Zone\Models\Zone;
@@ -47,6 +48,8 @@ use Illuminate\Support\Facades\Cache;
  */
 class LandingContentService
 {
+    public function __construct(private readonly PlatformFee $platformFee = new PlatformFee) {}
+
     /**
      * Keyed per locale because the money and the translated names are baked in.
      *
@@ -244,10 +247,14 @@ class LandingContentService
 
                 $rows[] = [
                     'name' => getLocalizedValue($item, 'name'),
+                    // The customer's price, through the same helper the app's
+                    // catalogue and the quote use. A marketing page advertising
+                    // the laundry's figure would be advertising a price nobody
+                    // is ever charged.
                     'prices' => $services
                         ->mapWithKeys(fn (Service $service) => [
                             $service->id => isset($itemPrices[$service->id])
-                                ? moneyFormat($itemPrices[$service->id])
+                                ? moneyFormat($this->platformFee->onUnit((float) $itemPrices[$service->id]))
                                 : null,
                         ])
                         ->all(),
@@ -344,7 +351,7 @@ class LandingContentService
 
         foreach ($items as $index => $item) {
             $quantity = $quantities[$index] ?? 1;
-            $unit = (float) $pricesByItem[$item->id];
+            $unit = $this->platformFee->onUnit((float) $pricesByItem[$item->id]);
 
             $lines[] = [
                 'name' => getLocalizedValue($item, 'name'),

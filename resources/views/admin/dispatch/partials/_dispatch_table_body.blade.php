@@ -63,7 +63,7 @@
         </div>
 
         <div class="text-end">
-            @if (canDo('order.update'))
+            @if (canDo('order_task.update'))
                 @if (! empty($eligible))
                     <form method="POST" action="{{ route('admin.order.tasks.assign', $leg->id) }}"
                         class="d-flex flex-column align-items-end gap-1">

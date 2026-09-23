@@ -54,9 +54,14 @@ class OrderController extends Controller
         try {
             $this->orderCrudService->assign($id, (int) $request->laundry_id, $request->user());
         } catch (RuntimeException $e) {
-            return back()->with('error', $e->getMessage() === 'already_in_custody'
-                ? __('This order has already been collected and cannot be reassigned.')
-                : __('Could not assign this order.'));
+            return back()->with('error', match ($e->getMessage()) {
+                'already_in_custody' => __('This order has already been collected and cannot be reassigned.'),
+                // Said plainly rather than as a generic failure: it is not a
+                // mistake the operator made, it is work that is not theirs to
+                // move.
+                'not_yours_to_route' => __('Which laundry handles an order is decided by the platform.'),
+                default => __('Could not assign this order.'),
+            });
         }
 
         return back()->with('success', __('Order assigned successfully'));

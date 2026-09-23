@@ -146,6 +146,27 @@ class CommissionSettlementTest extends TestCase
         $laundry->commissionRules()->syncWithoutDetaching([$rule->id]);
     }
 
+    /**
+     * What this tenant's laundry pays, as an attached rule.
+     *
+     * These tests used to say it with `setting('Commission_Rate', '10')`, which
+     * was the fallback for a laundry nobody had configured. That key is now the
+     * fee the **customer** pays — the other side of the order — so saying it
+     * that way would set up the wrong charge entirely and assert against a
+     * laundry that is charged nothing.
+     *
+     * An explicit rule is also how the code has always said a laundry's charge
+     * is properly expressed, and it is what the migration attached to every
+     * laundry that had been leaning on the fallback.
+     */
+    private function laundryPays(float $percent): CommissionRule
+    {
+        $rule = $this->charge('percent', $percent, 'General rate');
+        $this->attach($this->tenant['laundry'], $rule);
+
+        return $rule;
+    }
+
     private function settlementFor(Order $order): ?OrderSettlement
     {
         return OrderSettlement::withoutGlobalScope('laundry')->where('order_id', $order->id)->first();
@@ -162,7 +183,8 @@ class CommissionSettlementTest extends TestCase
         // delivery fee was taken out of the basis once the overlap with the
         // driver's share was priced.
         $this->setting('Tax', null);
-        $this->setting('Commission_Rate', '10');
+        $this->setting('Commission_Rate', '0');
+        $this->laundryPays(10);
 
         $order = $this->confirmedOrder();
         $order->forceFill([
@@ -186,7 +208,8 @@ class CommissionSettlementTest extends TestCase
         // delivery fee, so dividing that same fee with the laundry meant paying
         // for one journey twice.
         $this->setting('Tax', null);
-        $this->setting('Commission_Rate', '10');
+        $this->setting('Commission_Rate', '0');
+        $this->laundryPays(10);
 
         $order = $this->confirmedOrder();
         $order->forceFill([
@@ -208,7 +231,8 @@ class CommissionSettlementTest extends TestCase
     public function a_discount_comes_off_what_the_laundry_is_paid_on(): void
     {
         $this->setting('Tax', null);
-        $this->setting('Commission_Rate', '10');
+        $this->setting('Commission_Rate', '0');
+        $this->laundryPays(10);
 
         $order = $this->confirmedOrder();
         $order->forceFill([
@@ -230,7 +254,8 @@ class CommissionSettlementTest extends TestCase
     public function the_tax_is_never_divided(): void
     {
         $this->setting('Tax', '10');
-        $this->setting('Commission_Rate', '10');
+        $this->setting('Commission_Rate', '0');
+        $this->laundryPays(10);
 
         $order = $this->confirmedOrder();
         $settlement = $this->settlementFor($order);
@@ -262,8 +287,19 @@ class CommissionSettlementTest extends TestCase
     // ---------------------------------------------------------------- the rate
 
     #[Test]
-    public function a_laundry_with_nothing_attached_follows_the_general_rate(): void
+    public function a_laundry_with_nothing_attached_is_charged_nothing(): void
     {
+        // This used to fall back to `Commission_Rate`, which was the general
+        // rate a laundry paid when nobody had configured it. That key is now the
+        // fee the **customer** pays, and reading it here would bill the laundry
+        // for a charge the customer has already covered — the platform taking
+        // the same money twice.
+        //
+        // So an unconfigured laundry is charged nothing, and «charged nothing»
+        // is now only ever a fact somebody entered. The migration that moved the
+        // key attached an explicit rule at the old rate to every laundry that
+        // had been relying on the fallback, so no laundry's bill changed on the
+        // day the meaning did.
         $this->setting('Commission_Rate', '15');
 
         $laundry = $this->tenant['laundry'];
@@ -272,11 +308,8 @@ class CommissionSettlementTest extends TestCase
 
         $commission = app(SettlementService::class)->commissionFor($laundry, 200.0);
 
-        $this->assertSame(30.0, $commission['total']);
-        // Still a named line, so a settlement never shows a charge with no
-        // explanation beside it.
-        $this->assertCount(1, $commission['lines']);
-        $this->assertNull($commission['lines'][0]['commission_rule_id']);
+        $this->assertSame(0.0, $commission['total']);
+        $this->assertSame([], $commission['lines']);
     }
 
     #[Test]
@@ -320,14 +353,19 @@ class CommissionSettlementTest extends TestCase
         $this->setting('Commission_Rate', '15');
         $laundry = $this->tenant['laundry'];
 
-        // The distinction the old nullable column drew, preserved: «no special
-        // deal» keeps following the general rate when it moves, «free of
-        // charge» must not silently start being charged.
+        // Both now come to zero, and the distinction has moved from the money
+        // to the record: an attached 0% rule is somebody saying «this laundry
+        // pays nothing», and no rule at all is nobody having said anything. They
+        // bill the same and they do not mean the same, which is why the rule is
+        // still worth attaching — the settlement shows a named line either way
+        // rather than a silence.
         $this->attach($laundry, $this->charge('percent', 0));
         $this->assertSame(0.0, app(SettlementService::class)->commissionFor($laundry->fresh(), 200.0)['total']);
+        $this->assertTrue($laundry->fresh()->hasOwnCommission());
 
         $laundry->commissionRules()->detach();
-        $this->assertSame(30.0, app(SettlementService::class)->commissionFor($laundry->fresh(), 200.0)['total']);
+        $this->assertSame(0.0, app(SettlementService::class)->commissionFor($laundry->fresh(), 200.0)['total']);
+        $this->assertFalse($laundry->fresh()->hasOwnCommission());
     }
 
     #[Test]
@@ -420,7 +458,8 @@ class CommissionSettlementTest extends TestCase
     #[Test]
     public function confirming_records_the_split_without_moving_anything(): void
     {
-        $this->setting('Commission_Rate', '10');
+        $this->setting('Commission_Rate', '0');
+        $this->laundryPays(10);
 
         $order = $this->confirmedOrder();
         $settlement = $this->settlementFor($order);
@@ -438,7 +477,8 @@ class CommissionSettlementTest extends TestCase
     #[Test]
     public function completing_credits_both_wallets(): void
     {
-        $this->setting('Commission_Rate', '10');
+        $this->setting('Commission_Rate', '0');
+        $this->laundryPays(10);
         $platform = $this->superAdmin();
 
         $order = $this->complete($this->confirmedOrder());
@@ -461,7 +501,8 @@ class CommissionSettlementTest extends TestCase
     #[Test]
     public function each_side_gets_a_transaction_naming_the_order(): void
     {
-        $this->setting('Commission_Rate', '10');
+        $this->setting('Commission_Rate', '0');
+        $this->laundryPays(10);
         $platform = $this->superAdmin();
 
         $order = $this->complete($this->confirmedOrder());
@@ -488,7 +529,8 @@ class CommissionSettlementTest extends TestCase
     #[Test]
     public function a_replayed_completion_cannot_pay_twice(): void
     {
-        $this->setting('Commission_Rate', '10');
+        $this->setting('Commission_Rate', '0');
+        $this->laundryPays(10);
         $platform = $this->superAdmin();
 
         $order = $this->complete($this->confirmedOrder());
@@ -505,7 +547,8 @@ class CommissionSettlementTest extends TestCase
     #[Test]
     public function an_order_that_never_completes_pays_nobody(): void
     {
-        $this->setting('Commission_Rate', '10');
+        $this->setting('Commission_Rate', '0');
+        $this->laundryPays(10);
         $this->superAdmin();
 
         // Returned rather than Cancelled, because the state machine will not
@@ -536,7 +579,8 @@ class CommissionSettlementTest extends TestCase
     #[Test]
     public function a_settled_order_is_not_re_recorded_when_the_rate_changes(): void
     {
-        $this->setting('Commission_Rate', '10');
+        $this->setting('Commission_Rate', '0');
+        $this->laundryPays(10);
         // Without a platform account the row stays pending and re-recording it
         // is correct — which is what this assertion would otherwise be quietly
         // measuring instead of the freeze it means to prove.
@@ -558,7 +602,8 @@ class CommissionSettlementTest extends TestCase
     #[Test]
     public function a_platform_with_no_super_admin_leaves_the_settlement_pending(): void
     {
-        $this->setting('Commission_Rate', '10');
+        $this->setting('Commission_Rate', '0');
+        $this->laundryPays(10);
 
         // Deliberately no superAdmin() in this test: an install with no platform
         // account is a fault somebody has to fix, and a settlement sitting at
@@ -683,7 +728,8 @@ class CommissionSettlementTest extends TestCase
     #[Test]
     public function a_laundry_sees_its_own_settlements_and_no_others(): void
     {
-        $this->setting('Commission_Rate', '10');
+        $this->setting('Commission_Rate', '0');
+        $this->laundryPays(10);
 
         $other = $this->laundryWithOwner('B', '+201011110003', '+201011110004');
         $this->cover($other['laundry'], $this->geo['zones'][0]->id, $this->catalog['service']->id);
@@ -716,7 +762,8 @@ class CommissionSettlementTest extends TestCase
     #[Test]
     public function the_search_returns_the_rows_and_the_pagination(): void
     {
-        $this->setting('Commission_Rate', '10');
+        $this->setting('Commission_Rate', '0');
+        $this->laundryPays(10);
         $this->grant('super_admin', ['order_settlement.view']);
 
         $order = $this->confirmedOrder();
@@ -753,7 +800,8 @@ class CommissionSettlementTest extends TestCase
     #[Test]
     public function a_laundry_owner_reads_its_own_wallet_without_holding_wallet_view(): void
     {
-        $this->setting('Commission_Rate', '10');
+        $this->setting('Commission_Rate', '0');
+        $this->laundryPays(10);
         $this->superAdmin();
 
         $order = $this->complete($this->confirmedOrder());
@@ -778,7 +826,8 @@ class CommissionSettlementTest extends TestCase
     #[Test]
     public function the_super_admin_reads_the_commission_on_its_own_wallet(): void
     {
-        $this->setting('Commission_Rate', '10');
+        $this->setting('Commission_Rate', '0');
+        $this->laundryPays(10);
         $platform = $this->superAdmin();
 
         $order = $this->complete($this->confirmedOrder());
@@ -794,7 +843,8 @@ class CommissionSettlementTest extends TestCase
     #[Test]
     public function the_order_screen_shows_how_the_order_was_divided(): void
     {
-        $this->setting('Commission_Rate', '10');
+        $this->setting('Commission_Rate', '0');
+        $this->laundryPays(10);
         $this->superAdmin();
 
         $order = $this->complete($this->confirmedOrder());

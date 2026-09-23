@@ -13,10 +13,10 @@ use App\Modules\Complaint\Controllers\ComplaintController;
 use App\Modules\Country\Controllers\CountryController;
 use App\Modules\Coupon\Controllers\CouponController;
 use App\Modules\Driver\Controllers\DriverApplicationController;
-use App\Modules\Driver\Controllers\DriverRecordSubmissionController;
 use App\Modules\Driver\Controllers\DriverBonusAwardController;
 use App\Modules\Driver\Controllers\DriverBonusRuleController;
 use App\Modules\Driver\Controllers\DriverController;
+use App\Modules\Driver\Controllers\DriverRecordSubmissionController;
 use App\Modules\Faq\Controllers\FaqController;
 use App\Modules\Intro\Controllers\IntroController;
 use App\Modules\Item\Controllers\ItemController;
@@ -640,8 +640,16 @@ Route::middleware(['auth', 'dashboard.only'])->prefix('/admin')->group(function 
     |
     | Every waiting journey across every order. Gated on `order_task.view` --
     | its own permission, so the board can be given to a dispatcher without
-    | full access to orders -- while assigning still goes through
-    | `admin.order.tasks.assign` and its `order.update`.
+    | full access to orders -- and **acting on a leg needs `order_task.update`**,
+    | which is a different permission again.
+    |
+    | It used to be `order.update`, and that was the wrong boundary in both
+    | directions. A laundry owner holds `order.update` so it can review and
+    | price its own orders, which silently let it hand a leg to a driver and
+    | take one off him -- drivers are the platform's to route, not a laundry's.
+    | And `driver_supervisor`, the role that exists to do exactly this work,
+    | holds `order_task.update` and not `order.update`, so it could see the
+    | board and touch nothing on it.
     |
     */
     Route::controller(DispatchController::class)->group(function () {
@@ -650,21 +658,21 @@ Route::middleware(['auth', 'dashboard.only'])->prefix('/admin')->group(function 
         Route::get('/dispatch/search', 'search')
             ->middleware('permission:order_task.view')->name('admin.dispatch.search');
         Route::post('/dispatch/redispatch', 'redispatchAll')
-            ->middleware('permission:order.update')->name('admin.dispatch.redispatch');
+            ->middleware('permission:order_task.update')->name('admin.dispatch.redispatch');
     });
 
     Route::controller(OrderTaskController::class)->group(function () {
         Route::post('/order/task/assign/{id}', 'assign')
-            ->middleware('permission:order.update')->name('admin.order.tasks.assign');
+            ->middleware('permission:order_task.update')->name('admin.order.tasks.assign');
         Route::post('/order/task/release/{id}', 'release')
-            ->middleware('permission:order.update')->name('admin.order.tasks.release');
+            ->middleware('permission:order_task.update')->name('admin.order.tasks.release');
         Route::post('/order/task/generate/{id}', 'generate')
-            ->middleware('permission:order.update')->name('admin.order.tasks.generate');
+            ->middleware('permission:order_task.update')->name('admin.order.tasks.generate');
         // Runs the same sweep the scheduled command does, for an operator who
         // has just fixed whatever was blocking and should not have to wait ten
         // minutes to find out whether it worked. `{id}` is the order.
         Route::post('/order/task/dispatch/{id}', 'redispatch')
-            ->middleware('permission:order.update')->name('admin.order.tasks.dispatch');
+            ->middleware('permission:order_task.update')->name('admin.order.tasks.dispatch');
     });
 
     /*

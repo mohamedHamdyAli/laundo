@@ -12,7 +12,7 @@
     <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
         <h5 class="card-title mb-0">{{ __('Dispatch') }}</h5>
 
-        @if (canDo('order.update') && $counts['never_taken'] > 0)
+        @if (canDo('order_task.update') && $counts['never_taken'] > 0)
             {{-- The scheduled sweep runs every ten minutes, which is no use to
                  somebody who has just given a driver a zone or raised a cap. --}}
             <form method="POST" action="{{ route('admin.dispatch.redispatch') }}">
