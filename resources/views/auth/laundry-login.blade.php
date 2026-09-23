@@ -25,7 +25,10 @@
                 <label class="auth-label" for="email">{{ __('Email address') }}</label>
                 <input class="auth-input @error('email') has-error @enderror" id="email" name="email" type="email"
                     value="{{ old('email') }}" required autocomplete="email" autofocus
-                    placeholder="{{ __('name@laundry.com') }}">
+                    {{-- An example address, not copy: there is nothing to translate in it, and
+                             wrapping it in `__()` only reports itself for ever as a missing
+                             translation nobody can write. --}}
+                    placeholder="name@laundry.com">
             </div>
 
             <div class="auth-field">

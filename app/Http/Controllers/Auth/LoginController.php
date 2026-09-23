@@ -84,7 +84,15 @@ class LoginController extends Controller
             $this->username() => [
                 $pending
                     ? __('Your laundry is still being reviewed. We will email you as soon as it is approved.')
-                    : trans('auth.failed'),
+                    // The sentence itself, not `auth.failed`. That key resolves
+                    // out of the framework's own English file, which no Arabic
+                    // translation of ours overrides — so a failed sign-in on an
+                    // Arabic panel answered in English. A PHP override under
+                    // `resources/lang/ar/` is not the fix either: that directory
+                    // is gitignored to everything but `*.json`, so it would live
+                    // on one machine and nowhere else. Every other message in
+                    // this codebase is keyed by its English sentence.
+                    : trans('These credentials do not match our records.'),
             ],
         ]);
     }

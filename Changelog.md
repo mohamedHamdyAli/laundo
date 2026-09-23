@@ -2,6 +2,14 @@
 
 ## 2026-09-23
 
+### Fix
+
+- **The dashboard's Arabic is complete, and a test now keeps it that way.** Thirty-three strings had no translation and rendered in English inside an otherwise Arabic panel — among them every reason an order cannot be deleted, the whole document-review screen, the orders list's bulk-selection bar, and «لا جديد» on the notification bell. All translated (Lang).
+- **A failed sign-in answered in English whatever the language.** `trans('auth.failed')` resolves out of the framework's own English file, which nothing of ours overrides; a PHP override under `resources/lang/ar/` would not have helped either, because that directory is gitignored to everything but `*.json` and would have lived on one machine. It is keyed by its English sentence now, like every other message in the codebase (Auth / Lang).
+- **The bulk-delete confirmation on the orders list was untranslated**, and it is a `trans_choice` — so it needed Arabic plural forms rather than one string. Found by the new test, not by the hand-written scan that preceded it (Lang).
+- `TranslationCoverageTest` now extracts every `__()`, `trans()`, `trans_choice()` and `@lang()` literal from `app/` and `resources/views/` and fails naming the file and the string. That scan is what this class's own docblock describes; it had been run by hand twice and thrown away twice, and both times the gap had already reached a screen. The config-array tests beside it stay, because a key passed as a variable cannot be seen by either half alone (Test).
+- The `name@laundry.com` placeholder on the laundry sign-in was wrapped in `__()`. It is an example address with nothing to translate, so it reported itself for ever as a missing translation nobody could write (Blade).
+
 ### Feature
 
 - **The figure under each price box is the price after the platform fee, and says so.** It shipped as a bare number under an input — read as an old price, a minimum, or a mistake by the one person who must not have to guess. The tax is deliberately not in it: tax is charged on the whole order, delivery and the cash handling fee included, so a per-piece share of it appears on no invoice line and could not be checked against one. What the label names is the piece price the customer is quoted, and the header gives the rate so the arithmetic is reproducible by whoever reads it (Blade / Service).

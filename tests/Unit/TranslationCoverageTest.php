@@ -162,4 +162,105 @@ class TranslationCoverageTest extends TestCase
 
         $this->assertSame([], $broken, implode("\n  ", $broken));
     }
+
+    /**
+     * Every translatable string written in the code has Arabic.
+     *
+     * The scan this class's own docblock describes — extracting each `__()` and
+     * diffing it against `ar.json` — done here instead of by hand. It had been
+     * run twice and thrown away twice, and both times the gap had already
+     * reached a screen: most recently the whole header of the price grid, which
+     * is the sentence explaining the figure beneath it, rendering in English on
+     * an Arabic page.
+     *
+     * Only literals are checked. `__($status->label())` passes a variable and
+     * cannot be seen from here, which is what the config-array tests above are
+     * for — between them the two halves cover what either alone would miss.
+     */
+    #[Test]
+    public function every_translatable_string_in_the_code_has_arabic(): void
+    {
+        $arabic = $this->arabic();
+        $missing = [];
+
+        foreach ($this->sourceFiles() as $file) {
+            $source = (string) file_get_contents($file);
+
+            foreach ($this->translatableLiterals($source) as $key) {
+                if ($key === '' || isset($arabic[$key])) {
+                    continue;
+                }
+
+                $missing[] = basename($file).': '.$key;
+            }
+        }
+
+        $missing = array_values(array_unique($missing));
+        sort($missing);
+
+        $this->assertSame([], $missing, implode("\n  ", $missing));
+    }
+
+    /** @return array<int, string> */
+    private function sourceFiles(): array
+    {
+        $base = dirname(__DIR__, 2);
+        $files = [];
+
+        foreach (['app', 'resources/views'] as $dir) {
+            $iterator = new \RecursiveIteratorIterator(
+                new \RecursiveDirectoryIterator($base.'/'.$dir, \FilesystemIterator::SKIP_DOTS)
+            );
+
+            foreach ($iterator as $file) {
+                if ($file->isFile() && $file->getExtension() === 'php') {
+                    $files[] = $file->getPathname();
+                }
+            }
+        }
+
+        return $files;
+    }
+
+    /**
+     * The keys passed to the translation helpers as plain literals.
+     *
+     * @return array<int, string>
+     */
+    private function translatableLiterals(string $source): array
+    {
+        $keys = [];
+
+        foreach ([$this->pattern(chr(39)), $this->pattern(chr(34))] as $pattern) {
+            preg_match_all($pattern, $source, $matches);
+
+            foreach ($matches[1] as $raw) {
+                // Undo the PHP escaping so the key matches the JSON exactly.
+                $keys[] = str_replace(
+                    [chr(92).chr(39), chr(92).chr(34), chr(92).chr(92)],
+                    [chr(39), chr(34), chr(92)],
+                    $raw
+                );
+            }
+        }
+
+        return $keys;
+    }
+
+    /**
+     * The extraction pattern for one quote style.
+     *
+     * Assembled rather than written out because it is mostly escaping, and a
+     * regex full of backslashes is the kind of line that gets "tidied" into
+     * something that silently matches nothing — which for this test would look
+     * exactly like full coverage.
+     */
+    private function pattern(string $quote): string
+    {
+        $bs = chr(92);
+        $q = preg_quote($quote, '/');
+
+        return '/(?:__|trans|trans_choice|@lang)'.$bs.'('.$bs.'s*'.$q
+            .'((?:[^'.$q.$bs.$bs.']|'.$bs.$bs.'.)*)'.$q.'/';
+    }
 }
