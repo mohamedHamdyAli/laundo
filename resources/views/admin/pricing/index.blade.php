@@ -102,9 +102,15 @@
                                                                      Drawn only when a fee is set: at zero the two numbers
                                                                      are the same and a second line saying so is noise. --}}
                                                                 @if ($platformFeeRate > 0)
+                                                                    {{-- Named, not a bare figure. A second number under a
+                                                                         price box with nothing saying what it is gets read
+                                                                         as an old price, a minimum, or a mistake — and the
+                                                                         one person who must not guess is the person setting
+                                                                         the price. --}}
                                                                     <div class="form-text text-center small price-with-fee"
                                                                         @if ($cell === '') style="visibility: hidden" @endif>
-                                                                        {{ $cell === '' ? '' : moneyFormat($platformFee->onUnit((float) $cell)) }}
+                                                                        <span class="text-muted">{{ __('customer pays') }}</span>
+                                                                        <span class="fw-semibold price-with-fee-amount">{{ $cell === '' ? '' : moneyFormat($platformFee->onUnit((float) $cell)) }}</span>
                                                                     </div>
                                                                 @endif
                                                             </td>
@@ -179,10 +185,13 @@
 
                 function render(input) {
                     const label = input.parentElement.querySelector('.price-with-fee');
+                    const amount = label ? label.querySelector('.price-with-fee-amount') : null;
 
                     if (!label) return;
 
                     const base = parseFloat(input.value);
+
+                    if (!amount) return;
 
                     if (input.value === '' || isNaN(base)) {
                         // An empty cell means the service is not offered, which
@@ -190,13 +199,13 @@
                         // preview. Hidden rather than removed so the rows do
                         // not change height as somebody types.
                         label.style.visibility = 'hidden';
-                        label.textContent = '';
+                        amount.textContent = '';
                         return;
                     }
 
                     const withFee = Math.round(base * (1 + rate / 100) * 100) / 100;
 
-                    label.textContent = before + withFee.toFixed(2) + after;
+                    amount.textContent = before + withFee.toFixed(2) + after;
                     label.style.visibility = 'visible';
                 }
 
