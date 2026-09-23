@@ -5,10 +5,16 @@
         <h5 class="card-title mb-0">{{ __('Prices') }}</h5>
         <span class="text-muted small">
             {{ __('One price per item and service. Prices are global — laundries never set them.') }}
-            @if ($platformFeeRate > 0)
+            @if ($platformFeeRate > 0 || $taxRate > 0)
                 <br>
-                {{ __('The figure under each box is what the customer pays, with the platform fee of') }}
-                {{ rtrim(rtrim(number_format($platformFeeRate, 2), '0'), '.') }}% {{ __('already in it.') }}
+                {{ __('The figure under each box is the price after tax — the box itself is what the laundry is owed.') }}
+                @if ($platformFeeRate > 0)
+                    {{ __('Platform fee') }} {{ rtrim(rtrim(number_format($platformFeeRate, 2), '0'), '.') }}%
+                @endif
+                @if ($platformFeeRate > 0 && $taxRate > 0) · @endif
+                @if ($taxRate > 0)
+                    {{ __('Tax') }} {{ rtrim(rtrim(number_format($taxRate, 2), '0'), '.') }}%
+                @endif
             @endif
         </span>
     </div>
@@ -101,16 +107,25 @@
 
                                                                      Drawn only when a fee is set: at zero the two numbers
                                                                      are the same and a second line saying so is noise. --}}
-                                                                @if ($platformFeeRate > 0)
+                                                                @if ($platformFeeRate > 0 || $taxRate > 0)
                                                                     {{-- Named, not a bare figure. A second number under a
                                                                          price box with nothing saying what it is gets read
                                                                          as an old price, a minimum, or a mistake — and the
                                                                          one person who must not guess is the person setting
-                                                                         the price. --}}
+                                                                         the price.
+
+                                                                         **Both charges, because the label says «after tax»
+                                                                         and it has to be true.** The platform's fee goes on
+                                                                         first and the state's tax on the result, which is
+                                                                         the order the order itself applies them in.
+
+                                                                         Shown whenever either is set: a figure that is true
+                                                                         is worth showing even when only one of its two
+                                                                         parts is switched on. --}}
                                                                     <div class="form-text text-center small price-with-fee"
                                                                         @if ($cell === '') style="visibility: hidden" @endif>
-                                                                        <span class="text-muted">{{ __('customer pays') }}</span>
-                                                                        <span class="fw-semibold price-with-fee-amount">{{ $cell === '' ? '' : moneyFormat($platformFee->onUnit((float) $cell)) }}</span>
+                                                                        <span class="text-muted">{{ __('after tax') }}</span>
+                                                                        <span class="fw-semibold price-with-fee-amount">{{ $cell === '' ? '' : moneyFormat(round($platformFee->onUnit((float) $cell) * (1 + $taxRate / 100), 2)) }}</span>
                                                                     </div>
                                                                 @endif
                                                             </td>
@@ -160,7 +175,7 @@
             countSelector: '#priceFilterInput-count',
         });
 
-        @if ($platformFeeRate > 0)
+        @if ($platformFeeRate > 0 || $taxRate > 0)
             {{-- Keeps the customer figure true while somebody is typing. A
                  label that only tells the truth after a save is a label an
                  operator stops trusting, and the whole point of it is to be
@@ -172,6 +187,7 @@
                  preview. --}}
             (function () {
                 const rate = {{ $platformFeeRate }};
+                const tax = {{ $taxRate }};
 
                 // `moneyFormat()` decides where the currency sits — «EGP 18.70»
                 // here, the other way round in another locale — so the shape is
@@ -203,9 +219,14 @@
                         return;
                     }
 
+                    // Fee first, then tax on the result — the same order and
+                    // the same two roundings the server applies. A preview that
+                    // compounds them differently disagrees by a piastre, which is
+                    // worse than no preview at all.
                     const withFee = Math.round(base * (1 + rate / 100) * 100) / 100;
+                    const withTax = Math.round(withFee * (1 + tax / 100) * 100) / 100;
 
-                    amount.textContent = before + withFee.toFixed(2) + after;
+                    amount.textContent = before + withTax.toFixed(2) + after;
                     label.style.visibility = 'visible';
                 }
 

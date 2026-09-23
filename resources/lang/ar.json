@@ -1867,11 +1867,10 @@
     "commission": "عمولة",
     "Platform fee": "رسوم المنصة",
     "paid by the customer, inside the prices": "يدفعها العميل، وهي داخل الأسعار",
-    "The figure under each box is what the customer pays, with the platform fee of": "الرقم أسفل كل خانة هو ما يدفعه العميل، وقد أُضيفت إليه رسوم المنصة البالغة",
-    "already in it.": "بالفعل.",
-    "customer pays": "يدفع العميل",
     "Customer platform fee": "رسوم المنصة على العميل",
     "Added on top of every piece price and paid by the customer, as a percentage. It is folded into the price shown in the app, so the customer sees one figure and no separate fee line — the laundry is still owed its own price in full.": "تُضاف فوق سعر كل قطعة ويدفعها العميل، بالنسبة المئوية. وهي مدموجة في السعر الظاهر في التطبيق، فيرى العميل رقماً واحداً بلا سطر رسوم منفصل — وتظل المغسلة مستحقة لسعرها كاملاً.",
     "This is not what a laundry pays. That is set per laundry from the commission rules, and the two are charged to different people.": "هذه ليست ما تدفعه المغسلة. ذلك يُحدَّد لكل مغسلة من قواعد العمولة، والاثنتان يدفعهما طرفان مختلفان.",
-    "Leave empty or zero to add nothing. Changing it does not restate an order already placed — the rate is copied onto each order when it is made.": "اتركها فارغة أو صفراً فلا يُضاف شيء. تغييرها لا يعيد حساب طلب سبق إنشاؤه — فالنسبة تُنسخ على كل طلب لحظة إنشائه."
+    "Leave empty or zero to add nothing. Changing it does not restate an order already placed — the rate is copied onto each order when it is made.": "اتركها فارغة أو صفراً فلا يُضاف شيء. تغييرها لا يعيد حساب طلب سبق إنشاؤه — فالنسبة تُنسخ على كل طلب لحظة إنشائه.",
+    "The figure under each box is the price after tax — the box itself is what the laundry is owed.": "الرقم أسفل كل خانة هو السعر بعد الضريبة — والخانة نفسها هي ما تستحقه المغسلة.",
+    "after tax": "السعر بعد الضريبة"
 }
