@@ -248,6 +248,119 @@ class TranslationCoverageTest extends TestCase
     }
 
     /**
+     * English is a real file too, carrying the same keys as Arabic.
+     *
+     * It held ten entries against Arabic's 1,908 for most of the project. The
+     * panel still read correctly, because a JSON key that is missing falls back
+     * to the key itself and every key here *is* its English sentence — which is
+     * exactly why nobody noticed. The cost was not on screen: it was that
+     * English copy could only be changed by editing code, while Arabic could be
+     * changed in one file, so the two drifted by construction.
+     *
+     * Ten of those entries are real overrides and not placeholders — «Dashboard»
+     * renders as «web Dashboard» in the sidebar because of one of them — so
+     * filling the file is not the same as regenerating it.
+     */
+    #[Test]
+    public function english_carries_the_same_keys_as_arabic(): void
+    {
+        $arabic = $this->arabic();
+
+        $path = dirname(__DIR__, 2).'/resources/lang/en.json';
+        $this->assertFileExists($path, 'the English translation file is missing');
+
+        /** @var array<string, string> $english */
+        $english = json_decode((string) file_get_contents($path), true, 512, JSON_THROW_ON_ERROR);
+
+        $missing = array_values(array_diff(array_keys($arabic), array_keys($english)));
+        sort($missing);
+
+        $this->assertSame([], $missing, 'English is missing: '.implode("\n  ", $missing));
+
+        $extra = array_values(array_diff(array_keys($english), array_keys($arabic)));
+        sort($extra);
+
+        $this->assertSame([], $extra, 'English has keys Arabic does not: '.implode("\n  ", $extra));
+    }
+
+    /**
+     * No English value is blank.
+     *
+     * A key mapping to itself is the normal case and is correct — the key is the
+     * English sentence. An empty string is not: it renders as nothing at all,
+     * which is worse than the untranslated word it replaced.
+     */
+    #[Test]
+    public function no_english_value_is_empty(): void
+    {
+        $path = dirname(__DIR__, 2).'/resources/lang/en.json';
+
+        /** @var array<string, string> $english */
+        $english = json_decode((string) file_get_contents($path), true, 512, JSON_THROW_ON_ERROR);
+
+        $blank = [];
+
+        foreach ($english as $key => $value) {
+            if (trim($value) === '') {
+                $blank[] = $key;
+            }
+        }
+
+        $this->assertSame([], $blank, implode("\n  ", $blank));
+    }
+
+    /**
+     * The portable copy of the panel's translations matches the real one.
+     *
+     * There are two files per language for the dashboard: `{code}.json`, which
+     * is what `__()` reads, and `{code}_panel.json`, which is what the languages
+     * screen offers for download and accepts on upload. Only the first was ever
+     * written to. The second kept the ten scaffold keys it was created with, so
+     * an operator who edited a translation and then exported got a file with
+     * none of their work in it — and re-uploading it would have been a
+     * catastrophe rather than a no-op.
+     *
+     * They are written together now. This is what stops them parting again.
+     */
+    #[Test]
+    public function the_portable_panel_file_matches_the_one_the_panel_reads(): void
+    {
+        $base = dirname(__DIR__, 2).'/resources/lang';
+        $drifted = [];
+
+        foreach (['ar', 'en'] as $code) {
+            $main = $base."/{$code}.json";
+            $twin = $base."/{$code}_panel.json";
+
+            $this->assertFileExists($main, "{$code}.json is missing");
+            $this->assertFileExists($twin, "{$code}_panel.json is missing");
+
+            /** @var array<string, string> $a */
+            $a = json_decode((string) file_get_contents($main), true, 512, JSON_THROW_ON_ERROR);
+            /** @var array<string, string> $b */
+            $b = json_decode((string) file_get_contents($twin), true, 512, JSON_THROW_ON_ERROR);
+
+            foreach (array_diff(array_keys($a), array_keys($b)) as $key) {
+                $drifted[] = "{$code}_panel.json is missing: {$key}";
+            }
+
+            foreach (array_diff(array_keys($b), array_keys($a)) as $key) {
+                $drifted[] = "{$code}_panel.json has a key {$code}.json does not: {$key}";
+            }
+
+            foreach ($a as $key => $value) {
+                if (isset($b[$key]) && $b[$key] !== $value) {
+                    $drifted[] = "{$code}: '{$key}' differs between the two files";
+                }
+            }
+        }
+
+        sort($drifted);
+
+        $this->assertSame([], $drifted, implode("\n  ", $drifted));
+    }
+
+    /**
      * The extraction pattern for one quote style.
      *
      * Assembled rather than written out because it is mostly escaping, and a

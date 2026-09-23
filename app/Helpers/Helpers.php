@@ -313,10 +313,16 @@ if (! function_exists('replaceLanguageFile')) {
         // Uploaded values win per key; every key not mentioned survives.
         $merged = array_merge($existing, $incoming);
 
-        File::put(
-            $targetFile,
-            json_encode($merged, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT).PHP_EOL
-        );
+        $encoded = json_encode($merged, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT).PHP_EOL;
+
+        File::put($targetFile, $encoded);
+
+        // The panel's own file has a portable twin that the languages screen
+        // offers for download, so an upload has to reach both — otherwise the
+        // next export hands back what was there before this one.
+        if ($field === 'panel_file') {
+            File::put("{$langPath}/{$code}_panel.json", $encoded);
+        }
 
         // The reader caches for ever, so a stale copy would outlive the upload.
         clearLanguageCache($code);
@@ -501,8 +507,14 @@ if (! function_exists('getTranslationFile')) {
         $cacheKey = "lang_file_{$code}_{$type}";
 
         return cache()->rememberForever($cacheKey, function () use ($type, $code) {
+            // **`panel` is `{code}.json`.** It used to be `{code}_panel.json`
+            // here and `{code}.json` everywhere else — the download helper, the
+            // upload map, the editor screen — so the same word named two files,
+            // one of them the dashboard's 1,900 real translations and the other
+            // a ten-key scaffold nothing fills. Nothing reached the wrong branch
+            // yet only because the API refuses `panel` outright; the next caller
+            // would have got the scaffold and no error.
             $fileName = match ($type) {
-                'panel' => "{$code}_panel.json",
                 'app' => "{$code}_mobile.json",
                 'web' => "{$code}_web.json",
                 default => "{$code}.json",

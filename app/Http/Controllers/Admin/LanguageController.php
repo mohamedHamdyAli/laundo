@@ -138,7 +138,20 @@ class LanguageController extends Controller
         $jsonContent = json_encode($finalTranslations, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
         File::put($filePath, $jsonContent);
 
-        return redirect()->back()->with('success', 'Updated Successfully');
+        // **Both files, or they drift.** `{code}_panel.json` is what the
+        // languages screen offers for download and accepts on upload, so an
+        // operator who exports after editing has to get what they just typed —
+        // and before this they got a ten-key scaffold from the day the language
+        // was created. The panel itself reads `{code}.json`; this is the
+        // portable copy of it, kept in step rather than left to rot.
+        File::put(lang_path("{$language->code}_panel.json"), $jsonContent);
+
+        // `getTranslationFile()` remembers for ever, so a saved edit that does
+        // not clear it is a change the operator can see in the file and not on
+        // the screen.
+        clearLanguageCache($language->code);
+
+        return redirect()->back()->with('success', __('Updated Successfully'));
     }
 
     public function showMobile($id)
