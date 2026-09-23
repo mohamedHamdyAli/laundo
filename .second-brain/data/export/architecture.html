@@ -1,0 +1,254 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Laundo — architecture map</title>
+<style>
+  :root { color-scheme: light dark; --ink:#12181f; --muted:#5b6672; --line:#e2e6ea; --bg:#fbfcfd; --accent:#2b6cb0; }
+  @media (prefers-color-scheme: dark) { :root { --ink:#e6edf3; --muted:#9aa7b2; --line:#2a323c; --bg:#0f1419; --accent:#7ab8f5; } }
+  * { box-sizing: border-box; }
+  body { margin:0; padding:2rem 1rem 4rem; font:15px/1.55 ui-sans-serif,system-ui,"Segoe UI",sans-serif; color:var(--ink); background:var(--bg); }
+  main { max-width: 1100px; margin-inline: auto; }
+  h1 { font-size:1.6rem; margin:0 0 .25rem; }
+  h2 { font-size:1.1rem; margin:2.5rem 0 .75rem; border-bottom:1px solid var(--line); padding-bottom:.4rem; }
+  p.lede { color:var(--muted); margin:0 0 1.5rem; }
+  .stats { display:flex; flex-wrap:wrap; gap:.75rem; margin-bottom:1rem; }
+  .stat { border:1px solid var(--line); border-radius:8px; padding:.6rem .9rem; min-width:100px; }
+  .stat b { display:block; font-size:1.35rem; }
+  .stat span { color:var(--muted); font-size:.78rem; text-transform:uppercase; letter-spacing:.04em; }
+  table { width:100%; border-collapse:collapse; font-size:.87rem; }
+  th,td { text-align:start; padding:.5rem .6rem; border-bottom:1px solid var(--line); vertical-align:top; }
+  th { color:var(--muted); font-weight:600; font-size:.74rem; text-transform:uppercase; letter-spacing:.04em; }
+  td.num { text-align:end; font-variant-numeric:tabular-nums; }
+  td.summary { color:var(--muted); }
+  code { font:0.8em ui-monospace,SFMono-Regular,Menlo,monospace; color:var(--accent); }
+  small { color:var(--muted); }
+  .src { display:inline-block; font-size:.7rem; padding:.1rem .4rem; border-radius:4px; border:1px solid var(--line); }
+  .src-menu { border-color:var(--accent); color:var(--accent); }
+  .inferred { color:var(--muted); font-size:.8em; }
+  pre.mermaid { overflow-x:auto; border:1px solid var(--line); border-radius:8px; padding:1rem; background:transparent; }
+  .wrap { overflow-x:auto; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Laundo — architecture map</h1>
+  <p class="lede">Generated from the source by <code>.second-brain</code> on 2026-09-23T10:38:26+00:00. Do not edit; rebuild it.</p>
+
+  <div class="stats">
+    <div class="stat"><b>17</b><span>communities</span></div>
+    <div class="stat"><b>42</b><span>modules</span></div>
+    <div class="stat"><b>411</b><span>features</span></div>
+    <div class="stat"><b>428</b><span>routes</span></div>
+    <div class="stat"><b>66</b><span>tables</span></div>
+    <div class="stat"><b>5580</b><span>nodes</span></div>
+    <div class="stat"><b>20052</b><span>edges</span></div>
+  </div>
+
+  <h2>Communities</h2>
+  <p class="lede"><code>menu</code> means the grouping came from <code>config/menu.php</code>, which the owner arranged. <code>derived</code> means the directory layout. Cohesion is internal edges over all edges touching the community — low is not a fault, it means changes here reach outside.</p>
+  <div class="wrap">
+  <table>
+    <thead><tr><th>Community</th><th>Source</th><th>Modules</th><th>Routes</th><th>Nodes</th><th>Cohesion</th></tr></thead>
+    <tbody><tr><td><strong>Locations</strong><br><code>locations</code></td><td><span class="src src-menu">menu</span><br><small>config/menu.php → groups.locations</small></td><td>Country, City, Zone</td><td class="num"></td><td class="num"></td><td class="num">0.62</td></tr><tr><td><strong>Catalog</strong><br><code>catalog</code></td><td><span class="src src-menu">menu</span><br><small>config/menu.php → groups.catalog</small></td><td>Service, ItemCategory, Item, Pricing</td><td class="num"></td><td class="num"></td><td class="num">0.61</td></tr><tr><td><strong>Laundries</strong><br><code>laundries</code></td><td><span class="src src-menu">menu</span><br><small>config/menu.php → groups.laundries</small></td><td>Laundry, LaundryStaff, LaundryService, LaundryZone</td><td class="num"></td><td class="num"></td><td class="num">0.51</td></tr><tr><td><strong>Delivery</strong><br><code>delivery</code></td><td><span class="src src-menu">menu</span><br><small>config/menu.php → groups.delivery</small></td><td>Order, Driver, Payment</td><td class="num"></td><td class="num"></td><td class="num">0.48</td></tr><tr><td><strong>Users</strong><br><code>user</code></td><td><span class="src src-menu">menu</span><br><small>config/menu.php → singles.user</small></td><td>User</td><td class="num"></td><td class="num"></td><td class="num">0.25</td></tr><tr><td><strong>Marketing</strong><br><code>marketing</code></td><td><span class="src src-menu">menu</span><br><small>config/menu.php → groups.marketing</small></td><td>Offer, Coupon, Banner, Intro, JourneyStep, Faq</td><td class="num"></td><td class="num"></td><td class="num">0.69</td></tr><tr><td><strong>Orders</strong><br><code>order</code></td><td><span class="src src-menu">menu</span><br><small>config/menu.php → singles.order</small></td><td>Order, Payment, Address, Rating, Recurrence <span class="inferred">+Address, Rating, Recurrence (inferred)</span></td><td class="num"></td><td class="num"></td><td class="num">0.43</td></tr><tr><td><strong>Operations</strong><br><code>operations</code></td><td><span class="src src-menu">menu</span><br><small>config/menu.php → groups.operations</small></td><td>Complaint, Order, TimeSlot</td><td class="num"></td><td class="num"></td><td class="num">0.38</td></tr><tr><td><strong>Money</strong><br><code>money</code></td><td><span class="src src-menu">menu</span><br><small>config/menu.php → groups.money</small></td><td>Payment, Wallet</td><td class="num"></td><td class="num"></td><td class="num">0.51</td></tr><tr><td><strong>Reports</strong><br><code>report</code></td><td><span class="src src-menu">menu</span><br><small>config/menu.php → singles.report</small></td><td>Report</td><td class="num"></td><td class="num"></td><td class="num">0.49</td></tr><tr><td><strong>Mobile API (customer + driver apps)</strong><br><code>api</code></td><td><span class="src src-derived">derived</span><br><small>directory layout: app/Http/Controllers/Api/V1 + routes/api.php</small></td><td>Api</td><td class="num"></td><td class="num"></td><td class="num">0.41</td></tr><tr><td><strong>Authentication, OTP and sessions</strong><br><code>authentication</code></td><td><span class="src src-derived">derived</span><br><small>directory layout: app/Services/Auth + app/Http/Controllers/Auth</small></td><td>Auth</td><td class="num"></td><td class="num"></td><td class="num">0.36</td></tr><tr><td><strong>Schema and seed data</strong><br><code>database</code></td><td><span class="src src-derived">derived</span><br><small>directory layout: database/migrations + database/seeders</small></td><td>Database</td><td class="num"></td><td class="num"></td><td class="num">0.43</td></tr><tr><td><strong>Public marketing site</strong><br><code>public_site</code></td><td><span class="src src-derived">derived</span><br><small>directory layout: app/Services/Landing + resources/views/landing</small></td><td>Landing</td><td class="num"></td><td class="num"></td><td class="num">0.19</td></tr><tr><td><strong>Test suites and written documentation</strong><br><code>quality</code></td><td><span class="src src-derived">derived</span><br><small>directory layout: tests/ + docs/</small></td><td>Tests, Docs</td><td class="num"></td><td class="num"></td><td class="num">0.38</td></tr><tr><td><strong>Road distance and routing drivers</strong><br><code>routing_and_distance</code></td><td><span class="src src-derived">derived</span><br><small>directory layout: app/Services/Routing</small></td><td>Routing</td><td class="num"></td><td class="num"></td><td class="num">0.25</td></tr><tr><td><strong>System</strong><br><code>system</code></td><td><span class="src src-menu">menu</span><br><small>config/menu.php → groups.system</small></td><td>Moderator, Platform, AdminShell, Notification, Setting, Language, Roles <span class="inferred">+Language, Roles (inferred)</span></td><td class="num"></td><td class="num"></td><td class="num">0.39</td></tr></tbody>
+  </table>
+  </div>
+
+  <h2>Modules</h2>
+  <div class="wrap">
+  <table>
+    <thead><tr><th>Module</th><th>Community</th><th>Files</th><th>Layers</th><th>Owns tables</th><th>What it is</th></tr></thead>
+    <tbody><tr><td><strong>Address</strong></td><td>order</td><td class="num">1</td><td>model</td><td>addresses</td><td class="summary">A customer&#039;s saved address.</td></tr><tr><td><strong>AdminShell</strong></td><td>system</td><td class="num">12</td><td>view, controller</td><td></td><td class="summary">The operator&#039;s own inbox.</td></tr><tr><td><strong>Api</strong></td><td>api</td><td class="num">22</td><td>api-controller</td><td></td><td class="summary">A customer&#039;s saved addresses.</td></tr><tr><td><strong>Auth</strong></td><td>authentication</td><td class="num">11</td><td>controller, service</td><td></td><td class="summary">Registration, verification and sign-in for customers.</td></tr><tr><td><strong>Banner</strong></td><td>marketing</td><td class="num">13</td><td>view, controller, enum, model, repository, request, service</td><td>banners</td><td class="summary">Where a banner&#039;s «عرض التفاصيل» goes.</td></tr><tr><td><strong>City</strong></td><td>locations</td><td class="num">12</td><td>view, controller, model, repository, request, service</td><td>cities</td><td class="summary"></td></tr><tr><td><strong>Complaint</strong></td><td>operations</td><td class="num">9</td><td>view, enum, model, controller, service</td><td>complaints, complaint_attachments</td><td class="summary">Taking and working a complaint.</td></tr><tr><td><strong>Country</strong></td><td>locations</td><td class="num">12</td><td>view, controller, model, repository, request, service</td><td>countries</td><td class="summary"></td></tr><tr><td><strong>Coupon</strong></td><td>marketing</td><td class="num">15</td><td>view, service, model, controller, repository, request</td><td>coupons, coupon_redemptions</td><td class="summary">Validating and spending a discount code.</td></tr><tr><td><strong>Database</strong></td><td>database</td><td class="num">109</td><td>migration, seeder</td><td></td><td class="summary"></td></tr><tr><td><strong>Docs</strong></td><td>quality</td><td class="num">15</td><td>doc</td><td></td><td class="summary"></td></tr><tr><td><strong>Driver</strong></td><td>delivery</td><td class="num">49</td><td>view, model, service, controller, request, enum, repository, command</td><td>users, driver_applications, driver_bonus_awards, driver_bonus_rules, driver_bonus_tiers, driver_profiles, driver_record_submissions</td><td class="summary">Which terms a driver is on, and what one completed journey earns under them.</td></tr><tr><td><strong>Faq</strong></td><td>marketing</td><td class="num">12</td><td>view, controller, model, repository, request, service</td><td>faqs</td><td class="summary">One question and its answer.</td></tr><tr><td><strong>Intro</strong></td><td>marketing</td><td class="num">12</td><td>view, controller, model, repository, request, service</td><td>intros</td><td class="summary"></td></tr><tr><td><strong>Item</strong></td><td>catalog</td><td class="num">12</td><td>view, controller, model, repository, request, service</td><td>items</td><td class="summary">The priced unit: قميص على شماعة، قميص مطوي، قميص كتان…</td></tr><tr><td><strong>ItemCategory</strong></td><td>catalog</td><td class="num">12</td><td>view, controller, model, repository, request, service</td><td>item_categories</td><td class="summary">Groups items for display: القمصان، التيشيرتات، الملابس العلوية…</td></tr><tr><td><strong>JourneyStep</strong></td><td>marketing</td><td class="num">12</td><td>view, controller, model, repository, request, service</td><td>journey_steps</td><td class="summary">Business rules for «رحلتك معنا بسيطة».</td></tr><tr><td><strong>Landing</strong></td><td>public_site</td><td class="num">5</td><td>view, service</td><td></td><td class="summary">Everything the landing page states about the business, read from the business.</td></tr><tr><td><strong>Language</strong></td><td>system</td><td class="num">4</td><td>view</td><td></td><td class="summary"></td></tr><tr><td><strong>Laundry</strong></td><td>laundries</td><td class="num">20</td><td>view, service, controller, model, request, repository</td><td>laundries, laundry_slot_capacities</td><td class="summary">A laundry applying to join, and somebody deciding.</td></tr><tr><td><strong>LaundryService</strong></td><td>laundries</td><td class="num">4</td><td>controller, model, service, view</td><td>laundry_services</td><td class="summary">A laundry declaring which services it provides.</td></tr><tr><td><strong>LaundryStaff</strong></td><td>laundries</td><td class="num">12</td><td>view, controller, model, repository, request, service</td><td>users</td><td class="summary">Dashboard users belonging to a laundry.</td></tr><tr><td><strong>LaundryZone</strong></td><td>laundries</td><td class="num">4</td><td>controller, model, service, view</td><td>laundry_zones</td><td class="summary">A laundry declaring the zones it serves.</td></tr><tr><td><strong>Moderator</strong></td><td>system</td><td class="num">12</td><td>view, controller, model, repository, request, service</td><td>users</td><td class="summary"></td></tr><tr><td><strong>Notification</strong></td><td>system</td><td class="num">25</td><td>service, model, view, command, controller, enum, job, data, request, notification</td><td>device_tokens, notification_logs, notification_preferences</td><td class="summary">Somebody asked to drive. Tell the people who ring them.</td></tr><tr><td><strong>Offer</strong></td><td>marketing</td><td class="num">13</td><td>view, controller, enum, model, repository, request, service</td><td>offers</td><td class="summary">Business rules for «عروض متميزة».</td></tr><tr><td><strong>Order</strong></td><td>order</td><td class="num">49</td><td>service, model, view, enum, controller, command, repository, request</td><td>orders, order_items, order_media, order_price_queries, order_ratings, order_recurrences, order_status_logs, order_tasks</td><td class="summary">Works out the delivery fee.</td></tr><tr><td><strong>Payment</strong></td><td>money</td><td class="num">52</td><td>view, model, service, controller, data, enum, repository, request, contract, gateway</td><td>commission_rules, driver_earnings, laundry_deductions, laundry_revenues_do_not_exist, order_settlements, order_settlement_lines, payments, refunds</td><td class="summary">«تمت إضافة أرباحك إلى الرصيد المعلق» — the immediate half of a driver&#039;s bonus.</td></tr><tr><td><strong>Platform</strong></td><td>system</td><td class="num">135</td><td>view, config, request, middleware, service, controller, command, helper, model, provider, support, trait, view-component, mail</td><td>languages, permissions, roles</td><td class="summary">The counts the sidebar puts beside a menu item.</td></tr><tr><td><strong>Pricing</strong></td><td>catalog</td><td class="num">5</td><td>service, controller, model, view</td><td>item_prices</td><td class="summary">The platform&#039;s own charge on an order, carried by the customer.</td></tr><tr><td><strong>Rating</strong></td><td>order</td><td class="num">3</td><td>view, controller</td><td></td><td class="summary">What customers thought, made into a screen.</td></tr><tr><td><strong>Recurrence</strong></td><td>order</td><td class="num">4</td><td>view, controller</td><td></td><td class="summary">The repeat schedules — the last thing in this system nobody could see.</td></tr><tr><td><strong>Report</strong></td><td>report</td><td class="num">18</td><td>service, view, command, controller, data, model</td><td>reports_do_not_exist</td><td class="summary">The home page.</td></tr><tr><td><strong>Roles</strong></td><td>system</td><td class="num">1</td><td>view</td><td></td><td class="summary"></td></tr><tr><td><strong>Routing</strong></td><td>routing_and_distance</td><td class="num">9</td><td>service, routes</td><td></td><td class="summary">A point on the map, and the only thing a router is allowed to be given.</td></tr><tr><td><strong>Service</strong></td><td>catalog</td><td class="num">12</td><td>view, controller, model, repository, request, service</td><td>services</td><td class="summary">A service the customer picks in step 2 of the order wizard: غسيل وكي، كي فقط، تنظيف جاف، غسيل المفروشات.</td></tr><tr><td><strong>Setting</strong></td><td>system</td><td class="num">11</td><td>view, controller, model, repository, request, service</td><td>settings</td><td class="summary"></td></tr><tr><td><strong>Tests</strong></td><td>quality</td><td class="num">130</td><td>test, browser-test</td><td></td><td class="summary"></td></tr><tr><td><strong>TimeSlot</strong></td><td>operations</td><td class="num">12</td><td>view, service, controller, model, repository, request</td><td>time_slots</td><td class="summary">How many visits a window can still take.</td></tr><tr><td><strong>User</strong></td><td>user</td><td class="num">13</td><td>view, service, controller, model, repository, request</td><td>users</td><td class="summary">«مرجع العميل» — the permanent number printed on a customer&#039;s bag.</td></tr><tr><td><strong>Wallet</strong></td><td>money</td><td class="num">10</td><td>view, enum, model, controller, service</td><td>wallets, wallet_transactions</td><td class="summary">The only thing that may change a balance.</td></tr><tr><td><strong>Zone</strong></td><td>locations</td><td class="num">12</td><td>view, controller, model, repository, request, service</td><td>zones</td><td class="summary">A named area inside a city: مدينة نصر, الدقي, الرحاب.</td></tr></tbody>
+  </table>
+  </div>
+
+  <h2>Module dependencies</h2>
+  <p class="lede">Arrows are cross-module dependencies with a weight of four or more. Renders as a diagram wherever Mermaid is available; the source is readable either way.</p>
+  <pre class="mermaid">%% Laundo — communities and the modules inside them.
+%% Generated by .second-brain; edit the code, not this file.
+graph LR
+  subgraph locations[&quot;Locations&quot;]
+    Country[&quot;Country&quot;]
+    City[&quot;City&quot;]
+    Zone[&quot;Zone&quot;]
+  end
+  subgraph catalog[&quot;Catalog&quot;]
+    Service[&quot;Service&quot;]
+    ItemCategory[&quot;ItemCategory&quot;]
+    Item[&quot;Item&quot;]
+    Pricing[&quot;Pricing&quot;]
+  end
+  subgraph laundries[&quot;Laundries&quot;]
+    Laundry[&quot;Laundry&quot;]
+    LaundryStaff[&quot;LaundryStaff&quot;]
+    LaundryService[&quot;LaundryService&quot;]
+    LaundryZone[&quot;LaundryZone&quot;]
+  end
+  subgraph delivery[&quot;Delivery&quot;]
+    Order[&quot;Order&quot;]
+    Driver[&quot;Driver&quot;]
+    Payment[&quot;Payment&quot;]
+  end
+  subgraph user[&quot;Users&quot;]
+    User[&quot;User&quot;]
+  end
+  subgraph marketing[&quot;Marketing&quot;]
+    Offer[&quot;Offer&quot;]
+    Coupon[&quot;Coupon&quot;]
+    Banner[&quot;Banner&quot;]
+    Intro[&quot;Intro&quot;]
+    JourneyStep[&quot;JourneyStep&quot;]
+    Faq[&quot;Faq&quot;]
+  end
+  subgraph order[&quot;Orders&quot;]
+    Address[&quot;Address&quot;]
+    Rating[&quot;Rating&quot;]
+    Recurrence[&quot;Recurrence&quot;]
+  end
+  subgraph operations[&quot;Operations&quot;]
+    Complaint[&quot;Complaint&quot;]
+    TimeSlot[&quot;TimeSlot&quot;]
+  end
+  subgraph money[&quot;Money&quot;]
+    Wallet[&quot;Wallet&quot;]
+  end
+  subgraph report[&quot;Reports&quot;]
+    Report[&quot;Report&quot;]
+  end
+  subgraph api[&quot;Mobile API (customer + driver apps)&quot;]
+    Api[&quot;Api&quot;]
+  end
+  subgraph authentication[&quot;Authentication, OTP and sessions&quot;]
+    Auth[&quot;Auth&quot;]
+  end
+  subgraph database[&quot;Schema and seed data&quot;]
+    Database[&quot;Database&quot;]
+  end
+  subgraph public_site[&quot;Public marketing site&quot;]
+    Landing[&quot;Landing&quot;]
+  end
+  subgraph quality[&quot;Test suites and written documentation&quot;]
+    Tests[&quot;Tests&quot;]
+    Docs[&quot;Docs&quot;]
+  end
+  subgraph routing_and_distance[&quot;Road distance and routing drivers&quot;]
+    Routing[&quot;Routing&quot;]
+  end
+  subgraph system[&quot;System&quot;]
+    Moderator[&quot;Moderator&quot;]
+    Platform[&quot;Platform&quot;]
+    AdminShell[&quot;AdminShell&quot;]
+    Notification[&quot;Notification&quot;]
+    Setting[&quot;Setting&quot;]
+    Language[&quot;Language&quot;]
+    Roles[&quot;Roles&quot;]
+  end
+  AdminShell --&gt; Platform
+  Api --&gt; Platform
+  Api --&gt; Order
+  Api --&gt; Payment
+  Api --&gt; Driver
+  Api --&gt; Auth
+  Api --&gt; TimeSlot
+  Api --&gt; Wallet
+  Api --&gt; Complaint
+  Api --&gt; Coupon
+  Api --&gt; Notification
+  Api --&gt; User
+  Auth --&gt; Platform
+  Auth --&gt; User
+  Banner --&gt; Platform
+  City --&gt; Platform
+  Complaint --&gt; Platform
+  Complaint --&gt; User
+  Country --&gt; Platform
+  Coupon --&gt; Platform
+  Coupon --&gt; Order
+  Coupon --&gt; User
+  Database --&gt; Platform
+  Database --&gt; User
+  Database --&gt; Setting
+  Database --&gt; Order
+  Driver --&gt; Platform
+  Driver --&gt; Order
+  Driver --&gt; User
+  Driver --&gt; Notification
+  Driver --&gt; Wallet
+  Faq --&gt; Platform
+  Intro --&gt; Platform
+  Item --&gt; Platform
+  ItemCategory --&gt; Platform
+  JourneyStep --&gt; Platform
+  Laundry --&gt; Platform
+  Laundry --&gt; User
+  Laundry --&gt; TimeSlot
+  LaundryService --&gt; Platform
+  LaundryStaff --&gt; Platform
+  LaundryZone --&gt; Platform
+  Moderator --&gt; Platform
+  Moderator --&gt; User
+  Notification --&gt; User
+  Notification --&gt; Order
+  Notification --&gt; Platform
+  Offer --&gt; Platform
+  Order --&gt; Platform
+  Order --&gt; User
+  Order --&gt; Laundry
+  Order --&gt; Routing
+  Order --&gt; Payment
+  Order --&gt; Address
+  Order --&gt; Pricing
+  Order --&gt; TimeSlot
+  Order --&gt; Service
+  Payment --&gt; Platform
+  Payment --&gt; Wallet
+  Payment --&gt; User
+  Payment --&gt; Laundry
+  Payment --&gt; Driver
+  Platform --&gt; Setting
+  Platform --&gt; User
+  Pricing --&gt; Platform
+  Recurrence --&gt; Order
+  Report --&gt; Order
+  Report --&gt; Platform
+  Report --&gt; Payment
+  Report --&gt; Laundry
+  Report --&gt; User
+  Routing --&gt; Api
+  Routing --&gt; Payment
+  Routing --&gt; Driver
+  Routing --&gt; Platform
+  Service --&gt; Platform
+  Tests --&gt; Order
+  Tests --&gt; User
+  Tests --&gt; Platform
+  Tests --&gt; Notification
+  Tests --&gt; Payment
+  Tests --&gt; Driver
+  Tests --&gt; Wallet
+  Tests --&gt; Laundry
+  Tests --&gt; Setting
+  Tests --&gt; Complaint
+  Tests --&gt; Coupon
+  Tests --&gt; Pricing
+  Tests --&gt; Report
+  Tests --&gt; City
+  Tests --&gt; TimeSlot
+  Tests --&gt; Service
+  Tests --&gt; Database
+  Tests --&gt; Routing
+  Tests --&gt; Address
+  Tests --&gt; Zone
+  Tests --&gt; Faq
+  Tests --&gt; LaundryZone
+  Tests --&gt; Country
+  Tests --&gt; Offer
+  TimeSlot --&gt; Platform
+  Wallet --&gt; Platform
+  Wallet --&gt; User
+  Zone --&gt; Platform
+</pre>
+</main>
+</body>
+</html>

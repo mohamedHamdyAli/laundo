@@ -1,0 +1,285 @@
+/*
+ * Dark, full-bleed, and deliberately quiet: the graph is the content and every
+ * pixel of chrome competes with it.
+ */
+
+:root {
+  --bg: #0b0f14;
+  --panel: #121820;
+  --panel-2: #0e141b;
+  --line: #1e2732;
+  --ink: #dfe7ef;
+  --ink-dim: #8b9aab;
+  --ink-faint: #5d6b7a;
+  --accent: #5cc8ff;
+  --accent-soft: rgba(92, 200, 255, 0.14);
+  --sidebar-w: 340px;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  background: var(--bg);
+  color: var(--ink);
+  font: 13px/1.5 ui-sans-serif, system-ui, "Segoe UI", Roboto, sans-serif;
+}
+
+body { display: flex; }
+
+/* ---------------------------------------------------------------- canvas */
+
+#stage {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  background:
+    radial-gradient(1200px 800px at 30% 20%, #101822 0%, var(--bg) 70%);
+}
+
+#graph {
+  display: block;
+  width: 100%;
+  height: 100%;
+  cursor: grab;
+}
+#graph.dragging { cursor: grabbing; }
+#graph.on-node { cursor: pointer; }
+
+#hud {
+  position: absolute;
+  inset-block-start: 14px;
+  inset-inline-start: 16px;
+  pointer-events: none;
+  display: flex;
+  gap: 10px;
+  align-items: baseline;
+}
+#title { font-weight: 600; letter-spacing: .02em; color: var(--ink-dim); }
+#scale { color: var(--ink-faint); font-variant-numeric: tabular-nums; font-size: 11px; }
+
+#tooltip[hidden], #results[hidden] { display: none; }
+
+#tooltip {
+  position: absolute;
+  pointer-events: none;
+  max-width: 320px;
+  padding: 7px 10px;
+  background: rgba(8, 12, 17, .94);
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  font-size: 12px;
+  line-height: 1.45;
+  box-shadow: 0 10px 30px rgba(0,0,0,.5);
+  z-index: 5;
+}
+#tooltip .t-name { font-weight: 600; }
+#tooltip .t-meta { color: var(--ink-faint); font-size: 11px; margin-top: 2px; }
+
+#legend {
+  position: absolute;
+  inset-block-end: 14px;
+  inset-inline-start: 16px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  max-width: 60%;
+  pointer-events: none;
+  font-size: 11px;
+  color: var(--ink-faint);
+}
+#legend span { display: inline-flex; align-items: center; gap: 5px; }
+#legend i { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
+
+/* An id selector outranks the user-agent `[hidden] { display: none }`, so the
+ * overlay has to opt out explicitly or it never goes away. */
+#loading[hidden] { display: none; }
+
+#loading {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 10px;
+  background: rgba(11, 15, 20, .85);
+  color: var(--ink-dim);
+  z-index: 10;
+}
+#loading p { margin: 0; }
+#loading small { color: var(--ink-faint); font-variant-numeric: tabular-nums; }
+.spinner {
+  width: 26px; height: 26px;
+  border: 2px solid var(--line);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin .8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .spinner { animation-duration: 2.4s; } }
+
+/* --------------------------------------------------------------- sidebar */
+
+/* The whole sidebar scrolls as one column.
+ *
+ * It used to be a flex column with `#info-section` on `flex: 1` and fixed
+ * max-heights below it, which overflowed the moment a node with a hundred
+ * relationships was selected — the Communities and Node types headings ended
+ * up painted over each other and over the footer. Letting the column scroll
+ * removes the constraint that was being violated rather than tuning heights
+ * that will be violated again by the next long list. */
+#sidebar {
+  width: var(--sidebar-w);
+  flex: 0 0 var(--sidebar-w);
+  background: var(--panel);
+  border-inline-start: 1px solid var(--line);
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+#sidebar > * { flex: 0 0 auto; }
+#sidebar header { padding: 16px 16px 10px; border-bottom: 1px solid var(--line); position: sticky; top: 0; background: var(--panel); z-index: 4; }
+#sidebar h1 { margin: 0; font-size: 14px; letter-spacing: .02em; }
+#meta { margin: 3px 0 0; font-size: 11px; color: var(--ink-faint); font-variant-numeric: tabular-nums; }
+
+.search { padding: 12px 16px; border-bottom: 1px solid var(--line); position: relative; }
+#search {
+  width: 100%;
+  padding: 8px 10px;
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  color: var(--ink);
+  font: inherit;
+}
+#search:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+
+#results {
+  position: absolute;
+  inset-inline: 16px;
+  top: calc(100% - 6px);
+  max-height: 320px;
+  overflow-y: auto;
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  z-index: 6;
+  box-shadow: 0 16px 40px rgba(0,0,0,.55);
+}
+#results .row { padding: 7px 10px; cursor: pointer; border-bottom: 1px solid var(--line); }
+#results .row:last-child { border-bottom: 0; }
+#results .row:hover, #results .row.active { background: var(--accent-soft); }
+#results .r-name { display: flex; align-items: center; gap: 6px; }
+#results .r-path { color: var(--ink-faint); font-size: 11px; word-break: break-all; }
+#results .none { padding: 10px; color: var(--ink-faint); }
+
+#sidebar section { border-bottom: 1px solid var(--line); min-height: 0; }
+#sidebar h2 {
+  margin: 0;
+  padding: 11px 16px 8px;
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: .09em;
+  color: var(--ink-faint);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.actions { display: flex; gap: 6px; }
+.actions button {
+  background: transparent;
+  border: 1px solid var(--line);
+  color: var(--ink-dim);
+  border-radius: 5px;
+  padding: 2px 7px;
+  font: inherit;
+  font-size: 10px;
+  text-transform: none;
+  letter-spacing: 0;
+  cursor: pointer;
+}
+.actions button:hover { border-color: var(--accent); color: var(--accent); }
+
+#info { padding: 0 16px 14px; }
+#info.empty { color: var(--ink-faint); padding-bottom: 16px; }
+
+.i-name { font-size: 14px; font-weight: 600; word-break: break-word; display: flex; gap: 7px; align-items: baseline; }
+.i-sum { color: var(--ink-dim); margin: 6px 0 10px; }
+.i-grid { display: grid; grid-template-columns: auto 1fr; gap: 3px 10px; margin-bottom: 12px; }
+.i-grid dt { color: var(--ink-faint); font-size: 11px; }
+.i-grid dd { margin: 0; word-break: break-all; }
+.i-path {
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 6px 8px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
+  word-break: break-all;
+  cursor: pointer;
+}
+.i-path:hover { border-color: var(--accent); }
+.i-path .hint { display: block; color: var(--ink-faint); font-size: 10px; margin-top: 3px; font-family: inherit; }
+
+.i-rel h3 {
+  margin: 12px 0 5px;
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  color: var(--ink-faint);
+}
+.i-rel ul { list-style: none; margin: 0; padding: 0; }
+.i-rel li {
+  padding: 4px 0;
+  border-bottom: 1px solid var(--line);
+  display: flex;
+  gap: 7px;
+  align-items: baseline;
+  cursor: pointer;
+}
+.i-rel li:hover .l-name { color: var(--accent); }
+.l-edge {
+  flex: 0 0 auto;
+  font-size: 10px;
+  color: var(--ink-faint);
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: 0 5px;
+}
+.l-name { flex: 1 1 auto; word-break: break-word; }
+.i-more { color: var(--ink-faint); font-size: 11px; padding-top: 6px; }
+
+#communities, #types { padding: 0 16px 12px; }
+
+.check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 3px 0;
+  cursor: pointer;
+  user-select: none;
+}
+.check input { accent-color: var(--accent); margin: 0; }
+.check .dot { width: 9px; height: 9px; border-radius: 50%; flex: 0 0 auto; }
+.check .label { flex: 1 1 auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.check .count { color: var(--ink-faint); font-size: 11px; font-variant-numeric: tabular-nums; }
+.check.off .label { color: var(--ink-faint); }
+
+#sidebar footer {
+  margin-top: auto;
+  padding: 9px 16px;
+  color: var(--ink-faint);
+  font-size: 10.5px;
+  border-top: 1px solid var(--line);
+}
+
+@media (max-width: 900px) {
+  body { flex-direction: column; }
+  #sidebar { width: 100%; flex: 0 0 46%; border-inline-start: 0; border-top: 1px solid var(--line); }
+}

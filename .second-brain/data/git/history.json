@@ -1,0 +1,139 @@
+{
+    "available": true,
+    "head": "035dbff09ea5e5ad1f0c1b1becaa63bf0ee21a88",
+    "commits_scanned": 108,
+    "recent": [
+        {
+            "sha": "035dbff0",
+            "date": "2026-09-23",
+            "subject": "feat: both apps reject a request in the language they were asked in",
+            "files": 1
+        },
+        {
+            "sha": "5adef8ff",
+            "date": "2026-09-23",
+            "subject": "fix: make the language files a pair that stays a pair",
+            "files": 3
+        },
+        {
+            "sha": "7215d774",
+            "date": "2026-09-23",
+            "subject": "fix: finish the dashboard's Arabic, and stop it drifting again",
+            "files": 3
+        },
+        {
+            "sha": "f8e75512",
+            "date": "2026-09-23",
+            "subject": "fix: the price label is the platform fee alone, tax stays out",
+            "files": 3
+        },
+        {
+            "sha": "f9c4dedf",
+            "date": "2026-09-23",
+            "subject": "fix: the price under each box is the price after tax, and now actually is",
+            "files": 3
+        },
+        {
+            "sha": "7a8990de",
+            "date": "2026-09-23",
+            "subject": "fix: name the figure under each price, and translate what shipped in English",
+            "files": 1
+        },
+        {
+            "sha": "197cdc3c",
+            "date": "2026-09-23",
+            "subject": "feat: show the customer price under the price somebody is setting",
+            "files": 3
+        },
+        {
+            "sha": "84cd5671",
+            "date": "2026-09-23",
+            "subject": "feat: a fee the customer pays, and driver work kept with the platform",
+            "files": 39
+        },
+        {
+            "sha": "5221c1eb",
+            "date": "2026-09-22",
+            "subject": "fix: the money detail screens read as locked forms, not as records",
+            "files": 3
+        },
+        {
+            "sha": "b8497d32",
+            "date": "2026-09-22",
+            "subject": "fix: the review screen 500d, and rang the bell once per save",
+            "files": 3
+        },
+        {
+            "sha": "239eb535",
+            "date": "2026-09-22",
+            "subject": "fix: what yesterday's review queue was still letting through",
+            "files": 22
+        },
+        {
+            "sha": "fca352ed",
+            "date": "2026-09-21",
+            "subject": "update",
+            "files": 0
+        },
+        {
+            "sha": "9896f108",
+            "date": "2026-09-21",
+            "subject": "fix: store notification links as paths, not as whichever host built them",
+            "files": 6
+        },
+        {
+            "sha": "54b34c23",
+            "date": "2026-09-21",
+            "subject": "feat: nothing a driver says about their own papers takes effect until somebody looks",
+            "files": 26
+        },
+        {
+            "sha": "f72392fa",
+            "date": "2026-09-21",
+            "subject": "feat: let the driver keep their own papers, and stop handing both apps the same words",
+            "files": 20
+        }
+    ],
+    "hottest_files": {
+        "routes/web.php": 23,
+        "app/Helpers/Helpers.php": 18,
+        "docs/postman/Laundo API v1.postman_collection.json": 16,
+        "resources/views/admin/setting/generalSetting/forms/formInput.blade.php": 14,
+        "config/menu.php": 13,
+        "resources/views/layouts/footer_script.blade.php": 13,
+        "app/Modules/Setting/Requests/GeneralSettingRequest.php": 12,
+        "app/Http/Controllers/Admin/LanguageController.php": 10,
+        "app/Http/Controllers/Api/V1/OrderController.php": 10,
+        "config/dashboard.php": 10,
+        "database/seeders/SettingsSeeder.php": 10,
+        "app/Services/languages/LanguageService.php": 10,
+        "app/Modules/Driver/Services/DriverCard.php": 9,
+        "resources/views/layouts/topbar.blade.php": 9,
+        "resources/views/layouts/sidebar.blade.php": 9,
+        "app/Modules/Order/Services/OrderService.php": 8,
+        "app/Modules/Order/Services/orderCrudService.php": 8,
+        "docs/mobile-api-changes.md": 8,
+        "resources/views/admin/order/show.blade.php": 8,
+        "app/Modules/User/Models/User.php": 8,
+        "resources/views/admin/banner/forms/formInput.blade.php": 8,
+        "app/Services/CachingService.php": 8,
+        "app/Http/Controllers/Api/V1/DriverController.php": 7,
+        "resources/views/admin/home.blade.php": 7,
+        "resources/views/admin/roles/index.blade.php": 7,
+        "resources/views/admin/order/index.blade.php": 7,
+        "resources/views/layouts/include.blade.php": 7,
+        "resources/views/layouts/main.blade.php": 7,
+        "resources/views/auth/login.blade.php": 7,
+        "app/Modules/Category/Models/Category.php": 7,
+        "app/Modules/Pricing/Services/pricingService.php": 6,
+        "resources/views/admin/pricing/index.blade.php": 6,
+        "app/Modules/Order/Models/Order.php": 6,
+        "resources/views/admin/laundry/index.blade.php": 6,
+        "tests/Feature/Api/ComplaintTest.php": 6,
+        "resources/views/admin/driver/forms/formInput.blade.php": 6,
+        "app/Providers/AppServiceProvider.php": 6,
+        "routes/api.php": 6,
+        "tests/Feature/Api/DriverTaskTest.php": 6,
+        "resources/views/admin/laundry/forms/formInput.blade.php": 6
+    }
+}

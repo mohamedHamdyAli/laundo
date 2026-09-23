@@ -1,80 +1,91 @@
-# Driver record changes go through a person
+# Second Brain — codebase knowledge graph
 
-The driver app now edits «بيانات المركبة», «رخصة القيادة» and «مستندات المركبة».
-As shipped, those writes land straight on `driver_profiles` — so a licence expiry
-is whatever the driver last typed, and the record stops being a record.
+## Phase 1 — architecture discovered (done, from inspection)
 
-The owner's decision: **nothing a driver submits about their vehicle or papers
-takes effect until somebody has looked at it.** It is staged, an operator is
-notified, and it applies on approval.
+Laravel 13 / PHP 8.3. **No modular package** (no nwidart): a hand-rolled
+`app/Modules/{Name}/` tree with PSR-4 `App\Modules\`, 31 module dirs.
 
-## The line
+Inner folders actually present, with counts:
+Controllers 30 · Models 29 · Services 28 · Requests 24 · Repositories 23 ·
+Enums 8 · Console 4 · Data 3 · Gateways 1 · Contracts 1.
 
-| Submitted from the app | Applies |
-| --- | --- |
-| name · email · profile photo | **immediately** — their own identity, nothing verified about it |
-| vehicle · licence · documents | **after approval** |
-| zones · availability | not submittable at all (unchanged) |
+**Absent, and the brain must not invent them**: `app/Policies`, `app/Events`,
+`app/Listeners`, `app/Http/Resources` — none exist. One job
+(`app/Jobs/SendManualNotification.php`), one notification class. Authorisation
+is `permission:` middleware + `canDo()`, not policies. API payloads are private
+`present*()` methods, not Resources.
 
-The dashboard keeps writing directly. An operator editing a driver **is** the
-approval; routing them through their own queue would be theatre.
+Three surfaces over one codebase: Blade panel `/admin`, JSON API `/api/v1`,
+public landing. 428 registered routes.
 
-## Plan
+Layer contract: Controller (HTTP only) → Service (`{name}CrudService` for CRUD,
+PascalCase for domain) → Repository (only place raw Eloquent lives) → Model.
+`shredData($id = null)` is the universal view-data assembler.
 
-- [x] `driver_record_submissions` — `driver_id`, `payload` (json), `status`
-      (`pending|approved|rejected`), `reviewed_by`, `reviewed_at`, `note`.
-      One pending row per driver: a second submission supersedes the first
-      rather than queueing two versions of the same car.
-- [x] Files are uploaded on submit and their paths live in the payload. Rejecting
-      leaves the file orphaned rather than deleting it — a rejected photograph is
-      evidence of what was sent, and an operator may want to look again.
-- [x] `POST /driver/profile` stages instead of writing. Response says so, and
-      `GET /driver/profile` carries `pending_review` so the screen can show
-      «قيد المراجعة» beside what was sent.
-- [x] Notification on submit → super admins and anyone holding the new
-      permission. `NotificationEvent::DriverRecordSubmitted`.
-- [x] Its own screen under `app/Modules/Driver/` — current value against proposed
-      value, side by side, with approve and reject. Per-field diff, because
-      approving a payload you cannot read is not reviewing it.
-- [x] `MenuBadges::for('driver_record_submission')` — pending count. Work waiting
-      on a person, which is the only thing that earns a badge.
-- [x] Wiring: `config/dashboard.php`, `PermissionSeeder`, `config/menu.php`
-      (items + icons + titles + routes), routes with `permission:`.
-- [x] Tests, docs, and a note for the mobile team: this **changes** what we
-      shipped yesterday, so their save button now means «send for review».
+Owner-declared domains already exist and are the honest source for
+"communities": `config/menu.php` `groups` (locations, catalog, laundries,
+delivery, marketing, operations, money, system) + `singles` (user, order,
+report). `config/dashboard.php` lists the 43 permissioned models.
 
-## Decisions worth keeping
+Constraint found: `php artisan` fails without MySQL (AppServiceProvider reads
+`languages` at boot), so **the indexer core must not need the framework or a
+database**. `route:list --json` works under a sqlite override and is used as the
+preferred route source, with a static parse of `routes/*.php` as fallback.
 
-- **Approval applies the payload as it was submitted**, not as it is now. If an
-  operator edits the driver in between, approving must not silently undo them —
-  so the diff is computed at review time and a field the operator has since
-  changed is shown as a conflict rather than overwritten blindly.
-- **Rejecting is not silent.** The driver's own screen has to show that a
-  submission came back, or they will send the same photograph again.
+## Phase 2..11 — plan
 
+- [x] Phase 1 — inspect repository, write this map
+- [x] Phase 2 — design `.second-brain/` (PHP, zero new dependencies)
+- [x] Phase 3 — tokenizer-based parsers + graph builder
+- [x] Phase 4 — BM25 lexical search + synonym expansion + intent routing
+- [x] Phase 5 — module / community / feature detection (evidence-carrying)
+- [x] Phase 6 — MCP stdio server, 6 tools
+- [x] Phase 7 — `.mcp.json` + CLAUDE.md section
+- [x] Phase 8 — incremental re-index off git diff + per-file hashes
+- [x] Phase 9 — PHPUnit tests under `tests/Feature/SecondBrain/`
+- [x] Phase 10 — token benchmark command
+- [x] Phase 11 — `.second-brain/README.md`
+
+## Rules held to
+
+- No business logic touched. Nothing renamed. No migration, no schema change.
+- No new composer or npm dependency. Pure PHP + ext-tokenizer (already present).
+- Secrets never indexed: `.env*`, keys, `storage/`, `vendor/`, `node_modules/`.
+- Every feature and community carries `evidence`; nothing is asserted that the
+  source does not show.
 
 ## Review
 
-Shipped: migration, model, service, notifier, API staging, dashboard screen,
-permission, menu entry, badge. Eleven new tests on the queue itself, and six of
-this morning's rewritten — they asserted the direct write this replaces, which is
-the contract the owner reversed rather than a regression.
+Built, and verified against this repository rather than against a description
+of it.
 
-The decisions worth keeping:
+**Shape**: 918 files → 5,614 nodes, 19,991 edges. 42 modules in 17 communities,
+411 features, 428 routes, 66 tables, 59 models, 130 test files. Cold build 2.1s,
+warm 1.1s, deterministic — two builds produce byte-identical files.
 
-- **The line is identity against record.** A name and a photograph are the
-  driver's own and nothing about them is verified; a licence expiry is a claim
-  about a document. Splitting there means the driver still gets an instant save
-  for the things that are theirs to assert.
-- **The diff is computed when somebody looks, not when it was sent.** An operator
-  who corrected the same driver in between would otherwise be silently undone by
-  an approval.
-- **The dashboard is deliberately not routed through the queue.** An operator
-  editing a driver *is* the approval; sending them round their own queue would be
-  theatre with an extra click in it.
-- **A rejection without a reason is not a rejection.** It is the same photograph
-  arriving again next week.
+**Suites**: 1,532 PHPUnit tests / 5,266 assertions green, of which 55 / 416 are
+the brain's own. `doctor` reports healthy.
 
-Worth flagging: this changes a contract deployed this morning. The note for the
-app team says plainly that the save response now returns the **old** values and
-that this is not a bug — the field they need is `pending_review`.
+**Benchmark**: ~230k estimated tokens of grep-and-read exploration reduced to
+~45k across six real tasks — **80.2%** — with the expected file in the top three
+for five of the six. The sixth is reported as a miss rather than tuned away: the
+question used no vocabulary the codebase contains.
+
+**Reviews (§7)**: `/code-review` at high effort returned nine findings, all
+reproduced by running the code; `/security-review` hit the session rate limit
+mid-run, so the security pass was done directly over the same surfaces. Every
+finding was fixed before this was called done — the MCP size cap cutting JSON
+mid-structure while reporting success, unsliced feature groups three times the
+cap, a deny list that `..` walked around, raw string literals persisted to the
+cache, a parse cache keyed without its config, a `static` inside a method
+sharing one repository's deny lists with another, two fabricated module paths, a
+dead `reads_tables` branch, a fatal default argument, and an undefined array
+key. Each has a regression test.
+
+Two notes deliberately left as findings rather than fixed, because they are
+facts about this repository: eleven domain services no route or command reaches
+(the routing drivers, `MenuBadges`, `PermissionGenerator` and the like), and two
+models whose `$table` names a table no migration creates — both of which
+`doctor` reports every run.
+
+Full documentation in `.second-brain/README.md`.

@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "second-brain": {
+      "type": "stdio",
+      "command": "php",
+      "args": [".second-brain/bin/mcp-server.php"],
+      "env": {}
+    }
+  }
+}

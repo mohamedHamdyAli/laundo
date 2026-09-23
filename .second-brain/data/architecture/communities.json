@@ -1,0 +1,1332 @@
+[
+    {
+        "slug": "locations",
+        "title": "Locations",
+        "source": "menu",
+        "evidence": "config/menu.php → groups.locations",
+        "order": 1,
+        "modules": [
+            "Country",
+            "City",
+            "Zone"
+        ],
+        "models": [
+            "App\\Modules\\City\\Models\\City",
+            "App\\Modules\\Country\\Models\\Country",
+            "App\\Modules\\Zone\\Models\\Zone"
+        ],
+        "tables": [
+            "cities",
+            "countries",
+            "zones"
+        ],
+        "route_count": 27,
+        "routes": [
+            "admin.city.create",
+            "admin.city.delete",
+            "admin.city.edit",
+            "admin.city.index",
+            "admin.city.search",
+            "admin.city.show",
+            "admin.city.store",
+            "admin.city.toggleStatus",
+            "admin.city.update",
+            "admin.country.create",
+            "admin.country.delete",
+            "admin.country.edit",
+            "admin.country.index",
+            "admin.country.search",
+            "admin.country.show",
+            "admin.country.store",
+            "admin.country.toggleStatus",
+            "admin.country.update",
+            "admin.zone.create",
+            "admin.zone.delete",
+            "admin.zone.edit",
+            "admin.zone.index",
+            "admin.zone.search",
+            "admin.zone.show",
+            "admin.zone.store",
+            "admin.zone.toggleStatus",
+            "admin.zone.update"
+        ],
+        "node_count": 199,
+        "cohesion": 0.624,
+        "screens": [
+            {
+                "key": "country",
+                "title": "Countries",
+                "route": "admin.country.index",
+                "modules": [
+                    "Country"
+                ]
+            },
+            {
+                "key": "city",
+                "title": "Cities",
+                "route": "admin.city.index",
+                "modules": [
+                    "City"
+                ]
+            },
+            {
+                "key": "zone",
+                "title": "Zones",
+                "route": "admin.zone.index",
+                "modules": [
+                    "Zone"
+                ]
+            }
+        ],
+        "menu_keys": [
+            "country",
+            "city",
+            "zone"
+        ]
+    },
+    {
+        "slug": "catalog",
+        "title": "Catalog",
+        "source": "menu",
+        "evidence": "config/menu.php → groups.catalog",
+        "order": 2,
+        "modules": [
+            "Service",
+            "ItemCategory",
+            "Item",
+            "Pricing"
+        ],
+        "models": [
+            "App\\Modules\\ItemCategory\\Models\\ItemCategory",
+            "App\\Modules\\Item\\Models\\Item",
+            "App\\Modules\\Pricing\\Models\\ItemPrice",
+            "App\\Modules\\Service\\Models\\Service"
+        ],
+        "tables": [
+            "item_categories",
+            "items",
+            "item_prices",
+            "services"
+        ],
+        "route_count": 29,
+        "routes": [
+            "admin.item.create",
+            "admin.item.delete",
+            "admin.item.edit",
+            "admin.item.index",
+            "admin.item.search",
+            "admin.item.show",
+            "admin.item.store",
+            "admin.item.toggleStatus",
+            "admin.item.update",
+            "admin.item_category.create",
+            "admin.item_category.delete",
+            "admin.item_category.edit",
+            "admin.item_category.index",
+            "admin.item_category.search",
+            "admin.item_category.show",
+            "admin.item_category.store",
+            "admin.item_category.toggleStatus",
+            "admin.item_category.update",
+            "admin.pricing.index",
+            "admin.pricing.update",
+            "admin.service.create",
+            "admin.service.delete",
+            "admin.service.edit",
+            "admin.service.index",
+            "admin.service.search",
+            "admin.service.show",
+            "admin.service.store",
+            "admin.service.toggleStatus",
+            "admin.service.update"
+        ],
+        "node_count": 232,
+        "cohesion": 0.606,
+        "screens": [
+            {
+                "key": "service",
+                "title": "Services",
+                "route": "admin.service.index",
+                "modules": [
+                    "Service"
+                ]
+            },
+            {
+                "key": "item_category",
+                "title": "Item Categories",
+                "route": "admin.item_category.index",
+                "modules": [
+                    "ItemCategory"
+                ]
+            },
+            {
+                "key": "item",
+                "title": "Items",
+                "route": "admin.item.index",
+                "modules": [
+                    "Item"
+                ]
+            },
+            {
+                "key": "item_price",
+                "title": "Prices",
+                "route": "admin.pricing.index",
+                "modules": [
+                    "Pricing"
+                ]
+            }
+        ],
+        "menu_keys": [
+            "service",
+            "item_category",
+            "item",
+            "item_price"
+        ]
+    },
+    {
+        "slug": "laundries",
+        "title": "Laundries",
+        "source": "menu",
+        "evidence": "config/menu.php → groups.laundries",
+        "order": 3,
+        "modules": [
+            "Laundry",
+            "LaundryStaff",
+            "LaundryService",
+            "LaundryZone"
+        ],
+        "models": [
+            "App\\Modules\\LaundryService\\Models\\LaundryService",
+            "App\\Modules\\LaundryStaff\\Models\\LaundryStaff",
+            "App\\Modules\\LaundryZone\\Models\\LaundryZone",
+            "App\\Modules\\Laundry\\Models\\Laundry",
+            "App\\Modules\\Laundry\\Models\\LaundrySlotCapacity"
+        ],
+        "tables": [
+            "laundry_services",
+            "users",
+            "laundry_zones",
+            "laundries",
+            "laundry_slot_capacities"
+        ],
+        "route_count": 28,
+        "routes": [
+            "admin.laundry.approve",
+            "admin.laundry.commission",
+            "admin.laundry.create",
+            "admin.laundry.delete",
+            "admin.laundry.edit",
+            "admin.laundry.index",
+            "admin.laundry.pending",
+            "admin.laundry.reject",
+            "admin.laundry.search",
+            "admin.laundry.show",
+            "admin.laundry.store",
+            "admin.laundry.toggleStatus",
+            "admin.laundry.update",
+            "admin.laundry_service.index",
+            "admin.laundry_service.update",
+            "admin.laundry_slot_capacity.index",
+            "admin.laundry_slot_capacity.update",
+            "admin.laundry_staff.create",
+            "admin.laundry_staff.delete",
+            "admin.laundry_staff.edit",
+            "admin.laundry_staff.index",
+            "admin.laundry_staff.search",
+            "admin.laundry_staff.show",
+            "admin.laundry_staff.store",
+            "admin.laundry_staff.toggleStatus",
+            "admin.laundry_staff.update",
+            "admin.laundry_zone.index",
+            "admin.laundry_zone.update"
+        ],
+        "node_count": 239,
+        "cohesion": 0.51,
+        "screens": [
+            {
+                "key": "laundry",
+                "title": "Laundries",
+                "route": "admin.laundry.index",
+                "modules": [
+                    "Laundry"
+                ]
+            },
+            {
+                "key": "laundry_staff",
+                "title": "Laundry Staff",
+                "route": "admin.laundry_staff.index",
+                "modules": [
+                    "LaundryStaff"
+                ]
+            },
+            {
+                "key": "laundry_service",
+                "title": "My Services",
+                "route": "admin.laundry_service.index",
+                "modules": [
+                    "LaundryService"
+                ]
+            },
+            {
+                "key": "laundry_zone",
+                "title": "My Areas",
+                "route": "admin.laundry_zone.index",
+                "modules": [
+                    "LaundryZone"
+                ]
+            },
+            {
+                "key": "laundry_slot_capacity",
+                "title": "Intake Capacity",
+                "route": "admin.laundry_slot_capacity.index",
+                "modules": [
+                    "Laundry"
+                ]
+            }
+        ],
+        "menu_keys": [
+            "laundry",
+            "laundry_staff",
+            "laundry_service",
+            "laundry_zone",
+            "laundry_slot_capacity"
+        ]
+    },
+    {
+        "slug": "delivery",
+        "title": "Delivery",
+        "source": "menu",
+        "evidence": "config/menu.php → groups.delivery",
+        "order": 4,
+        "modules": [
+            "Order",
+            "Driver",
+            "Payment"
+        ],
+        "models": [
+            "App\\Modules\\Driver\\Models\\Driver",
+            "App\\Modules\\Driver\\Models\\DriverApplication",
+            "App\\Modules\\Driver\\Models\\DriverBonusAward",
+            "App\\Modules\\Driver\\Models\\DriverBonusRule",
+            "App\\Modules\\Driver\\Models\\DriverBonusTier",
+            "App\\Modules\\Driver\\Models\\DriverProfile",
+            "App\\Modules\\Driver\\Models\\DriverRecordSubmission",
+            "App\\Modules\\Order\\Models\\Order",
+            "App\\Modules\\Order\\Models\\OrderItem",
+            "App\\Modules\\Order\\Models\\OrderMedia",
+            "App\\Modules\\Order\\Models\\OrderPriceQuery",
+            "App\\Modules\\Order\\Models\\OrderRating",
+            "App\\Modules\\Order\\Models\\OrderRecurrence",
+            "App\\Modules\\Order\\Models\\OrderStatusLog",
+            "App\\Modules\\Order\\Models\\OrderTask",
+            "App\\Modules\\Order\\Models\\RecurrencePrompt",
+            "App\\Modules\\Payment\\Models\\CommissionRule",
+            "App\\Modules\\Payment\\Models\\DriverEarning",
+            "App\\Modules\\Payment\\Models\\LaundryDeduction",
+            "App\\Modules\\Payment\\Models\\LaundryRevenue",
+            "App\\Modules\\Payment\\Models\\OrderSettlement",
+            "App\\Modules\\Payment\\Models\\OrderSettlementLine",
+            "App\\Modules\\Payment\\Models\\Payment",
+            "App\\Modules\\Payment\\Models\\Refund"
+        ],
+        "tables": [
+            "users",
+            "driver_applications",
+            "driver_bonus_awards",
+            "driver_bonus_rules",
+            "driver_bonus_tiers",
+            "driver_profiles",
+            "driver_record_submissions",
+            "orders",
+            "order_items",
+            "order_media",
+            "order_price_queries",
+            "order_ratings",
+            "order_recurrences",
+            "order_status_logs",
+            "order_tasks",
+            "recurrence_prompts",
+            "commission_rules",
+            "driver_earnings",
+            "laundry_deductions",
+            "laundry_revenues_do_not_exist",
+            "order_settlements",
+            "order_settlement_lines",
+            "payments",
+            "refunds"
+        ],
+        "route_count": 75,
+        "routes": [
+            "admin.commission_rule.create",
+            "admin.commission_rule.delete",
+            "admin.commission_rule.edit",
+            "admin.commission_rule.index",
+            "admin.commission_rule.search",
+            "admin.commission_rule.show",
+            "admin.commission_rule.store",
+            "admin.commission_rule.toggleStatus",
+            "admin.commission_rule.update",
+            "admin.dispatch.index",
+            "admin.dispatch.redispatch",
+            "admin.dispatch.search",
+            "admin.driver.bonus",
+            "admin.driver.create",
+            "admin.driver.delete",
+            "admin.driver.edit",
+            "admin.driver.index",
+            "admin.driver.search",
+            "admin.driver.show",
+            "admin.driver.store",
+            "admin.driver.toggleStatus",
+            "admin.driver.update",
+            "admin.driver_application.delete",
+            "admin.driver_application.handled",
+            "admin.driver_application.index",
+            "admin.driver_application.search",
+            "admin.driver_application.show",
+            "admin.driver_bonus.approve",
+            "admin.driver_bonus.index",
+            "admin.driver_bonus.reject",
+            "admin.driver_bonus.search",
+            "admin.driver_bonus_rule.create",
+            "admin.driver_bonus_rule.delete",
+            "admin.driver_bonus_rule.edit",
+            "admin.driver_bonus_rule.index",
+            "admin.driver_bonus_rule.search",
+            "admin.driver_bonus_rule.show",
+            "admin.driver_bonus_rule.store",
+            "admin.driver_bonus_rule.toggleStatus",
+            "admin.driver_bonus_rule.update"
+        ],
+        "node_count": 971,
+        "cohesion": 0.484,
+        "screens": [
+            {
+                "key": "order_task",
+                "title": "Dispatch",
+                "route": "admin.dispatch.index",
+                "modules": [
+                    "Order"
+                ]
+            },
+            {
+                "key": "driver",
+                "title": "Drivers",
+                "route": "admin.driver.index",
+                "modules": [
+                    "Driver"
+                ]
+            },
+            {
+                "key": "driver_application",
+                "title": "Applicants",
+                "route": "admin.driver_application.index",
+                "modules": [
+                    "Driver"
+                ]
+            },
+            {
+                "key": "driver_record_submission",
+                "title": "Document Reviews",
+                "route": "admin.driver_record_submission.index",
+                "modules": [
+                    "Driver"
+                ]
+            },
+            {
+                "key": "driver_earning",
+                "title": "Driver Earnings",
+                "route": "admin.earning.index",
+                "modules": [
+                    "Payment"
+                ]
+            },
+            {
+                "key": "driver_bonus_rule",
+                "title": "Bonus Rules",
+                "route": "admin.driver_bonus_rule.index",
+                "modules": [
+                    "Driver"
+                ]
+            },
+            {
+                "key": "driver_bonus_award",
+                "title": "Monthly Bonuses",
+                "route": "admin.driver_bonus.index",
+                "modules": [
+                    "Driver"
+                ]
+            }
+        ],
+        "menu_keys": [
+            "order_task",
+            "driver",
+            "driver_application",
+            "driver_record_submission",
+            "driver_earning",
+            "driver_bonus_rule",
+            "driver_bonus_award"
+        ]
+    },
+    {
+        "slug": "user",
+        "title": "Users",
+        "source": "menu",
+        "evidence": "config/menu.php → singles.user",
+        "order": 5,
+        "modules": [
+            "User"
+        ],
+        "models": [
+            "App\\Modules\\User\\Models\\User"
+        ],
+        "tables": [
+            "users"
+        ],
+        "route_count": 9,
+        "routes": [
+            "admin.user.create",
+            "admin.user.delete",
+            "admin.user.edit",
+            "admin.user.index",
+            "admin.user.search",
+            "admin.user.show",
+            "admin.user.store",
+            "admin.user.toggleStatus",
+            "admin.user.update"
+        ],
+        "node_count": 78,
+        "cohesion": 0.245,
+        "screens": [
+            {
+                "key": "user",
+                "title": "Users",
+                "route": "admin.user.index",
+                "modules": [
+                    "User"
+                ]
+            }
+        ],
+        "menu_keys": [
+            "user"
+        ]
+    },
+    {
+        "slug": "marketing",
+        "title": "Marketing",
+        "source": "menu",
+        "evidence": "config/menu.php → groups.marketing",
+        "order": 6,
+        "modules": [
+            "Offer",
+            "Coupon",
+            "Banner",
+            "Intro",
+            "JourneyStep",
+            "Faq"
+        ],
+        "models": [
+            "App\\Modules\\Banner\\Models\\banner",
+            "App\\Modules\\Coupon\\Models\\Coupon",
+            "App\\Modules\\Coupon\\Models\\CouponRedemption",
+            "App\\Modules\\Faq\\Models\\Faq",
+            "App\\Modules\\Intro\\Models\\intro",
+            "App\\Modules\\JourneyStep\\Models\\JourneyStep",
+            "App\\Modules\\Offer\\Models\\Offer"
+        ],
+        "tables": [
+            "banners",
+            "coupons",
+            "coupon_redemptions",
+            "faqs",
+            "intros",
+            "journey_steps",
+            "offers"
+        ],
+        "route_count": 54,
+        "routes": [
+            "admin.banner.create",
+            "admin.banner.delete",
+            "admin.banner.edit",
+            "admin.banner.index",
+            "admin.banner.search",
+            "admin.banner.show",
+            "admin.banner.store",
+            "admin.banner.toggleStatus",
+            "admin.banner.update",
+            "admin.coupon.create",
+            "admin.coupon.delete",
+            "admin.coupon.edit",
+            "admin.coupon.index",
+            "admin.coupon.search",
+            "admin.coupon.show",
+            "admin.coupon.store",
+            "admin.coupon.toggleStatus",
+            "admin.coupon.update",
+            "admin.faq.create",
+            "admin.faq.delete",
+            "admin.faq.edit",
+            "admin.faq.index",
+            "admin.faq.search",
+            "admin.faq.show",
+            "admin.faq.store",
+            "admin.faq.toggleStatus",
+            "admin.faq.update",
+            "admin.intro.create",
+            "admin.intro.delete",
+            "admin.intro.edit",
+            "admin.intro.index",
+            "admin.intro.search",
+            "admin.intro.show",
+            "admin.intro.store",
+            "admin.intro.toggleStatus",
+            "admin.intro.update",
+            "admin.journey_step.create",
+            "admin.journey_step.delete",
+            "admin.journey_step.edit",
+            "admin.journey_step.index"
+        ],
+        "node_count": 444,
+        "cohesion": 0.689,
+        "screens": [
+            {
+                "key": "offer",
+                "title": "Offers",
+                "route": "admin.offer.index",
+                "modules": [
+                    "Offer"
+                ]
+            },
+            {
+                "key": "coupon",
+                "title": "Discount Codes",
+                "route": "admin.coupon.index",
+                "modules": [
+                    "Coupon"
+                ]
+            },
+            {
+                "key": "banner",
+                "title": "Banners",
+                "route": "admin.banner.index",
+                "modules": [
+                    "Banner"
+                ]
+            },
+            {
+                "key": "intro",
+                "title": "Intros",
+                "route": "admin.intro.index",
+                "modules": [
+                    "Intro"
+                ]
+            },
+            {
+                "key": "journey_step",
+                "title": "Journey Steps",
+                "route": "admin.journey_step.index",
+                "modules": [
+                    "JourneyStep"
+                ]
+            },
+            {
+                "key": "faq",
+                "title": "FAQ",
+                "route": "admin.faq.index",
+                "modules": [
+                    "Faq"
+                ]
+            }
+        ],
+        "menu_keys": [
+            "offer",
+            "coupon",
+            "banner",
+            "intro",
+            "journey_step",
+            "faq"
+        ]
+    },
+    {
+        "slug": "order",
+        "title": "Orders",
+        "source": "menu",
+        "evidence": "config/menu.php → singles.order",
+        "order": 7,
+        "modules": [
+            "Order",
+            "Payment",
+            "Address",
+            "Rating",
+            "Recurrence"
+        ],
+        "models": [
+            "App\\Modules\\Order\\Models\\Order",
+            "App\\Modules\\Order\\Models\\OrderItem",
+            "App\\Modules\\Order\\Models\\OrderMedia",
+            "App\\Modules\\Order\\Models\\OrderPriceQuery",
+            "App\\Modules\\Order\\Models\\OrderRating",
+            "App\\Modules\\Order\\Models\\OrderRecurrence",
+            "App\\Modules\\Order\\Models\\OrderStatusLog",
+            "App\\Modules\\Order\\Models\\OrderTask",
+            "App\\Modules\\Order\\Models\\RecurrencePrompt",
+            "App\\Modules\\Payment\\Models\\CommissionRule",
+            "App\\Modules\\Payment\\Models\\DriverEarning",
+            "App\\Modules\\Payment\\Models\\LaundryDeduction",
+            "App\\Modules\\Payment\\Models\\LaundryRevenue",
+            "App\\Modules\\Payment\\Models\\OrderSettlement",
+            "App\\Modules\\Payment\\Models\\OrderSettlementLine",
+            "App\\Modules\\Payment\\Models\\Payment",
+            "App\\Modules\\Payment\\Models\\Refund"
+        ],
+        "tables": [
+            "orders",
+            "order_items",
+            "order_media",
+            "order_price_queries",
+            "order_ratings",
+            "order_recurrences",
+            "order_status_logs",
+            "order_tasks",
+            "recurrence_prompts",
+            "commission_rules",
+            "driver_earnings",
+            "laundry_deductions",
+            "laundry_revenues_do_not_exist",
+            "order_settlements",
+            "order_settlement_lines",
+            "payments",
+            "refunds"
+        ],
+        "route_count": 41,
+        "routes": [
+            "admin.commission_rule.create",
+            "admin.commission_rule.delete",
+            "admin.commission_rule.edit",
+            "admin.commission_rule.index",
+            "admin.commission_rule.search",
+            "admin.commission_rule.show",
+            "admin.commission_rule.store",
+            "admin.commission_rule.toggleStatus",
+            "admin.commission_rule.update",
+            "admin.dispatch.index",
+            "admin.dispatch.redispatch",
+            "admin.dispatch.search",
+            "admin.earning.index",
+            "admin.earning.search",
+            "admin.laundry_revenue.deduct",
+            "admin.laundry_revenue.export",
+            "admin.laundry_revenue.index",
+            "admin.laundry_revenue.reverse",
+            "admin.laundry_revenue.search",
+            "admin.order.assign",
+            "admin.order.bulkDelete",
+            "admin.order.delete",
+            "admin.order.index",
+            "admin.order.invoice",
+            "admin.order.query.answer",
+            "admin.order.review",
+            "admin.order.search",
+            "admin.order.show",
+            "admin.order.tasks.assign",
+            "admin.order.tasks.dispatch",
+            "admin.order.tasks.generate",
+            "admin.order.tasks.release",
+            "admin.payment.index",
+            "admin.payment.search",
+            "admin.refund.approve",
+            "admin.refund.index",
+            "admin.refund.reject",
+            "admin.refund.search",
+            "admin.refund.settle",
+            "admin.settlement.index"
+        ],
+        "node_count": 667,
+        "cohesion": 0.429,
+        "screens": [
+            {
+                "key": "order",
+                "title": "Orders",
+                "route": "admin.order.index",
+                "modules": [
+                    "Order",
+                    "Payment"
+                ]
+            }
+        ],
+        "menu_keys": [
+            "order"
+        ],
+        "inferred_modules": [
+            "Address",
+            "Rating",
+            "Recurrence"
+        ]
+    },
+    {
+        "slug": "operations",
+        "title": "Operations",
+        "source": "menu",
+        "evidence": "config/menu.php → groups.operations",
+        "order": 8,
+        "modules": [
+            "Complaint",
+            "Order",
+            "TimeSlot"
+        ],
+        "models": [
+            "App\\Modules\\Complaint\\Models\\Complaint",
+            "App\\Modules\\Complaint\\Models\\ComplaintAttachment",
+            "App\\Modules\\Order\\Models\\Order",
+            "App\\Modules\\Order\\Models\\OrderItem",
+            "App\\Modules\\Order\\Models\\OrderMedia",
+            "App\\Modules\\Order\\Models\\OrderPriceQuery",
+            "App\\Modules\\Order\\Models\\OrderRating",
+            "App\\Modules\\Order\\Models\\OrderRecurrence",
+            "App\\Modules\\Order\\Models\\OrderStatusLog",
+            "App\\Modules\\Order\\Models\\OrderTask",
+            "App\\Modules\\Order\\Models\\RecurrencePrompt",
+            "App\\Modules\\TimeSlot\\Models\\TimeSlot"
+        ],
+        "tables": [
+            "complaints",
+            "complaint_attachments",
+            "orders",
+            "order_items",
+            "order_media",
+            "order_price_queries",
+            "order_ratings",
+            "order_recurrences",
+            "order_status_logs",
+            "order_tasks",
+            "recurrence_prompts",
+            "time_slots"
+        ],
+        "route_count": 28,
+        "routes": [
+            "admin.complaint.index",
+            "admin.complaint.note",
+            "admin.complaint.search",
+            "admin.complaint.show",
+            "admin.complaint.transition",
+            "admin.dispatch.index",
+            "admin.dispatch.redispatch",
+            "admin.dispatch.search",
+            "admin.order.assign",
+            "admin.order.bulkDelete",
+            "admin.order.delete",
+            "admin.order.index",
+            "admin.order.query.answer",
+            "admin.order.review",
+            "admin.order.search",
+            "admin.order.show",
+            "admin.order.tasks.assign",
+            "admin.order.tasks.dispatch",
+            "admin.order.tasks.generate",
+            "admin.order.tasks.release",
+            "admin.time_slot.create",
+            "admin.time_slot.delete",
+            "admin.time_slot.edit",
+            "admin.time_slot.index",
+            "admin.time_slot.show",
+            "admin.time_slot.store",
+            "admin.time_slot.toggleStatus",
+            "admin.time_slot.update"
+        ],
+        "node_count": 482,
+        "cohesion": 0.383,
+        "screens": [
+            {
+                "key": "complaint",
+                "title": "Complaints",
+                "route": "admin.complaint.index",
+                "modules": [
+                    "Complaint"
+                ]
+            },
+            {
+                "key": "order_rating",
+                "title": "Ratings",
+                "route": "admin.rating.index",
+                "modules": [
+                    "Order"
+                ]
+            },
+            {
+                "key": "order_recurrence",
+                "title": "Repeat Schedules",
+                "route": "admin.recurrence.index",
+                "modules": [
+                    "Order"
+                ]
+            },
+            {
+                "key": "time_slot",
+                "title": "Time Slots",
+                "route": "admin.time_slot.index",
+                "modules": [
+                    "TimeSlot"
+                ]
+            }
+        ],
+        "menu_keys": [
+            "complaint",
+            "order_rating",
+            "order_recurrence",
+            "time_slot"
+        ]
+    },
+    {
+        "slug": "money",
+        "title": "Money",
+        "source": "menu",
+        "evidence": "config/menu.php → groups.money",
+        "order": 9,
+        "modules": [
+            "Payment",
+            "Wallet"
+        ],
+        "models": [
+            "App\\Modules\\Payment\\Models\\CommissionRule",
+            "App\\Modules\\Payment\\Models\\DriverEarning",
+            "App\\Modules\\Payment\\Models\\LaundryDeduction",
+            "App\\Modules\\Payment\\Models\\LaundryRevenue",
+            "App\\Modules\\Payment\\Models\\OrderSettlement",
+            "App\\Modules\\Payment\\Models\\OrderSettlementLine",
+            "App\\Modules\\Payment\\Models\\Payment",
+            "App\\Modules\\Payment\\Models\\Refund",
+            "App\\Modules\\Wallet\\Models\\Wallet",
+            "App\\Modules\\Wallet\\Models\\WalletTransaction"
+        ],
+        "tables": [
+            "commission_rules",
+            "driver_earnings",
+            "laundry_deductions",
+            "laundry_revenues_do_not_exist",
+            "order_settlements",
+            "order_settlement_lines",
+            "payments",
+            "refunds",
+            "wallets",
+            "wallet_transactions"
+        ],
+        "route_count": 32,
+        "routes": [
+            "admin.commission_rule.create",
+            "admin.commission_rule.delete",
+            "admin.commission_rule.edit",
+            "admin.commission_rule.index",
+            "admin.commission_rule.search",
+            "admin.commission_rule.show",
+            "admin.commission_rule.store",
+            "admin.commission_rule.toggleStatus",
+            "admin.commission_rule.update",
+            "admin.earning.index",
+            "admin.earning.search",
+            "admin.laundry_revenue.deduct",
+            "admin.laundry_revenue.export",
+            "admin.laundry_revenue.index",
+            "admin.laundry_revenue.reverse",
+            "admin.laundry_revenue.search",
+            "admin.order.invoice",
+            "admin.payment.index",
+            "admin.payment.search",
+            "admin.refund.approve",
+            "admin.refund.index",
+            "admin.refund.reject",
+            "admin.refund.search",
+            "admin.refund.settle",
+            "admin.settlement.index",
+            "admin.settlement.search",
+            "admin.wallet.adjust",
+            "admin.wallet.freeze",
+            "admin.wallet.index",
+            "admin.wallet.mine",
+            "admin.wallet.search",
+            "admin.wallet.show"
+        ],
+        "node_count": 380,
+        "cohesion": 0.513,
+        "screens": [
+            {
+                "key": "payment",
+                "title": "Payments",
+                "route": "admin.payment.index",
+                "modules": [
+                    "Payment"
+                ]
+            },
+            {
+                "key": "refund",
+                "title": "Refunds",
+                "route": "admin.refund.index",
+                "modules": [
+                    "Payment"
+                ]
+            },
+            {
+                "key": "wallet",
+                "title": "Wallets",
+                "route": "admin.wallet.index",
+                "modules": [
+                    "Wallet"
+                ]
+            },
+            {
+                "key": "order_settlement",
+                "title": "Order Settlements",
+                "route": "admin.settlement.index",
+                "modules": [
+                    "Payment"
+                ]
+            },
+            {
+                "key": "commission_rule",
+                "title": "Commissions",
+                "route": "admin.commission_rule.index",
+                "modules": [
+                    "Payment"
+                ]
+            },
+            {
+                "key": "laundry_revenue",
+                "title": "Laundry Revenue",
+                "route": "admin.laundry_revenue.index",
+                "modules": [
+                    "Payment"
+                ]
+            }
+        ],
+        "menu_keys": [
+            "payment",
+            "refund",
+            "wallet",
+            "order_settlement",
+            "commission_rule",
+            "laundry_revenue"
+        ]
+    },
+    {
+        "slug": "report",
+        "title": "Reports",
+        "source": "menu",
+        "evidence": "config/menu.php → singles.report",
+        "order": 10,
+        "modules": [
+            "Report"
+        ],
+        "models": [
+            "App\\Modules\\Report\\Models\\Report"
+        ],
+        "tables": [
+            "reports_do_not_exist"
+        ],
+        "route_count": 6,
+        "routes": [
+            "admin.report.drivers",
+            "admin.report.export",
+            "admin.report.laundries",
+            "admin.report.operations",
+            "admin.report.orders",
+            "admin.report.revenue"
+        ],
+        "node_count": 99,
+        "cohesion": 0.488,
+        "screens": [
+            {
+                "key": "report",
+                "title": "Reports",
+                "route": "admin.report.revenue",
+                "modules": [
+                    "Report"
+                ]
+            }
+        ],
+        "menu_keys": [
+            "report"
+        ]
+    },
+    {
+        "slug": "api",
+        "title": "Mobile API (customer + driver apps)",
+        "source": "derived",
+        "evidence": "directory layout: app/Http/Controllers/Api/V1 + routes/api.php",
+        "order": 90,
+        "modules": [
+            "Api"
+        ],
+        "models": [],
+        "tables": [],
+        "route_count": 104,
+        "routes": [
+            "api.v1.addresses.default",
+            "api.v1.addresses.destroy",
+            "api.v1.addresses.index",
+            "api.v1.addresses.show",
+            "api.v1.addresses.store",
+            "api.v1.addresses.update",
+            "api.v1.app-settings",
+            "api.v1.auth.forgot-password",
+            "api.v1.auth.login",
+            "api.v1.auth.logout",
+            "api.v1.auth.register",
+            "api.v1.auth.resend-otp",
+            "api.v1.auth.reset-password",
+            "api.v1.auth.verify-otp",
+            "api.v1.auth.verify-reset-code",
+            "api.v1.banners",
+            "api.v1.catalog",
+            "api.v1.cities",
+            "api.v1.complaint-categories",
+            "api.v1.complaints.index",
+            "api.v1.complaints.show",
+            "api.v1.complaints.store",
+            "api.v1.coupons.check",
+            "api.v1.devices.forget",
+            "api.v1.devices.register",
+            "api.v1.driver.availability",
+            "api.v1.driver.earnings",
+            "api.v1.driver.forgot-password",
+            "api.v1.driver.location",
+            "api.v1.driver.login",
+            "api.v1.driver.logout",
+            "api.v1.driver.password",
+            "api.v1.driver.profile",
+            "api.v1.driver.profile.update",
+            "api.v1.driver.reset-password",
+            "api.v1.driver.summary",
+            "api.v1.driver.tasks.complete",
+            "api.v1.driver.tasks.fail",
+            "api.v1.driver.tasks.failure-reasons",
+            "api.v1.driver.tasks.history"
+        ],
+        "node_count": 266,
+        "cohesion": 0.407
+    },
+    {
+        "slug": "authentication",
+        "title": "Authentication, OTP and sessions",
+        "source": "derived",
+        "evidence": "directory layout: app/Services/Auth + app/Http/Controllers/Auth",
+        "order": 90,
+        "modules": [
+            "Auth"
+        ],
+        "models": [],
+        "tables": [],
+        "route_count": 9,
+        "routes": [
+            "/login",
+            "/password/confirm",
+            "login",
+            "logout",
+            "password.confirm",
+            "password.email",
+            "password.request",
+            "password.reset",
+            "password.update"
+        ],
+        "node_count": 52,
+        "cohesion": 0.364
+    },
+    {
+        "slug": "database",
+        "title": "Schema and seed data",
+        "source": "derived",
+        "evidence": "directory layout: database/migrations + database/seeders",
+        "order": 90,
+        "modules": [
+            "Database"
+        ],
+        "models": [],
+        "tables": [],
+        "route_count": 0,
+        "routes": [],
+        "node_count": 199,
+        "cohesion": 0.433
+    },
+    {
+        "slug": "public_site",
+        "title": "Public marketing site",
+        "source": "derived",
+        "evidence": "directory layout: app/Services/Landing + resources/views/landing",
+        "order": 90,
+        "modules": [
+            "Landing"
+        ],
+        "models": [],
+        "tables": [],
+        "route_count": 0,
+        "routes": [],
+        "node_count": 13,
+        "cohesion": 0.19
+    },
+    {
+        "slug": "quality",
+        "title": "Test suites and written documentation",
+        "source": "derived",
+        "evidence": "directory layout: tests/ + docs/",
+        "order": 90,
+        "modules": [
+            "Tests",
+            "Docs"
+        ],
+        "models": [],
+        "tables": [],
+        "route_count": 0,
+        "routes": [],
+        "node_count": 1374,
+        "cohesion": 0.381
+    },
+    {
+        "slug": "routing_and_distance",
+        "title": "Road distance and routing drivers",
+        "source": "derived",
+        "evidence": "directory layout: app/Services/Routing",
+        "order": 90,
+        "modules": [
+            "Routing"
+        ],
+        "models": [],
+        "tables": [],
+        "route_count": 0,
+        "routes": [],
+        "node_count": 36,
+        "cohesion": 0.252
+    },
+    {
+        "slug": "system",
+        "title": "System",
+        "source": "menu",
+        "evidence": "config/menu.php → groups.system",
+        "order": 99,
+        "modules": [
+            "Moderator",
+            "Platform",
+            "AdminShell",
+            "Notification",
+            "Setting",
+            "Language",
+            "Roles"
+        ],
+        "models": [
+            "App\\Models\\Language",
+            "App\\Models\\Permission",
+            "App\\Models\\Role",
+            "App\\Modules\\Moderator\\Models\\Moderator",
+            "App\\Modules\\Notification\\Models\\DeviceToken",
+            "App\\Modules\\Notification\\Models\\NotificationLog",
+            "App\\Modules\\Notification\\Models\\NotificationPreference",
+            "App\\Modules\\Setting\\Models\\Setting"
+        ],
+        "tables": [
+            "languages",
+            "permissions",
+            "roles",
+            "users",
+            "device_tokens",
+            "notification_logs",
+            "notification_preferences",
+            "settings"
+        ],
+        "route_count": 60,
+        "routes": [
+            "/up",
+            "admin.generalSetting.updateGeneralSetting",
+            "admin.generalSetting.updatePrivacyAndTerms",
+            "admin.generalSetting.viewGeneralSetting",
+            "admin.generalSetting.viewPrivacyAndTerms",
+            "admin.language.create",
+            "admin.language.delete",
+            "admin.language.download",
+            "admin.language.edit",
+            "admin.language.index",
+            "admin.language.landing",
+            "admin.language.landing.update",
+            "admin.language.mobile",
+            "admin.language.mobile.update",
+            "admin.language.panel",
+            "admin.language.panel.update",
+            "admin.language.search",
+            "admin.language.show",
+            "admin.language.store",
+            "admin.language.update",
+            "admin.language.web",
+            "admin.language.web.update",
+            "admin.moderator.create",
+            "admin.moderator.delete",
+            "admin.moderator.edit",
+            "admin.moderator.index",
+            "admin.moderator.search",
+            "admin.moderator.show",
+            "admin.moderator.store",
+            "admin.moderator.toggleStatus",
+            "admin.moderator.update",
+            "admin.myNotifications.index",
+            "admin.myNotifications.read",
+            "admin.myNotifications.read-all",
+            "admin.myNotifications.unread",
+            "admin.notification.compose",
+            "admin.notification.index",
+            "admin.notification.search",
+            "admin.notification.send",
+            "admin.roles.index"
+        ],
+        "node_count": 688,
+        "cohesion": 0.389,
+        "screens": [
+            {
+                "key": "moderator",
+                "title": "Moderators",
+                "route": "admin.moderator.index",
+                "modules": [
+                    "Moderator"
+                ]
+            },
+            {
+                "key": "role",
+                "title": "Roles",
+                "route": "admin.roles.index",
+                "modules": [
+                    "Platform"
+                ]
+            },
+            {
+                "key": "language",
+                "title": "Languages",
+                "route": "admin.language.index",
+                "modules": [
+                    "Platform",
+                    "AdminShell"
+                ]
+            },
+            {
+                "key": "notification_log",
+                "title": "Notification Log",
+                "route": "admin.notification.index",
+                "modules": [
+                    "Notification"
+                ]
+            },
+            {
+                "key": "setting",
+                "title": "Settings",
+                "route": "admin.generalSetting.viewGeneralSetting",
+                "modules": [
+                    "Setting"
+                ]
+            }
+        ],
+        "menu_keys": [
+            "moderator",
+            "role",
+            "language",
+            "notification_log",
+            "setting"
+        ],
+        "inferred_modules": [
+            "Language",
+            "Roles"
+        ]
+    }
+]

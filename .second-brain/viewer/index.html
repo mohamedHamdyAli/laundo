@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Second Brain — graph explorer</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div id="stage">
+  <canvas id="graph"></canvas>
+
+  <div id="hud">
+    <div id="title">Second Brain</div>
+    <div id="scale">—</div>
+  </div>
+
+  <div id="tooltip" hidden></div>
+
+  <div id="loading">
+    <div class="spinner"></div>
+    <p>Laying out the graph…</p>
+    <small id="loading-detail"></small>
+  </div>
+
+  <div id="legend"></div>
+</div>
+
+<aside id="sidebar">
+  <header>
+    <h1>Second Brain</h1>
+    <p id="meta">—</p>
+  </header>
+
+  <div class="search">
+    <input id="search" type="search" placeholder="Search nodes…" autocomplete="off" spellcheck="false">
+    <div id="results" hidden></div>
+  </div>
+
+  <section id="info-section">
+    <h2>Node info</h2>
+    <div id="info" class="empty">Click a node to inspect it.</div>
+  </section>
+
+  <section id="community-section">
+    <h2>
+      Communities
+      <span class="actions">
+        <button id="select-all" type="button">All</button>
+        <button id="clear-all" type="button">None</button>
+      </span>
+    </h2>
+    <div id="communities"></div>
+  </section>
+
+  <section id="type-section">
+    <h2>
+      Node types
+      <span class="actions">
+        <button id="types-all" type="button">All</button>
+        <button id="types-none" type="button">None</button>
+      </span>
+    </h2>
+    <div id="types"></div>
+  </section>
+
+  <footer>
+    <span>drag to pan · scroll to zoom · double-click to focus</span>
+  </footer>
+</aside>
+
+<script src="data/graph.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,1049 @@
+{
+    "rows": [
+        {
+            "category": "CRUD",
+            "query": "add a new field to the offer create and edit form",
+            "answered_as": "search",
+            "intent": "search",
+            "primary": [
+                "app/Modules/Laundry/Services/laundryCrudService.php",
+                "app/Modules/Driver/Services/driverCrudService.php",
+                "resources/views/admin/offer/create.blade.php",
+                "resources/views/admin/roles/index.blade.php",
+                "app/Modules/Offer/Services/offerCrudService.php"
+            ],
+            "then_read": [
+                "app/Modules/Driver/Requests/DriverRequest.php",
+                "app/Services/ResponseService.php",
+                "app/Models/Role.php",
+                "app/Modules/City/Models/City.php",
+                "resources/views/admin/driver/index.blade.php",
+                "resources/views/admin/driver/partials/_driver_table_body.blade.php"
+            ],
+            "classes": {
+                "app/Modules/Laundry/Services/laundryCrudService.php": "noise",
+                "app/Modules/Driver/Services/driverCrudService.php": "noise",
+                "resources/views/admin/offer/create.blade.php": "neighbour",
+                "resources/views/admin/roles/index.blade.php": "noise",
+                "app/Modules/Offer/Services/offerCrudService.php": "truth"
+            },
+            "rank": 5,
+            "truth_total": 4,
+            "truth_found": 1,
+            "truth_found_with_expansion": 1,
+            "missed": [
+                "app/Modules/Offer/Requests/OfferRequest.php",
+                "app/Modules/Offer/Models/Offer.php",
+                "resources/views/admin/offer/forms/formInput.blade.php"
+            ],
+            "missed_after_expansion": [
+                "app/Modules/Offer/Requests/OfferRequest.php",
+                "app/Modules/Offer/Models/Offer.php",
+                "resources/views/admin/offer/forms/formInput.blade.php"
+            ],
+            "expanded_with": [],
+            "features": [
+                "Drivers · Browse",
+                "Drivers · View one",
+                "Drivers · Create",
+                "Drivers · Update",
+                "Drivers · Delete"
+            ],
+            "naive_files": 133,
+            "naive_chars": 199180,
+            "brain_chars": 17170,
+            "response_chars": 2549
+        },
+        {
+            "category": "CRUD",
+            "query": "make the faq list searchable by its answer text",
+            "answered_as": "search",
+            "intent": "search",
+            "primary": [
+                "app/Modules/Faq/Models/Faq.php",
+                "resources/views/admin/faq/index.blade.php",
+                "resources/views/admin/faq/forms/formInput.blade.php",
+                "app/Modules/Faq/Requests/FaqRequest.php"
+            ],
+            "then_read": [
+                "app/Modules/Banner/Models/banner.php",
+                "app/Modules/Intro/Models/intro.php",
+                "app/Modules/JourneyStep/Models/JourneyStep.php",
+                "app/Modules/Offer/Models/Offer.php"
+            ],
+            "classes": {
+                "app/Modules/Faq/Models/Faq.php": "truth",
+                "resources/views/admin/faq/index.blade.php": "noise",
+                "resources/views/admin/faq/forms/formInput.blade.php": "noise",
+                "app/Modules/Faq/Requests/FaqRequest.php": "neighbour"
+            },
+            "rank": 1,
+            "truth_total": 2,
+            "truth_found": 1,
+            "truth_found_with_expansion": 1,
+            "missed": [
+                "app/Modules/Faq/Repositories/FaqRepository.php"
+            ],
+            "missed_after_expansion": [
+                "app/Modules/Faq/Repositories/FaqRepository.php"
+            ],
+            "expanded_with": [],
+            "features": [
+                "API · Banners · Banners",
+                "API · Faqs · Faqs",
+                "API · Intros · Intros",
+                "API · Journey Steps · Journey Steps",
+                "API · Offers · Offers"
+            ],
+            "naive_files": 76,
+            "naive_chars": 112607,
+            "brain_chars": 12700,
+            "response_chars": 2208
+        },
+        {
+            "category": "CRUD",
+            "query": "delete a journey step from the dashboard",
+            "answered_as": "search",
+            "intent": "search",
+            "primary": [
+                "app/Modules/JourneyStep/Services/journeyStepCrudService.php",
+                "app/Modules/JourneyStep/Repositories/JourneyStepRepository.php"
+            ],
+            "then_read": [
+                "app/Modules/JourneyStep/Requests/JourneyStepRequest.php",
+                "app/Services/ResponseService.php",
+                "resources/views/admin/journey_step/index.blade.php",
+                "resources/views/admin/journey_step/partials/_journey_step_table_body.blade.php",
+                "resources/views/admin/journey_step/create.blade.php",
+                "resources/views/admin/journey_step/edit.blade.php"
+            ],
+            "classes": {
+                "app/Modules/JourneyStep/Services/journeyStepCrudService.php": "truth",
+                "app/Modules/JourneyStep/Repositories/JourneyStepRepository.php": "neighbour"
+            },
+            "rank": 1,
+            "truth_total": 2,
+            "truth_found": 1,
+            "truth_found_with_expansion": 1,
+            "missed": [
+                "app/Modules/JourneyStep/Controllers/JourneyStepController.php"
+            ],
+            "missed_after_expansion": [
+                "app/Modules/JourneyStep/Controllers/JourneyStepController.php"
+            ],
+            "expanded_with": [
+                "admin"
+            ],
+            "features": [
+                "Journey Steps · Browse",
+                "Journey Steps · View one",
+                "Journey Steps · Create",
+                "Journey Steps · Update",
+                "Journey Steps · Delete"
+            ],
+            "naive_files": 122,
+            "naive_chars": 1063691,
+            "brain_chars": 6865,
+            "response_chars": 2697
+        },
+        {
+            "category": "API",
+            "query": "add a field to the order summary the customer app receives",
+            "answered_as": "search",
+            "intent": "search",
+            "primary": [
+                "resources/views/admin/laundry_revenue/index.blade.php",
+                "app/Http/Controllers/Api/V1/OrderController.php",
+                "app/Modules/Report/Services/DashboardSummary.php",
+                "database/migrations/2026_08_30_100000_add_review_fields_to_orders_table.php",
+                "app/Modules/Report/Services/OrderReport.php"
+            ],
+            "then_read": [
+                "app/Modules/Report/Services/OperationsReport.php",
+                "app/Modules/Report/Services/WeeklyDigest.php",
+                "app/Modules/Report/Services/DriverReport.php",
+                "app/Modules/Report/Services/LaundryReport.php",
+                "app/Modules/Report/Services/RevenueReport.php",
+                "app/Services/ResponseService.php"
+            ],
+            "classes": {
+                "resources/views/admin/laundry_revenue/index.blade.php": "noise",
+                "app/Http/Controllers/Api/V1/OrderController.php": "truth",
+                "app/Modules/Report/Services/DashboardSummary.php": "noise",
+                "database/migrations/2026_08_30_100000_add_review_fields_to_orders_table.php": "noise",
+                "app/Modules/Report/Services/OrderReport.php": "noise"
+            },
+            "rank": 2,
+            "truth_total": 1,
+            "truth_found": 1,
+            "truth_found_with_expansion": 1,
+            "missed": [],
+            "missed_after_expansion": [],
+            "expanded_with": [
+                "user"
+            ],
+            "features": [
+                "Operations Report · Domain rule",
+                "Revenue Report · Domain rule",
+                "API · Orders · Browse",
+                "API · Orders · View one",
+                "API · Orders · Create"
+            ],
+            "naive_files": 464,
+            "naive_chars": 1045507,
+            "brain_chars": 69319,
+            "response_chars": 2911
+        },
+        {
+            "category": "API",
+            "query": "change what app-settings returns for the driver app",
+            "answered_as": "search",
+            "intent": "search",
+            "primary": [
+                "resources/views/admin/setting/generalSetting/forms/formInput.blade.php",
+                "app/Http/Controllers/Api/V1/DriverController.php",
+                "app/Modules/Setting/Requests/GeneralSettingRequest.php",
+                "app/Modules/Order/Services/DriverDispatcher.php"
+            ],
+            "then_read": [
+                "app/Http/Controllers/Api/V1/DriverTaskController.php",
+                "app/Modules/Order/Services/TaskService.php",
+                "app/Modules/Order/Services/OrderStateMachine.php",
+                "app/Modules/Payment/Services/EarningService.php",
+                "app/Modules/Order/Models/OrderTask.php",
+                "app/Modules/Payment/Models/DriverEarning.php"
+            ],
+            "classes": {
+                "resources/views/admin/setting/generalSetting/forms/formInput.blade.php": "noise",
+                "app/Http/Controllers/Api/V1/DriverController.php": "neighbour",
+                "app/Modules/Setting/Requests/GeneralSettingRequest.php": "noise",
+                "app/Modules/Order/Services/DriverDispatcher.php": "noise"
+            },
+            "rank": null,
+            "truth_total": 1,
+            "truth_found": 0,
+            "truth_found_with_expansion": 0,
+            "missed": [
+                "app/Http/Controllers/Api/V1/AppSettingController.php"
+            ],
+            "missed_after_expansion": [
+                "app/Http/Controllers/Api/V1/AppSettingController.php"
+            ],
+            "expanded_with": [],
+            "features": [
+                "API · Driver · Browse",
+                "API · Driver · View one",
+                "API · Driver · Change Password",
+                "API · Driver · Complete",
+                "API · Driver · Earnings"
+            ],
+            "naive_files": 47,
+            "naive_chars": 76418,
+            "brain_chars": 65908,
+            "response_chars": 2699
+        },
+        {
+            "category": "API",
+            "query": "the endpoint a customer calls to check a discount code before ordering",
+            "answered_as": "search",
+            "intent": "search",
+            "primary": [
+                "app/Http/Controllers/Api/V1/CouponController.php",
+                "app/Modules/Coupon/Models/Coupon.php",
+                "app/Modules/Coupon/Services/CouponService.php",
+                "resources/views/admin/coupon/forms/formInput.blade.php"
+            ],
+            "then_read": [
+                "app/Modules/Coupon/Models/CouponRedemption.php",
+                "app/Modules/Order/Models/Order.php",
+                "app/Modules/User/Models/User.php"
+            ],
+            "classes": {
+                "app/Http/Controllers/Api/V1/CouponController.php": "truth",
+                "app/Modules/Coupon/Models/Coupon.php": "neighbour",
+                "app/Modules/Coupon/Services/CouponService.php": "truth",
+                "resources/views/admin/coupon/forms/formInput.blade.php": "noise"
+            },
+            "rank": 1,
+            "truth_total": 2,
+            "truth_found": 2,
+            "truth_found_with_expansion": 2,
+            "missed": [],
+            "missed_after_expansion": [],
+            "expanded_with": [
+                "user",
+                "coupon",
+                "offer"
+            ],
+            "features": [
+                "API · Coupons · Check",
+                "Coupon Service · Domain rule",
+                "API · Orders · Browse",
+                "API · Orders · Create",
+                "API · Orders · Cancel"
+            ],
+            "naive_files": 223,
+            "naive_chars": 1247931,
+            "brain_chars": 15220,
+            "response_chars": 2387
+        },
+        {
+            "category": "Blade",
+            "query": "add a filter dropdown to the orders list screen",
+            "answered_as": "search",
+            "intent": "search",
+            "primary": [
+                "tests/Feature/Dashboard/HomeTest.php",
+                "app/Modules/Order/Repositories/OrderRepository.php",
+                "resources/views/admin/laundry_zone/index.blade.php",
+                "resources/views/admin/commission_rule/forms/formInput.blade.php",
+                "resources/views/admin/time_slot/index.blade.php"
+            ],
+            "then_read": [
+                "resources/views/admin/changePassword/index.blade.php",
+                "resources/views/admin/home.blade.php",
+                "app/Http/Controllers/HomeController.php",
+                "app/Modules/Report/Services/DashboardSummary.php",
+                "app/Modules/Report/Services/OperationsReport.php",
+                "app/Modules/Report/Services/RevenueReport.php"
+            ],
+            "classes": {
+                "tests/Feature/Dashboard/HomeTest.php": "noise",
+                "app/Modules/Order/Repositories/OrderRepository.php": "neighbour",
+                "resources/views/admin/laundry_zone/index.blade.php": "noise",
+                "resources/views/admin/commission_rule/forms/formInput.blade.php": "noise",
+                "resources/views/admin/time_slot/index.blade.php": "noise"
+            },
+            "rank": null,
+            "truth_total": 2,
+            "truth_found": 0,
+            "truth_found_with_expansion": 0,
+            "missed": [
+                "resources/views/admin/order/index.blade.php",
+                "app/Modules/Order/Controllers/OrderController.php"
+            ],
+            "missed_after_expansion": [
+                "resources/views/admin/order/index.blade.php",
+                "app/Modules/Order/Controllers/OrderController.php"
+            ],
+            "expanded_with": [],
+            "features": [
+                "Dashboard Summary · Domain rule",
+                "Home · Browse",
+                "Home · Change Password Index",
+                "Home · Change Password Update",
+                "Order Deletion Guard · Domain rule"
+            ],
+            "naive_files": 468,
+            "naive_chars": 1045867,
+            "brain_chars": 47905,
+            "response_chars": 2709
+        },
+        {
+            "category": "Blade",
+            "query": "the roles permission matrix screen blanks checkboxes when saved",
+            "answered_as": "search",
+            "intent": "search",
+            "primary": [
+                "resources/views/admin/roles/index.blade.php",
+                "app/Models/Role.php",
+                "app/Http/Controllers/Admin/RoleController.php"
+            ],
+            "then_read": [
+                "app/Http/Requests/RoleRequest.php"
+            ],
+            "classes": {
+                "resources/views/admin/roles/index.blade.php": "truth",
+                "app/Models/Role.php": "noise",
+                "app/Http/Controllers/Admin/RoleController.php": "truth"
+            },
+            "rank": 1,
+            "truth_total": 2,
+            "truth_found": 2,
+            "truth_found_with_expansion": 2,
+            "missed": [],
+            "missed_after_expansion": [],
+            "expanded_with": [],
+            "features": [
+                "Roles · Browse",
+                "Roles · Create",
+                "Roles · Update Permissions",
+                "API · Complaint Categories · Categories",
+                "API · Complaints · Browse"
+            ],
+            "naive_files": 226,
+            "naive_chars": 145071,
+            "brain_chars": 17178,
+            "response_chars": 2150
+        },
+        {
+            "category": "Service",
+            "query": "how is the delivery fee worked out",
+            "answered_as": "search",
+            "intent": "search",
+            "primary": [
+                "app/Modules/Order/Services/DeliveryFeeCalculator.php",
+                "app/Modules/Order/Services/OrderPricing.php",
+                "app/Modules/Pricing/Services/PlatformFee.php",
+                "app/Modules/Order/Models/Order.php"
+            ],
+            "then_read": [
+                "app/Modules/Order/Services/OrderReviewService.php",
+                "app/Modules/Order/Services/OrderStateMachine.php",
+                "app/Modules/Order/Services/TaskGenerator.php",
+                "app/Modules/Order/Services/DriverDispatcher.php",
+                "app/Modules/Order/Models/OrderItem.php",
+                "app/Modules/Order/Models/OrderPriceQuery.php"
+            ],
+            "classes": {
+                "app/Modules/Order/Services/DeliveryFeeCalculator.php": "truth",
+                "app/Modules/Order/Services/OrderPricing.php": "neighbour",
+                "app/Modules/Pricing/Services/PlatformFee.php": "noise",
+                "app/Modules/Order/Models/Order.php": "neighbour"
+            },
+            "rank": 1,
+            "truth_total": 1,
+            "truth_found": 1,
+            "truth_found_with_expansion": 1,
+            "missed": [],
+            "missed_after_expansion": [],
+            "expanded_with": [
+                "deliveryfee",
+                "platformfee",
+                "pricing"
+            ],
+            "features": [
+                "Order Review Service · Domain rule",
+                "API · Orders · Confirm",
+                "API · Orders · Dispute",
+                "API · Orders · Queries",
+                "API · Orders · Query"
+            ],
+            "naive_files": 207,
+            "naive_chars": 129285,
+            "brain_chars": 24246,
+            "response_chars": 2756
+        },
+        {
+            "category": "Service",
+            "query": "change how a coupon is validated before an order is placed",
+            "answered_as": "search",
+            "intent": "search",
+            "primary": [
+                "app/Http/Controllers/Api/V1/CouponController.php",
+                "app/Modules/Coupon/Services/CouponService.php",
+                "app/Modules/Notification/Services/OrderNotifier.php",
+                "tests/Feature/Api/CashSurchargeTest.php"
+            ],
+            "then_read": [
+                "app/Modules/Coupon/Models/Coupon.php",
+                "app/Modules/Coupon/Models/CouponRedemption.php",
+                "app/Modules/Order/Models/Order.php",
+                "app/Modules/User/Models/User.php"
+            ],
+            "classes": {
+                "app/Http/Controllers/Api/V1/CouponController.php": "noise",
+                "app/Modules/Coupon/Services/CouponService.php": "truth",
+                "app/Modules/Notification/Services/OrderNotifier.php": "noise",
+                "tests/Feature/Api/CashSurchargeTest.php": "noise"
+            },
+            "rank": 2,
+            "truth_total": 1,
+            "truth_found": 1,
+            "truth_found_with_expansion": 1,
+            "missed": [],
+            "missed_after_expansion": [],
+            "expanded_with": [],
+            "features": [
+                "API · Coupons · Check",
+                "Coupon Service · Domain rule",
+                "API · Orders · Browse",
+                "API · Orders · Create",
+                "API · Orders · Cancel"
+            ],
+            "naive_files": 199,
+            "naive_chars": 1212488,
+            "brain_chars": 18591,
+            "response_chars": 2572
+        },
+        {
+            "category": "Service",
+            "query": "where is the laundry chosen for an order",
+            "answered_as": "search",
+            "intent": "locate",
+            "primary": [
+                "app/Modules/Order/Services/LaundryAssigner.php",
+                "tests/Feature/Dashboard/LaundryAssignmentTest.php",
+                "app/Modules/Laundry/Models/Laundry.php",
+                "app/Services/Sms/SmsSender.php",
+                "app/Modules/Order/Services/OrderService.php"
+            ],
+            "then_read": [
+                "app/Modules/Laundry/Services/LaundryLoad.php",
+                "app/Services/Routing/Coordinate.php",
+                "app/Services/Routing/RoutingService.php",
+                "app/Modules/Order/Services/orderCrudService.php",
+                "app/Modules/TimeSlot/Services/SlotCapacity.php",
+                "app/Modules/Driver/Services/DriverCard.php"
+            ],
+            "classes": {
+                "app/Modules/Order/Services/LaundryAssigner.php": "truth",
+                "tests/Feature/Dashboard/LaundryAssignmentTest.php": "noise",
+                "app/Modules/Laundry/Models/Laundry.php": "noise",
+                "app/Services/Sms/SmsSender.php": "noise",
+                "app/Modules/Order/Services/OrderService.php": "neighbour"
+            },
+            "rank": 1,
+            "truth_total": 1,
+            "truth_found": 1,
+            "truth_found_with_expansion": 1,
+            "missed": [],
+            "missed_after_expansion": [],
+            "expanded_with": [],
+            "features": [
+                "Laundry Assigner · Domain rule",
+                "API · Cities · Cities",
+                "API · Orders · Browse",
+                "API · Orders · Create",
+                "API · Orders · Cancel"
+            ],
+            "naive_files": 330,
+            "naive_chars": 1080534,
+            "brain_chars": 36537,
+            "response_chars": 2776
+        },
+        {
+            "category": "Model",
+            "query": "add a relationship to the order model",
+            "answered_as": "search",
+            "intent": "search",
+            "primary": [
+                "app/Modules/Payment/Models/OrderSettlement.php",
+                "app/Modules/Order/Models/OrderMedia.php",
+                "app/Modules/Order/Models/OrderItem.php",
+                "app/Modules/Order/Models/OrderStatusLog.php",
+                "app/Modules/Order/Models/RecurrencePrompt.php"
+            ],
+            "then_read": [
+                "app/Modules/Driver/Services/DriverCard.php",
+                "app/Modules/Order/Services/OrderService.php",
+                "app/Modules/Coupon/Services/CouponService.php",
+                "app/Modules/Order/Services/LaundryAssigner.php",
+                "app/Modules/Order/Services/OrderPricing.php",
+                "app/Modules/Order/Services/OrderStateMachine.php"
+            ],
+            "classes": {
+                "app/Modules/Payment/Models/OrderSettlement.php": "noise",
+                "app/Modules/Order/Models/OrderMedia.php": "neighbour",
+                "app/Modules/Order/Models/OrderItem.php": "neighbour",
+                "app/Modules/Order/Models/OrderStatusLog.php": "neighbour",
+                "app/Modules/Order/Models/RecurrencePrompt.php": "neighbour"
+            },
+            "rank": null,
+            "truth_total": 1,
+            "truth_found": 0,
+            "truth_found_with_expansion": 0,
+            "missed": [
+                "app/Modules/Order/Models/Order.php"
+            ],
+            "missed_after_expansion": [
+                "app/Modules/Order/Models/Order.php"
+            ],
+            "expanded_with": [],
+            "features": [
+                "API · Orders · Cancel",
+                "API · Orders · Driver Location",
+                "API · Orders · Quote",
+                "API · Orders · Reorder",
+                "API · Orders · Reschedule"
+            ],
+            "naive_files": 486,
+            "naive_chars": 1047487,
+            "brain_chars": 10299,
+            "response_chars": 2810
+        },
+        {
+            "category": "Model",
+            "query": "which model holds a driver vehicle and licence details",
+            "answered_as": "search",
+            "intent": "search",
+            "primary": [
+                "app/Modules/Driver/Models/DriverProfile.php",
+                "app/Modules/Driver/Requests/DriverRequest.php",
+                "app/Modules/Driver/Models/DriverRecordSubmission.php",
+                "app/Modules/Driver/Enums/VehicleType.php"
+            ],
+            "then_read": [
+                "app/Modules/Notification/Services/DriverRecordNotifier.php",
+                "app/Modules/Driver/Services/DriverRecordReview.php",
+                "app/Services/ResponseService.php",
+                "app/Services/Auth/OtpService.php",
+                "app/Services/Auth/PasswordResetTicket.php",
+                "app/Modules/Driver/Controllers/DriverRecordSubmissionController.php"
+            ],
+            "classes": {
+                "app/Modules/Driver/Models/DriverProfile.php": "truth",
+                "app/Modules/Driver/Requests/DriverRequest.php": "neighbour",
+                "app/Modules/Driver/Models/DriverRecordSubmission.php": "neighbour",
+                "app/Modules/Driver/Enums/VehicleType.php": "neighbour"
+            },
+            "rank": 1,
+            "truth_total": 1,
+            "truth_found": 1,
+            "truth_found_with_expansion": 1,
+            "missed": [],
+            "missed_after_expansion": [],
+            "expanded_with": [],
+            "features": [
+                "Driver Record Notifier · Domain rule",
+                "Driver Record Review · Domain rule",
+                "Drivers · Browse",
+                "Drivers · View one",
+                "Drivers · Create"
+            ],
+            "naive_files": 307,
+            "naive_chars": 1230510,
+            "brain_chars": 18967,
+            "response_chars": 2880
+        },
+        {
+            "category": "Database",
+            "query": "which tables store how an order is split between platform and laundry",
+            "answered_as": "search",
+            "intent": "search",
+            "primary": [
+                "app/Modules/Payment/Services/SettlementService.php",
+                "app/Modules/Payment/Models/OrderSettlement.php",
+                "app/Modules/Order/Models/Order.php"
+            ],
+            "then_read": [
+                "database/migrations/2026_08_25_141551_create_laundries_table.php",
+                "database/migrations/2026_08_26_125601_create_orders_table.php",
+                "database/migrations/2026_09_13_100000_create_commission_rules_table.php",
+                "database/migrations/2026_09_10_160002_create_order_settlements_table.php",
+                "app/Modules/Laundry/Models/Laundry.php",
+                "app/Modules/Payment/Models/CommissionRule.php"
+            ],
+            "classes": {
+                "app/Modules/Payment/Services/SettlementService.php": "neighbour",
+                "app/Modules/Payment/Models/OrderSettlement.php": "truth",
+                "app/Modules/Order/Models/Order.php": "noise"
+            },
+            "rank": 2,
+            "truth_total": 3,
+            "truth_found": 1,
+            "truth_found_with_expansion": 2,
+            "missed": [
+                "app/Modules/Payment/Models/OrderSettlementLine.php",
+                "database/migrations/2026_09_10_160002_create_order_settlements_table.php"
+            ],
+            "missed_after_expansion": [
+                "app/Modules/Payment/Models/OrderSettlementLine.php"
+            ],
+            "expanded_with": [],
+            "features": [
+                "Settlement Service · Domain rule",
+                "Laundry Revenue Service · Domain rule",
+                "API · Cities · Cities",
+                "API · Coupons · Check",
+                "API · Driver · Browse"
+            ],
+            "naive_files": 84,
+            "naive_chars": 126194,
+            "brain_chars": 45899,
+            "response_chars": 3012
+        },
+        {
+            "category": "Database",
+            "query": "add a column to the driver bonus awards table",
+            "answered_as": "search",
+            "intent": "search",
+            "primary": [
+                "resources/views/admin/driver_bonus/partials/_driver_bonus_table_body.blade.php",
+                "app/Modules/Driver/Controllers/DriverBonusAwardController.php",
+                "app/Modules/Driver/Models/DriverBonusAward.php",
+                "database/migrations/2026_09_11_100003_create_driver_bonus_awards_table.php"
+            ],
+            "then_read": [
+                "app/Modules/Driver/Models/DriverBonusRule.php",
+                "app/Modules/Driver/Models/DriverProfile.php",
+                "app/Modules/Order/Models/OrderRating.php",
+                "app/Modules/Order/Models/OrderTask.php",
+                "app/Modules/User/Models/User.php",
+                "app/Modules/Driver/Services/MonthlyBonusService.php"
+            ],
+            "classes": {
+                "resources/views/admin/driver_bonus/partials/_driver_bonus_table_body.blade.php": "noise",
+                "app/Modules/Driver/Controllers/DriverBonusAwardController.php": "neighbour",
+                "app/Modules/Driver/Models/DriverBonusAward.php": "truth",
+                "database/migrations/2026_09_11_100003_create_driver_bonus_awards_table.php": "truth"
+            },
+            "rank": 3,
+            "truth_total": 2,
+            "truth_found": 2,
+            "truth_found_with_expansion": 2,
+            "missed": [],
+            "missed_after_expansion": [],
+            "expanded_with": [
+                "driverbonus",
+                "earning"
+            ],
+            "features": [
+                "Driver Bonus · Browse",
+                "Driver Bonus · Approve",
+                "Driver Bonus · Reject",
+                "Monthly Bonus Service · Domain rule",
+                "Wallet Service · Domain rule"
+            ],
+            "naive_files": 52,
+            "naive_chars": 51078,
+            "brain_chars": 19078,
+            "response_chars": 3103
+        },
+        {
+            "category": "Report",
+            "query": "add a new metric to the weekly report email",
+            "answered_as": "search",
+            "intent": "search",
+            "primary": [
+                "app/Modules/Report/Services/WeeklyDigest.php",
+                "app/Modules/Report/Console/SendWeeklyReports.php",
+                "resources/views/emails/weekly-report.blade.php"
+            ],
+            "then_read": [
+                "app/Modules/Report/Services/OperationsReport.php",
+                "app/Modules/Report/Services/OrderReport.php",
+                "app/Modules/Report/Services/RevenueReport.php",
+                "app/Modules/Laundry/Models/Laundry.php",
+                "app/Modules/User/Models/User.php"
+            ],
+            "classes": {
+                "app/Modules/Report/Services/WeeklyDigest.php": "truth",
+                "app/Modules/Report/Console/SendWeeklyReports.php": "truth",
+                "resources/views/emails/weekly-report.blade.php": "noise"
+            },
+            "rank": 1,
+            "truth_total": 2,
+            "truth_found": 2,
+            "truth_found_with_expansion": 2,
+            "missed": [],
+            "missed_after_expansion": [],
+            "expanded_with": [
+                "mail",
+                "notification"
+            ],
+            "features": [
+                "Scheduled · Laundo Weekly Reports · Run",
+                "Weekly Digest · Domain rule",
+                "Operations Report · Domain rule",
+                "Order Report · Domain rule",
+                "Revenue Report · Domain rule"
+            ],
+            "naive_files": 137,
+            "naive_chars": 1214087,
+            "brain_chars": 20086,
+            "response_chars": 2695
+        },
+        {
+            "category": "Report",
+            "query": "the laundry revenue screen totals",
+            "answered_as": "search",
+            "intent": "search",
+            "primary": [
+                "app/Modules/Payment/Repositories/LaundryRevenueRepository.php",
+                "app/Modules/Payment/Data/RevenueWindow.php",
+                "app/Modules/Payment/Services/LaundryRevenueService.php",
+                "app/Modules/Order/Models/Order.php",
+                "app/Modules/Report/Services/RevenueReport.php"
+            ],
+            "then_read": [
+                "resources/views/admin/laundry_revenue/index.blade.php",
+                "resources/views/admin/laundry_revenue/partials/_laundry_revenue_table_body.blade.php",
+                "app/Modules/Payment/Controllers/LaundryRevenueController.php",
+                "app/Modules/Payment/Requests/LaundryDeductionRequest.php"
+            ],
+            "classes": {
+                "app/Modules/Payment/Repositories/LaundryRevenueRepository.php": "truth",
+                "app/Modules/Payment/Data/RevenueWindow.php": "neighbour",
+                "app/Modules/Payment/Services/LaundryRevenueService.php": "truth",
+                "app/Modules/Order/Models/Order.php": "noise",
+                "app/Modules/Report/Services/RevenueReport.php": "noise"
+            },
+            "rank": 1,
+            "truth_total": 2,
+            "truth_found": 2,
+            "truth_found_with_expansion": 2,
+            "missed": [],
+            "missed_after_expansion": [],
+            "expanded_with": [],
+            "features": [
+                "Laundry Revenue Service · Domain rule",
+                "Laundry Revenue · Browse",
+                "Laundry Revenue · Deduct",
+                "Laundry Revenue · Export",
+                "Laundry Revenue · Reverse"
+            ],
+            "naive_files": 306,
+            "naive_chars": 178002,
+            "brain_chars": 34648,
+            "response_chars": 2767
+        },
+        {
+            "category": "Permission",
+            "query": "which permission gates the commission rules screen",
+            "answered_as": "permission_gate",
+            "intent": "permission_gate",
+            "primary": [
+                "app/Modules/Payment/Controllers/CommissionRuleController.php",
+                "routes/web.php"
+            ],
+            "then_read": [],
+            "classes": {
+                "app/Modules/Payment/Controllers/CommissionRuleController.php": "truth",
+                "routes/web.php": "truth"
+            },
+            "rank": 1,
+            "truth_total": 2,
+            "truth_found": 2,
+            "truth_found_with_expansion": 2,
+            "missed": [],
+            "missed_after_expansion": [],
+            "expanded_with": [],
+            "features": [],
+            "naive_files": 163,
+            "naive_chars": 91278,
+            "brain_chars": 79821,
+            "response_chars": 2581
+        },
+        {
+            "category": "Cross-module",
+            "query": "when an order completes how does the laundry get paid",
+            "answered_as": "search",
+            "intent": "search",
+            "primary": [
+                "resources/views/admin/driver_bonus_rule/forms/formInput.blade.php",
+                "resources/views/admin/report/revenue.blade.php",
+                "app/Modules/Payment/Services/SettlementService.php",
+                "resources/views/admin/settlement/index.blade.php",
+                "app/Modules/Coupon/Services/ReferralService.php"
+            ],
+            "then_read": [
+                "resources/views/admin/moderator/create.blade.php",
+                "resources/views/admin/moderator/edit.blade.php",
+                "resources/views/admin/moderator/index.blade.php",
+                "resources/views/admin/moderator/partials/_moderator_table_body.blade.php",
+                "resources/views/admin/moderator/show.blade.php",
+                "resources/views/admin/wallet/index.blade.php"
+            ],
+            "classes": {
+                "resources/views/admin/driver_bonus_rule/forms/formInput.blade.php": "noise",
+                "resources/views/admin/report/revenue.blade.php": "noise",
+                "app/Modules/Payment/Services/SettlementService.php": "truth",
+                "resources/views/admin/settlement/index.blade.php": "noise",
+                "app/Modules/Coupon/Services/ReferralService.php": "noise"
+            },
+            "rank": 3,
+            "truth_total": 2,
+            "truth_found": 1,
+            "truth_found_with_expansion": 1,
+            "missed": [
+                "app/Modules/Order/Services/OrderStateMachine.php"
+            ],
+            "missed_after_expansion": [
+                "app/Modules/Order/Services/OrderStateMachine.php"
+            ],
+            "expanded_with": [],
+            "features": [
+                "Customer Reference · Domain rule",
+                "Referral Service · Domain rule",
+                "Settlement Service · Domain rule"
+            ],
+            "naive_files": 179,
+            "naive_chars": 1231614,
+            "brain_chars": 38475,
+            "response_chars": 2871
+        },
+        {
+            "category": "Cross-module",
+            "query": "tenant scope keeping laundry owners apart",
+            "answered_as": "search",
+            "intent": "search",
+            "primary": [
+                "app/Modules/Laundry/Models/Laundry.php",
+                "app/Modules/Laundry/Repositories/LaundryRepository.php",
+                "app/Modules/Driver/Repositories/DriverRepository.php",
+                "app/Support/LaundryContext.php",
+                "app/Modules/Payment/Models/LaundryDeduction.php"
+            ],
+            "then_read": [
+                "app/Modules/Report/Services/DashboardSummary.php",
+                "app/Services/ResponseService.php",
+                "app/Modules/Report/Services/OperationsReport.php",
+                "app/Modules/Report/Services/RevenueReport.php",
+                "app/Http/Controllers/HomeController.php",
+                "app/Modules/Complaint/Models/Complaint.php"
+            ],
+            "classes": {
+                "app/Modules/Laundry/Models/Laundry.php": "noise",
+                "app/Modules/Laundry/Repositories/LaundryRepository.php": "noise",
+                "app/Modules/Driver/Repositories/DriverRepository.php": "noise",
+                "app/Support/LaundryContext.php": "truth",
+                "app/Modules/Payment/Models/LaundryDeduction.php": "noise"
+            },
+            "rank": 4,
+            "truth_total": 2,
+            "truth_found": 1,
+            "truth_found_with_expansion": 1,
+            "missed": [
+                "app/Trait/BelongsToLaundry.php"
+            ],
+            "missed_after_expansion": [
+                "app/Trait/BelongsToLaundry.php"
+            ],
+            "expanded_with": [],
+            "features": [
+                "Home · Browse",
+                "Home · Change Password Index",
+                "Home · Change Password Update",
+                "Intake Capacity · Browse",
+                "Intake Capacity · Update"
+            ],
+            "naive_files": 206,
+            "naive_chars": 1205009,
+            "brain_chars": 14731,
+            "response_chars": 3119
+        }
+    ],
+    "summary": {
+        "tasks": 20,
+        "top1": 50,
+        "top3": 75,
+        "top5": 85,
+        "truth_total": 36,
+        "truth_found": 23,
+        "truth_found_with_expansion": 24,
+        "recall": 63.9,
+        "recall_with_expansion": 66.7,
+        "false_negative_rate": 36.1,
+        "false_negative_rate_with_expansion": 33.3,
+        "returned": 81,
+        "neighbour": 19,
+        "noise": 39,
+        "false_positive_rate": 48.1,
+        "avg_files_returned": 4.05,
+        "avg_then_read": 4.95,
+        "avg_response_chars": 2713,
+        "avg_response_tokens": 678,
+        "naive_tokens": 3433460,
+        "brain_tokens": 153411,
+        "honest_tokens": 695854,
+        "reduction_optimistic": 95.5,
+        "reduction_honest": 79.7,
+        "by_category": {
+            "API": {
+                "n": 3,
+                "top1": 1,
+                "top3": 2,
+                "top5": 2,
+                "truth_total": 4,
+                "truth_found": 3,
+                "truth_expanded": 3,
+                "returned": 13,
+                "noise": 8
+            },
+            "Blade": {
+                "n": 2,
+                "top1": 1,
+                "top3": 1,
+                "top5": 1,
+                "truth_total": 4,
+                "truth_found": 2,
+                "truth_expanded": 2,
+                "returned": 8,
+                "noise": 5
+            },
+            "CRUD": {
+                "n": 3,
+                "top1": 2,
+                "top3": 2,
+                "top5": 3,
+                "truth_total": 8,
+                "truth_found": 3,
+                "truth_expanded": 3,
+                "returned": 11,
+                "noise": 5
+            },
+            "Cross-module": {
+                "n": 2,
+                "top1": 0,
+                "top3": 1,
+                "top5": 2,
+                "truth_total": 4,
+                "truth_found": 2,
+                "truth_expanded": 2,
+                "returned": 10,
+                "noise": 8
+            },
+            "Database": {
+                "n": 2,
+                "top1": 0,
+                "top3": 2,
+                "top5": 2,
+                "truth_total": 5,
+                "truth_found": 3,
+                "truth_expanded": 4,
+                "returned": 7,
+                "noise": 2
+            },
+            "Model": {
+                "n": 2,
+                "top1": 1,
+                "top3": 1,
+                "top5": 1,
+                "truth_total": 2,
+                "truth_found": 1,
+                "truth_expanded": 1,
+                "returned": 9,
+                "noise": 1
+            },
+            "Permission": {
+                "n": 1,
+                "top1": 1,
+                "top3": 1,
+                "top5": 1,
+                "truth_total": 2,
+                "truth_found": 2,
+                "truth_expanded": 2,
+                "returned": 2,
+                "noise": 0
+            },
+            "Report": {
+                "n": 2,
+                "top1": 2,
+                "top3": 2,
+                "top5": 2,
+                "truth_total": 4,
+                "truth_found": 4,
+                "truth_expanded": 4,
+                "returned": 8,
+                "noise": 3
+            },
+            "Service": {
+                "n": 3,
+                "top1": 2,
+                "top3": 3,
+                "top5": 3,
+                "truth_total": 3,
+                "truth_found": 3,
+                "truth_expanded": 3,
+                "returned": 13,
+                "noise": 7
+            }
+        },
+        "set": "known",
+        "ran_at": "2026-09-23T10:29:02+00:00",
+        "took_seconds": 1,
+        "manifest_built_at": "2026-09-23T10:28:25+00:00",
+        "build_seconds": 1.01
+    }
+}

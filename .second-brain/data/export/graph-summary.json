@@ -1,0 +1,387 @@
+{
+    "generated_at": "2026-09-23T10:38:26+00:00",
+    "totals": {
+        "nodes": 5580,
+        "edges": 20052,
+        "communities": 17,
+        "modules": 42,
+        "features": 411,
+        "routes": 428,
+        "tables": 66
+    },
+    "communities": [
+        {
+            "slug": "locations",
+            "title": "Locations",
+            "source": "menu",
+            "evidence": "config/menu.php → groups.locations",
+            "modules": [
+                "Country",
+                "City",
+                "Zone"
+            ],
+            "inferred_modules": [],
+            "tables": [
+                "cities",
+                "countries",
+                "zones"
+            ],
+            "routes": null,
+            "nodes": null,
+            "cohesion": 0.624
+        },
+        {
+            "slug": "catalog",
+            "title": "Catalog",
+            "source": "menu",
+            "evidence": "config/menu.php → groups.catalog",
+            "modules": [
+                "Service",
+                "ItemCategory",
+                "Item",
+                "Pricing"
+            ],
+            "inferred_modules": [],
+            "tables": [
+                "item_categories",
+                "items",
+                "item_prices",
+                "services"
+            ],
+            "routes": null,
+            "nodes": null,
+            "cohesion": 0.606
+        },
+        {
+            "slug": "laundries",
+            "title": "Laundries",
+            "source": "menu",
+            "evidence": "config/menu.php → groups.laundries",
+            "modules": [
+                "Laundry",
+                "LaundryStaff",
+                "LaundryService",
+                "LaundryZone"
+            ],
+            "inferred_modules": [],
+            "tables": [
+                "laundry_services",
+                "users",
+                "laundry_zones",
+                "laundries",
+                "laundry_slot_capacities"
+            ],
+            "routes": null,
+            "nodes": null,
+            "cohesion": 0.51
+        },
+        {
+            "slug": "delivery",
+            "title": "Delivery",
+            "source": "menu",
+            "evidence": "config/menu.php → groups.delivery",
+            "modules": [
+                "Order",
+                "Driver",
+                "Payment"
+            ],
+            "inferred_modules": [],
+            "tables": [
+                "users",
+                "driver_applications",
+                "driver_bonus_awards",
+                "driver_bonus_rules",
+                "driver_bonus_tiers",
+                "driver_profiles",
+                "driver_record_submissions",
+                "orders",
+                "order_items",
+                "order_media",
+                "order_price_queries",
+                "order_ratings",
+                "order_recurrences",
+                "order_status_logs",
+                "order_tasks",
+                "recurrence_prompts",
+                "commission_rules",
+                "driver_earnings",
+                "laundry_deductions",
+                "laundry_revenues_do_not_exist"
+            ],
+            "routes": null,
+            "nodes": null,
+            "cohesion": 0.484
+        },
+        {
+            "slug": "user",
+            "title": "Users",
+            "source": "menu",
+            "evidence": "config/menu.php → singles.user",
+            "modules": [
+                "User"
+            ],
+            "inferred_modules": [],
+            "tables": [
+                "users"
+            ],
+            "routes": null,
+            "nodes": null,
+            "cohesion": 0.245
+        },
+        {
+            "slug": "marketing",
+            "title": "Marketing",
+            "source": "menu",
+            "evidence": "config/menu.php → groups.marketing",
+            "modules": [
+                "Offer",
+                "Coupon",
+                "Banner",
+                "Intro",
+                "JourneyStep",
+                "Faq"
+            ],
+            "inferred_modules": [],
+            "tables": [
+                "banners",
+                "coupons",
+                "coupon_redemptions",
+                "faqs",
+                "intros",
+                "journey_steps",
+                "offers"
+            ],
+            "routes": null,
+            "nodes": null,
+            "cohesion": 0.689
+        },
+        {
+            "slug": "order",
+            "title": "Orders",
+            "source": "menu",
+            "evidence": "config/menu.php → singles.order",
+            "modules": [
+                "Order",
+                "Payment",
+                "Address",
+                "Rating",
+                "Recurrence"
+            ],
+            "inferred_modules": [
+                "Address",
+                "Rating",
+                "Recurrence"
+            ],
+            "tables": [
+                "orders",
+                "order_items",
+                "order_media",
+                "order_price_queries",
+                "order_ratings",
+                "order_recurrences",
+                "order_status_logs",
+                "order_tasks",
+                "recurrence_prompts",
+                "commission_rules",
+                "driver_earnings",
+                "laundry_deductions",
+                "laundry_revenues_do_not_exist",
+                "order_settlements",
+                "order_settlement_lines",
+                "payments",
+                "refunds"
+            ],
+            "routes": null,
+            "nodes": null,
+            "cohesion": 0.429
+        },
+        {
+            "slug": "operations",
+            "title": "Operations",
+            "source": "menu",
+            "evidence": "config/menu.php → groups.operations",
+            "modules": [
+                "Complaint",
+                "Order",
+                "TimeSlot"
+            ],
+            "inferred_modules": [],
+            "tables": [
+                "complaints",
+                "complaint_attachments",
+                "orders",
+                "order_items",
+                "order_media",
+                "order_price_queries",
+                "order_ratings",
+                "order_recurrences",
+                "order_status_logs",
+                "order_tasks",
+                "recurrence_prompts",
+                "time_slots"
+            ],
+            "routes": null,
+            "nodes": null,
+            "cohesion": 0.383
+        },
+        {
+            "slug": "money",
+            "title": "Money",
+            "source": "menu",
+            "evidence": "config/menu.php → groups.money",
+            "modules": [
+                "Payment",
+                "Wallet"
+            ],
+            "inferred_modules": [],
+            "tables": [
+                "commission_rules",
+                "driver_earnings",
+                "laundry_deductions",
+                "laundry_revenues_do_not_exist",
+                "order_settlements",
+                "order_settlement_lines",
+                "payments",
+                "refunds",
+                "wallets",
+                "wallet_transactions"
+            ],
+            "routes": null,
+            "nodes": null,
+            "cohesion": 0.513
+        },
+        {
+            "slug": "report",
+            "title": "Reports",
+            "source": "menu",
+            "evidence": "config/menu.php → singles.report",
+            "modules": [
+                "Report"
+            ],
+            "inferred_modules": [],
+            "tables": [
+                "reports_do_not_exist"
+            ],
+            "routes": null,
+            "nodes": null,
+            "cohesion": 0.488
+        },
+        {
+            "slug": "api",
+            "title": "Mobile API (customer + driver apps)",
+            "source": "derived",
+            "evidence": "directory layout: app/Http/Controllers/Api/V1 + routes/api.php",
+            "modules": [
+                "Api"
+            ],
+            "inferred_modules": [],
+            "tables": null,
+            "routes": null,
+            "nodes": null,
+            "cohesion": 0.408
+        },
+        {
+            "slug": "authentication",
+            "title": "Authentication, OTP and sessions",
+            "source": "derived",
+            "evidence": "directory layout: app/Services/Auth + app/Http/Controllers/Auth",
+            "modules": [
+                "Auth"
+            ],
+            "inferred_modules": [],
+            "tables": null,
+            "routes": null,
+            "nodes": null,
+            "cohesion": 0.364
+        },
+        {
+            "slug": "database",
+            "title": "Schema and seed data",
+            "source": "derived",
+            "evidence": "directory layout: database/migrations + database/seeders",
+            "modules": [
+                "Database"
+            ],
+            "inferred_modules": [],
+            "tables": null,
+            "routes": null,
+            "nodes": null,
+            "cohesion": 0.433
+        },
+        {
+            "slug": "public_site",
+            "title": "Public marketing site",
+            "source": "derived",
+            "evidence": "directory layout: app/Services/Landing + resources/views/landing",
+            "modules": [
+                "Landing"
+            ],
+            "inferred_modules": [],
+            "tables": null,
+            "routes": null,
+            "nodes": null,
+            "cohesion": 0.19
+        },
+        {
+            "slug": "quality",
+            "title": "Test suites and written documentation",
+            "source": "derived",
+            "evidence": "directory layout: tests/ + docs/",
+            "modules": [
+                "Tests",
+                "Docs"
+            ],
+            "inferred_modules": [],
+            "tables": null,
+            "routes": null,
+            "nodes": null,
+            "cohesion": 0.379
+        },
+        {
+            "slug": "routing_and_distance",
+            "title": "Road distance and routing drivers",
+            "source": "derived",
+            "evidence": "directory layout: app/Services/Routing",
+            "modules": [
+                "Routing"
+            ],
+            "inferred_modules": [],
+            "tables": null,
+            "routes": null,
+            "nodes": null,
+            "cohesion": 0.252
+        },
+        {
+            "slug": "system",
+            "title": "System",
+            "source": "menu",
+            "evidence": "config/menu.php → groups.system",
+            "modules": [
+                "Moderator",
+                "Platform",
+                "AdminShell",
+                "Notification",
+                "Setting",
+                "Language",
+                "Roles"
+            ],
+            "inferred_modules": [
+                "Language",
+                "Roles"
+            ],
+            "tables": [
+                "languages",
+                "permissions",
+                "roles",
+                "users",
+                "device_tokens",
+                "notification_logs",
+                "notification_preferences",
+                "settings"
+            ],
+            "routes": null,
+            "nodes": null,
+            "cohesion": 0.389
+        }
+    ]
+}

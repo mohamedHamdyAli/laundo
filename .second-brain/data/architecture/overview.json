@@ -1,0 +1,378 @@
+{
+    "project": "Laundo — laundry pickup & delivery platform",
+    "stack": {
+        "framework": "Laravel 13",
+        "php": "^8.3",
+        "database": "MySQL in production, MariaDB on the deployed box; SQLite in the PHPUnit suite",
+        "auth": "Sanctum for the mobile API, session auth for the panel",
+        "frontend": "Blade + a static vendor admin template under public/assets (Vite is near-unused)",
+        "tests": "PHPUnit 11 (not Pest) + Playwright browser specs in tests/Browser"
+    },
+    "surfaces": {
+        "panel": {
+            "prefix": "/admin",
+            "routes": 299,
+            "note": "Blade admin panel; laundry owners share it and are confined by the tenant scope"
+        },
+        "api": {
+            "prefix": "/api/v1",
+            "routes": 104,
+            "note": "stateless JSON for the customer app and the driver app"
+        },
+        "landing": {
+            "prefix": "/",
+            "routes": 7,
+            "note": "public marketing page; must not load any admin asset"
+        },
+        "public": {
+            "prefix": "/",
+            "routes": 18,
+            "note": "auth pages, laundry/driver applications, locale switch"
+        }
+    },
+    "layer_contract": {
+        "order": [
+            "Controller",
+            "Service",
+            "Repository",
+            "Model"
+        ],
+        "controller": "HTTP only — delegates to the service",
+        "service": "business rules; every write wrapped in DB::transaction",
+        "repository": "the only place raw Eloquent queries live",
+        "crud_service_convention": "app/Modules/{Name}/Services/{name}CrudService.php exposes shredData($id = null); the list comes back under a plural key and the single record under `row`"
+    },
+    "conventions": {
+        "module_root": "app/Modules/{Name}/{Controllers,Models,Repositories,Services,Requests,Enums}",
+        "screen_is_not_a_module": "a sidebar screen often lives inside an existing module — payment/driver_earning/refund/order_settlement/commission_rule all live in app/Modules/Payment",
+        "permissions": "{model}.{action} with action in view|create|update|delete|toggle",
+        "money_permissions": "money terms gate on setting.update, not on the module's own update",
+        "translatable_columns": "JSON {\"en\":…,\"ar\":…} in a text column, decoded to stdClass by a getXAttribute accessor — $row->name->en, never $row->name['en']",
+        "status_column": "string 'active'/'inactive', never a boolean",
+        "route_names": "kebab-case URI, snake_case route name (/admin/journey-step → admin.journey_step.index)",
+        "list_pages": "index + search routes per module; search is AJAX-only and reads $request->get('query')"
+    },
+    "absent_by_design": {
+        "policies": "none — authorisation is CheckPermission middleware, the canDo() Blade helper and MenuBuilder",
+        "events_and_listeners": "none — services call notifiers directly and synchronously",
+        "api_resources": "none — each API controller keeps private present*() methods per payload shape",
+        "jobs": "one only (app/Jobs/SendManualNotification.php); everything else is synchronous on purpose"
+    },
+    "scale": {
+        "communities": 17,
+        "modules": 42,
+        "features": 411,
+        "routes": 428,
+        "tables": 66,
+        "nodes_by_type": {
+            "class": 450,
+            "command": 10,
+            "enum": 19,
+            "feature": 411,
+            "file": 916,
+            "integration": 5,
+            "interface": 4,
+            "method": 2610,
+            "module": 42,
+            "permission": 215,
+            "route": 428,
+            "table": 66,
+            "test": 131,
+            "trait": 4,
+            "view": 278
+        },
+        "edges_by_type": {
+            "contains": 4440,
+            "implemented_by": 3486,
+            "tested_by": 2540,
+            "references": 1912,
+            "imports": 1887,
+            "entry_point": 1146,
+            "depends_on": 832,
+            "route_to": 829,
+            "calls": 700,
+            "touches": 471,
+            "guarded_by": 384,
+            "includes": 356,
+            "extends": 180,
+            "renders": 166,
+            "writes_table": 131,
+            "co_changes": 97,
+            "foreign_key": 87,
+            "uses_trait": 83,
+            "belongs_to": 75,
+            "validates": 63,
+            "defined_by": 57,
+            "maps_to": 57,
+            "integrates": 49,
+            "has_many": 25,
+            "implements": 6,
+            "belongs_to_many": 4,
+            "has_one": 3
+        }
+    },
+    "communities": [
+        {
+            "slug": "locations",
+            "title": "Locations",
+            "source": "menu",
+            "modules": [
+                "Country",
+                "City",
+                "Zone"
+            ],
+            "routes": 27,
+            "cohesion": 0.624
+        },
+        {
+            "slug": "catalog",
+            "title": "Catalog",
+            "source": "menu",
+            "modules": [
+                "Service",
+                "ItemCategory",
+                "Item",
+                "Pricing"
+            ],
+            "routes": 29,
+            "cohesion": 0.606
+        },
+        {
+            "slug": "laundries",
+            "title": "Laundries",
+            "source": "menu",
+            "modules": [
+                "Laundry",
+                "LaundryStaff",
+                "LaundryService",
+                "LaundryZone"
+            ],
+            "routes": 28,
+            "cohesion": 0.51
+        },
+        {
+            "slug": "delivery",
+            "title": "Delivery",
+            "source": "menu",
+            "modules": [
+                "Order",
+                "Driver",
+                "Payment"
+            ],
+            "routes": 75,
+            "cohesion": 0.484
+        },
+        {
+            "slug": "user",
+            "title": "Users",
+            "source": "menu",
+            "modules": [
+                "User"
+            ],
+            "routes": 9,
+            "cohesion": 0.245
+        },
+        {
+            "slug": "marketing",
+            "title": "Marketing",
+            "source": "menu",
+            "modules": [
+                "Offer",
+                "Coupon",
+                "Banner",
+                "Intro",
+                "JourneyStep",
+                "Faq"
+            ],
+            "routes": 54,
+            "cohesion": 0.689
+        },
+        {
+            "slug": "order",
+            "title": "Orders",
+            "source": "menu",
+            "modules": [
+                "Order",
+                "Payment",
+                "Address",
+                "Rating",
+                "Recurrence"
+            ],
+            "routes": 41,
+            "cohesion": 0.429
+        },
+        {
+            "slug": "operations",
+            "title": "Operations",
+            "source": "menu",
+            "modules": [
+                "Complaint",
+                "Order",
+                "TimeSlot"
+            ],
+            "routes": 28,
+            "cohesion": 0.383
+        },
+        {
+            "slug": "money",
+            "title": "Money",
+            "source": "menu",
+            "modules": [
+                "Payment",
+                "Wallet"
+            ],
+            "routes": 32,
+            "cohesion": 0.513
+        },
+        {
+            "slug": "report",
+            "title": "Reports",
+            "source": "menu",
+            "modules": [
+                "Report"
+            ],
+            "routes": 6,
+            "cohesion": 0.488
+        },
+        {
+            "slug": "api",
+            "title": "Mobile API (customer + driver apps)",
+            "source": "derived",
+            "modules": [
+                "Api"
+            ],
+            "routes": 104,
+            "cohesion": 0.407
+        },
+        {
+            "slug": "authentication",
+            "title": "Authentication, OTP and sessions",
+            "source": "derived",
+            "modules": [
+                "Auth"
+            ],
+            "routes": 9,
+            "cohesion": 0.364
+        },
+        {
+            "slug": "database",
+            "title": "Schema and seed data",
+            "source": "derived",
+            "modules": [
+                "Database"
+            ],
+            "routes": 0,
+            "cohesion": 0.433
+        },
+        {
+            "slug": "public_site",
+            "title": "Public marketing site",
+            "source": "derived",
+            "modules": [
+                "Landing"
+            ],
+            "routes": 0,
+            "cohesion": 0.19
+        },
+        {
+            "slug": "quality",
+            "title": "Test suites and written documentation",
+            "source": "derived",
+            "modules": [
+                "Tests",
+                "Docs"
+            ],
+            "routes": 0,
+            "cohesion": 0.381
+        },
+        {
+            "slug": "routing_and_distance",
+            "title": "Road distance and routing drivers",
+            "source": "derived",
+            "modules": [
+                "Routing"
+            ],
+            "routes": 0,
+            "cohesion": 0.252
+        },
+        {
+            "slug": "system",
+            "title": "System",
+            "source": "menu",
+            "modules": [
+                "Moderator",
+                "Platform",
+                "AdminShell",
+                "Notification",
+                "Setting",
+                "Language",
+                "Roles"
+            ],
+            "routes": 60,
+            "cohesion": 0.389
+        }
+    ],
+    "runtime": {
+        "rate_limiters": [
+            "api",
+            "otp",
+            "otp-verify",
+            "location",
+            "tracking",
+            "login"
+        ],
+        "schedule": [
+            {
+                "command": "orders:prompt-recurring",
+                "cadence": "dailyAt('09:00')"
+            },
+            {
+                "command": "tasks:dispatch",
+                "cadence": "everyTenMinutes()"
+            },
+            {
+                "command": "tasks:alert-stuck",
+                "cadence": "hourly()"
+            },
+            {
+                "command": "laundo:prune",
+                "cadence": "weeklyOn(0, '03:30')"
+            },
+            {
+                "command": "orders:alert-silent-confirmations",
+                "cadence": "hourly()"
+            },
+            {
+                "command": "laundo:weekly-reports",
+                "cadence": "weeklyOn(0, '08:00')"
+            },
+            {
+                "command": "drivers:close-bonus-month",
+                "cadence": "monthlyOn(1, '07:00')"
+            }
+        ]
+    },
+    "entry_files": [
+        "routes/web.php",
+        "routes/api.php",
+        "routes/console.php",
+        "config/menu.php",
+        "config/dashboard.php",
+        "bootstrap/app.php"
+    ],
+    "documentation": [
+        "docs/api-change-notification-preferences.md",
+        "docs/driver-app-backend-answers.md",
+        "docs/mobile-2026-09-20-driver-app.md",
+        "docs/mobile-2026-09-20-slots-and-capacity.md",
+        "docs/mobile-2026-09-21-driver-record-review.md",
+        "docs/mobile-2026-09-21-driver-records-and-audience.md",
+        "docs/mobile-2026-09-21-driver-tracking.md",
+        "docs/mobile-2026-09-22-payments-and-prices.md",
+        "docs/mobile-2026-09-22-review-fixes.md",
+        "docs/mobile-api-changes.md",
+        "docs/order-cycle-explained.md",
+        "docs/order-lifecycle.md",
+        "docs/postman/README.md"
+    ]
+}

@@ -1,0 +1,1551 @@
+{
+    "foreign_keys": [
+        {
+            "from": "users",
+            "column": "role_id",
+            "to": "roles",
+            "migration": "database/migrations/2024_01_01_000002_add_role_id_to_users.php"
+        },
+        {
+            "from": "permission_role",
+            "column": "role_id",
+            "to": "roles",
+            "migration": "database/migrations/2024_01_01_000003_create_permissions_tables.php"
+        },
+        {
+            "from": "permission_role",
+            "column": "permission_id",
+            "to": "permissions",
+            "migration": "database/migrations/2024_01_01_000003_create_permissions_tables.php"
+        },
+        {
+            "from": "cities",
+            "column": "country_id",
+            "to": "countries",
+            "migration": "database/migrations/2025_09_28_190007_create_cities_table.php"
+        },
+        {
+            "from": "laundries",
+            "column": "city_id",
+            "to": "cities",
+            "migration": "database/migrations/2026_08_25_141551_create_laundries_table.php"
+        },
+        {
+            "from": "users",
+            "column": "laundry_id",
+            "to": "laundries",
+            "migration": "database/migrations/2026_08_25_141553_add_laundry_id_to_users_table.php"
+        },
+        {
+            "from": "items",
+            "column": "item_category_id",
+            "to": "item_categories",
+            "migration": "database/migrations/2026_08_26_090215_create_items_table.php"
+        },
+        {
+            "from": "item_prices",
+            "column": "service_id",
+            "to": "services",
+            "migration": "database/migrations/2026_08_26_090216_create_item_prices_table.php"
+        },
+        {
+            "from": "item_prices",
+            "column": "item_id",
+            "to": "items",
+            "migration": "database/migrations/2026_08_26_090216_create_item_prices_table.php"
+        },
+        {
+            "from": "laundry_services",
+            "column": "laundry_id",
+            "to": "laundries",
+            "migration": "database/migrations/2026_08_26_090217_create_laundry_services_table.php"
+        },
+        {
+            "from": "laundry_services",
+            "column": "service_id",
+            "to": "services",
+            "migration": "database/migrations/2026_08_26_090217_create_laundry_services_table.php"
+        },
+        {
+            "from": "zones",
+            "column": "city_id",
+            "to": "cities",
+            "migration": "database/migrations/2026_08_26_093504_create_zones_table.php"
+        },
+        {
+            "from": "laundry_zones",
+            "column": "laundry_id",
+            "to": "laundries",
+            "migration": "database/migrations/2026_08_26_093506_create_laundry_zones_table.php"
+        },
+        {
+            "from": "laundry_zones",
+            "column": "zone_id",
+            "to": "zones",
+            "migration": "database/migrations/2026_08_26_093506_create_laundry_zones_table.php"
+        },
+        {
+            "from": "addresses",
+            "column": "user_id",
+            "to": "users",
+            "migration": "database/migrations/2026_08_26_100159_create_addresses_table.php"
+        },
+        {
+            "from": "addresses",
+            "column": "city_id",
+            "to": "cities",
+            "migration": "database/migrations/2026_08_26_100159_create_addresses_table.php"
+        },
+        {
+            "from": "addresses",
+            "column": "zone_id",
+            "to": "zones",
+            "migration": "database/migrations/2026_08_26_100159_create_addresses_table.php"
+        },
+        {
+            "from": "driver_profiles",
+            "column": "user_id",
+            "to": "users",
+            "migration": "database/migrations/2026_08_26_122243_create_driver_profiles_table.php"
+        },
+        {
+            "from": "driver_zones",
+            "column": "driver_id",
+            "to": "users",
+            "migration": "database/migrations/2026_08_26_122244_create_driver_zones_table.php"
+        },
+        {
+            "from": "driver_zones",
+            "column": "zone_id",
+            "to": "zones",
+            "migration": "database/migrations/2026_08_26_122244_create_driver_zones_table.php"
+        },
+        {
+            "from": "driver_profiles",
+            "column": "city_id",
+            "to": "cities",
+            "migration": "database/migrations/2026_08_26_125455_add_capacity_to_driver_profiles_table.php"
+        },
+        {
+            "from": "order_recurrences",
+            "column": "user_id",
+            "to": "users",
+            "migration": "database/migrations/2026_08_26_125600_create_order_recurrences_table.php"
+        },
+        {
+            "from": "order_recurrences",
+            "column": "service_id",
+            "to": "services",
+            "migration": "database/migrations/2026_08_26_125600_create_order_recurrences_table.php"
+        },
+        {
+            "from": "order_recurrences",
+            "column": "pickup_address_id",
+            "to": "addresses",
+            "migration": "database/migrations/2026_08_26_125600_create_order_recurrences_table.php"
+        },
+        {
+            "from": "order_recurrences",
+            "column": "time_slot_id",
+            "to": "time_slots",
+            "migration": "database/migrations/2026_08_26_125600_create_order_recurrences_table.php"
+        },
+        {
+            "from": "orders",
+            "column": "user_id",
+            "to": "users",
+            "migration": "database/migrations/2026_08_26_125601_create_orders_table.php"
+        },
+        {
+            "from": "orders",
+            "column": "laundry_id",
+            "to": "laundries",
+            "migration": "database/migrations/2026_08_26_125601_create_orders_table.php"
+        },
+        {
+            "from": "orders",
+            "column": "service_id",
+            "to": "services",
+            "migration": "database/migrations/2026_08_26_125601_create_orders_table.php"
+        },
+        {
+            "from": "orders",
+            "column": "pickup_address_id",
+            "to": "addresses",
+            "migration": "database/migrations/2026_08_26_125601_create_orders_table.php"
+        },
+        {
+            "from": "orders",
+            "column": "delivery_address_id",
+            "to": "addresses",
+            "migration": "database/migrations/2026_08_26_125601_create_orders_table.php"
+        },
+        {
+            "from": "orders",
+            "column": "pickup_slot_id",
+            "to": "time_slots",
+            "migration": "database/migrations/2026_08_26_125601_create_orders_table.php"
+        },
+        {
+            "from": "orders",
+            "column": "delivery_slot_id",
+            "to": "time_slots",
+            "migration": "database/migrations/2026_08_26_125601_create_orders_table.php"
+        },
+        {
+            "from": "orders",
+            "column": "recurrence_id",
+            "to": "order_recurrences",
+            "migration": "database/migrations/2026_08_26_125601_create_orders_table.php"
+        },
+        {
+            "from": "order_items",
+            "column": "order_id",
+            "to": "orders",
+            "migration": "database/migrations/2026_08_26_125602_create_order_items_table.php"
+        },
+        {
+            "from": "order_items",
+            "column": "item_id",
+            "to": "items",
+            "migration": "database/migrations/2026_08_26_125602_create_order_items_table.php"
+        },
+        {
+            "from": "order_status_logs",
+            "column": "order_id",
+            "to": "orders",
+            "migration": "database/migrations/2026_08_26_125603_create_order_status_logs_table.php"
+        },
+        {
+            "from": "order_status_logs",
+            "column": "actor_id",
+            "to": "users",
+            "migration": "database/migrations/2026_08_26_125603_create_order_status_logs_table.php"
+        },
+        {
+            "from": "order_media",
+            "column": "order_id",
+            "to": "orders",
+            "migration": "database/migrations/2026_08_26_125604_create_order_media_table.php"
+        },
+        {
+            "from": "order_media",
+            "column": "uploaded_by",
+            "to": "users",
+            "migration": "database/migrations/2026_08_26_125604_create_order_media_table.php"
+        },
+        {
+            "from": "recurrence_prompts",
+            "column": "recurrence_id",
+            "to": "order_recurrences",
+            "migration": "database/migrations/2026_08_26_125605_create_recurrence_prompts_table.php"
+        },
+        {
+            "from": "recurrence_prompts",
+            "column": "order_id",
+            "to": "orders",
+            "migration": "database/migrations/2026_08_26_125605_create_recurrence_prompts_table.php"
+        },
+        {
+            "from": "order_price_queries",
+            "column": "order_id",
+            "to": "orders",
+            "migration": "database/migrations/2026_08_30_100001_create_order_price_queries_table.php"
+        },
+        {
+            "from": "order_price_queries",
+            "column": "user_id",
+            "to": "users",
+            "migration": "database/migrations/2026_08_30_100001_create_order_price_queries_table.php"
+        },
+        {
+            "from": "order_price_queries",
+            "column": "answered_by",
+            "to": "users",
+            "migration": "database/migrations/2026_08_30_100001_create_order_price_queries_table.php"
+        },
+        {
+            "from": "order_tasks",
+            "column": "order_id",
+            "to": "orders",
+            "migration": "database/migrations/2026_08_30_140000_create_order_tasks_table.php"
+        },
+        {
+            "from": "order_tasks",
+            "column": "driver_id",
+            "to": "users",
+            "migration": "database/migrations/2026_08_30_140000_create_order_tasks_table.php"
+        },
+        {
+            "from": "payments",
+            "column": "order_id",
+            "to": "orders",
+            "migration": "database/migrations/2026_08_30_170000_create_payments_table.php"
+        },
+        {
+            "from": "payments",
+            "column": "user_id",
+            "to": "users",
+            "migration": "database/migrations/2026_08_30_170000_create_payments_table.php"
+        },
+        {
+            "from": "wallets",
+            "column": "user_id",
+            "to": "users",
+            "migration": "database/migrations/2026_08_30_190000_create_wallets_table.php"
+        },
+        {
+            "from": "wallet_transactions",
+            "column": "wallet_id",
+            "to": "wallets",
+            "migration": "database/migrations/2026_08_30_190000_create_wallets_table.php"
+        },
+        {
+            "from": "wallet_transactions",
+            "column": "created_by",
+            "to": "users",
+            "migration": "database/migrations/2026_08_30_190000_create_wallets_table.php"
+        },
+        {
+            "from": "coupon_redemptions",
+            "column": "coupon_id",
+            "to": "coupons",
+            "migration": "database/migrations/2026_08_30_190001_create_coupons_table.php"
+        },
+        {
+            "from": "coupon_redemptions",
+            "column": "user_id",
+            "to": "users",
+            "migration": "database/migrations/2026_08_30_190001_create_coupons_table.php"
+        },
+        {
+            "from": "coupon_redemptions",
+            "column": "order_id",
+            "to": "orders",
+            "migration": "database/migrations/2026_08_30_190001_create_coupons_table.php"
+        },
+        {
+            "from": "refunds",
+            "column": "order_id",
+            "to": "orders",
+            "migration": "database/migrations/2026_08_30_190002_create_refunds_table.php"
+        },
+        {
+            "from": "refunds",
+            "column": "user_id",
+            "to": "users",
+            "migration": "database/migrations/2026_08_30_190002_create_refunds_table.php"
+        },
+        {
+            "from": "refunds",
+            "column": "payment_id",
+            "to": "payments",
+            "migration": "database/migrations/2026_08_30_190002_create_refunds_table.php"
+        },
+        {
+            "from": "refunds",
+            "column": "reviewed_by",
+            "to": "users",
+            "migration": "database/migrations/2026_08_30_190002_create_refunds_table.php"
+        },
+        {
+            "from": "driver_earnings",
+            "column": "driver_id",
+            "to": "users",
+            "migration": "database/migrations/2026_08_30_190003_create_driver_earnings_table.php"
+        },
+        {
+            "from": "driver_earnings",
+            "column": "order_id",
+            "to": "orders",
+            "migration": "database/migrations/2026_08_30_190003_create_driver_earnings_table.php"
+        },
+        {
+            "from": "driver_earnings",
+            "column": "order_task_id",
+            "to": "order_tasks",
+            "migration": "database/migrations/2026_08_30_190003_create_driver_earnings_table.php"
+        },
+        {
+            "from": "device_tokens",
+            "column": "user_id",
+            "to": "users",
+            "migration": "database/migrations/2026_08_30_210000_create_device_tokens_table.php"
+        },
+        {
+            "from": "notification_preferences",
+            "column": "user_id",
+            "to": "users",
+            "migration": "database/migrations/2026_08_30_210001_create_notification_preferences_table.php"
+        },
+        {
+            "from": "notification_logs",
+            "column": "user_id",
+            "to": "users",
+            "migration": "database/migrations/2026_08_30_210002_create_notification_logs_table.php"
+        },
+        {
+            "from": "order_ratings",
+            "column": "order_id",
+            "to": "orders",
+            "migration": "database/migrations/2026_08_31_120000_create_order_ratings_table.php"
+        },
+        {
+            "from": "order_ratings",
+            "column": "user_id",
+            "to": "users",
+            "migration": "database/migrations/2026_08_31_120000_create_order_ratings_table.php"
+        },
+        {
+            "from": "order_ratings",
+            "column": "laundry_id",
+            "to": "laundries",
+            "migration": "database/migrations/2026_08_31_120000_create_order_ratings_table.php"
+        },
+        {
+            "from": "complaints",
+            "column": "user_id",
+            "to": "users",
+            "migration": "database/migrations/2026_08_31_150000_create_complaints_table.php"
+        },
+        {
+            "from": "complaints",
+            "column": "order_id",
+            "to": "orders",
+            "migration": "database/migrations/2026_08_31_150000_create_complaints_table.php"
+        },
+        {
+            "from": "complaints",
+            "column": "laundry_id",
+            "to": "laundries",
+            "migration": "database/migrations/2026_08_31_150000_create_complaints_table.php"
+        },
+        {
+            "from": "complaints",
+            "column": "handled_by",
+            "to": "users",
+            "migration": "database/migrations/2026_08_31_150000_create_complaints_table.php"
+        },
+        {
+            "from": "complaint_attachments",
+            "column": "complaint_id",
+            "to": "complaints",
+            "migration": "database/migrations/2026_09_01_120000_create_complaint_attachments_table.php"
+        },
+        {
+            "from": "complaint_attachments",
+            "column": "uploaded_by",
+            "to": "users",
+            "migration": "database/migrations/2026_09_01_120000_create_complaint_attachments_table.php"
+        },
+        {
+            "from": "users",
+            "column": "referred_by",
+            "to": "users",
+            "migration": "database/migrations/2026_09_01_140000_add_referrals.php"
+        },
+        {
+            "from": "coupons",
+            "column": "user_id",
+            "to": "users",
+            "migration": "database/migrations/2026_09_01_140000_add_referrals.php"
+        },
+        {
+            "from": "offers",
+            "column": "coupon_id",
+            "to": "coupons",
+            "migration": "database/migrations/2026_09_02_120000_create_offers_table.php"
+        },
+        {
+            "from": "orders",
+            "column": "offer_id",
+            "to": "offers",
+            "migration": "database/migrations/2026_09_04_100000_add_offer_and_pickup_method_to_orders_table.php"
+        },
+        {
+            "from": "driver_applications",
+            "column": "handled_by",
+            "to": "users",
+            "migration": "database/migrations/2026_09_10_143726_create_driver_applications_table.php"
+        },
+        {
+            "from": "order_settlements",
+            "column": "order_id",
+            "to": "orders",
+            "migration": "database/migrations/2026_09_10_160002_create_order_settlements_table.php"
+        },
+        {
+            "from": "order_settlements",
+            "column": "laundry_id",
+            "to": "laundries",
+            "migration": "database/migrations/2026_09_10_160002_create_order_settlements_table.php"
+        },
+        {
+            "from": "driver_bonus_tiers",
+            "column": "driver_bonus_rule_id",
+            "to": "driver_bonus_rules",
+            "migration": "database/migrations/2026_09_11_100001_create_driver_bonus_tiers_table.php"
+        },
+        {
+            "from": "driver_profiles",
+            "column": "bonus_rule_id",
+            "to": "driver_bonus_rules",
+            "migration": "database/migrations/2026_09_11_100002_add_bonus_rule_to_driver_profiles_table.php"
+        },
+        {
+            "from": "driver_bonus_awards",
+            "column": "driver_id",
+            "to": "users",
+            "migration": "database/migrations/2026_09_11_100003_create_driver_bonus_awards_table.php"
+        },
+        {
+            "from": "driver_bonus_awards",
+            "column": "driver_bonus_rule_id",
+            "to": "driver_bonus_rules",
+            "migration": "database/migrations/2026_09_11_100003_create_driver_bonus_awards_table.php"
+        },
+        {
+            "from": "driver_bonus_awards",
+            "column": "approved_by",
+            "to": "users",
+            "migration": "database/migrations/2026_09_11_100003_create_driver_bonus_awards_table.php"
+        },
+        {
+            "from": "commission_rule_laundry",
+            "column": "commission_rule_id",
+            "to": "commission_rules",
+            "migration": "database/migrations/2026_09_13_100000_create_commission_rules_table.php"
+        },
+        {
+            "from": "commission_rule_laundry",
+            "column": "laundry_id",
+            "to": "laundries",
+            "migration": "database/migrations/2026_09_13_100000_create_commission_rules_table.php"
+        },
+        {
+            "from": "order_settlement_lines",
+            "column": "order_settlement_id",
+            "to": "order_settlements",
+            "migration": "database/migrations/2026_09_13_100001_create_order_settlement_lines_table.php"
+        },
+        {
+            "from": "order_settlement_lines",
+            "column": "commission_rule_id",
+            "to": "commission_rules",
+            "migration": "database/migrations/2026_09_13_100001_create_order_settlement_lines_table.php"
+        },
+        {
+            "from": "notification_logs",
+            "column": "sent_by",
+            "to": "users",
+            "migration": "database/migrations/2026_09_15_120000_add_sent_by_to_notification_logs.php"
+        },
+        {
+            "from": "laundry_deductions",
+            "column": "laundry_id",
+            "to": "laundries",
+            "migration": "database/migrations/2026_09_16_100000_create_laundry_deductions_table.php"
+        },
+        {
+            "from": "laundry_deductions",
+            "column": "created_by",
+            "to": "users",
+            "migration": "database/migrations/2026_09_16_100000_create_laundry_deductions_table.php"
+        },
+        {
+            "from": "laundry_deductions",
+            "column": "reversed_by",
+            "to": "users",
+            "migration": "database/migrations/2026_09_16_100000_create_laundry_deductions_table.php"
+        },
+        {
+            "from": "laundry_slot_capacities",
+            "column": "laundry_id",
+            "to": "laundries",
+            "migration": "database/migrations/2026_09_20_100000_create_laundry_slot_capacities_table.php"
+        },
+        {
+            "from": "laundry_slot_capacities",
+            "column": "time_slot_id",
+            "to": "time_slots",
+            "migration": "database/migrations/2026_09_20_100000_create_laundry_slot_capacities_table.php"
+        },
+        {
+            "from": "driver_record_submissions",
+            "column": "driver_id",
+            "to": "users",
+            "migration": "database/migrations/2026_09_21_140000_create_driver_record_submissions_table.php"
+        },
+        {
+            "from": "driver_record_submissions",
+            "column": "reviewed_by",
+            "to": "users",
+            "migration": "database/migrations/2026_09_21_140000_create_driver_record_submissions_table.php"
+        }
+    ],
+    "eloquent": [
+        {
+            "from": "App\\Models\\Role",
+            "to": "App\\Models\\Permission",
+            "type": "belongs_to_many",
+            "method": "permissions",
+            "foreign_key": null,
+            "from_table": "roles",
+            "to_table": "permissions"
+        },
+        {
+            "from": "App\\Modules\\Address\\Models\\Address",
+            "to": "App\\Modules\\City\\Models\\City",
+            "type": "belongs_to",
+            "method": "city",
+            "foreign_key": "city_id",
+            "from_table": "addresses",
+            "to_table": "cities"
+        },
+        {
+            "from": "App\\Modules\\Address\\Models\\Address",
+            "to": "App\\Modules\\User\\Models\\User",
+            "type": "belongs_to",
+            "method": "user",
+            "foreign_key": "user_id",
+            "from_table": "addresses",
+            "to_table": "users"
+        },
+        {
+            "from": "App\\Modules\\Address\\Models\\Address",
+            "to": "App\\Modules\\Zone\\Models\\Zone",
+            "type": "belongs_to",
+            "method": "zone",
+            "foreign_key": "zone_id",
+            "from_table": "addresses",
+            "to_table": "zones"
+        },
+        {
+            "from": "App\\Modules\\City\\Models\\City",
+            "to": "App\\Modules\\Country\\Models\\Country",
+            "type": "belongs_to",
+            "method": "country",
+            "foreign_key": null,
+            "from_table": "cities",
+            "to_table": "countries"
+        },
+        {
+            "from": "App\\Modules\\City\\Models\\City",
+            "to": "App\\Modules\\Zone\\Models\\Zone",
+            "type": "has_many",
+            "method": "zones",
+            "foreign_key": "city_id",
+            "from_table": "cities",
+            "to_table": "zones"
+        },
+        {
+            "from": "App\\Modules\\Complaint\\Models\\Complaint",
+            "to": "App\\Modules\\Complaint\\Models\\ComplaintAttachment",
+            "type": "has_many",
+            "method": "attachments",
+            "foreign_key": "complaint_id",
+            "from_table": "complaints",
+            "to_table": "complaint_attachments"
+        },
+        {
+            "from": "App\\Modules\\Complaint\\Models\\Complaint",
+            "to": "App\\Modules\\Laundry\\Models\\Laundry",
+            "type": "belongs_to",
+            "method": "laundry",
+            "foreign_key": null,
+            "from_table": "complaints",
+            "to_table": "laundries"
+        },
+        {
+            "from": "App\\Modules\\Complaint\\Models\\Complaint",
+            "to": "App\\Modules\\Order\\Models\\Order",
+            "type": "belongs_to",
+            "method": "order",
+            "foreign_key": null,
+            "from_table": "complaints",
+            "to_table": "orders"
+        },
+        {
+            "from": "App\\Modules\\Complaint\\Models\\Complaint",
+            "to": "App\\Modules\\User\\Models\\User",
+            "type": "belongs_to",
+            "method": "handler",
+            "foreign_key": null,
+            "from_table": "complaints",
+            "to_table": "users"
+        },
+        {
+            "from": "App\\Modules\\Complaint\\Models\\ComplaintAttachment",
+            "to": "App\\Modules\\Complaint\\Models\\Complaint",
+            "type": "belongs_to",
+            "method": "complaint",
+            "foreign_key": "complaint_id",
+            "from_table": "complaint_attachments",
+            "to_table": "complaints"
+        },
+        {
+            "from": "App\\Modules\\Complaint\\Models\\ComplaintAttachment",
+            "to": "App\\Modules\\User\\Models\\User",
+            "type": "belongs_to",
+            "method": "uploader",
+            "foreign_key": null,
+            "from_table": "complaint_attachments",
+            "to_table": "users"
+        },
+        {
+            "from": "App\\Modules\\Country\\Models\\Country",
+            "to": "App\\Modules\\City\\Models\\City",
+            "type": "has_many",
+            "method": "cities",
+            "foreign_key": null,
+            "from_table": "countries",
+            "to_table": "cities"
+        },
+        {
+            "from": "App\\Modules\\Coupon\\Models\\Coupon",
+            "to": "App\\Modules\\Coupon\\Models\\CouponRedemption",
+            "type": "has_many",
+            "method": "redemptions",
+            "foreign_key": "coupon_id",
+            "from_table": "coupons",
+            "to_table": "coupon_redemptions"
+        },
+        {
+            "from": "App\\Modules\\Coupon\\Models\\CouponRedemption",
+            "to": "App\\Modules\\Coupon\\Models\\Coupon",
+            "type": "belongs_to",
+            "method": "coupon",
+            "foreign_key": "coupon_id",
+            "from_table": "coupon_redemptions",
+            "to_table": "coupons"
+        },
+        {
+            "from": "App\\Modules\\Coupon\\Models\\CouponRedemption",
+            "to": "App\\Modules\\Order\\Models\\Order",
+            "type": "belongs_to",
+            "method": "order",
+            "foreign_key": "order_id",
+            "from_table": "coupon_redemptions",
+            "to_table": "orders"
+        },
+        {
+            "from": "App\\Modules\\Coupon\\Models\\CouponRedemption",
+            "to": "App\\Modules\\User\\Models\\User",
+            "type": "belongs_to",
+            "method": "customer",
+            "foreign_key": "user_id",
+            "from_table": "coupon_redemptions",
+            "to_table": "users"
+        },
+        {
+            "from": "App\\Modules\\Driver\\Models\\Driver",
+            "to": "App\\Modules\\Driver\\Models\\DriverProfile",
+            "type": "has_one",
+            "method": "profile",
+            "foreign_key": "user_id",
+            "from_table": "users",
+            "to_table": "driver_profiles"
+        },
+        {
+            "from": "App\\Modules\\Driver\\Models\\Driver",
+            "to": "App\\Modules\\Order\\Models\\OrderTask",
+            "type": "has_many",
+            "method": "tasks",
+            "foreign_key": "driver_id",
+            "from_table": "users",
+            "to_table": "order_tasks"
+        },
+        {
+            "from": "App\\Modules\\Driver\\Models\\Driver",
+            "to": "App\\Modules\\Zone\\Models\\Zone",
+            "type": "belongs_to_many",
+            "method": "zones",
+            "foreign_key": "driver_id",
+            "from_table": "users",
+            "to_table": "zones"
+        },
+        {
+            "from": "App\\Modules\\Driver\\Models\\DriverApplication",
+            "to": "App\\Modules\\User\\Models\\User",
+            "type": "belongs_to",
+            "method": "handler",
+            "foreign_key": null,
+            "from_table": "driver_applications",
+            "to_table": "users"
+        },
+        {
+            "from": "App\\Modules\\Driver\\Models\\DriverBonusAward",
+            "to": "App\\Modules\\Driver\\Models\\DriverBonusRule",
+            "type": "belongs_to",
+            "method": "rule",
+            "foreign_key": "driver_bonus_rule_id",
+            "from_table": "driver_bonus_awards",
+            "to_table": "driver_bonus_rules"
+        },
+        {
+            "from": "App\\Modules\\Driver\\Models\\DriverBonusAward",
+            "to": "App\\Modules\\User\\Models\\User",
+            "type": "belongs_to",
+            "method": "approver",
+            "foreign_key": null,
+            "from_table": "driver_bonus_awards",
+            "to_table": "users"
+        },
+        {
+            "from": "App\\Modules\\Driver\\Models\\DriverBonusRule",
+            "to": "App\\Modules\\Driver\\Models\\DriverBonusTier",
+            "type": "has_many",
+            "method": "tiers",
+            "foreign_key": "driver_bonus_rule_id",
+            "from_table": "driver_bonus_rules",
+            "to_table": "driver_bonus_tiers"
+        },
+        {
+            "from": "App\\Modules\\Driver\\Models\\DriverBonusRule",
+            "to": "App\\Modules\\Driver\\Models\\DriverProfile",
+            "type": "has_many",
+            "method": "profiles",
+            "foreign_key": "bonus_rule_id",
+            "from_table": "driver_bonus_rules",
+            "to_table": "driver_profiles"
+        },
+        {
+            "from": "App\\Modules\\Driver\\Models\\DriverBonusTier",
+            "to": "App\\Modules\\Driver\\Models\\DriverBonusRule",
+            "type": "belongs_to",
+            "method": "rule",
+            "foreign_key": "driver_bonus_rule_id",
+            "from_table": "driver_bonus_tiers",
+            "to_table": "driver_bonus_rules"
+        },
+        {
+            "from": "App\\Modules\\Driver\\Models\\DriverProfile",
+            "to": "App\\Modules\\Driver\\Models\\DriverBonusRule",
+            "type": "belongs_to",
+            "method": "bonusRule",
+            "foreign_key": "bonus_rule_id",
+            "from_table": "driver_profiles",
+            "to_table": "driver_bonus_rules"
+        },
+        {
+            "from": "App\\Modules\\Driver\\Models\\DriverProfile",
+            "to": "App\\Modules\\User\\Models\\User",
+            "type": "belongs_to",
+            "method": "user",
+            "foreign_key": "user_id",
+            "from_table": "driver_profiles",
+            "to_table": "users"
+        },
+        {
+            "from": "App\\Modules\\Driver\\Models\\DriverRecordSubmission",
+            "to": "App\\Modules\\Driver\\Models\\Driver",
+            "type": "belongs_to",
+            "method": "driver",
+            "foreign_key": "driver_id",
+            "from_table": "driver_record_submissions",
+            "to_table": "users"
+        },
+        {
+            "from": "App\\Modules\\Driver\\Models\\DriverRecordSubmission",
+            "to": "App\\Modules\\User\\Models\\User",
+            "type": "belongs_to",
+            "method": "reviewer",
+            "foreign_key": null,
+            "from_table": "driver_record_submissions",
+            "to_table": "users"
+        },
+        {
+            "from": "App\\Modules\\ItemCategory\\Models\\ItemCategory",
+            "to": "App\\Modules\\Item\\Models\\Item",
+            "type": "has_many",
+            "method": "items",
+            "foreign_key": "item_category_id",
+            "from_table": "item_categories",
+            "to_table": "items"
+        },
+        {
+            "from": "App\\Modules\\Item\\Models\\Item",
+            "to": "App\\Modules\\ItemCategory\\Models\\ItemCategory",
+            "type": "belongs_to",
+            "method": "category",
+            "foreign_key": "item_category_id",
+            "from_table": "items",
+            "to_table": "item_categories"
+        },
+        {
+            "from": "App\\Modules\\Item\\Models\\Item",
+            "to": "App\\Modules\\Pricing\\Models\\ItemPrice",
+            "type": "has_many",
+            "method": "prices",
+            "foreign_key": "item_id",
+            "from_table": "items",
+            "to_table": "item_prices"
+        },
+        {
+            "from": "App\\Modules\\LaundryService\\Models\\LaundryService",
+            "to": "App\\Modules\\Service\\Models\\Service",
+            "type": "belongs_to",
+            "method": "service",
+            "foreign_key": "service_id",
+            "from_table": "laundry_services",
+            "to_table": "services"
+        },
+        {
+            "from": "App\\Modules\\LaundryZone\\Models\\LaundryZone",
+            "to": "App\\Modules\\Zone\\Models\\Zone",
+            "type": "belongs_to",
+            "method": "zone",
+            "foreign_key": "zone_id",
+            "from_table": "laundry_zones",
+            "to_table": "zones"
+        },
+        {
+            "from": "App\\Modules\\Laundry\\Models\\Laundry",
+            "to": "App\\Modules\\City\\Models\\City",
+            "type": "belongs_to",
+            "method": "city",
+            "foreign_key": "city_id",
+            "from_table": "laundries",
+            "to_table": "cities"
+        },
+        {
+            "from": "App\\Modules\\Laundry\\Models\\Laundry",
+            "to": "App\\Modules\\LaundryService\\Models\\LaundryService",
+            "type": "has_many",
+            "method": "services",
+            "foreign_key": "laundry_id",
+            "from_table": "laundries",
+            "to_table": "laundry_services"
+        },
+        {
+            "from": "App\\Modules\\Laundry\\Models\\Laundry",
+            "to": "App\\Modules\\LaundryZone\\Models\\LaundryZone",
+            "type": "has_many",
+            "method": "zones",
+            "foreign_key": "laundry_id",
+            "from_table": "laundries",
+            "to_table": "laundry_zones"
+        },
+        {
+            "from": "App\\Modules\\Laundry\\Models\\Laundry",
+            "to": "App\\Modules\\Payment\\Models\\CommissionRule",
+            "type": "belongs_to_many",
+            "method": "commissionRules",
+            "foreign_key": null,
+            "from_table": "laundries",
+            "to_table": "commission_rules"
+        },
+        {
+            "from": "App\\Modules\\Laundry\\Models\\Laundry",
+            "to": "App\\Modules\\User\\Models\\User",
+            "type": "has_many",
+            "method": "users",
+            "foreign_key": "laundry_id",
+            "from_table": "laundries",
+            "to_table": "users"
+        },
+        {
+            "from": "App\\Modules\\Laundry\\Models\\Laundry",
+            "to": "App\\Modules\\User\\Models\\User",
+            "type": "has_one",
+            "method": "owner",
+            "foreign_key": "laundry_id",
+            "from_table": "laundries",
+            "to_table": "users"
+        },
+        {
+            "from": "App\\Modules\\Laundry\\Models\\LaundrySlotCapacity",
+            "to": "App\\Modules\\TimeSlot\\Models\\TimeSlot",
+            "type": "belongs_to",
+            "method": "timeSlot",
+            "foreign_key": "time_slot_id",
+            "from_table": "laundry_slot_capacities",
+            "to_table": "time_slots"
+        },
+        {
+            "from": "App\\Modules\\Notification\\Models\\DeviceToken",
+            "to": "App\\Modules\\User\\Models\\User",
+            "type": "belongs_to",
+            "method": "owner",
+            "foreign_key": "user_id",
+            "from_table": "device_tokens",
+            "to_table": "users"
+        },
+        {
+            "from": "App\\Modules\\Notification\\Models\\NotificationLog",
+            "to": "App\\Modules\\User\\Models\\User",
+            "type": "belongs_to",
+            "method": "author",
+            "foreign_key": null,
+            "from_table": "notification_logs",
+            "to_table": "users"
+        },
+        {
+            "from": "App\\Modules\\Notification\\Models\\NotificationPreference",
+            "to": "App\\Modules\\User\\Models\\User",
+            "type": "belongs_to",
+            "method": "owner",
+            "foreign_key": "user_id",
+            "from_table": "notification_preferences",
+            "to_table": "users"
+        },
+        {
+            "from": "App\\Modules\\Offer\\Models\\Offer",
+            "to": "App\\Modules\\Coupon\\Models\\Coupon",
+            "type": "belongs_to",
+            "method": "coupon",
+            "foreign_key": "coupon_id",
+            "from_table": "offers",
+            "to_table": "coupons"
+        },
+        {
+            "from": "App\\Modules\\Order\\Models\\Order",
+            "to": "App\\Modules\\Address\\Models\\Address",
+            "type": "belongs_to",
+            "method": "deliveryAddress",
+            "foreign_key": "delivery_address_id",
+            "from_table": "orders",
+            "to_table": "addresses"
+        },
+        {
+            "from": "App\\Modules\\Order\\Models\\Order",
+            "to": "App\\Modules\\Laundry\\Models\\Laundry",
+            "type": "belongs_to",
+            "method": "laundry",
+            "foreign_key": "laundry_id",
+            "from_table": "orders",
+            "to_table": "laundries"
+        },
+        {
+            "from": "App\\Modules\\Order\\Models\\Order",
+            "to": "App\\Modules\\Offer\\Models\\Offer",
+            "type": "belongs_to",
+            "method": "offer",
+            "foreign_key": "offer_id",
+            "from_table": "orders",
+            "to_table": "offers"
+        },
+        {
+            "from": "App\\Modules\\Order\\Models\\Order",
+            "to": "App\\Modules\\Order\\Models\\OrderItem",
+            "type": "has_many",
+            "method": "items",
+            "foreign_key": "order_id",
+            "from_table": "orders",
+            "to_table": "order_items"
+        },
+        {
+            "from": "App\\Modules\\Order\\Models\\Order",
+            "to": "App\\Modules\\Order\\Models\\OrderMedia",
+            "type": "has_many",
+            "method": "media",
+            "foreign_key": "order_id",
+            "from_table": "orders",
+            "to_table": "order_media"
+        },
+        {
+            "from": "App\\Modules\\Order\\Models\\Order",
+            "to": "App\\Modules\\Order\\Models\\OrderPriceQuery",
+            "type": "has_many",
+            "method": "priceQueries",
+            "foreign_key": "order_id",
+            "from_table": "orders",
+            "to_table": "order_price_queries"
+        },
+        {
+            "from": "App\\Modules\\Order\\Models\\Order",
+            "to": "App\\Modules\\Order\\Models\\OrderRecurrence",
+            "type": "belongs_to",
+            "method": "recurrence",
+            "foreign_key": "recurrence_id",
+            "from_table": "orders",
+            "to_table": "order_recurrences"
+        },
+        {
+            "from": "App\\Modules\\Order\\Models\\Order",
+            "to": "App\\Modules\\Order\\Models\\OrderStatusLog",
+            "type": "has_many",
+            "method": "statusLogs",
+            "foreign_key": "order_id",
+            "from_table": "orders",
+            "to_table": "order_status_logs"
+        },
+        {
+            "from": "App\\Modules\\Order\\Models\\Order",
+            "to": "App\\Modules\\Order\\Models\\OrderTask",
+            "type": "has_many",
+            "method": "tasks",
+            "foreign_key": "order_id",
+            "from_table": "orders",
+            "to_table": "order_tasks"
+        },
+        {
+            "from": "App\\Modules\\Order\\Models\\Order",
+            "to": "App\\Modules\\Payment\\Models\\OrderSettlement",
+            "type": "has_one",
+            "method": "settlement",
+            "foreign_key": "order_id",
+            "from_table": "orders",
+            "to_table": "order_settlements"
+        },
+        {
+            "from": "App\\Modules\\Order\\Models\\Order",
+            "to": "App\\Modules\\Payment\\Models\\Payment",
+            "type": "has_many",
+            "method": "payments",
+            "foreign_key": "order_id",
+            "from_table": "orders",
+            "to_table": "payments"
+        },
+        {
+            "from": "App\\Modules\\Order\\Models\\Order",
+            "to": "App\\Modules\\Service\\Models\\Service",
+            "type": "belongs_to",
+            "method": "service",
+            "foreign_key": "service_id",
+            "from_table": "orders",
+            "to_table": "services"
+        },
+        {
+            "from": "App\\Modules\\Order\\Models\\Order",
+            "to": "App\\Modules\\TimeSlot\\Models\\TimeSlot",
+            "type": "belongs_to",
+            "method": "deliverySlot",
+            "foreign_key": "delivery_slot_id",
+            "from_table": "orders",
+            "to_table": "time_slots"
+        },
+        {
+            "from": "App\\Modules\\Order\\Models\\Order",
+            "to": "App\\Modules\\User\\Models\\User",
+            "type": "belongs_to",
+            "method": "customer",
+            "foreign_key": "user_id",
+            "from_table": "orders",
+            "to_table": "users"
+        },
+        {
+            "from": "App\\Modules\\Order\\Models\\OrderItem",
+            "to": "App\\Modules\\Item\\Models\\Item",
+            "type": "belongs_to",
+            "method": "item",
+            "foreign_key": "item_id",
+            "from_table": "order_items",
+            "to_table": "items"
+        },
+        {
+            "from": "App\\Modules\\Order\\Models\\OrderItem",
+            "to": "App\\Modules\\Order\\Models\\Order",
+            "type": "belongs_to",
+            "method": "order",
+            "foreign_key": "order_id",
+            "from_table": "order_items",
+            "to_table": "orders"
+        },
+        {
+            "from": "App\\Modules\\Order\\Models\\OrderMedia",
+            "to": "App\\Modules\\Order\\Models\\Order",
+            "type": "belongs_to",
+            "method": "order",
+            "foreign_key": "order_id",
+            "from_table": "order_media",
+            "to_table": "orders"
+        },
+        {
+            "from": "App\\Modules\\Order\\Models\\OrderMedia",
+            "to": "App\\Modules\\User\\Models\\User",
+            "type": "belongs_to",
+            "method": "uploader",
+            "foreign_key": null,
+            "from_table": "order_media",
+            "to_table": "users"
+        },
+        {
+            "from": "App\\Modules\\Order\\Models\\OrderPriceQuery",
+            "to": "App\\Modules\\Order\\Models\\Order",
+            "type": "belongs_to",
+            "method": "order",
+            "foreign_key": "order_id",
+            "from_table": "order_price_queries",
+            "to_table": "orders"
+        },
+        {
+            "from": "App\\Modules\\Order\\Models\\OrderPriceQuery",
+            "to": "App\\Modules\\User\\Models\\User",
+            "type": "belongs_to",
+            "method": "responder",
+            "foreign_key": null,
+            "from_table": "order_price_queries",
+            "to_table": "users"
+        },
+        {
+            "from": "App\\Modules\\Order\\Models\\OrderRating",
+            "to": "App\\Modules\\Order\\Models\\Order",
+            "type": "belongs_to",
+            "method": "order",
+            "foreign_key": null,
+            "from_table": "order_ratings",
+            "to_table": "orders"
+        },
+        {
+            "from": "App\\Modules\\Order\\Models\\OrderRating",
+            "to": "App\\Modules\\User\\Models\\User",
+            "type": "belongs_to",
+            "method": "customer",
+            "foreign_key": "user_id",
+            "from_table": "order_ratings",
+            "to_table": "users"
+        },
+        {
+            "from": "App\\Modules\\Order\\Models\\OrderRecurrence",
+            "to": "App\\Modules\\Address\\Models\\Address",
+            "type": "belongs_to",
+            "method": "pickupAddress",
+            "foreign_key": "pickup_address_id",
+            "from_table": "order_recurrences",
+            "to_table": "addresses"
+        },
+        {
+            "from": "App\\Modules\\Order\\Models\\OrderRecurrence",
+            "to": "App\\Modules\\Order\\Models\\RecurrencePrompt",
+            "type": "has_many",
+            "method": "prompts",
+            "foreign_key": "recurrence_id",
+            "from_table": "order_recurrences",
+            "to_table": "recurrence_prompts"
+        },
+        {
+            "from": "App\\Modules\\Order\\Models\\OrderRecurrence",
+            "to": "App\\Modules\\Service\\Models\\Service",
+            "type": "belongs_to",
+            "method": "service",
+            "foreign_key": "service_id",
+            "from_table": "order_recurrences",
+            "to_table": "services"
+        },
+        {
+            "from": "App\\Modules\\Order\\Models\\OrderRecurrence",
+            "to": "App\\Modules\\TimeSlot\\Models\\TimeSlot",
+            "type": "belongs_to",
+            "method": "timeSlot",
+            "foreign_key": "time_slot_id",
+            "from_table": "order_recurrences",
+            "to_table": "time_slots"
+        },
+        {
+            "from": "App\\Modules\\Order\\Models\\OrderRecurrence",
+            "to": "App\\Modules\\User\\Models\\User",
+            "type": "belongs_to",
+            "method": "customer",
+            "foreign_key": "user_id",
+            "from_table": "order_recurrences",
+            "to_table": "users"
+        },
+        {
+            "from": "App\\Modules\\Order\\Models\\OrderStatusLog",
+            "to": "App\\Modules\\Order\\Models\\Order",
+            "type": "belongs_to",
+            "method": "order",
+            "foreign_key": "order_id",
+            "from_table": "order_status_logs",
+            "to_table": "orders"
+        },
+        {
+            "from": "App\\Modules\\Order\\Models\\OrderStatusLog",
+            "to": "App\\Modules\\User\\Models\\User",
+            "type": "belongs_to",
+            "method": "actor",
+            "foreign_key": "actor_id",
+            "from_table": "order_status_logs",
+            "to_table": "users"
+        },
+        {
+            "from": "App\\Modules\\Order\\Models\\OrderTask",
+            "to": "App\\Modules\\Driver\\Models\\Driver",
+            "type": "belongs_to",
+            "method": "driver",
+            "foreign_key": "driver_id",
+            "from_table": "order_tasks",
+            "to_table": "users"
+        },
+        {
+            "from": "App\\Modules\\Order\\Models\\OrderTask",
+            "to": "App\\Modules\\Order\\Models\\Order",
+            "type": "belongs_to",
+            "method": "order",
+            "foreign_key": "order_id",
+            "from_table": "order_tasks",
+            "to_table": "orders"
+        },
+        {
+            "from": "App\\Modules\\Order\\Models\\RecurrencePrompt",
+            "to": "App\\Modules\\Order\\Models\\Order",
+            "type": "belongs_to",
+            "method": "order",
+            "foreign_key": "order_id",
+            "from_table": "recurrence_prompts",
+            "to_table": "orders"
+        },
+        {
+            "from": "App\\Modules\\Order\\Models\\RecurrencePrompt",
+            "to": "App\\Modules\\Order\\Models\\OrderRecurrence",
+            "type": "belongs_to",
+            "method": "recurrence",
+            "foreign_key": "recurrence_id",
+            "from_table": "recurrence_prompts",
+            "to_table": "order_recurrences"
+        },
+        {
+            "from": "App\\Modules\\Payment\\Models\\CommissionRule",
+            "to": "App\\Modules\\Laundry\\Models\\Laundry",
+            "type": "belongs_to_many",
+            "method": "laundries",
+            "foreign_key": null,
+            "from_table": "commission_rules",
+            "to_table": "laundries"
+        },
+        {
+            "from": "App\\Modules\\Payment\\Models\\DriverEarning",
+            "to": "App\\Modules\\Driver\\Models\\Driver",
+            "type": "belongs_to",
+            "method": "driver",
+            "foreign_key": "driver_id",
+            "from_table": "driver_earnings",
+            "to_table": "users"
+        },
+        {
+            "from": "App\\Modules\\Payment\\Models\\DriverEarning",
+            "to": "App\\Modules\\Order\\Models\\Order",
+            "type": "belongs_to",
+            "method": "order",
+            "foreign_key": "order_id",
+            "from_table": "driver_earnings",
+            "to_table": "orders"
+        },
+        {
+            "from": "App\\Modules\\Payment\\Models\\DriverEarning",
+            "to": "App\\Modules\\Order\\Models\\OrderTask",
+            "type": "belongs_to",
+            "method": "task",
+            "foreign_key": "order_task_id",
+            "from_table": "driver_earnings",
+            "to_table": "order_tasks"
+        },
+        {
+            "from": "App\\Modules\\Payment\\Models\\DriverEarning",
+            "to": "App\\Modules\\User\\Models\\User",
+            "type": "belongs_to",
+            "method": "payee",
+            "foreign_key": "driver_id",
+            "from_table": "driver_earnings",
+            "to_table": "users"
+        },
+        {
+            "from": "App\\Modules\\Payment\\Models\\LaundryDeduction",
+            "to": "App\\Modules\\User\\Models\\User",
+            "type": "belongs_to",
+            "method": "reverser",
+            "foreign_key": null,
+            "from_table": "laundry_deductions",
+            "to_table": "users"
+        },
+        {
+            "from": "App\\Modules\\Payment\\Models\\OrderSettlement",
+            "to": "App\\Modules\\Order\\Models\\Order",
+            "type": "belongs_to",
+            "method": "order",
+            "foreign_key": "order_id",
+            "from_table": "order_settlements",
+            "to_table": "orders"
+        },
+        {
+            "from": "App\\Modules\\Payment\\Models\\OrderSettlement",
+            "to": "App\\Modules\\Payment\\Models\\OrderSettlementLine",
+            "type": "has_many",
+            "method": "lines",
+            "foreign_key": "order_settlement_id",
+            "from_table": "order_settlements",
+            "to_table": "order_settlement_lines"
+        },
+        {
+            "from": "App\\Modules\\Payment\\Models\\OrderSettlementLine",
+            "to": "App\\Modules\\Payment\\Models\\CommissionRule",
+            "type": "belongs_to",
+            "method": "rule",
+            "foreign_key": "commission_rule_id",
+            "from_table": "order_settlement_lines",
+            "to_table": "commission_rules"
+        },
+        {
+            "from": "App\\Modules\\Payment\\Models\\OrderSettlementLine",
+            "to": "App\\Modules\\Payment\\Models\\OrderSettlement",
+            "type": "belongs_to",
+            "method": "settlement",
+            "foreign_key": "order_settlement_id",
+            "from_table": "order_settlement_lines",
+            "to_table": "order_settlements"
+        },
+        {
+            "from": "App\\Modules\\Payment\\Models\\Payment",
+            "to": "App\\Modules\\Order\\Models\\Order",
+            "type": "belongs_to",
+            "method": "order",
+            "foreign_key": "order_id",
+            "from_table": "payments",
+            "to_table": "orders"
+        },
+        {
+            "from": "App\\Modules\\Payment\\Models\\Payment",
+            "to": "App\\Modules\\User\\Models\\User",
+            "type": "belongs_to",
+            "method": "customer",
+            "foreign_key": "user_id",
+            "from_table": "payments",
+            "to_table": "users"
+        },
+        {
+            "from": "App\\Modules\\Payment\\Models\\Refund",
+            "to": "App\\Modules\\Order\\Models\\Order",
+            "type": "belongs_to",
+            "method": "order",
+            "foreign_key": "order_id",
+            "from_table": "refunds",
+            "to_table": "orders"
+        },
+        {
+            "from": "App\\Modules\\Payment\\Models\\Refund",
+            "to": "App\\Modules\\Payment\\Models\\Payment",
+            "type": "belongs_to",
+            "method": "payment",
+            "foreign_key": "payment_id",
+            "from_table": "refunds",
+            "to_table": "payments"
+        },
+        {
+            "from": "App\\Modules\\Payment\\Models\\Refund",
+            "to": "App\\Modules\\User\\Models\\User",
+            "type": "belongs_to",
+            "method": "reviewer",
+            "foreign_key": null,
+            "from_table": "refunds",
+            "to_table": "users"
+        },
+        {
+            "from": "App\\Modules\\Pricing\\Models\\ItemPrice",
+            "to": "App\\Modules\\Item\\Models\\Item",
+            "type": "belongs_to",
+            "method": "item",
+            "foreign_key": "item_id",
+            "from_table": "item_prices",
+            "to_table": "items"
+        },
+        {
+            "from": "App\\Modules\\Pricing\\Models\\ItemPrice",
+            "to": "App\\Modules\\Service\\Models\\Service",
+            "type": "belongs_to",
+            "method": "service",
+            "foreign_key": "service_id",
+            "from_table": "item_prices",
+            "to_table": "services"
+        },
+        {
+            "from": "App\\Modules\\Service\\Models\\Service",
+            "to": "App\\Modules\\Pricing\\Models\\ItemPrice",
+            "type": "has_many",
+            "method": "prices",
+            "foreign_key": "service_id",
+            "from_table": "services",
+            "to_table": "item_prices"
+        },
+        {
+            "from": "App\\Modules\\User\\Models\\User",
+            "to": "App\\Models\\Role",
+            "type": "belongs_to",
+            "method": "role",
+            "foreign_key": "role_id",
+            "from_table": "users",
+            "to_table": "roles"
+        },
+        {
+            "from": "App\\Modules\\User\\Models\\User",
+            "to": "App\\Modules\\Address\\Models\\Address",
+            "type": "has_many",
+            "method": "addresses",
+            "foreign_key": "user_id",
+            "from_table": "users",
+            "to_table": "addresses"
+        },
+        {
+            "from": "App\\Modules\\User\\Models\\User",
+            "to": "App\\Modules\\Laundry\\Models\\Laundry",
+            "type": "belongs_to",
+            "method": "laundry",
+            "foreign_key": "laundry_id",
+            "from_table": "users",
+            "to_table": "laundries"
+        },
+        {
+            "from": "App\\Modules\\User\\Models\\User",
+            "to": "App\\Modules\\Order\\Models\\Order",
+            "type": "has_many",
+            "method": "orders",
+            "foreign_key": "user_id",
+            "from_table": "users",
+            "to_table": "orders"
+        },
+        {
+            "from": "App\\Modules\\User\\Models\\User",
+            "to": "App\\Modules\\Order\\Models\\OrderRecurrence",
+            "type": "has_many",
+            "method": "recurrences",
+            "foreign_key": "user_id",
+            "from_table": "users",
+            "to_table": "order_recurrences"
+        },
+        {
+            "from": "App\\Modules\\Wallet\\Models\\Wallet",
+            "to": "App\\Modules\\User\\Models\\User",
+            "type": "belongs_to",
+            "method": "owner",
+            "foreign_key": "user_id",
+            "from_table": "wallets",
+            "to_table": "users"
+        },
+        {
+            "from": "App\\Modules\\Wallet\\Models\\Wallet",
+            "to": "App\\Modules\\Wallet\\Models\\WalletTransaction",
+            "type": "has_many",
+            "method": "transactions",
+            "foreign_key": "wallet_id",
+            "from_table": "wallets",
+            "to_table": "wallet_transactions"
+        },
+        {
+            "from": "App\\Modules\\Wallet\\Models\\WalletTransaction",
+            "to": "App\\Modules\\User\\Models\\User",
+            "type": "belongs_to",
+            "method": "author",
+            "foreign_key": null,
+            "from_table": "wallet_transactions",
+            "to_table": "users"
+        },
+        {
+            "from": "App\\Modules\\Wallet\\Models\\WalletTransaction",
+            "to": "App\\Modules\\Wallet\\Models\\Wallet",
+            "type": "belongs_to",
+            "method": "wallet",
+            "foreign_key": "wallet_id",
+            "from_table": "wallet_transactions",
+            "to_table": "wallets"
+        },
+        {
+            "from": "App\\Modules\\Zone\\Models\\Zone",
+            "to": "App\\Modules\\City\\Models\\City",
+            "type": "belongs_to",
+            "method": "city",
+            "foreign_key": "city_id",
+            "from_table": "zones",
+            "to_table": "cities"
+        }
+    ]
+}

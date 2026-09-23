@@ -27,3 +27,8 @@ Thumbs.db
 /storage/playwright-report
 /playwright/.cache
 repair.tmp.php
+
+# The Second Brain's parse cache. `data/` is committed — it is the brain, and a
+# teammate should get it without rebuilding — but `cache/` is per-machine and
+# rebuilt in about two seconds.
+/.second-brain/cache

@@ -16,6 +16,9 @@ vendor/bin/rector process --dry-run  # config rector.php
 php artisan ide-helper:models -W     # refresh model @property docblocks
 php artisan laundo:sync-web-lang     # push new webFile.php keys into each {code}_web.json
 npm run build / npm run dev
+
+php .second-brain/bin/brain.php index   # rebuild the codebase map — see "The Second Brain" below
+php .second-brain/bin/brain.php update  # …or only what git says changed
 ```
 
 Single test: `php artisan test --filter=TestName` · one file: `php artisan test tests/Feature/Api/OrderTest.php` · one suite: `php artisan test --testsuite=Unit`. One browser spec: `npx playwright test tests/Browser/<name>.spec.js`.
@@ -27,6 +30,61 @@ task done. It has grown steadily; if it runs much longer than this, re-measure
 and correct the figure here rather than working around it.
 
 PHPUnit runs against in-memory SQLite (`phpunit.xml`); the app itself runs on MySQL. Anything relying on MySQL-only SQL will pass in tests and fail in the app.
+
+## The Second Brain — ask it before exploring
+
+There is a queryable map of this codebase in **`.second-brain/`**, exposed to
+Claude Code as the MCP server `second-brain` (registered in `.mcp.json`). It
+holds the modules, the 428 routes with their permissions, the schema, the
+Eloquent relationships, a feature map and a dependency graph — and it answers
+in file paths and relationships, **never in source code**.
+
+**Use it first for any non-trivial task**, in this order:
+
+1. `second_brain_search` with the task in plain words. Unfamiliar area?
+   `second_brain_get_architecture` once, first.
+2. Read the community and module it names — that is where the change belongs.
+3. `second_brain_get_feature` for the capability: its routes, the permission
+   gating them, its files in relevance order, its tables and its tests.
+4. `second_brain_get_dependencies` before changing anything shared — it is the
+   blast radius, and it is how you find the callers a grep misses.
+5. **Read only the files it ranked.** Two or three, not thirty.
+6. Implement, then run the tests it named.
+7. If the architecture moved — a new module, route, model or migration — run
+   `php artisan second-brain:update` (or `php .second-brain/bin/brain.php update`).
+8. If the task changes files, routes, models, migrations, permissions,
+   Blade views, API payloads, or module structure, run
+   `php .second-brain/bin/brain.php update` after the implementation
+   so the map does not become stale.
+
+9. If Second Brain results conflict with the actual source code,
+   trust the source code, finish the task, then update the index.
+
+**Do not use it** for a one-line change in a file already open, for copy or a
+translation, or for anything where you already know the file. The overhead is
+not free and a lookup that tells you what you knew is waste.
+
+**Trust it, but it is not the source.** It is generated: if it names a file that
+is not there, it is stale — `update` it rather than working around it. And it
+only knows what the source shows, so it has the gaps `.second-brain/README.md`
+lists under *Known limitations* (notably: a question phrased in words this
+codebase does not use will not find much — say "tenant scope", not "stop owners
+seeing each other's data").
+
+Commands, and the CLI that needs no database:
+
+```bash
+php .second-brain/bin/brain.php index      # full rebuild (~2s, deterministic, safe to repeat)
+php .second-brain/bin/brain.php update     # re-parse only what git says changed
+php .second-brain/bin/brain.php doctor     # staleness, secrets, degraded routes
+php artisan second-brain:index             # the same, when artisan is already to hand
+```
+
+The CLI is the real entry point because **`php artisan` cannot boot when MySQL
+is down** (`AppServiceProvider::boot()` reads `languages`), and a map that only
+rebuilds when the database is up is a map that goes stale.
+
+Full documentation: **`.second-brain/README.md`**.
 
 ## Stack
 
@@ -864,6 +922,7 @@ only a genuinely new domain earns a directory.
 6. Views under `resources/views/admin/{name}/` — `index` (with `setupAjaxSearch` in `@push('scripts')`, or `setupClientFilter` if it is a bulk-edit grid), `create`, `edit`, `show`, `partials/_{name}_table_body`, `forms/formInput`, `shared/controlBut`.
 7. Add every displayed column to the model's searchable list, including dotted relation paths — the owner's rule is that anything shown can be searched.
 8. If it is exposed to the apps: endpoint in `routes/api.php`, a `present*()` method, an entry in the Postman collection **and** in `generate-reference.py`.
+9. `php .second-brain/bin/brain.php update` — the codebase map is how the next person finds any of this, and a module missing from it is a module they will go looking for by hand.
 
 ## Changelog Policy (MANDATORY)
 
