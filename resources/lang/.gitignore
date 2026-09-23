@@ -8,3 +8,11 @@
 *
 !.gitignore
 !*.json
+
+# And the PHP files, for the same reason. Laravel resolves a validation message
+# through `lang/{code}/validation.php` and nothing else — a JSON entry cannot
+# carry `validation.required`, so «الحقل مطلوب» has nowhere else to live. Ignored,
+# the Arabic validation set would have existed on one machine and the apps would
+# have gone on answering in English.
+!*/
+!*/*.php
