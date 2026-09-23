@@ -66,10 +66,24 @@ class TranslationFileTest extends TestCase
         return new UploadedFile($path, 'upload.json', 'application/json', null, true);
     }
 
+    /**
+     * Register a file this test is about to create, so tearDown removes it.
+     *
+     * **`{code}.json` brings `{code}_panel.json` with it.** The panel's
+     * translations are written to both — the second is the copy the languages
+     * screen downloads — so tracking only the first left a `zz_panel.json` in
+     * `resources/lang` after every run. Untracked by git, so it never shipped;
+     * it simply accumulated in whoever's working tree ran the suite, and turned
+     * up in a directory listing as a language nobody could account for.
+     */
     private function track(string $filename): string
     {
         $full = $this->langPath.'/'.$filename;
         $this->written[] = $full;
+
+        if (str_ends_with($filename, '.json') && ! str_contains($filename, '_')) {
+            $this->written[] = $this->langPath.'/'.str_replace('.json', '_panel.json', $filename);
+        }
 
         return $full;
     }
