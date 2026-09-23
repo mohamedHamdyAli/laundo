@@ -6,20 +6,22 @@
  * A PHP file and not a JSON entry, because Laravel resolves a validation
  * message through `lang/{code}/validation.php` and nowhere else. `__()` never
  * sees `validation.required`, so the JSON files the panel edits cannot carry
- * these — which is why both apps answered a bad request in English whatever
- * language they had asked for.
+ * these — which is why every rejected request, from either app and from the
+ * dashboard, answered in English whatever language it was made in.
  *
  * **No message here makes `:attribute` the subject of a verb.** It is replaced
- * with a noun whose gender we cannot know — «رقم الهاتف» is masculine, «كلمة
+ * with a noun whose gender cannot be known — «رقم الهاتف» is masculine, «كلمة
  * المرور» feminine — and an Arabic verb agrees with its subject, so «يجب ألا
  * يقل كلمة المرور» is wrong in a way every reader sees at once. The subject is
- * always a neutral masculine noun we control (حقل، قيمة، طول، عدد، حجم) and
- * `:attribute` hangs off it. That stays correct for any field name, including
- * ones added later.
+ * always a neutral masculine noun we control (حقل، قيمة، طول، عدد، حجم) with
+ * the field hanging off it. That stays correct for any name, including ones
+ * added later.
  *
- * `attributes` is the half that decides whether this reads as Arabic at all.
- * Without it every message names the column — «حقل pickup_address_id مطلوب» —
- * and the customer is told off in the schema's words.
+ * `attributes` covers both surfaces: the 111 fields the apps validate and the
+ * 74 the dashboard adds on top. Without it a message names the column —
+ * «حقل pickup_address_id مطلوب» — and somebody is told off in the schema's own
+ * words. The list is checked against the request classes by a test rather than
+ * kept by hand, so a field added later is caught instead of assumed.
  */
 
 return [
@@ -255,5 +257,79 @@ return [
         'status' => 'الحالة',
         'title' => 'العنوان',
         'description' => 'الوصف',
+        'accepts_terms' => 'الشروط',
+        'address' => 'العنوان',
+        'logo' => 'الشعار',
+        'owner_name' => 'اسم المالك',
+        'owner_email' => 'بريد المالك',
+        'owner_phone' => 'هاتف المالك',
+        'owner_password' => 'كلمة مرور المالك',
+        'approved_at' => 'تاريخ الاعتماد',
+        'rejected_at' => 'تاريخ الرفض',
+        'rejection_reason' => 'سبب الرفض',
+        'admin_note' => 'ملاحظة داخلية',
+        'laundry_id' => 'المغسلة',
+        'laundry_ids' => 'المغاسل',
+        'services' => 'الخدمات',
+        'role_id' => 'الدور',
+        'country_id' => 'الدولة',
+        'phone_code' => 'مفتاح الدولة',
+        'timezone' => 'المنطقة الزمنية',
+        'min_delivery_fee' => 'الحد الأدنى لرسوم التوصيل',
+        'price_per_km' => 'سعر الكيلومتر',
+        'duration_min' => 'أقل مدة',
+        'duration_max' => 'أطول مدة',
+        'duration_unit' => 'وحدة المدة',
+        'prices' => 'الأسعار',
+        'unit_price' => 'سعر القطعة',
+        'sort_order' => 'الترتيب',
+        'order' => 'الترتيب',
+        'image' => 'الصورة',
+        'icon' => 'الأيقونة',
+        'applies_to' => 'يُطبَّق على',
+        'capacity' => 'السعة',
+        'capacities' => 'السعات',
+        'return_to_laundry' => 'العودة للمغسلة',
+        'value' => 'القيمة',
+        'coupon_id' => 'كود الخصم',
+        'starts_at' => 'يبدأ في',
+        'ends_at' => 'ينتهي في',
+        'max_discount' => 'أقصى خصم',
+        'min_order_total' => 'أقل إجمالي للطلب',
+        'max_redemptions' => 'أقصى عدد استخدامات',
+        'max_per_user' => 'أقصى عدد لكل عميل',
+        'applies_to_delivery' => 'يشمل رسوم التوصيل',
+        'target' => 'الجهة المستهدفة',
+        'target_type' => 'نوع الوجهة',
+        'target_value' => 'الوجهة',
+        'basis' => 'أساس الاحتساب',
+        'rate' => 'النسبة',
+        'commission_rule_ids' => 'رسوم العمولة',
+        'bonus_rule_id' => 'قاعدة البونس',
+        'tier_min_orders' => 'عدد طلبات الشريحة',
+        'tier_amounts' => 'بونس الشريحة',
+        'max_failed_tasks' => 'أقصى عدد رحلات فاشلة',
+        'min_on_time_rate' => 'أقل نسبة التزام بالموعد',
+        'min_delivery_rating' => 'أقل تقييم للتوصيل',
+        'destination' => 'الوجهة',
+        'direction' => 'الاتجاه',
+        'driver_id' => 'المندوب',
+        'zones' => 'المناطق',
+        'shift_start' => 'بداية الوردية',
+        'shift_end' => 'نهاية الوردية',
+        'max_concurrent_orders' => 'الطلبات في وقت واحد',
+        'rest_of_order' => 'باقي الطلب',
+        'lines' => 'السطور',
+        'ids' => 'الصفوف المحددة',
+        'question' => 'السؤال',
+        'answer' => 'الإجابة',
+        'name_en' => 'الاسم بالإنجليزية',
+        'country_code' => 'كود الدولة',
+        'is_rtl' => 'من اليمين لليسار',
+        'default' => 'اللغة الافتراضية',
+        'app_scope' => 'النطاق',
+        'panel_file' => 'ملف ترجمة اللوحة',
+        'app_file' => 'ملف ترجمة التطبيق',
+        'web_file' => 'ملف ترجمة الويب',
     ],
 ];

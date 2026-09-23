@@ -79,16 +79,41 @@ class ValidationLanguageTest extends TestCase
         // A field with no entry falls back to its column name, which reads as a
         // bug to whoever is looking at it. Checked against the request classes
         // themselves so a field added later is caught rather than assumed.
+        $this->assertNamed([
+            base_path('app/Http/Requests/Api'),
+            base_path('app/Http/Controllers/Api'),
+        ]);
+    }
+
+    #[Test]
+    public function every_field_the_dashboard_validates_has_an_arabic_name(): void
+    {
+        // The other surface. An operator filling in a laundry's commission or a
+        // driver's shift is told off in the same Arabic a customer is, and the
+        // fields are different ones — the dashboard validates seventy-odd the
+        // apps never see.
+        $this->assertNamed([
+            base_path('app/Modules'),
+            base_path('app/Http/Controllers/Admin'),
+        ]);
+    }
+
+    /**
+     * @param  array<int, string>  $roots
+     */
+    private function assertNamed(array $roots): void
+    {
         $attributes = (array) trans('validation.attributes', [], 'ar');
 
         $missing = [];
 
-        foreach ($this->apiValidatedFields() as $field) {
+        foreach ($this->validatedFields($roots) as $field) {
             if (! isset($attributes[$field])) {
                 $missing[] = $field;
             }
         }
 
+        $missing = array_values(array_unique($missing));
         sort($missing);
 
         $this->assertSame([], $missing, 'no Arabic name for: '.implode(', ', $missing));
@@ -107,17 +132,16 @@ class ValidationLanguageTest extends TestCase
     }
 
     /**
-     * The field names the API actually validates, read from the request classes.
+     * The field names actually validated under the given roots.
      *
+     * Read from the source rather than from a list somebody maintains, because
+     * a list is exactly what stops being true the week after it is written.
+     *
+     * @param  array<int, string>  $roots
      * @return array<int, string>
      */
-    private function apiValidatedFields(): array
+    private function validatedFields(array $roots): array
     {
-        $roots = [
-            base_path('app/Http/Requests/Api'),
-            base_path('app/Http/Controllers/Api'),
-        ];
-
         $rules = [
             'required', 'nullable', 'sometimes', 'string', 'integer', 'numeric',
             'boolean', 'array', 'date', 'email', 'exists:', 'unique:', 'max:',
@@ -140,7 +164,23 @@ class ValidationLanguageTest extends TestCase
                     continue;
                 }
 
+                // Models are skipped: a `casts()` entry like
+                // 'approved_at' => 'datetime' matches on «date» and is not a
+                // validated field at all.
+                if (str_contains($file->getPathname(), DIRECTORY_SEPARATOR.'Models'.DIRECTORY_SEPARATOR)) {
+                    continue;
+                }
+
                 $source = (string) file_get_contents($file->getPathname());
+
+                // Only files that actually validate. A service returning
+                // `'orders' => $query->count()` is not declaring a field, and
+                // naming it would put words in `validation.attributes` that no
+                // message will ever use — which makes the list stop describing
+                // anything.
+                if (! str_contains($source, 'function rules(') && ! str_contains($source, '->validate(')) {
+                    continue;
+                }
 
                 preg_match_all(
                     "/'([a-z][a-z0-9_.*]*)'\s*=>\s*(\[[^\]]*\]|'[^']*')/",
