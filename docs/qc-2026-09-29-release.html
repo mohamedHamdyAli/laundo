@@ -1,0 +1,687 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>تعديلات إصدار 29 سبتمبر — للاختبار</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&family=Readex+Pro:wght@500;600&display=swap">
+<style>
+/* نفس ألوان وخطوط «دليل اختبار لوحة Laundo» عشان الملفين يتقروا كعيلة واحدة. */
+:root {
+  --ground: #F4F6F9; --surface: #FFFFFF; --surface-2: #EDF1F6;
+  --ink: #101A26; --ink-2: #35455A; --muted: #667A93;
+  --line: #DBE3ED; --line-strong: #C2CFDE;
+  --brand: #0E4C75; --brand-soft: #E4EEF6; --brand-ink: #0A3855;
+  --good: #146B47; --good-soft: #E1F1E9;
+  --warn: #8A5A00; --warn-soft: #FAEEDA;
+  --crit: #A32218; --crit-soft: #FBE6E4;
+  --radius: 10px;
+  --f-body: "IBM Plex Sans Arabic", "Segoe UI", Tahoma, sans-serif;
+  --f-disp: "Readex Pro", "IBM Plex Sans Arabic", "Segoe UI", sans-serif;
+  --f-mono: "IBM Plex Mono", ui-monospace, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --ground: #0B121B; --surface: #121C28; --surface-2: #182533;
+    --ink: #E8EEF5; --ink-2: #BCCBDB; --muted: #8699AF;
+    --line: #243447; --line-strong: #2E4257;
+    --brand: #6FB3DE; --brand-soft: #16293A; --brand-ink: #A8D2ED;
+    --good: #63C296; --good-soft: #12261D;
+    --warn: #DFAE5E; --warn-soft: #2A2113;
+    --crit: #F08279; --crit-soft: #2B1614;
+  }
+}
+:root[data-theme="dark"] {
+  --ground: #0B121B; --surface: #121C28; --surface-2: #182533;
+  --ink: #E8EEF5; --ink-2: #BCCBDB; --muted: #8699AF;
+  --line: #243447; --line-strong: #2E4257;
+  --brand: #6FB3DE; --brand-soft: #16293A; --brand-ink: #A8D2ED;
+  --good: #63C296; --good-soft: #12261D;
+  --warn: #DFAE5E; --warn-soft: #2A2113;
+  --crit: #F08279; --crit-soft: #2B1614;
+}
+
+* { box-sizing: border-box; }
+html { direction: rtl; }
+body {
+  margin: 0; direction: rtl;
+  background: var(--ground); color: var(--ink);
+  font-family: var(--f-body); font-size: 15px; line-height: 1.75;
+  -webkit-font-smoothing: antialiased;
+}
+.page { max-width: 980px; margin: 0 auto; padding: 0 16px 80px; }
+
+/* الترويسة */
+.masthead { background: var(--surface); border-bottom: 1px solid var(--line-strong); margin-bottom: 36px; }
+.masthead .in { max-width: 980px; margin: 0 auto; padding: 36px 16px 28px; }
+.eyebrow { font-family: var(--f-mono); font-size: 11.5px; letter-spacing: .14em; color: var(--brand); margin: 0 0 10px; direction: ltr; text-align: right; }
+h1 { font-family: var(--f-disp); font-weight: 600; font-size: clamp(28px, 4.4vw, 40px); line-height: 1.3; margin: 0 0 12px; text-wrap: balance; }
+.lede { font-size: 16.5px; color: var(--ink-2); max-width: 64ch; margin: 0; }
+.stamp { margin-top: 22px; display: flex; flex-wrap: wrap; gap: 6px 26px; font-size: 13px; color: var(--muted); }
+.stamp b { color: var(--ink-2); font-weight: 600; }
+
+/* الفهرس */
+.toc { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 18px 22px; margin-bottom: 44px; columns: 2; column-gap: 36px; }
+.toc h2 { column-span: all; font-size: 13px; color: var(--muted); font-weight: 500; margin: 0 0 8px; }
+.toc ol { list-style: none; margin: 0; padding: 0; }
+.toc li { break-inside: avoid; margin: 0 0 2px; }
+.toc a { color: var(--ink-2); text-decoration: none; font-size: 14px; }
+.toc a:hover { color: var(--brand); text-decoration: underline; }
+.toc .part { font-weight: 600; color: var(--ink); margin-top: 10px; display: block; font-size: 13px; }
+.toc .n { font-family: var(--f-mono); color: var(--brand); font-size: 12px; margin-inline-end: 6px; }
+@media (max-width: 700px) { .toc { columns: 1; } }
+
+/* الأقسام */
+.part-title { font-family: var(--f-disp); font-weight: 600; font-size: 14px; color: var(--brand); letter-spacing: .02em; margin: 56px 0 6px; padding-bottom: 6px; border-bottom: 1px solid var(--line-strong); }
+section { margin-bottom: 44px; scroll-margin-top: 16px; }
+h2 { font-family: var(--f-disp); font-weight: 600; font-size: 23px; line-height: 1.4; margin: 18px 0 8px; text-wrap: balance; }
+h2 .n { font-family: var(--f-mono); font-size: 14px; color: var(--brand); margin-inline-end: 8px; vertical-align: 2px; }
+h3 { font-size: 15.5px; font-weight: 600; margin: 20px 0 8px; }
+p { margin: 0 0 12px; max-width: 74ch; }
+ul { margin: 0 0 12px; padding-right: 20px; }
+li { margin-bottom: 5px; }
+strong { font-weight: 600; }
+a { color: var(--brand); }
+td small { color: var(--muted); }
+.names { list-style: none; padding: 0; margin: 0; }
+.names li { margin: 0; }
+code { font-family: var(--f-mono); font-size: .86em; direction: ltr; unicode-bidi: isolate; background: var(--surface-2); border: 1px solid var(--line); border-radius: 4px; padding: 0 5px; white-space: nowrap; }
+
+/* فين / الصلاحية / التطبيق */
+.meta { display: grid; grid-template-columns: max-content 1fr; gap: 6px 16px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 12px 16px; margin: 0 0 14px; font-size: 14px; }
+.meta dt { color: var(--muted); font-weight: 500; }
+.meta dd { margin: 0; color: var(--ink-2); }
+@media (max-width: 560px) { .meta { grid-template-columns: 1fr; } .meta dd { margin-bottom: 6px; } }
+
+/* جداول */
+.tbl { overflow-x: auto; margin: 0 0 14px; }
+table { width: 100%; border-collapse: collapse; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); font-size: 14px; }
+th, td { text-align: right; vertical-align: top; padding: 9px 12px; border-bottom: 1px solid var(--line); }
+th { background: var(--surface-2); font-weight: 600; color: var(--ink-2); font-size: 13px; }
+tr:last-child td { border-bottom: 0; }
+td.num { font-family: var(--f-mono); color: var(--brand); width: 34px; text-align: center; }
+td.chk, th.chk { width: 46px; text-align: center; }
+td.chk::before { content: ""; display: inline-block; width: 16px; height: 16px; border: 1.5px solid var(--line-strong); border-radius: 4px; vertical-align: -3px; }
+table.steps td:nth-child(2) { width: 44%; }
+
+/* صناديق */
+.box { border-radius: var(--radius); padding: 12px 16px; margin: 0 0 14px; font-size: 14.5px; border: 1px solid; }
+.box > :last-child { margin-bottom: 0; }
+.box h3 { margin: 0 0 6px; font-size: 14.5px; }
+.box.crit { background: var(--crit-soft); border-color: color-mix(in srgb, var(--crit) 35%, transparent); }
+.box.crit h3 { color: var(--crit); }
+.box.warn { background: var(--warn-soft); border-color: color-mix(in srgb, var(--warn) 35%, transparent); }
+.box.warn h3 { color: var(--warn); }
+.box.traps { background: var(--surface); border-color: var(--line); border-inline-start: 4px solid var(--good); }
+.box.traps h3 { color: var(--good); }
+.box.info { background: var(--brand-soft); border-color: color-mix(in srgb, var(--brand) 25%, transparent); }
+.box.info h3 { color: var(--brand-ink); }
+
+.foot { margin-top: 56px; padding-top: 14px; border-top: 1px solid var(--line-strong); color: var(--muted); font-size: 13px; }
+
+/* الطباعة: فاتح دايماً، والجداول ماتتقطعش من نص السطر */
+@page { size: A4; margin: 14mm 12mm 16mm; }
+@media print {
+  :root, :root:not([data-theme="light"]), :root[data-theme="dark"] {
+    --ground: #FFFFFF; --surface: #FFFFFF; --surface-2: #EDF1F6;
+    --ink: #101A26; --ink-2: #35455A; --muted: #667A93;
+    --line: #DBE3ED; --line-strong: #C2CFDE;
+    --brand: #0E4C75; --brand-soft: #E4EEF6; --brand-ink: #0A3855;
+    --good: #146B47; --good-soft: #E1F1E9;
+    --warn: #8A5A00; --warn-soft: #FAEEDA;
+    --crit: #A32218; --crit-soft: #FBE6E4;
+  }
+  * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  body { font-size: 13px; }
+  .masthead .in { padding-top: 8px; }
+  .page { padding-bottom: 0; }
+  tr, .box, .meta { break-inside: avoid; }
+  h2, h3, .part-title { break-after: avoid; }
+  .toc a { color: var(--ink-2); }
+}
+</style>
+</head>
+<body>
+
+<header class="masthead">
+  <div class="in">
+    <p class="eyebrow">LAUNDO · RELEASE 2026-09-29 · FOR QC</p>
+    <h1>التعديلات الجديدة في Laundo — للاختبار</h1>
+    <p class="lede">كل اللي اتغيّر في النسخة اللي نزلت لايف يوم 29 سبتمبر 2026 على <b>laundo.nahrdev.net</b>: فين تلاقي كل تعديل، تجرّبه إزاي، المفروض يحصل إيه، والحاجات اللي هتبان باج وهي مقصودة.</p>
+    <div class="stamp">
+      <span>تاريخ النشر <b>29/9/2026</b></span>
+      <span>النسخة <b>b13d61d</b></span>
+      <span><b>14</b> تعديل + إصلاحات</span>
+      <span>تفاصيل كل شاشة: <b>دليل اختبار لوحة Laundo</b></span>
+    </div>
+  </div>
+</header>
+
+<main class="page">
+
+<nav class="toc" aria-label="الفهرس">
+  <h2>المحتوى</h2>
+  <ol>
+    <li><a href="#before"><span class="n">!</span>قبل ما تبدأ — مهم</a></li>
+    <li><a href="#apps"><span class="n">!</span>التطبيقات: إيه اللي هيبان دلوقتي</a></li>
+    <li><span class="part">الفلوس</span></li>
+    <li><a href="#share"><span class="n">1</span>نسبة المغسلة بقت نصيب المغسلة</a></li>
+    <li><a href="#bearer"><span class="n">2</span>مين يشيل خصم الكوبون</a></li>
+    <li><a href="#scope"><span class="n">3</span>كوبون أو عرض على جزء من الطلب</a></li>
+    <li><a href="#increase"><span class="n">4</span>زيادة الأسعار</a></li>
+    <li><span class="part">الطلبات والتشغيل</span></li>
+    <li><a href="#today"><span class="n">5</span>طلبات اليوم</a></li>
+    <li><a href="#auto"><span class="n">6</span>قفل التعيين التلقائي</a></li>
+    <li><a href="#turnaround"><span class="n">7</span>ميعاد التسليم ومدة الخدمة</a></li>
+    <li><a href="#pieces"><span class="n">8</span>اختلاف في عدد القطع</a></li>
+    <li><a href="#zones"><span class="n">9</span>المناطق على الخريطة</a></li>
+    <li><span class="part">المغاسل</span></li>
+    <li><a href="#services"><span class="n">10</span>خدمات المغسلة بموافقة المنصة</a></li>
+    <li><span class="part">النظام</span></li>
+    <li><a href="#activity"><span class="n">11</span>سجل النشاط وسجل الطلب</a></li>
+    <li><a href="#excel"><span class="n">12</span>تصدير واستيراد Excel</a></li>
+    <li><a href="#settings"><span class="n">13</span>الإعدادات في تابات</a></li>
+    <li><a href="#validation"><span class="n">14</span>تعديل رسائل التحقق</a></li>
+    <li><a href="#fixes"><span class="n">+</span>إصلاحات وتعديلات صغيرة</a></li>
+  </ol>
+</nav>
+
+<!-- ============================================================ -->
+<section id="before">
+  <h2><span class="n">!</span>قبل ما تبدأ — مهم</h2>
+
+  <div class="box crit">
+    <h3>ده سيرفر لايف، عليه عملاء ومغاسل حقيقيين</h3>
+    <p>أربع حاجات في الإصدار ده بتغيّر بيانات حقيقية في نفس اللحظة. خلي بالك منها:</p>
+    <ul>
+      <li><strong>رسم منطقة حقيقية</strong> بينقل عناوين العملاء اللي جواها للمنطقة دي. جرّب على منطقة تجربة جديدة (اسمها «QC — تجربة») في مكان مفيهوش عملاء، وامسحها لما تخلص.</li>
+      <li><strong>زيادة الأسعار</strong> بتغيّر السعر اللي كل العملاء بيشوفوه. متدوسش «اعتمدها نهائي» غير لما المالك يوافق. «طبّق لفترة» وبعدها «شيل الزيادة» على طول، ده آمن.</li>
+      <li><strong>قفل التعيين التلقائي</strong> بيأثر على كل الطلبات الجديدة وهو مقفول. افتحه تاني أول ما تخلص.</li>
+      <li><strong>تغيير نسبة مغسلة</strong> أو «نسبة المغسلة العامة» بيغيّر حساب التسويات اللي لسه معلّقة.</li>
+    </ul>
+  </div>
+
+  <h3>الوضع على اللايف دلوقتي</h3>
+  <div class="tbl"><table>
+    <thead><tr><th>الحاجة</th><th>القيمة دلوقتي</th><th>يعني إيه</th></tr></thead>
+    <tbody>
+      <tr><td>المناطق</td><td>25 منطقة شغالة، ومفيش ولا واحدة مرسومة</td><td>كل حاجة شغالة زي الأول لحد ما منطقة تترسم.</td></tr>
+      <tr><td>نسب المغاسل</td><td><ul class="names">
+        <li><bdi>Clean &amp; Fresh Laundry</bdi> ← <b>90%</b></li>
+        <li><bdi>Silver Wash Laundry</bdi> ← <b>90%</b></li>
+        <li>رانيا عبد المنعم ← <b>95%</b></li>
+        <li><bdi>laundo</bdi> ← <b>70%</b></li>
+      </ul></td><td>اتحولت من عمولة المنصة لنصيب المغسلة، وفلوس كل مغسلة فضلت زي ما هي. laundo كان عليها قاعدتين (10% و 20%)، فاتحطت على قاعدة واحدة جديدة اسمها <bdi>«Laundry share 70%»</bdi>.</td></tr>
+      <tr><td>أسماء قواعد النسب</td><td>القاعدة اللي اسمها «10%» نسبتها 90، واللي اسمها «20» نسبتها 80</td><td>الأرقام اتقلبت والأسامي فضلت بالرقم القديم. ده معروف، والأسامي هتتغير من الشاشة. متسجلهاش باج.</td></tr>
+      <tr><td>نسبة المغسلة العامة</td><td>فاضية</td><td>أي مغسلة جديدة من غير نسبة، تسويتها هتفضل «مستنية نسبة». مقصود.</td></tr>
+      <tr><td>نصيب المغسلة من خصم الكوبون</td><td>فاضي</td><td>السوبر أدمن شايل خصم أي كوبون محددش مين يشيل.</td></tr>
+      <tr><td>التعيين التلقائي</td><td>المغسلة والمندوب الاتنين مفتوحين</td><td>زي ما كان قبل الإصدار.</td></tr>
+      <tr><td>أقصى مدة لحجز التسليم</td><td>فاضية ← 14 يوم</td><td>التسليم لازم يكون في خلال 14 يوم من أبكر ميعاد.</td></tr>
+      <tr><td>سجل النشاط</td><td>بدأ يسجّل من وقت النشر يوم 29/9</td><td>أي تعديل قبل كده مش موجود فيه. والطلبات القديمة سجلها فيه الحالات بس.</td></tr>
+      <tr><td>الصلاحيات الجديدة</td><td><code>activity_log.view</code> و <code>laundry_service_request.*</code></td><td>السوبر أدمن بيشوفهم لوحده. أي رول تاني لازم يتدّيله الصلاحية من «الأدوار» الأول.</td></tr>
+      <tr><td>الأوقات في اللوحة</td><td>UTC</td><td>متأخرة 3 ساعات عن القاهرة. معروف، ومش من الإصدار ده.</td></tr>
+      <tr><td>كود OTP</td><td><code>123456</code></td><td>ثابت لحد ما خدمة الرسايل تتربط.</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section id="apps">
+  <h2><span class="n">!</span>التطبيقات: إيه اللي هيبان دلوقتي</h2>
+  <p>السيرفر بيطبّق القواعد الجديدة من دلوقتي، وتطبيقات الموبايل لسه متحدّثتش. فأي حاجة في العمود الأوسط هي اللي هتشوفها وانت بتختبر من التطبيق الحالي، وده مش باج في التطبيق.</p>
+  <div class="tbl"><table>
+    <thead><tr><th>التعديل</th><th>التطبيق الحالي (قبل التحديث)</th><th>بعد ما فريق الموبايل يحدّث</th></tr></thead>
+    <tbody>
+      <tr><td><a href="#pieces">عدد القطع</a><br><small>تطبيق السواق</small></td><td>العدد المتوقع مبقاش بيوصل قبل «تأكيد التسليم»، فالخانة ممكن تبان فاضية أو صفر. التنبيه في اللوحة شغال من دلوقتي. <strong>لو التطبيق وقع أو علّق في الخطوة دي، بلّغ فوراً.</strong></td><td>الخانة بتبدأ فاضية، وبعد التأكيد تظهر رسالة لو العدد مختلف.</td></tr>
+      <tr><td><a href="#zones">المناطق</a><br><small>تطبيق العميل</small></td><td>في المناطق المرسومة، العنوان بياخد منطقته من الدبوس حتى لو العميل اختار منطقة تانية من القايمة.</td><td>حدود المناطق هتتعرض على الخريطة، والتطبيق هيعرض المنطقة اللي اتحفظت.</td></tr>
+      <tr><td><a href="#turnaround">ميعاد التسليم</a><br><small>تطبيق العميل</small></td><td>لو ميعاد التسليم بدري عن مدة الخدمة أو بعد أقصى مدة، الطلب بيترفض عند التأكيد برسالة فيها أبكر ميعاد.</td><td>المواعيد اللي مينفعش تبان مقفولة، ولو فيه تعارض بتطلع شاشة من تحت يتصلّح منها الميعاد في مكانه.</td></tr>
+      <tr><td><a href="#scope">كوبون على جزء من الطلب</a><br><small>تطبيق العميل</small></td><td>«تحقق من الكود» على كوبون محدود بيرد برسالة إن الخصم هيتحسب عند التأكيد. الخصم نفسه بيتحسب صح في الطلب.</td><td>الخصم هيبان قبل التأكيد، وقايمة العروض هتقول كل عرض على إيه.</td></tr>
+      <tr><td><a href="#auto">تعيين المغسلة مقفول</a><br><small>تطبيق العميل</small></td><td>عرض السعر بيرجع من غير مغسلة، فلو التطبيق بيعرض اسمها هيبان فاضي.</td><td>—</td></tr>
+      <tr><td><a href="#validation">رسائل التحقق</a><br><small>التطبيقين</small></td><td>الرسايل اللي بتتعدّل من اللوحة بتظهر في التطبيقين على طول.</td><td>—</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<!-- ============================================================ -->
+<div class="part-title">الفلوس</div>
+
+<section id="share">
+  <h2><span class="n">1</span>نسبة المغسلة بقت نصيب المغسلة</h2>
+  <p>الرقم اللي على المغسلة كان عمولة المنصة، ودلوقتي بقى <strong>اللي المغسلة بتاخده</strong> من الغسيل، والباقي للمنصة. يعني 90% معناها إن من كل 100 جنيه غسيل، المغسلة بتاخد 90 والمنصة 10. رسوم التوصيل ورسوم الدفع النقدي ورسوم المنصة على العميل والضريبة مبيتقسموش.</p>
+  <dl class="meta">
+    <dt>فين</dt><dd>المالية ← العمولات · المغاسل ← زرار النسبة في صف المغسلة · الإعدادات ← المالية ← «نسبة المغسلة العامة» · المالية ← تسويات الطلبات</dd>
+    <dt>الصلاحية</dt><dd>أي نسبة محتاجة <code>setting.update</code>، مش <code>laundry.update</code></dd>
+  </dl>
+  <div class="tbl"><table class="steps">
+    <thead><tr><th>#</th><th>جرّب</th><th>المفروض يحصل</th><th class="chk">✓</th></tr></thead>
+    <tbody>
+      <tr><td class="num">1</td><td>افتح «العمولات»</td><td>النسب مقلوبة عن الأول: 90 و 80 و 95 و 70.</td><td class="chk"></td></tr>
+      <tr><td class="num">2</td><td>طلب يكتمل على مغسلة نسبتها 90% وقيمة الغسيل 100</td><td>في «تسويات الطلبات»: المغسلة 90 والمنصة 10، ومحفظة صاحب المغسلة زادت 90.</td><td class="chk"></td></tr>
+      <tr><td class="num">3</td><td>حاول تربط مغسلة عليها نسبة شغالة بقاعدة تانية، أو تشغّل قاعدة هتحط مغسلة على نسبتين</td><td>بيترفض، وزرار التفعيل بيقول السبب.</td><td class="chk"></td></tr>
+      <tr><td class="num">4</td><td>دوس زرار النسبة في صف المغسلة</td><td>تختار نسبة واحدة بس، وأول اختيار «النسبة العامة».</td><td class="chk"></td></tr>
+      <tr><td class="num">5</td><td>مغسلة من غير نسبة، و«نسبة المغسلة العامة» فاضية، وطلب عليها يكتمل</td><td>التسوية بتفضل «معلَّق» ومكتوب عليها «مستنية نسبة»، ومحدش بياخد فلوس.</td><td class="chk"></td></tr>
+      <tr><td class="num">6</td><td>حط نسبة للمغسلة دي، وبعدين دوس «سوِّ الآن» على التسوية</td><td>التسوية بتتدفع بالنسبة الحالية.</td><td class="chk"></td></tr>
+      <tr><td class="num">7</td><td>دوس «سوِّ الآن» مرتين بسرعة</td><td>الفلوس بتتحط مرة واحدة بس.</td><td class="chk"></td></tr>
+    </tbody>
+  </table></div>
+  <div class="box traps">
+    <h3>مش باج — مقصود</h3>
+    <ul>
+      <li>النسبة <strong>الفاضية</strong> غير <strong>الصفر</strong>: الفاضية معناها «امشي على النسبة العامة»، والصفر معناه إن المغسلة مش هتاخد حاجة.</li>
+      <li>التسويات اللي اتدفعت قبل الإصدار فاضلة بسطورها القديمة (عمولة المنصة)، ونسبة المغسلة عليها فاضية. اللي اتدفع مبيتغيرش.</li>
+      <li>«رسوم المنصة على العميل» في الإعدادات غير نسبة المغسلة، دي بيدفعها العميل.</li>
+      <li>المبلغ الثابت اتلغى، ومفيش أي طريقة تشغّل قاعدة مبلغ ثابت.</li>
+    </ul>
+  </div>
+</section>
+
+<section id="bearer">
+  <h2><span class="n">2</span>مين يشيل خصم الكوبون</h2>
+  <p>كل كوبون بقى بيحدد الخصم على حساب مين: السوبر أدمن (ده الافتراضي)، أو المغسلة، أو يتقسم بينهم بنسبة. ونصيب المغسلة بيتحسب على أسعارها <strong>قبل</strong> الخصم.</p>
+  <dl class="meta">
+    <dt>فين</dt><dd>التسويق ← أكواد الخصم ← الفورم ← «مين يشيل الخصم» · الإعدادات ← المالية ← «مين يشيل خصم الكوبونات» ← «نصيب المغسلة من خصم الكوبون»</dd>
+    <dt>الصلاحية</dt><dd>الخانة بتظهر وبتتحفظ بس مع <code>setting.update</code></dd>
+  </dl>
+  <p>المثال في كل الخطوات: أسعار المغسلة 100، والكوبون 20، ونسبة المغسلة 90%.</p>
+  <div class="tbl"><table class="steps">
+    <thead><tr><th>#</th><th>جرّب</th><th>المفروض يحصل</th><th class="chk">✓</th></tr></thead>
+    <tbody>
+      <tr><td class="num">1</td><td>الكوبون على «حسب الإعداد العام»، والإعداد فاضي</td><td>المغسلة 90. المنصة <b>−10</b>، ومحفظة السوبر أدمن بتتخصم 10 وجنبها «خصم دفعته المنصة».</td><td class="chk"></td></tr>
+      <tr><td class="num">2</td><td>الكوبون على «المغسلة» (100%)</td><td>المغسلة 70، والمنصة 10.</td><td class="chk"></td></tr>
+      <tr><td class="num">3</td><td>«بالنسبة بينهم»، والمغسلة تشيل 50%</td><td>المغسلة 80، والمنصة 0.</td><td class="chk"></td></tr>
+      <tr><td class="num">4</td><td>غيّر اختيار الكوبون بعد ما طلب اتعمل بيه</td><td>الطلب بيفضل على الاختيار اللي كان وقت ما اتعمل.</td><td class="chk"></td></tr>
+      <tr><td class="num">5</td><td>ادخل بحساب يقدر يعدّل أكواد الخصم ومعهوش <code>setting.update</code></td><td>خانة «مين يشيل الخصم» مش ظاهرة، ولو حد بعتها بتتجاهل.</td><td class="chk"></td></tr>
+    </tbody>
+  </table></div>
+  <div class="box traps">
+    <h3>مش باج — مقصود</h3>
+    <ul>
+      <li>نصيب المنصة ممكن يبقى بالسالب لما الخصم يكون أكبر من نصيبها، والفرق بيتخصم من محفظة السوبر أدمن.</li>
+      <li>المغسلة عمرها ما بتنزل تحت الصفر.</li>
+      <li>الجزء من الكوبون اللي نزل من رسوم التوصيل دايماً على السوبر أدمن.</li>
+    </ul>
+  </div>
+</section>
+
+<section id="scope">
+  <h2><span class="n">3</span>كوبون أو عرض على جزء من الطلب</h2>
+  <p>الكوبون بقى ممكن يبقى على: الطلب كله، أو طلبات خدمات معينة، أو القطع اللي في أقسام معينة، أو قطع معينة. نوع واحد بس في كل كوبون، بس تقدر تختار أكتر من حاجة منه. والعرض بياخد نفس الحد من الكوبون المربوط بيه.</p>
+  <dl class="meta">
+    <dt>فين</dt><dd>التسويق ← أكواد الخصم ← الفورم ← «الكوبون على إيه» · التسويق ← العروض ← الفورم ← قايمة الكوبونات</dd>
+    <dt>الصلاحية</dt><dd><code>coupon.create</code> / <code>coupon.update</code></dd>
+    <dt>التطبيق</dt><dd>تطبيق العميل. <a href="#apps">شوف اللي هيبان دلوقتي</a></dd>
+  </dl>
+  <div class="tbl"><table class="steps">
+    <thead><tr><th>#</th><th>جرّب</th><th>المفروض يحصل</th><th class="chk">✓</th></tr></thead>
+    <tbody>
+      <tr><td class="num">1</td><td>كوبون 50% على «قطع معينة» ← القمصان، وسلة فيها قمصان وبنطلون</td><td>الخصم نص سعر القمصان بس، والبنطلون بسعره كامل.</td><td class="chk"></td></tr>
+      <tr><td class="num">2</td><td>في نفس الكوبون، علّم «اخصم من رسوم التوصيل أيضاً»</td><td>الخانة مقفولة: الكوبون اللي على قطع أو أقسام مبيخصمش من التوصيل أبداً.</td><td class="chk"></td></tr>
+      <tr><td class="num">3</td><td>كوبون على «طلبات خدمات معينة»، وطلب من الخدمة دي</td><td>الخصم على الطلب كله، ولو الخانة متعلّمة بيخصم من التوصيل كمان.</td><td class="chk"></td></tr>
+      <tr><td class="num">4</td><td>حد أدنى 200، والقمصان في السلة بـ 50، والطلب كله بـ 250</td><td>الكوبون بيشتغل، لأن الحد الأدنى بيتحسب على الطلب كله.</td><td class="chk"></td></tr>
+      <tr><td class="num">5</td><td>سلة مفيهاش ولا قطعة من اللي الكوبون عليه</td><td>خصم صفر، ورسالة إن مفيش حاجة في الطلب ينطبق عليها الكوبون.</td><td class="chk"></td></tr>
+      <tr><td class="num">6</td><td>العميل كتب 4 قمصان والمغسلة عدّت قميص واحد في المراجعة</td><td>الخصم بيتحسب تاني على القميص الواحد، ومبيزيدش أبداً عن الخصم اللي العميل وافق عليه.</td><td class="chk"></td></tr>
+      <tr><td class="num">7</td><td>كوبون بمبلغ ثابت 100 على القمصان، والقمصان في السلة بـ 60</td><td>الخصم 60 بس.</td><td class="chk"></td></tr>
+      <tr><td class="num">8</td><td>افتح فورم عرض</td><td>جنب كل كوبون في القايمة مكتوب هو على إيه.</td><td class="chk"></td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section id="increase">
+  <h2><span class="n">4</span>زيادة الأسعار</h2>
+  <p>زيادة بنسبة على كل أسعار القطع مرة واحدة. <strong>لفترة</strong>: أرقام الجدول بتفضل زي ما هي والزيادة بتتضاف فوقها في كل مكان العميل بيشوف فيه سعر. <strong>نهائي</strong>: الزيادة بتتكتب في أرقام الجدول نفسها. وكل زيادة بتتسجل في جدول تحت الكارت.</p>
+  <dl class="meta">
+    <dt>فين</dt><dd>الكتالوج ← الأسعار ← كارت «زيادة الأسعار» فوق جدول الأسعار</dd>
+    <dt>الصلاحية</dt><dd><code>item_price.update</code></dd>
+  </dl>
+  <div class="box warn"><h3>على اللايف</h3><p>السعر الجديد بيوصل لكل العملاء على طول. «اعتمدها نهائي» و«تراجع» (خطوة 5 و 6) متتعملش غير بموافقة المالك.</p></div>
+  <div class="tbl"><table class="steps">
+    <thead><tr><th>#</th><th>جرّب</th><th>المفروض يحصل</th><th class="chk">✓</th></tr></thead>
+    <tbody>
+      <tr><td class="num">1</td><td>«الزيادة» 10، ودوس «طبّق لفترة»</td><td>الكارت بيقول «شغالة دلوقتي: +10% على سعر كل قطعة». أرقام الجدول زي ما هي، والسعر زاد 10% في التطبيق وفي الصفحة الرئيسية وفي عرض السعر.</td><td class="chk"></td></tr>
+      <tr><td class="num">2</td><td>حط تاريخ في «تنتهي في»</td><td>بعد التاريخ ده الزيادة بتقف لوحدها.</td><td class="chk"></td></tr>
+      <tr><td class="num">3</td><td>«شيل الزيادة»</td><td>الأسعار بترجع، والسطر في الجدول اللي تحت الكارت بيبقى «منتهٍ».</td><td class="chk"></td></tr>
+      <tr><td class="num">4</td><td>طلب اتعمل والزيادة شغالة، والزيادة اتشالت قبل ما المغسلة تراجع الطلب</td><td>المراجعة بتحسب بالسعر اللي الطلب اتعمل بيه، يعني بالزيادة.</td><td class="chk"></td></tr>
+      <tr><td class="num">5</td><td>«اعتمدها نهائي»</td><td>الزيادة بتتكتب في أرقام الجدول، والخانة بترجع صفر، ويتضاف سطر «دائمة».</td><td class="chk"></td></tr>
+      <tr><td class="num">6</td><td>«تراجع» على آخر زيادة دائمة</td><td>الأسعار بترجع زي ما كانت. وأي سعر اتعدّل بإيد بعد الزيادة بيفضل زي ما هو.</td><td class="chk"></td></tr>
+      <tr><td class="num">7</td><td>خدمة «السعر بعد المعاينة»</td><td>مبتزيدش.</td><td class="chk"></td></tr>
+    </tbody>
+  </table></div>
+  <div class="box traps">
+    <h3>مش باج — مقصود</h3>
+    <ul>
+      <li>«تراجع» بيظهر على آخر زيادة دائمة لسه قايمة بس.</li>
+      <li>الطلبات اللي اتعملت قبل الزيادة بتفضل بأسعارها.</li>
+      <li>الزيادة بتروح للمغسلة: بتتضاف على سعر المغسلة، ورسوم المنصة بتتحسب فوقها.</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<div class="part-title">الطلبات والتشغيل</div>
+
+<section id="today">
+  <h2><span class="n">5</span>طلبات اليوم</h2>
+  <p>شاشة جديدة للشغل اللي على المغسلة: الطلبات اللي جوه المغسلة دلوقتي، أو اللي معاد تسليمها أو استلامها في يوم معين. وفوقها إجمالي القطع لكل صنف.</p>
+  <dl class="meta">
+    <dt>فين</dt><dd>الطلبات ← طلبات اليوم. «الطلبات» في القايمة الجانبية بقت قايمة فيها «كل الطلبات» و«طلبات اليوم»</dd>
+    <dt>الصلاحية</dt><dd><code>order.view</code>، فالسوبر أدمن وأي رول مغسلة بيشوف الطلبات هيشوفها</dd>
+  </dl>
+  <div class="tbl"><table class="steps">
+    <thead><tr><th>#</th><th>جرّب</th><th>المفروض يحصل</th><th class="chk">✓</th></tr></thead>
+    <tbody>
+      <tr><td class="num">1</td><td>«اعرض» ← «جوه المغسلة دلوقتي»</td><td>الطلبات اللي اتسلّمت للمغسلة ولسه متسلمتش منها، مهما كانت حالتها.</td><td class="chk"></td></tr>
+      <tr><td class="num">2</td><td>«معاد تسليمها يوم» أو «معاد استلامها يوم»، واختار تاريخ</td><td>طلبات اليوم ده، الأقرب الأول بالتاريخ والنافذة.</td><td class="chk"></td></tr>
+      <tr><td class="num">3</td><td>بص على الجزء اللي فوق القايمة</td><td>عدد الطلبات وعدد القطع، وجدول فيه القطع حسب الصنف: عمود لكل خدمة لو فيه أكتر من خدمة، وسطر إجمالي.</td><td class="chk"></td></tr>
+      <tr><td class="num">4</td><td>دوس السهم في أي صف</td><td>القطع صنف صنف، والعميل، والاستلام والتسليم، والإجمالي، والملاحظات، ولينك يفتح الطلب.</td><td class="chk"></td></tr>
+      <tr><td class="num">5</td><td>ادخل بحساب صاحب مغسلة</td><td>بيشوف طلباته بس، ومفيش عنده فلتر «المغسلة».</td><td class="chk"></td></tr>
+      <tr><td class="num">6</td><td>ابحث باسم خدمة أو مغسلة أو صنف، بحروف كبيرة أو صغيرة</td><td>بيلاقيه في الحالتين.</td><td class="chk"></td></tr>
+    </tbody>
+  </table></div>
+  <div class="box traps">
+    <h3>مش باج — مقصود</h3>
+    <ul>
+      <li>عدد القطع هو عدّ المغسلة لو عدّت، ولو لسه يبقى تقدير العميل ومكتوب جنبه كده.</li>
+      <li>«جوه المغسلة» بيتحسب من رحلات السواق، مش من حالة الطلب.</li>
+    </ul>
+  </div>
+</section>
+
+<section id="auto">
+  <h2><span class="n">6</span>قفل التعيين التلقائي</h2>
+  <p>فيه زرار للمغسلة وزرار للمندوب، والاتنين مفتوحين في الأول وده نفس الشغل القديم. لو اتقفلوا، الشغل الجديد بيستنى حد يعيّنه بإيده، واللي يقدر يعيّن بيوصله إشعار في الجرس.</p>
+  <dl class="meta">
+    <dt>فين</dt><dd>الإعدادات ← تاب «العمليات» ← «التعيين التلقائي»</dd>
+    <dt>الإشعار بيوصل لـ</dt><dd>المغسلة: اللي معاه <code>order.update</code> · المندوب: اللي معاه <code>order_task.update</code></dd>
+  </dl>
+  <div class="tbl"><table class="steps">
+    <thead><tr><th>#</th><th>جرّب</th><th>المفروض يحصل</th><th class="chk">✓</th></tr></thead>
+    <tbody>
+      <tr><td class="num">1</td><td>اقفل «تعيين المغسلة تلقائي»، واعمل طلب</td><td>الطلب بيتسجل من غير مغسلة، وبيوصل إشعار في الجرس. رسوم التوصيل في عرض السعر حقيقية مش صفر.</td><td class="chk"></td></tr>
+      <tr><td class="num">2</td><td>اختار المغسلة من صفحة الطلب</td><td>رسوم التوصيل بتتحسب تاني، والرحلات بتتعرض على المناديب لوحدها لو تعيين المندوب مفتوح.</td><td class="chk"></td></tr>
+      <tr><td class="num">3</td><td>اقفل «تعيين المندوب تلقائي»، واعمل طلب</td><td>الرحلات بتستنى في «التوزيع»، ومحدش بيتعيّن لوحده: لا وقت إنشاء الرحلات، ولا بعد محاولة فاشلة، ولا في المراجعة اللي كل 10 دقايق. وبيوصل إشعار واحد للطلب كله.</td><td class="chk"></td></tr>
+      <tr><td class="num">4</td><td>دوس «وزّع» من «التوزيع» أو من صفحة الطلب والتعيين مقفول</td><td>شغال عادي.</td><td class="chk"></td></tr>
+      <tr><td class="num">5</td><td>والتعيين مفتوح: طلب من منطقة مفيش مغسلة بتغطيها</td><td>الطلب بيتقبل من غير مغسلة، و<strong>مبيتعيّنلوش مندوب لوحده</strong>. ده جديد: قبل كده رحلة الاستلام كانت بتتوزع عادي.</td><td class="chk"></td></tr>
+      <tr><td class="num">6</td><td>افتح الزرارين تاني</td><td>—</td><td class="chk"></td></tr>
+    </tbody>
+  </table></div>
+  <div class="box traps">
+    <h3>مش باج — مقصود</h3>
+    <ul>
+      <li>لو مفيش أي مغسلة بتغطي المنطقة، مفيش إشعار «اختار مغسلة»، لأن مفيش مغسلة ينفع تتختار. الطلب بيظهر في «طلبات من غير مغسلة» في الصفحة الرئيسية زي الأول.</li>
+    </ul>
+  </div>
+</section>
+
+<section id="turnaround">
+  <h2><span class="n">7</span>ميعاد التسليم ومدة الخدمة</h2>
+  <p>مدة الخدمة (من – إلى) كانت بتتعرض بس، فكان ممكن خدمة مدتها 2–4 أيام تتسلّم وترجع في نفس اليوم. دلوقتي التسليم لازم يكون بعد <strong>متوسط المدة</strong>: 2–4 أيام يبقى 3 أيام، و 24–48 ساعة يبقى 36 ساعة.</p>
+  <ul>
+    <li><strong>الخدمة اللي بالساعات</strong> بتتحسب بالظبط، من نهاية نافذة الاستلام لبداية نافذة التسليم.</li>
+    <li><strong>الخدمة اللي بالأيام</strong> بتتحسب بأيام كاملة: لو الاستلام يوم الاتنين، التسليم من يوم الخميس في أي نافذة.</li>
+    <li><strong>آخر يوم للتسليم</strong> هو «أقصى مدة لحجز التسليم»، وهي دلوقتي 14 يوم بعد أبكر ميعاد.</li>
+  </ul>
+  <dl class="meta">
+    <dt>فين</dt><dd>الكتالوج ← الخدمات ← مدة الخدمة · الإعدادات ← تاب «العمليات» ← «أقصى مدة لحجز التسليم»</dd>
+    <dt>التطبيق</dt><dd>تطبيق العميل، والرفض شغال من دلوقتي. <a href="#apps">شوف اللي هيبان دلوقتي</a></dd>
+  </dl>
+  <div class="tbl"><table class="steps">
+    <thead><tr><th>#</th><th>جرّب</th><th>المفروض يحصل</th><th class="chk">✓</th></tr></thead>
+    <tbody>
+      <tr><td class="num">1</td><td>طلب من خدمة 2–4 أيام: الاستلام الاتنين والتسليم الأربع</td><td>بيترفض برسالة فيها أبكر ميعاد (الخميس).</td><td class="chk"></td></tr>
+      <tr><td class="num">2</td><td>نفس الطلب، والتسليم الخميس في أي نافذة</td><td>بيتقبل.</td><td class="chk"></td></tr>
+      <tr><td class="num">3</td><td>خدمة 24–48 ساعة</td><td>أبكر تسليم بعد 36 ساعة بالظبط من نهاية نافذة الاستلام.</td><td class="chk"></td></tr>
+      <tr><td class="num">4</td><td>تسليم بعد أبكر ميعاد بأكتر من 14 يوم</td><td>بيترفض.</td><td class="chk"></td></tr>
+      <tr><td class="num">5</td><td>أجّل الاستلام لدرجة إن التسليم بقى بدري</td><td>التسليم بيتنقل لوحده لأول نافذة فاضية مناسبة، وصفحة الطلب في اللوحة بتعرض الميعاد الجديد.</td><td class="chk"></td></tr>
+      <tr><td class="num">6</td><td>أجّل التسليم لميعاد قبل ما المدة تخلص</td><td>بيترفض.</td><td class="chk"></td></tr>
+      <tr><td class="num">7</td><td>خدمة من غير مدة</td><td>القيد الوحيد إن التسليم ميكونش قبل يوم الاستلام.</td><td class="chk"></td></tr>
+    </tbody>
+  </table></div>
+  <div class="box traps">
+    <h3>مش باج — مقصود</h3>
+    <ul>
+      <li>تأجيل التسليم في طلب موجود مالوش حد أقصى، عليه الحد الأدنى بس. آخر يوم (الـ 14 يوم) للحجز الجديد بس.</li>
+      <li>تأجيل الاستلام بينقل التسليم بس لو بقى بدري، ومبيقرّبش تسليم كان محجوز بعيد.</li>
+      <li>عرض السعر مبيتأكدش من المواعيد، التأكيد بيحصل وقت عمل الطلب.</li>
+    </ul>
+  </div>
+</section>
+
+<section id="pieces">
+  <h2><span class="n">8</span>اختلاف في عدد القطع</h2>
+  <p>العدد اللي السواق بيأكده كان بيتحفظ ومبيتقارنش بحاجة. دلوقتي كل عدّ بيتقارن باللي قبله:</p>
+  <ul>
+    <li>الاستلام من العميل بعدد طلبه.</li>
+    <li>التسليم للمغسلة بعدد الاستلام.</li>
+    <li>مراجعة المغسلة باللي اتسلّم لها.</li>
+    <li>الاستلام من المغسلة بعدد المراجعة.</li>
+  </ul>
+  <p>لو فيه اختلاف بيطلع تنبيه واضح، و<strong>التسليم نفسه مبيترفضش</strong>.</p>
+  <dl class="meta">
+    <dt>فين</dt><dd>صفحة الطلب (شريط أحمر، والعدد أحمر في صف الرحلة) · الطلبات ← كل الطلبات ← فلتر «اختلاف في عدد القطع» · العدّاد جنب «كل الطلبات» وفي الصفحة الرئيسية · الجرس</dd>
+    <dt>الصلاحية</dt><dd>«تمت المراجعة» للمنصة بس (<code>order.update</code>). المغسلة بتشوف التنبيه ومتقدرش تقفله</dd>
+    <dt>التطبيق</dt><dd>تطبيق السواق. <a href="#apps">شوف اللي هيبان دلوقتي</a></dd>
+  </dl>
+  <div class="tbl"><table class="steps">
+    <thead><tr><th>#</th><th>جرّب</th><th>المفروض يحصل</th><th class="chk">✓</th></tr></thead>
+    <tbody>
+      <tr><td class="num">1</td><td>العميل طلب 3 قطع، والسواق كتب 2 في الاستلام</td><td>التسليم بيخلص عادي. إشعار في جرس الإدارة وجرس المغسلة، وشريط أحمر «اختلاف في عدد القطع» فوق الطلب، والعدد أحمر في صف الرحلة، وعلامة في قايمة الطلبات، وعدّاد جنب «كل الطلبات».</td><td class="chk"></td></tr>
+      <tr><td class="num">2</td><td>فلتر «اختلاف في عدد القطع»</td><td>الطلب ظاهر فيه. العدّاد بيعد طلبات مش رحلات: طلب فيه رحلتين مختلفين بيتعد واحد.</td><td class="chk"></td></tr>
+      <tr><td class="num">3</td><td>افتح الطلب بحساب صاحب المغسلة</td><td>بيشوف التنبيه ومكتوب «إدارة المنصة بتراجع الموضوع»، ومفيش زرار يقفله.</td><td class="chk"></td></tr>
+      <tr><td class="num">4</td><td>سوبر أدمن: «تمت المراجعة» من غير ملاحظة</td><td>بيترفض، الملاحظة إجبارية.</td><td class="chk"></td></tr>
+      <tr><td class="num">5</td><td>سوبر أدمن: «العدد الفعلي» 3 وملاحظة، ودوس «تمت المراجعة»</td><td>التنبيه بيتقفل ويتنقل لـ «اختلافات عدد القطع اللي اتراجعت» ومعاه اسم اللي راجعه. العدّاد بينزل.</td><td class="chk"></td></tr>
+      <tr><td class="num">6</td><td>السواق سلّم للمغسلة 3</td><td>مفيش تنبيه، لأن التسليم بيتقارن بالعدد الفعلي اللي الإدارة كتبته.</td><td class="chk"></td></tr>
+      <tr><td class="num">7</td><td>المغسلة عدّت 2 في المراجعة</td><td>تنبيه جديد على المراجعة، بنفس الشكل.</td><td class="chk"></td></tr>
+      <tr><td class="num">8</td><td>المغسلة راجعت تاني وعدّت 3</td><td>تنبيه المراجعة بيتقفل لوحده.</td><td class="chk"></td></tr>
+      <tr><td class="num">9</td><td>في تطبيق السواق، قبل «تأكيد التسليم»</td><td>العدد المتوقع مش ظاهر، عشان السواق يعدّ بنفسه وميكتبش الرقم اللي قدامه.</td><td class="chk"></td></tr>
+    </tbody>
+  </table></div>
+  <div class="box traps">
+    <h3>مش باج — مقصود</h3>
+    <ul>
+      <li>خدمة «السعر بعد المعاينة» مفيهاش عدد يتقارن بيه في أول استلام، فمفيش تنبيه.</li>
+      <li>الإشعار بيتكتب بلغة اللوحة الافتراضية، مهما كانت لغة موبايل السواق.</li>
+      <li>بعد ما التنبيه يتقفل، العدد بيفضل أحمر في صف الرحلة ومعاه الملاحظة.</li>
+      <li>«توجد مشكلة ← عدد القطع غير مطابق» في تطبيق السواق حاجة تانية: دي للسواق اللي مش عايز يكمّل التسليم خالص، وبتوقّف الطلب.</li>
+    </ul>
+  </div>
+</section>
+
+<section id="zones">
+  <h2><span class="n">9</span>المناطق على الخريطة</h2>
+  <p>كل منطقة بقت بتترسم على الخريطة. العنوان بيدخل المنطقة اللي <strong>الدبوس بتاعه جواها</strong>، مش المنطقة اللي العميل اختارها. وبكده السواق بيتعرض عليه مشاوير جوه منطقته بس، والطلب بيروح لمغاسل المنطقة دي.</p>
+  <dl class="meta">
+    <dt>فين</dt><dd>المواقع ← المناطق ← إضافة أو تعديل منطقة (فيها خريطة) · قايمة المناطق (خريطة فيها كل المناطق المرسومة، وجنب كل منطقة «مرسومة» أو «لسه مش مرسومة»)</dd>
+    <dt>الصلاحية</dt><dd><code>zone.create</code> / <code>zone.update</code></dd>
+    <dt>التطبيق</dt><dd>تطبيق العميل. <a href="#apps">شوف اللي هيبان دلوقتي</a></dd>
+  </dl>
+  <div class="box warn"><h3>جرّب على منطقة تجربة</h3><p>رسم منطقة من الـ 25 الحقيقيين بينقل عناوين العملاء اللي جواها. اعمل منطقة جديدة اسمها «QC — تجربة»، في مكان مفيهوش عملاء، وامسحها هي وعناوين التجربة لما تخلص.</p></div>
+  <div class="tbl"><table class="steps">
+    <thead><tr><th>#</th><th>جرّب</th><th>المفروض يحصل</th><th class="chk">✓</th></tr></thead>
+    <tbody>
+      <tr><td class="num">1</td><td>في منطقة التجربة، دوس على الخريطة 4 مرات</td><td>4 نقط والشكل بيترسم. «تراجع» بيشيل آخر نقطة، و«امسح الرسمة» بيمسح كله.</td><td class="chk"></td></tr>
+      <tr><td class="num">2</td><td>اسحب نقطة، ودوس مرتين على نقطة</td><td>النقطة بتتحرك، والتانية بتتشال.</td><td class="chk"></td></tr>
+      <tr><td class="num">3</td><td>احفظ</td><td>في القايمة المنطقة مكتوب جنبها «مرسومة»، والشكل ظاهر على خريطة القايمة.</td><td class="chk"></td></tr>
+      <tr><td class="num">4</td><td>منطقة تجربة تانية مرسومة فوق الأولى</td><td>الحفظ بيترفض والرسالة فيها اسم المنطقة التانية، والصفحة بتنزل لحد الخريطة.</td><td class="chk"></td></tr>
+      <tr><td class="num">5</td><td>حط نقطة قريبة من حدود المنطقة الرمادي</td><td>النقطة بتلزق على ركن المنطقة أو حدّها، والحفظ بيعدّي. الحدود المشتركة مش تداخل.</td><td class="chk"></td></tr>
+      <tr><td class="num">6</td><td>ارسم شكل مالوش مساحة (نقط على خط واحد) أو شكل ضلوعه بتقطع بعض</td><td>بيترفض برسالة. وأكتر من 500 نقطة ليه رسالة خاصة.</td><td class="chk"></td></tr>
+      <tr><td class="num">7</td><td>من تطبيق العميل: عنوان دبوسه جوه منطقة التجربة، واختار منطقة تانية من القايمة</td><td>العنوان بيتحفظ على منطقة التجربة ومدينتها.</td><td class="chk"></td></tr>
+      <tr><td class="num">8</td><td>عنوان دبوسه برا كل المناطق المرسومة، ومختار منطقة مرسومة</td><td>العنوان بيتحفظ من غير منطقة، والطلب منه بيتقبل وبيستنى في «طلبات من غير مغسلة».</td><td class="chk"></td></tr>
+      <tr><td class="num">9</td><td>عدّل رسمة منطقة التجربة بحيث عنوان يخرج منها</td><td>العنوان بيتشال من المنطقة، إلا لو عليه طلب شغال: ساعتها بيفضل مكانه. ورسالة الحفظ بتقول كام عنوان اتنقل وكام فضل.</td><td class="chk"></td></tr>
+      <tr><td class="num">10</td><td>اقفل منطقة التجربة</td><td>مفيش أي عنوان بيتنقل.</td><td class="chk"></td></tr>
+      <tr><td class="num">11</td><td>شغّلها تاني</td><td>بتاخد العناوين اللي دبوسها جواها.</td><td class="chk"></td></tr>
+    </tbody>
+  </table></div>
+  <div class="box traps">
+    <h3>مش باج — مقصود</h3>
+    <ul>
+      <li>المنطقة اللي لسه مترسمتش بتشتغل زي الأول، بالمنطقة اللي العميل اختارها.</li>
+      <li>المغسلة ممكن تكون في مكان برا المناطق اللي بتخدمها.</li>
+      <li>منطقة في مدينة مقفولة مبتاخدش أي عنوان.</li>
+      <li>التداخل بيتشيك حتى مع المناطق المقفولة.</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<div class="part-title">المغاسل</div>
+
+<section id="services">
+  <h2><span class="n">10</span>خدمات المغسلة بموافقة المنصة</h2>
+  <p>المغسلة بتختار خدماتها وهي بتسجّل، وأي فتح أو قفل لخدمة بعد كده بيتبعت طلب للمنصة. <strong>مفيش حاجة بتتغير في التوزيع لحد ما حد يوافق</strong>.</p>
+  <dl class="meta">
+    <dt>فين</dt><dd>صاحب المغسلة: المغاسل ← خدماتي ← «ابعت للموافقة» · المنصة: المغاسل ← طلبات خدمات المغاسل · التسجيل: <code>/laundry/register</code> · المراجعة: المغاسل ← طلبات المغاسل</dd>
+    <dt>الصلاحية</dt><dd><code>laundry_service_request.*</code>، صلاحية جديدة والسوبر أدمن بس اللي معاه لحد ما تتدّي لحد تاني</dd>
+  </dl>
+  <div class="tbl"><table class="steps">
+    <thead><tr><th>#</th><th>جرّب</th><th>المفروض يحصل</th><th class="chk">✓</th></tr></thead>
+    <tbody>
+      <tr><td class="num">1</td><td>سجّل مغسلة جديدة من غير ما تختار ولا خدمة</td><td>بيترفض، لازم خدمة واحدة على الأقل.</td><td class="chk"></td></tr>
+      <tr><td class="num">2</td><td>سجّل واختار خدمتين، وافتح «طلبات المغاسل»</td><td>الخدمات ظاهرة للي بيراجع، والموافقة على المغسلة بتوافق على خدماتها كمان.</td><td class="chk"></td></tr>
+      <tr><td class="num">3</td><td>صاحب المغسلة: في «خدماتي» افتح خدمة واقفل خدمة، ودوس «ابعت للموافقة»</td><td>مكتوب «فتح — مستني موافقة» و«قفل — مستني موافقة».</td><td class="chk"></td></tr>
+      <tr><td class="num">4</td><td>اعمل طلب على الخدمة اللي اتطلب قفلها</td><td>لسه بيروح للمغسلة دي. والخدمة اللي اتطلب فتحها مبيجيلهاش طلبات لسه.</td><td class="chk"></td></tr>
+      <tr><td class="num">5</td><td>المنصة: افتح «طلبات خدمات المغاسل»</td><td>الطلبين ظاهرين، وفيه عدّاد في القايمة الجانبية وإشعار في الجرس.</td><td class="chk"></td></tr>
+      <tr><td class="num">6</td><td>«رفض» من غير سبب</td><td>مينفعش، السبب إجباري.</td><td class="chk"></td></tr>
+      <tr><td class="num">7</td><td>ارفض واكتب سبب</td><td>المغسلة بتشوف «طلبك الأخير اترفض:» والسبب جنب الخدمة، وبيوصلها إشعار.</td><td class="chk"></td></tr>
+      <tr><td class="num">8</td><td>وافق على طلب</td><td>الخدمة بتتفتح أو تتقفل بجد، والطلبات بتتوزع على الأساس ده.</td><td class="chk"></td></tr>
+      <tr><td class="num">9</td><td>المغسلة تبعت طلب تاني لنفس الخدمة قبل ما حد يرد</td><td>الطلب الجديد بياخد مكان القديم، مش بيتضاف جنبه.</td><td class="chk"></td></tr>
+      <tr><td class="num">10</td><td>السوبر أدمن يعدّل خدمات المغسلة من شاشته</td><td>التعديل بيتطبق على طول، وطلبات المغسلة المعلّقة على نفس الخدمات بتتقفل.</td><td class="chk"></td></tr>
+      <tr><td class="num">11</td><td>حساب جوه مغسلة واخد صلاحية المراجعة</td><td>مايقدرش يوافق أو يرفض برضه.</td><td class="chk"></td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<!-- ============================================================ -->
+<div class="part-title">النظام</div>
+
+<section id="activity">
+  <h2><span class="n">11</span>سجل النشاط وسجل الطلب</h2>
+  <p>أي حاجة بتتضاف أو تتعدّل أو تتمسح بتتسجل، سواء من اللوحة أو التطبيقين أو الموقع أو من النظام نفسه. وبيتسجل كمان دخول اللوحة والخروج منها. كل سطر جملة واحدة مفهومة، زي «تعديل مدينة «القاهرة»»، ومعاها مين عملها ومنين.</p>
+  <dl class="meta">
+    <dt>فين</dt><dd>النظام ← سجل النشاط · صفحة أي طلب ← كارت «السجل»</dd>
+    <dt>الصلاحية</dt><dd><code>activity_log.view</code> للمنصة بس. سجل الطلب بيظهر لأي حد يقدر يشوف الطلب</dd>
+  </dl>
+  <div class="tbl"><table class="steps">
+    <thead><tr><th>#</th><th>جرّب</th><th>المفروض يحصل</th><th class="chk">✓</th></tr></thead>
+    <tbody>
+      <tr><td class="num">1</td><td>عدّل اسم مدينة</td><td>سطر «تعديل مدينة «…»» وجنبه اسمك ودورك («مدير المنصة» مثلاً) و«لوحة التحكم — المدن».</td><td class="chk"></td></tr>
+      <tr><td class="num">2</td><td>دوس السهم في السطر</td><td>الحقول اللي اتغيرت بس، كانت إيه وبقت إيه، بالكلام: الحالة «مفعّل / موقوف»، والأرقام بأسامي الحاجات اللي بتشاور عليها.</td><td class="chk"></td></tr>
+      <tr><td class="num">3</td><td>غيّر باسورد حساب</td><td>مكتوب «اتغيرت — مخفية للأمان»، من غير الباسورد نفسه.</td><td class="chk"></td></tr>
+      <tr><td class="num">4</td><td>اخرج من اللوحة وادخل تاني</td><td>سطر «خروج» وسطر «دخول».</td><td class="chk"></td></tr>
+      <tr><td class="num">5</td><td>ضيف عنوان من تطبيق العميل</td><td>سطر مصدره الأبلكيشن.</td><td class="chk"></td></tr>
+      <tr><td class="num">6</td><td>جرّب الفلاتر (المصدر، نوع العملية، من تاريخ لتاريخ) والبحث باسم شخص أو حاجة، وصدّر Excel</td><td>الفلاتر شغالة، والـ Excel فيه نفس الكلام اللي على الشاشة.</td><td class="chk"></td></tr>
+      <tr><td class="num">7</td><td>صاحب مغسلة يفتح <code>/admin/activity-log</code></td><td>403.</td><td class="chk"></td></tr>
+      <tr><td class="num">8</td><td>افتح طلب اتعمل بعد النشر، وبص على «السجل»</td><td>كل حالة ومين نقل الطلب ليها، وكل تعديل على الطلب أو القطع أو الرحلات أو الدفع، وتحت «التفاصيل» قبل وبعد.</td><td class="chk"></td></tr>
+      <tr><td class="num">9</td><td>صاحب مغسلة يفتح طلب عليه شكوى</td><td>الشكوى مش ظاهرة في السجل خالص.</td><td class="chk"></td></tr>
+    </tbody>
+  </table></div>
+  <div class="box traps">
+    <h3>مش باج — مقصود</h3>
+    <ul>
+      <li>الطلبات والتعديلات اللي قبل النشر يوم 29/9 مش في السجل. الطلبات القديمة سجلها فيه الحالات بس.</li>
+      <li>مكان المندوب (بيتبعت كل كام ثانية)، وإرسال الـ OTP، والصلاحيات اللي بتتولّد مع كل نشر، مش بيتسجلوا.</li>
+      <li>الـ id والـ IP واسم الراوت مش ظاهرين على الشاشة، بس موجودين في ملف الـ Excel.</li>
+      <li>السجل بيتحفظ 6 شهور. سجل حالات الطلب منفصل ومبيتمسحش.</li>
+    </ul>
+  </div>
+</section>
+
+<section id="excel">
+  <h2><span class="n">12</span>تصدير واستيراد Excel</h2>
+  <p>أغلب شاشات القوايم فيها «تصدير Excel»، وبيطلّع نفس اللي ظاهر بالبحث والفلاتر. وفيه شاشات فيها «استيراد Excel» كمان.</p>
+  <dl class="meta">
+    <dt>استيراد وتصدير</dt><dd>الدول، المدن، المناطق، الخدمات، أقسام القطع، القطع، الأسعار، أكواد الخصم، المغاسل (ومعاها أصحابها)، المناديب</dd>
+    <dt>تصدير بس</dt><dd>كل الباقي: العملاء، الطلبات، المدفوعات، الاستردادات، المحافظ، التسويات، أرباح المناديب، البونس، الشكاوى، التقييمات، الاشتراكات، موظفين المغسلة، المتقدمين، العمولات، العروض، الأسئلة الشائعة، المواعيد، المشرفين، سجل الإشعارات، طلبات خدمات المغاسل، سجل النشاط</dd>
+    <dt>الصلاحية</dt><dd>التصدير: <code>{screen}.view</code> · الاستيراد: <code>.create</code> / <code>.update</code>، ومقفول لأي حد جوه مغسلة</dd>
+  </dl>
+  <div class="tbl"><table class="steps">
+    <thead><tr><th>#</th><th>جرّب</th><th>المفروض يحصل</th><th class="chk">✓</th></tr></thead>
+    <tbody>
+      <tr><td class="num">1</td><td>ابحث أو اختار فلتر، وبعدين «تصدير Excel»</td><td>الملف فيه الصفوف اللي ظاهرة بس.</td><td class="chk"></td></tr>
+      <tr><td class="num">2</td><td>«استيراد Excel» ← «نزّل قالب فاضي»</td><td>أسامي الأعمدة هي أسامي الحقول (<code>name_ar</code>، <code>country_id</code>).</td><td class="chk"></td></tr>
+      <tr><td class="num">3</td><td>استورد ملف فيه سطر بـ id متعدّل، وسطر من غير id، وسطر غلط</td><td>«اتضاف 1، واتعدّل 1، واترفض 1»، والسطر الغلط ظاهر برقمه وسبب الرفض.</td><td class="chk"></td></tr>
+      <tr><td class="num">4</td><td>خانة فاضية في سطر فيه id</td><td>الحقل ده مبيتمسحش.</td><td class="chk"></td></tr>
+      <tr><td class="num">5</td><td>ملف فيه أكتر من 2000 سطر</td><td>أول 2000 بس، ورسالة بعدد السطور اللي متقرتش.</td><td class="chk"></td></tr>
+      <tr><td class="num">6</td><td>صاحب مغسلة يصدّر</td><td>بياخد بتاعه بس، ومفيش عنده زرار استيراد.</td><td class="chk"></td></tr>
+      <tr><td class="num">7</td><td>قدّم كمندوب من الصفحة الرئيسية باسم يبدأ بـ <code>=1+1</code>، وصدّر «المتقدمين»</td><td>الاسم ظاهر في Excel كنص <code>=1+1</code>، مش 2.</td><td class="chk"></td></tr>
+      <tr><td class="num">8</td><td>صدّر المناديب أو المغاسل</td><td>عمود الباسورد فاضي دايماً، ومفيش توكنز ولا OTP.</td><td class="chk"></td></tr>
+    </tbody>
+  </table></div>
+  <div class="box traps">
+    <h3>مش باج — مقصود</h3>
+    <ul>
+      <li>مفيش أي حاجة بتتمسح من الاستيراد.</li>
+      <li>الأعمدة المساعدة، زي اسم الدولة جنب رقمها، بتتجاهل وقت الاستيراد.</li>
+      <li>العملاء تصدير بس، لأن فورم العميل محتاجة صورة.</li>
+    </ul>
+  </div>
+</section>
+
+<section id="settings">
+  <h2><span class="n">13</span>الإعدادات في تابات</h2>
+  <p>شاشة الإعدادات بقت 4 تابات: عام، التواصل، المالية، العمليات. بس هي لسه فورم واحدة بزرار حفظ واحد.</p>
+  <dl class="meta">
+    <dt>فين</dt><dd>النظام ← الإعدادات</dd>
+  </dl>
+  <div class="tbl"><table class="steps">
+    <thead><tr><th>#</th><th>جرّب</th><th>المفروض يحصل</th><th class="chk">✓</th></tr></thead>
+    <tbody>
+      <tr><td class="num">1</td><td>غيّر حاجة في تاب، واحفظ من تاب تاني</td><td>كله بيتحفظ، ومفيش حقل في تاب مقفول بيتمسح.</td><td class="chk"></td></tr>
+      <tr><td class="num">2</td><td>اكتب قيمة غلط في تاب، وانت واقف في تاب تاني احفظ</td><td>الصفحة بتفتح التاب اللي فيه الغلط لوحدها وتقف على الحقل.</td><td class="chk"></td></tr>
+      <tr><td class="num">3</td><td>احفظ وانت في تاب «المالية»</td><td>الصفحة بترجع مفتوحة على «المالية».</td><td class="chk"></td></tr>
+      <tr><td class="num">4</td><td>«رسوم الدفع النقدي» في تاب «المالية»</td><td>الخانة موجودة (أول مرة يبقى ليها مكان)، وبتتضاف على الطلب الكاش كسطر لوحده في الفاتورة.</td><td class="chk"></td></tr>
+      <tr><td class="num">5</td><td>اقفل زرار في «التعيين التلقائي» واحفظ</td><td>بيتحفظ مقفول ويفضل مقفول بعد إعادة تحميل الصفحة.</td><td class="chk"></td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section id="validation">
+  <h2><span class="n">14</span>تعديل رسائل التحقق</h2>
+  <p>رسايل الرفض، زي «الحقل ده مطلوب»، وأسامي الحقول اللي جواها، بقت بتتعدّل لكل لغة من اللوحة. والتعديل بيظهر في اللوحة والتطبيقين على طول.</p>
+  <dl class="meta">
+    <dt>فين</dt><dd>النظام ← اللغات ← قايمة الإجراءات بتاعة اللغة ← «تعديل رسائل التحقق»</dd>
+    <dt>الصلاحية</dt><dd><code>language.update</code></dd>
+  </dl>
+  <div class="tbl"><table class="steps">
+    <thead><tr><th>#</th><th>جرّب</th><th>المفروض يحصل</th><th class="chk">✓</th></tr></thead>
+    <tbody>
+      <tr><td class="num">1</td><td>افتحها للعربي</td><td>كل رسالة ليها خانة، والنص الأصلي مكتوب رمادي جواها.</td><td class="chk"></td></tr>
+      <tr><td class="num">2</td><td>غيّر رسالة «required» واحفظ، وبعدين ابعت فورم ناقص في اللوحة</td><td>الرسالة الجديدة هي اللي بتظهر.</td><td class="chk"></td></tr>
+      <tr><td class="num">3</td><td>نفس الحاجة من أي تطبيق واللغة عربي</td><td>الرسالة الجديدة هي اللي بتظهر.</td><td class="chk"></td></tr>
+      <tr><td class="num">4</td><td>امسح <code>:attribute</code> من رسالة واحفظ</td><td>بيترفض والغلط جنب الخانة، ومفيش ولا رسالة اتحفظت.</td><td class="chk"></td></tr>
+      <tr><td class="num">5</td><td>فضّي خانة واحفظ</td><td>الرسالة بترجع للنص الأصلي.</td><td class="chk"></td></tr>
+      <tr><td class="num">6</td><td>اكتب رسالة فيها علامة تنصيص <code>"</code> أو <code>'</code></td><td>بتظهر عادي في الإشعار الأحمر، ومفيش حاجة بتبوظ في الصفحة.</td><td class="chk"></td></tr>
+      <tr><td class="num">7</td><td>«تصفية الرسائل» بكلمة من النص</td><td>بيلاقيها.</td><td class="chk"></td></tr>
+      <tr><td class="num">8</td><td>افتح «سجل النشاط» بعد الحفظ</td><td>سطر على اللغة، ومعاه النص قبل التعديل وبعده.</td><td class="chk"></td></tr>
+    </tbody>
+  </table></div>
+  <div class="box traps">
+    <h3>مش باج — مقصود</h3>
+    <ul>
+      <li>الكلمات اللي بتبدأ بنقطتين، زي <code>:attribute</code> و <code>:min</code>، لازم تفضل موجودة، لأن مكانها بيتحط اسم الحقل أو الرقم.</li>
+      <li>في العربي فيه حوالي 37 رسالة النص الأصلي بتاعها إنجليزي، لأنها عمرها ما اتترجمت. دلوقتي بقى ليها خانة تتترجم فيها.</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<div class="part-title">وكمان</div>
+
+<section id="fixes">
+  <h2><span class="n">+</span>إصلاحات وتعديلات صغيرة</h2>
+  <div class="tbl"><table class="steps">
+    <thead><tr><th>#</th><th>جرّب</th><th>المفروض يحصل</th><th class="chk">✓</th></tr></thead>
+    <tbody>
+      <tr><td class="num">1</td><td>عدّل دولة واحفظ من غير ما تغيّر الكود بتاعها</td><td>بيتحفظ. قبل كده كان بيقول «الكود مستخدم».</td><td class="chk"></td></tr>
+      <tr><td class="num">2</td><td>طلب عليه كوبون: كارت السعر، وكارت التسوية، وفورم المراجعة، والفاتورة المطبوعة</td><td>كلمة الخصم ومبلغه باللون الأحمر.</td><td class="chk"></td></tr>
+      <tr><td class="num">3</td><td>القايمة الجانبية</td><td>«الطلبات» بقت قايمة فيها «كل الطلبات» و«طلبات اليوم». والصفحة المفتوحة بس هي اللي بتنوّر.</td><td class="chk"></td></tr>
+      <tr><td class="num">4</td><td>افتح «العمولات» وشغّل أو اقفل قاعدة ممنوعة</td><td>الزرار بيقول سبب الرفض، مش بيسكت.</td><td class="chk"></td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<p class="foot">تفاصيل كل شاشة (حقولها، وبتعتمد على إيه، وبتأثر على إيه في التطبيقات) في «دليل اختبار لوحة Laundo». وأي باج بلّغ عنه ومعاه اسم الشاشة، والحساب اللي كنت داخل بيه، ورقم الطلب لو فيه طلب.</p>
+
+</main>
+</body>
+</html>
