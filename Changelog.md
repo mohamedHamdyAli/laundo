@@ -23,6 +23,11 @@
 ### Improvement
 
 - **QC release note** `docs/qc-2026-09-29-release.html` + `.pdf` (Arabic): every change in the 2026-09-29 deploy, each with where it is in the panel, its permission, a numbered test table with the expected result and a tick column, and what is intended rather than a bug. It also covers the live state after the deploy (converted laundry shares, 25 undrawn zones, empty defaults, the new permissions), what the current apps show before the mobile teams update, and the four actions that change real data on the live server. The four current mobile notes now say they are live (Docs).
+- `CLAUDE.md` checked against the code:
+  - Corrected the counts that had drifted: 105 Postman requests, nine sidebar groups, ~1,800 tests in ~130 files with the newest suite timing, and ~2,200 panel strings.
+  - Fixed the landing-page claim that offers are not rendered; they are, with a test coupon's badge withheld.
+  - Named the mobile notes now in force for each app and added the QC release note to the docs list.
+  - Added the **Deploying** section that the validation paragraph already referred to (Docs).
 
 ## 2026-09-28
 

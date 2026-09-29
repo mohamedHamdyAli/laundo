@@ -23,9 +23,10 @@ php .second-brain/bin/brain.php update  # …or only what git says changed
 
 Single test: `php artisan test --filter=TestName` · one file: `php artisan test tests/Feature/Api/OrderTest.php` · one suite: `php artisan test --testsuite=Unit`. One browser spec: `npx playwright test tests/Browser/<name>.spec.js`.
 
-The full PHPUnit suite takes **four to ten minutes** — measured runs on the
+The full PHPUnit suite takes **four to eleven minutes** — measured runs on the
 same machine came in at 251s, 317s, 477s, (at 1,570 tests, 2026-09-27) 341s
-and 521s, and (at 1,662 tests, 2026-09-28) 575s, so budget for the longest.
+and 521s, (at 1,662 tests, 2026-09-28) 575s, and (at 1,814 tests, 2026-09-29,
+with another agent busy on the machine) 643s, so budget for the longest.
 When MySQL is down, `php artisan test` cannot boot at all (see the Second Brain
 note below) — run `vendor/bin/phpunit` directly, which reads `phpunit.xml`'s
 SQLite and needs no database server. Use
@@ -39,7 +40,7 @@ PHPUnit runs against in-memory SQLite (`phpunit.xml`); the app itself runs on My
 
 There is a queryable map of this codebase in **`.second-brain/`**, exposed to
 Claude Code as the MCP server `second-brain` (registered in `.mcp.json`). It
-holds the modules, the 428 routes with their permissions, the schema, the
+holds the modules, every route with its permission, the schema, the
 Eloquent relationships, a feature map and a dependency graph — and it answers
 in file paths and relationships, **never in source code**.
 
@@ -728,7 +729,7 @@ Adding a translatable field means touching four places: migration, `$fillable`, 
 `languages.default` and `languages.is_rtl` are **enum string `'true'`/`'false'`**, not booleans — `where('default', 'true')`.
 
 **The Web File — where the public site's copy lives.** Four JSON files per
-language: `{code}.json` (the panel's own, ~1,800 hand-authored entries),
+language: `{code}.json` (the panel's own, ~2,200 hand-authored entries),
 `{code}_panel.json`, `{code}_mobile.json` and `{code}_web.json`.
 
 ```
@@ -771,7 +772,7 @@ what the screen saves goes to **`storage/app/lang/{code}_validation.json`**
 (`config('app.validation_overrides_path')`; flat keys — `required`,
 `min.string`, `attributes.phone`). In `storage/`, **not** `resources/lang/`:
 it is runtime data, and a tracked directory the server writes into is one
-`git pull` refuses (see the deploy notes). `ValidationOverrideLoader` decorates
+`git pull` refuses (see **Deploying**). `ValidationOverrideLoader` decorates
 `translation.loader` — registered with `extend()` in
 `AppServiceProvider::register()`, because the translation provider is deferred
 and would replace a plain binding — and lays the file over the `validation`
@@ -876,8 +877,8 @@ look.
 user's `*.view` permissions. Four top-level keys:
 
 - **`groups`** — the dropdowns, each `{order, title, icon, items: [model keys]}`.
-  Eight of them: `locations`(1), `catalog`(2), `laundries`(3), `delivery`(4),
-  `marketing`(6), `operations`(8), `money`(9), `system`(99).
+  Nine of them: `locations`(1), `catalog`(2), `laundries`(3), `delivery`(4),
+  `marketing`(6), `order`(7), `operations`(8), `money`(9), `system`(99).
 - **`singles`** — a `model => order` **map** (`user`:5, `report`:10),
   interleaved with the groups by that number. `order` used to be a single; it is
   now the first item of an **`order`** group (7) beside `order_today`, the way
@@ -983,9 +984,11 @@ the timeline) and enforces two rules that are easy to undo by accident:
   `realSetting()` / `isPlaceholderSetting()`, which refuse the values
   `SettingsSeeder` leaves behind — `App_Name = BaseCode`, `nahrPhpTeam@…`, the
   seven social URLs pointing at their networks' front pages, the lorem-ipsum
-  `About`. Laundries are never listed (two rows, both fixtures) and **offers are
-  not rendered at all**, because the only one links to coupon `SMOKE10` and
-  `Offer::badge()` publishes the linked coupon's discount.
+  `About`. Laundries are never listed. Live offers **are** rendered (`offers()`),
+  but an offer's discount badge is withheld while its coupon
+  `looksLikeTestCode()` — `Offer::badge()` publishes the linked coupon's
+  discount, and this install's only offer links to `SMOKE10`. (The class
+  docblock still says offers are not rendered at all; the method is right.)
 - **An empty table is a missing section, not a broken one.** `faqs`, `intros`,
   `banners` and `order_ratings` hold zero rows; the FAQ falls back to Web File
   copy and takes over from it when rows appear.
@@ -1065,10 +1068,11 @@ Two overlapping caches exist:
 
 ## Testing
 
-Around fourteen hundred PHPUnit tests, currently green. Real coverage exists —
-treat a failure as a regression, not as a flaky stub.
+Around eighteen hundred PHPUnit tests (1,814 on 2026-09-29, data providers
+included), currently green. Real coverage exists — treat a failure as a
+regression, not as a flaky stub.
 
-- Roughly a hundred PHP test files, the bulk of them in `tests/Feature/Dashboard/`
+- About 130 PHP test files, the bulk of them in `tests/Feature/Dashboard/`
   and `tests/Feature/Api/`, with `tests/Feature/Landing/`, `tests/Feature/Console/`
   and `tests/Unit/` behind them, plus a couple of dozen Playwright specs in
   **`tests/Browser/`** — capital B, which is what `playwright.config.js` points at
@@ -1091,7 +1095,7 @@ treat a failure as a regression, not as a flaky stub.
 
 `docs/` is maintained by hand and drifts if you don't:
 
-- `docs/postman/Laundo API v1.postman_collection.json` — 103 requests in 6 caller-grouped folders, one per endpoint, with substantive per-request descriptions. An endpoint diff will not catch a **stale request body**; check the bodies when you add a field.
+- `docs/postman/Laundo API v1.postman_collection.json` — 105 requests in 6 caller-grouped folders, one per endpoint, with substantive per-request descriptions. An endpoint diff will not catch a **stale request body**; check the bodies when you add a field.
 - `docs/postman/generate-reference.py` → `docs/api-reference.html`. **The endpoint list is hand-written Python inside that script**, not derived from the collection or from `route:list`. Run it from the repo root (it writes a relative path).
 - `docs/laundo-screen-actions.html` + `.pdf` — every Figma screen against the route its button calls and the panel page staff act from. The HTML is the source; the PDF is rendered from it with headless Chrome `--print-to-pdf`.
 - `docs/laundo-qa-guide.html` + `.pdf` — the QA guide, in Arabic: every panel screen, what must exist before it works, what it feeds in the apps, its permission, and the traps a tester would otherwise file as bugs. Ordered by build order, the same order `config/menu.php` uses. Same HTML-is-the-source rule as above; regenerate the PDF with:
@@ -1131,7 +1135,50 @@ treat a failure as a regression, not as a flaky stub.
   `-driver-records-and-audience` (the record screens, the six documents,
   `?audience=`) and `-driver-record-review` (**the one that reverses the
   previous day's**: driver edits are now staged for approval, and the save
-  response deliberately returns the old values).
+  response deliberately returns the old values), joined by
+  `mobile-2026-09-28-driver-piece-count` (`expected_pieces` is `null` until a
+  counted leg is confirmed). For the customer app: `mobile-2026-09-28-coupon-scope`,
+  `mobile-2026-09-28-turnaround` and `mobile-2026-09-29-zones`. Each note's
+  **الحالة** line says whether it is live yet — update it when it deploys.
+- **`docs/qc-{date}-release.html` + `.pdf` is the note for QC**, one per deploy,
+  in Arabic: each change with where it is in the panel, its permission, a
+  numbered «جرّب / المفروض يحصل / ✓» table and what is intended rather than a
+  bug, plus the live state after the deploy and what the current apps show
+  before the mobile teams update. `qc-2026-09-29-release` is the pattern. Same
+  HTML-is-the-source rule; check it at phone width in a real browser (headless
+  Chrome on Windows will not lay out narrower than ~500px, so its screenshots
+  look cut off when nothing is).
+
+## Deploying
+
+The live site is **laundo.nahrdev.net**, behind Cloudflare; the app lives at
+`~/laundo.nahrdev.net` on the box and MySQL is up there, so `php artisan`
+works. How to reach it is not written here.
+
+1. **The tree must be clean before the pull.** `resources/lang/*.json` are
+   tracked *and* written at runtime by the language editors, so an operator's
+   edit leaves the tree dirty and `git pull` refuses. Back `resources/lang` up
+   first, then merge — never `checkout` or `reset --hard` those files.
+2. **Dump the database first when a migration rewrites data** (the
+   commission-share and coupon-payout migrations did), and check the result
+   against the dump afterwards.
+3. `php artisan down` → `git pull --ff-only origin main` →
+   `composer install --no-dev --optimize-autoloader` (when `composer.lock`
+   moved) → `php artisan migrate --force` →
+   `php artisan db:seed --class=PermissionSeeder --force` (when
+   `config/dashboard.php` gained a model) → `config:clear`, **`route:clear`**,
+   `view:clear`, `cache:clear` → `php artisan up`. `route:clear` is not
+   optional: with a stale route cache a new route fails as
+   `Route [admin.x] not defined` *inside a view that did deploy*.
+4. Anything Vite builds (`resources/js|css`, `vite.config.*`, `package*.json`)
+   needs `npm ci --maxsockets 3 && npm run build` on the host — it caps file
+   descriptors at 150 and a plain `npm ci` fails with EMFILE.
+5. No `queue:restart`: the worker is a per-minute cron entry, a fresh process
+   each run. Hand-edited assets referenced through `assetVersion()` bust
+   themselves; anything else needs a hard refresh.
+6. Verify with `php artisan route:list --name=…`, a `tinker --execute` on real
+   rows, and `storage/logs/laravel.log` (`LOG_STACK` is `single` there).
+   `git rev-parse HEAD` alone proves nothing about the caches.
 
 ## Known rough edges
 
