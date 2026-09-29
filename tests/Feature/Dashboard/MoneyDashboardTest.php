@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Dashboard;
 
+use App\Models\Role;
 use App\Modules\Coupon\Models\Coupon;
 use App\Modules\Coupon\Models\CouponRedemption;
 use App\Modules\Order\Enums\OrderStatus;
@@ -69,6 +70,84 @@ class MoneyDashboardTest extends TestCase
         $this->assertSame('WELCOME10', $coupon->code);
         $this->assertSame('Welcome', $coupon->name->en);
         $this->assertSame(0, $coupon->redemptions_count);
+    }
+
+    #[Test]
+    public function the_super_admin_decides_who_pays_for_a_coupon(): void
+    {
+        $base = [
+            'name' => ['en' => 'Campaign'], 'type' => Coupon::FIXED, 'value' => 10,
+            'max_per_user' => 1, 'status' => 'active',
+        ];
+
+        $cases = [
+            ['code' => 'SPLIT', 'discount_bearer' => 'split', 'discount_laundry_share' => 40, 'expect' => '40.00'],
+            ['code' => 'LAUNDRY', 'discount_bearer' => 'laundry', 'expect' => '100.00'],
+            ['code' => 'PLATFORM', 'discount_bearer' => 'platform', 'expect' => '0.00'],
+            ['code' => 'DEFAULT', 'discount_bearer' => 'default', 'expect' => null],
+        ];
+
+        foreach ($cases as $case) {
+            $expect = $case['expect'];
+            unset($case['expect']);
+
+            $this->actingAs($this->superAdmin())
+                ->post('/admin/coupon/store', $case + $base)
+                ->assertSessionHasNoErrors();
+
+            $this->assertSame($expect, Coupon::where('code', $case['code'])->value('discount_laundry_share') === null
+                ? null
+                : number_format((float) Coupon::where('code', $case['code'])->value('discount_laundry_share'), 2, '.', ''));
+        }
+
+        // A split has to say how much.
+        $this->actingAs($this->superAdmin())
+            ->post('/admin/coupon/store', ['code' => 'NOSHARE', 'discount_bearer' => 'split'] + $base)
+            ->assertSessionHasErrors('discount_laundry_share');
+    }
+
+    #[Test]
+    public function running_a_campaign_does_not_let_you_move_its_cost_onto_the_laundries(): void
+    {
+        // Who pays for a coupon moves money off a laundry's payout, so it gates
+        // on `setting.update` like every other money term. Somebody trusted
+        // with coupons alone saves the coupon and the choice is ignored.
+        $this->grant('admin', ['coupon.view', 'coupon.create', 'coupon.update']);
+
+        $marketer = User::create([
+            'name' => 'Marketer', 'email' => 'marketer@test.local', 'phone' => '+201000000077',
+            'password' => 'password', 'status' => 'active',
+            'role_id' => Role::where('slug', 'admin')->value('id'),
+        ]);
+
+        $this->actingAs($marketer)->post('/admin/coupon/store', [
+            'code' => 'SNEAKY', 'name' => ['en' => 'Sneaky'], 'type' => Coupon::FIXED, 'value' => 10,
+            'max_per_user' => 1, 'status' => 'active',
+            'discount_bearer' => 'laundry',
+        ])->assertRedirect();
+
+        $this->assertNull(Coupon::where('code', 'SNEAKY')->value('discount_laundry_share'));
+
+        // Nor through the query string, which `validated()` merges over the body.
+        $this->actingAs($marketer)->post('/admin/coupon/store?discount_bearer=laundry', [
+            'code' => 'SNEAKIER', 'name' => ['en' => 'Sneakier'], 'type' => Coupon::FIXED, 'value' => 10,
+            'max_per_user' => 1, 'status' => 'active',
+        ])->assertRedirect();
+
+        $this->assertNull(Coupon::where('code', 'SNEAKIER')->value('discount_laundry_share'));
+
+        // Nor as JSON.
+        $this->actingAs($marketer)->postJson('/admin/coupon/store', [
+            'code' => 'SNEAKIEST', 'name' => ['en' => 'Sneakiest'], 'type' => Coupon::FIXED, 'value' => 10,
+            'max_per_user' => 1, 'status' => 'active', 'discount_bearer' => 'laundry',
+        ]);
+
+        $this->assertNull(Coupon::where('code', 'SNEAKIEST')->value('discount_laundry_share'));
+
+        // Nor is the field drawn for them.
+        $this->actingAs($marketer)->get('/admin/coupon/create')
+            ->assertOk()
+            ->assertDontSee('discount_bearer', false);
     }
 
     #[Test]

@@ -23,7 +23,9 @@
                             {{ __('Salaries are paid outside this system and are not recorded here.') }}
                         </p>
 
-                        <div class="d-flex justify-content-end mb-3">
+                        <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
+                            {{-- Excel: the export holds what the search shows. --}}
+                            <x-spreadsheet-actions sheet="driver_bonus_rule" search="#ruleSearchInput" />
                             <div class="input-group" style="max-width: 350px;">
                                 <input type="text" id="ruleSearchInput" class="form-control"
                                     placeholder="{{ __('Search rules...') }}">

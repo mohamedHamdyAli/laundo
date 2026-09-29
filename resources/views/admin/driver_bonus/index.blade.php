@@ -53,21 +53,26 @@
                     {{ __('Worked out by the system, paid by you. An open month is recalculated on every visit; an approved one is frozen.') }}
                 </p>
 
-                <div class="d-flex justify-content-end mb-3 gap-2">
-                    <select id="bonusPeriodFilter" class="form-select" style="max-width: 160px;">
-                        @foreach ($months as $month)
-                            <option value="{{ $month }}" @selected($period === $month)>{{ $month }}</option>
-                        @endforeach
-                    </select>
-                    <select id="bonusStatusFilter" class="form-select" style="max-width: 200px;">
-                        <option value="all" @selected($status === 'all')>{{ __('All') }}</option>
-                        <option value="due" @selected($status === 'due')>{{ __('Waiting for you') }}</option>
-                        <option value="approved" @selected($status === 'approved')>{{ __('Approved') }}</option>
-                        <option value="rejected" @selected($status === 'rejected')>{{ __('Declined') }}</option>
-                    </select>
-                    <div class="input-group" style="max-width: 300px;">
-                        <input type="text" id="bonusSearchInput" class="form-control"
-                            placeholder="{{ __('Search by driver name or phone...') }}">
+                <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
+                    {{-- Excel: the month, the status and the search on screen. --}}
+                    <x-spreadsheet-actions sheet="driver_bonus_award" search="#bonusSearchInput"
+                        :filters="['period' => '#bonusPeriodFilter', 'status' => '#bonusStatusFilter']" />
+                    <div class="d-flex flex-wrap gap-2 ms-auto">
+                        <select id="bonusPeriodFilter" class="form-select" style="max-width: 160px;">
+                            @foreach ($months as $month)
+                                <option value="{{ $month }}" @selected($period === $month)>{{ $month }}</option>
+                            @endforeach
+                        </select>
+                        <select id="bonusStatusFilter" class="form-select" style="max-width: 200px;">
+                            <option value="all" @selected($status === 'all')>{{ __('All') }}</option>
+                            <option value="due" @selected($status === 'due')>{{ __('Waiting for you') }}</option>
+                            <option value="approved" @selected($status === 'approved')>{{ __('Approved') }}</option>
+                            <option value="rejected" @selected($status === 'rejected')>{{ __('Declined') }}</option>
+                        </select>
+                        <div class="input-group" style="max-width: 300px;">
+                            <input type="text" id="bonusSearchInput" class="form-control"
+                                placeholder="{{ __('Search by driver name or phone...') }}">
+                        </div>
                     </div>
                 </div>
 

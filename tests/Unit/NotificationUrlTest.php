@@ -56,6 +56,8 @@ class NotificationUrlTest extends TestCase
             '/admin/driver-application',
             '/admin/laundry/show/1',
             '/admin/order/show/1',
+            '/admin/dispatch',
+            '/admin/laundry-service-request',
         ];
 
         foreach ($paths as $path) {

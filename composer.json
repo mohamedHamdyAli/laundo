@@ -13,7 +13,8 @@
         "laravel/framework": "^13.0",
         "laravel/sanctum": "^4.0",
         "laravel/tinker": "^3.0",
-        "laravel/ui": "^4.6"
+        "laravel/ui": "^4.6",
+        "openspout/openspout": "^4.28"
     },
     "require-dev": {
         "barryvdh/laravel-ide-helper": "^3.6",

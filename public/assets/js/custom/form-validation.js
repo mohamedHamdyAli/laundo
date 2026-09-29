@@ -137,12 +137,32 @@
             return;
         }
 
-        target.scrollIntoView({ block: 'center', behavior: 'smooth' });
+        // A field on a tab that is not showing — the settings page keeps its
+        // fields on four — cannot be scrolled to or focused, and the refusal
+        // would read as a save that did nothing. Open its tab first.
+        var pane = target.closest ? target.closest('.tab-pane') : null;
+
+        if (pane && !pane.classList.contains('active') && pane.id && window.bootstrap && window.bootstrap.Tab) {
+            var trigger = document.querySelector('[data-bs-target="#' + pane.id + '"]');
+
+            if (trigger) {
+                window.bootstrap.Tab.getOrCreateInstance(trigger).show();
+            }
+        }
+
+        // A hidden input — a zone's drawing is one, written by the map — has
+        // no box to scroll to or to focus. Scrolling to it did nothing, so a
+        // refused drawing looked like a save that went nowhere; show what holds
+        // it instead, where its message is painted.
+        var hidden = target.type === 'hidden';
+        var anchor = hidden ? anchorFor(target) : target;
+
+        anchor.scrollIntoView({ block: 'center', behavior: 'smooth' });
 
         // Focus after the scroll is under way. Focusing first makes the browser
         // jump instantly and the smooth scroll then has nowhere to go.
         window.setTimeout(function () {
-            if (typeof target.focus === 'function') {
+            if (!hidden && typeof target.focus === 'function') {
                 target.focus({ preventScroll: true });
             }
         }, 250);

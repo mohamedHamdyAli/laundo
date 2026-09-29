@@ -3,6 +3,7 @@
 namespace App\Modules\Service\Repositories;
 
 use App\Modules\Service\Models\Service;
+use Illuminate\Database\Eloquent\Builder;
 
 class ServiceRepository
 {
@@ -25,9 +26,21 @@ class ServiceRepository
      */
     public function search($query, $perPage = 10)
     {
-        $term = $this->withoutDurationUnit((string) $query);
+        return $this->applySearch(Service::query(), (string) $query)->orderBy('sort_order')->paginate($perPage);
+    }
 
-        return Service::search(
+    /**
+     * The list's search on any query. The screen and its Excel export both run
+     * it, so an export of a searched list holds exactly the rows the list showed.
+     *
+     * @param  Builder<Service>  $builder
+     * @return Builder<Service>
+     */
+    public function applySearch(Builder $builder, string $query): Builder
+    {
+        $term = $this->withoutDurationUnit($query);
+
+        return $builder->search(
             $term,
             ['name', 'description', 'pricing_mode', 'duration_unit', 'sort_order'],
             [
@@ -47,7 +60,7 @@ class ServiceRepository
                 // the singular still matches too.
                 Service::searchConcat(['`duration_unit`', "'s'"]),
             ]
-        )->orderBy('sort_order')->paginate($perPage);
+        );
     }
 
     /**
@@ -89,6 +102,15 @@ class ServiceRepository
             ->where('pricing_mode', 'per_item')
             ->orderBy('sort_order')
             ->get();
+    }
+
+    /**
+     * One active service, or null — a switched-off service is not one anybody
+     * can be quoted for.
+     */
+    public function findActive(?int $id): ?Service
+    {
+        return $id ? Service::where('status', 'active')->find($id) : null;
     }
 
     public function allActive()

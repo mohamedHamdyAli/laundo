@@ -109,6 +109,9 @@ test.describe('The settings that drive both', () => {
     await page.goto('/admin/set-language/en');
     await page.goto('/admin/generalSetting');
 
+    // The money settings have their own tab.
+    await page.locator('#settings-tab-money').click();
+
     const tax = page.locator('#setting-tax');
     await expect(tax).toBeVisible();
     await expect(tax).toHaveAttribute('type', 'number');
@@ -117,6 +120,13 @@ test.describe('The settings that drive both', () => {
     const commission = page.locator('#setting-commission');
     await expect(commission).toBeVisible();
     await expect(commission).toHaveAttribute('max', '100');
+
+    // The general laundry share — what a laundry with none of its own
+    // receives. A separate box from the customer's fee: the two are paid by
+    // different people.
+    const share = page.locator('#setting-laundry-share');
+    await expect(share).toBeVisible();
+    await expect(share).toHaveAttribute('max', '100');
 
     // The sentence that stops somebody believing a rate change restates old
     // invoices.

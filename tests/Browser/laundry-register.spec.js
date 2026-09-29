@@ -32,6 +32,8 @@ async function fillEverything(page) {
   await page.fill('#owner_email', `rania${n}@example.test`);
   await page.fill('#owner_password', 'secret123');
   await page.fill('#owner_password_confirmation', 'secret123');
+  // At least one service is required; any will do.
+  await page.locator('input[name="services[]"]').first().check();
   await page.check('input[name="accepts_terms"]');
 }
 

@@ -24,6 +24,14 @@ class DispatchQueuedTasks extends Command
 
     public function handle(DriverDispatcher $dispatcher): int
     {
+        // The sweep is the platform deciding by itself, which is exactly what
+        // the switch turns off. The operators' «وزّع» buttons are not this.
+        if (! $dispatcher->assignsAutomatically()) {
+            $this->info('Automatic driver assignment is off in settings — nothing dispatched.');
+
+            return self::SUCCESS;
+        }
+
         $assigned = $dispatcher->sweep();
 
         $this->info("Dispatched {$assigned} task(s).");

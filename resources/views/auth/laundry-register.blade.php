@@ -118,6 +118,29 @@
                 @enderror
             </div>
 
+            {{-- What the laundry will do. Required: a laundry offering nothing
+                 can never be handed an order. Approving the application approves
+                 these with it; changing them later is a request the platform
+                 approves, from the laundry's own services screen. --}}
+            <div class="auth-field is-full">
+                <span class="auth-label">{{ __('Services you will offer') }} <span class="is-required">*</span></span>
+                <div class="auth-services">
+                    @foreach ($services as $service)
+                        <label class="auth-check">
+                            <input type="checkbox" name="services[]" value="{{ $service->id }}"
+                                @checked(in_array($service->id, (array) old('services', [])))>
+                            <span>{{ getLocalizedValue($service, 'name') }}</span>
+                        </label>
+                    @endforeach
+                </div>
+                @error('services')
+                    <span class="auth-error">{{ $message }}</span>
+                @enderror
+                @error('services.*')
+                    <span class="auth-error">{{ $message }}</span>
+                @enderror
+            </div>
+
             {{-- The panel's own picker, not a second one.
 
                  `x-map-picker` already drives the city and laundry forms: it

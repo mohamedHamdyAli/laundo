@@ -34,7 +34,7 @@ class CouponController extends Controller
 
     public function create()
     {
-        return view('admin.coupon.create', $this->couponCrudService->shredData());
+        return view('admin.coupon.create', $this->couponCrudService->shredData() + $this->couponCrudService->formChoices());
     }
 
     public function store(CouponRequest $request)
@@ -46,12 +46,12 @@ class CouponController extends Controller
 
     public function show($id)
     {
-        return view('admin.coupon.show', $this->couponCrudService->shredData($id));
+        return view('admin.coupon.show', $this->couponCrudService->shredData($id) + $this->couponCrudService->formChoices($id));
     }
 
     public function edit($id)
     {
-        return view('admin.coupon.edit', $this->couponCrudService->shredData($id));
+        return view('admin.coupon.edit', $this->couponCrudService->shredData($id) + $this->couponCrudService->formChoices($id));
     }
 
     public function update(CouponRequest $request, $id)

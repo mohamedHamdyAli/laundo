@@ -41,7 +41,7 @@ class MenuBuilder
         foreach (config('menu.groups') as $group) {
 
             $items = collect($group['items'])
-                ->filter(fn ($order, $model) => in_array($model, $models))
+                ->filter(fn ($order, $model) => self::visible($model, $models))
                 ->sortBy(fn ($order) => $order)
                 ->map(fn ($order, $model) => self::item($model))
                 ->values();
@@ -73,7 +73,7 @@ class MenuBuilder
 
         // Singles
         foreach (config('menu.singles') as $model => $order) {
-            if (! in_array($model, $models)) {
+            if (! self::visible($model, $models)) {
                 continue;
             }
 
@@ -87,6 +87,17 @@ class MenuBuilder
             ->sortBy('order')
             ->values()
             ->toArray();
+    }
+
+    /**
+     * Whether the user may see this menu key — its own `.view` permission, or
+     * the one `menu.permissions` says it borrows.
+     *
+     * @param  array<int, string>  $models
+     */
+    protected static function visible(string $key, array $models): bool
+    {
+        return in_array(config("menu.permissions.$key", $key), $models, true);
     }
 
     protected static function item(string $model): array

@@ -39,3 +39,30 @@
         </div>
     </div>
 @endsection
+
+@push('scripts')
+    <script>
+        // Back on the tab somebody was editing after a save reloads the page —
+        // landing on «عام» after changing a money setting reads as the change
+        // having gone nowhere. Per browser tab only, and nothing if storage is off.
+        (function () {
+            var key = 'settings-tab';
+            var tabs = document.querySelectorAll('.settings-tabs [data-bs-toggle="tab"]');
+
+            tabs.forEach(function (tab) {
+                tab.addEventListener('shown.bs.tab', function () {
+                    try { sessionStorage.setItem(key, tab.id); } catch (e) {}
+                });
+            });
+
+            var saved = null;
+            try { saved = sessionStorage.getItem(key); } catch (e) {}
+
+            var tab = saved ? document.getElementById(saved) : null;
+
+            if (tab && typeof bootstrap !== 'undefined') {
+                bootstrap.Tab.getOrCreateInstance(tab).show();
+            }
+        })();
+    </script>
+@endpush

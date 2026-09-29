@@ -52,24 +52,30 @@
                             {{ __('Every message the system tried to send, including the ones it deliberately did not. Transactional messages ignore a muted channel — an order waiting on a customer who was never told simply stops.') }}
                         </p>
 
-                        <div class="d-flex justify-content-end mb-3 gap-2">
-                            <select id="notificationEventFilter" class="form-select" style="max-width: 220px;">
-                                <option value="">{{ __('All events') }}</option>
-                                @foreach ($events as $option)
-                                    <option value="{{ $option->value }}" @selected($event === $option->value)>
-                                        {{ __($option->label()) }}
-                                    </option>
-                                @endforeach
-                            </select>
-                            <select id="notificationStatusFilter" class="form-select" style="max-width: 180px;">
-                                <option value="">{{ __('All statuses') }}</option>
-                                <option value="sent" @selected($status === 'sent')>{{ __('Sent') }}</option>
-                                <option value="failed" @selected($status === 'failed')>{{ __('Failed') }}</option>
-                                <option value="skipped" @selected($status === 'skipped')>{{ __('Skipped') }}</option>
-                            </select>
-                            <div class="input-group" style="max-width: 300px;">
-                                <input type="text" id="notificationSearchInput" class="form-control"
-                                    placeholder="{{ __('Search by recipient or text...') }}">
+                        <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
+                            {{-- Excel: the export holds what the search and both
+                                 filters show. --}}
+                            <x-spreadsheet-actions sheet="notification_log" search="#notificationSearchInput"
+                                :filters="['event' => '#notificationEventFilter', 'status' => '#notificationStatusFilter']" />
+                            <div class="d-flex justify-content-end flex-wrap gap-2">
+                                <select id="notificationEventFilter" class="form-select" style="max-width: 220px;">
+                                    <option value="">{{ __('All events') }}</option>
+                                    @foreach ($events as $option)
+                                        <option value="{{ $option->value }}" @selected($event === $option->value)>
+                                            {{ __($option->label()) }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                                <select id="notificationStatusFilter" class="form-select" style="max-width: 180px;">
+                                    <option value="">{{ __('All statuses') }}</option>
+                                    <option value="sent" @selected($status === 'sent')>{{ __('Sent') }}</option>
+                                    <option value="failed" @selected($status === 'failed')>{{ __('Failed') }}</option>
+                                    <option value="skipped" @selected($status === 'skipped')>{{ __('Skipped') }}</option>
+                                </select>
+                                <div class="input-group" style="max-width: 300px;">
+                                    <input type="text" id="notificationSearchInput" class="form-control"
+                                        placeholder="{{ __('Search by recipient or text...') }}">
+                                </div>
                             </div>
                         </div>
 

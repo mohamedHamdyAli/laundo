@@ -57,6 +57,15 @@
                                             <dt>{{ __('Applied') }}</dt>
                                             <dd>{{ humanDate($laundry->created_at) }}</dd>
                                         </div>
+                                        {{-- What it asked to do. Approving the application
+                                             approves these; afterwards each change is a
+                                             request of its own. --}}
+                                        <div>
+                                            <dt>{{ __('Services') }}</dt>
+                                            <dd>
+                                                {{ $laundry->services->map(fn ($row) => $row->service ? getLocalizedValueDashboard($row->service, 'name') : null)->filter()->implode('، ') ?: '—' }}
+                                            </dd>
+                                        </div>
                                     </dl>
 
                                     @if (filled($laundry->address))

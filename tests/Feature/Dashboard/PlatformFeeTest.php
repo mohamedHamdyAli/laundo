@@ -190,12 +190,13 @@ class PlatformFeeTest extends TestCase
     }
 
     #[Test]
-    public function the_discount_is_shared_in_proportion(): void
+    public function the_discount_comes_off_the_washing_and_the_fee_is_kept_whole(): void
     {
-        // A coupon reduces the price, and the fee is inside the price — so both
-        // sides give up the same proportion. Any other split needs a rule about
-        // who pays for a coupon, and a rule nobody wrote down gets decided
-        // differently the next time.
+        // Who pays for a coupon is decided on the coupon now, not by where the
+        // discount happens to sit. For the books the whole discount comes off
+        // what the customer paid for the laundry's work, and the fee is
+        // recorded as it was charged — the platform's side of the coupon lands
+        // in its part of the washing.
         $this->setting('Tax', null);
         $this->setting('Commission_Rate', '10');
 
@@ -205,11 +206,11 @@ class PlatformFeeTest extends TestCase
             'discount_total' => 22,
         ]);
 
-        // 10% off: the laundry's 200 becomes 180, the platform's 20 becomes 18.
-        $this->assertSame(180.0, $order->cleaningRevenue());
-        $this->assertSame(18.0, $order->platformFeeEarned());
+        $this->assertSame(200.0, $order->laundryBase());
+        $this->assertSame(178.0, $order->cleaningRevenue());
+        $this->assertSame(20.0, $order->platformFeeEarned());
 
-        // And nothing falls between them.
+        // And nothing falls between them: 220 less the 22 off.
         $this->assertSame(
             198.0,
             round($order->cleaningRevenue() + $order->platformFeeEarned(), 2)
@@ -241,7 +242,9 @@ class PlatformFeeTest extends TestCase
         $rule = CommissionRule::create([
             'name' => json_encode(['en' => 'Deal', 'ar' => 'اتفاق'], JSON_UNESCAPED_UNICODE),
             'basis' => 'percent',
-            'rate' => 15,
+            // The laundry's share: it receives 85 of the washing's 100 and the
+            // platform keeps 15.
+            'rate' => 85,
             'status' => 'active',
         ]);
         $this->tenant['laundry']->commissionRules()->syncWithoutDetaching([$rule->id]);
@@ -260,8 +263,8 @@ class PlatformFeeTest extends TestCase
         $this->assertSame('30.00', $settlement->commission_amount);
         $this->assertSame('170.00', $settlement->laundry_amount);
 
-        // The platform takes its fee from the customer and its commission from
-        // the laundry, and the two are recorded apart because they are paid by
+        // The platform takes its fee from the customer and keeps its part of the
+        // washing, and the two are recorded apart because they are paid by
         // different people.
         $this->assertSame(
             220.0,
@@ -431,6 +434,15 @@ class PlatformFeeTest extends TestCase
 
         $platform = $this->superAdmin();
 
+        // The laundry keeps the whole of the washing, so everything that
+        // reaches the platform's wallet is the customer's fee. Without a share
+        // at all the settlement would wait and nothing would move.
+        $share = CommissionRule::create([
+            'name' => json_encode(['en' => 'All of it'], JSON_UNESCAPED_UNICODE),
+            'basis' => 'percent', 'rate' => 100, 'status' => 'active',
+        ]);
+        $this->tenant['laundry']->commissionRules()->syncWithoutDetaching([$share->id]);
+
         $order = $this->place();
         $order->forceFill(['laundry_id' => $this->tenant['laundry']->id, 'delivery_fee' => 0])->save();
 
@@ -448,8 +460,8 @@ class PlatformFeeTest extends TestCase
 
         $wallet = app(WalletService::class)->forUser($platform);
 
-        // No commission rule is attached, so the whole of the platform's 20 is
-        // the customer's fee — and it is in the wallet under its own reason.
+        // The laundry keeps all of the washing, so the whole of the platform's
+        // 20 is the customer's fee — and it is in the wallet under its own reason.
         $this->assertSame(20.0, (float) $wallet->balance);
 
         $this->assertDatabaseHas('wallet_transactions', [

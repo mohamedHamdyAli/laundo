@@ -15,7 +15,9 @@
             <div class="col-md-12">
                 <div class="card">
                     <div class="card-body">
-                        <div class="list-toolbar">
+                        <div class="list-toolbar justify-content-between align-items-start">
+                            {{-- Excel: the export holds what the search shows. --}}
+                            <x-spreadsheet-actions sheet="offer" search="#offerSearchInput" />
                             <input type="text" id="offerSearchInput" name="offerSearch"
                                 value="{{ request('offerSearch') }}" class="form-control"
                                 placeholder="{{ __('Search Offer...') }}">

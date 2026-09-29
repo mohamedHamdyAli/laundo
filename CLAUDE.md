@@ -23,8 +23,12 @@ php .second-brain/bin/brain.php update  # …or only what git says changed
 
 Single test: `php artisan test --filter=TestName` · one file: `php artisan test tests/Feature/Api/OrderTest.php` · one suite: `php artisan test --testsuite=Unit`. One browser spec: `npx playwright test tests/Browser/<name>.spec.js`.
 
-The full PHPUnit suite takes **four to eight minutes** — three measured runs on
-the same machine came in at 251s, 317s and 477s, so budget for the longest. Use
+The full PHPUnit suite takes **four to ten minutes** — measured runs on the
+same machine came in at 251s, 317s, 477s, (at 1,570 tests, 2026-09-27) 341s
+and 521s, and (at 1,662 tests, 2026-09-28) 575s, so budget for the longest.
+When MySQL is down, `php artisan test` cannot boot at all (see the Second Brain
+note below) — run `vendor/bin/phpunit` directly, which reads `phpunit.xml`'s
+SQLite and needs no database server. Use
 `--filter` while iterating and run the whole thing once, before you call the
 task done. It has grown steadily; if it runs much longer than this, re-measure
 and correct the figure here rather than working around it.
@@ -105,7 +109,7 @@ module rather than getting their own — so **do not go looking for `app/Modules
 | Screen | Lives in |
 | --- | --- |
 | `payment`, `driver_earning`, `refund`, `order_settlement`, `commission_rule`, invoices | `app/Modules/Payment/` |
-| `dispatch`, `order_task` | `app/Modules/Order/` |
+| `dispatch`, `order_task`, `order_today` | `app/Modules/Order/` |
 | `laundry_slot_capacity` (intake capacity) | `app/Modules/Laundry/` |
 | `driver_application`, `driver_bonus_rule`, `driver_bonus_award` | `app/Modules/Driver/` |
 | `role`, `language`, `notification_log` | `app/Http/Controllers/Admin/` + `app/Models/` |
@@ -159,6 +163,49 @@ from the code) and **`docs/order-cycle-explained.md`**; the rules that bind code
   the money and left every leg exactly where it was — the holder kept a task they
   could not finish, and an unassigned one sat on the dispatch board as work
   waiting for somebody who was never coming.
+- **Every count of an order's pieces is checked** (`Order/Services/PieceCheck`,
+  2026-09-28/29). Legs 1–3 require `piece_count`, and the laundry counts at its
+  review; each is measured against the last number somebody stood behind — the
+  customer's order at the pickup, the handover before at the laundry, what was
+  handed to the laundry at its review, the review at the collection
+  (`PieceCountSource`). What a leg was held to is **stamped on it at
+  completion** (`order_tasks.expected_piece_count` / `_source`), because the
+  review can change the order's count later. A disagreement is **one
+  `PieceDiscrepancy` row** (`piece_discrepancies`, `step` = the leg or
+  `laundry_review`, indexed `open`), created in the handover's or the review's
+  own transaction and announced after it commits. **Nothing is ever refused.**
+  `PieceCountNotifier` rings the bell of the platform (`order.update`, not in a
+  laundry) and of the order's laundry (`order.view`, picked by the order's
+  `laundry_id` — the driver's request has no tenant), both through
+  `Notification/Services/PanelAudience`, **in the panel's default language**
+  (the bell keeps the words as written, and the request is the driver's), with
+  everything inside the try. The order screen shows a red banner, the leg's
+  count in red, and a «reviewed» list; **`Order::withOpenPieceCheck()`** is the
+  one count behind the `order` sidebar badge, both home-page queues and the
+  `piece_mismatch` pseudo-filter (`OrderRepository::PIECE_MISMATCH`, mirrored in
+  `OrderSheet`) — in orders, not rows, so a 1 opens a list of one. Only the
+  platform closes one — «تمت المراجعة» (`admin.order.piece_check.resolve`,
+  `order.update`, a note **and the real count**, under a row lock);
+  `PieceCheck::resolve()` refuses a reviewer with a `laundry_id` as well as a
+  signed-in tenant, since a laundry holds `order.update` by design. The real
+  count (`confirmed_count`, via `OrderTask::countedPieces()`) is what the next
+  count is held to (`PieceCountSource::Settled` at the collection and at a
+  later review), so a difference the platform already looked into is not raised
+  again. A review is compared only once the handover to the laundry is
+  confirmed; entered before that, `afterHandover()` checks it when it is. The
+  one exception to «the platform closes it»: a second review whose count now
+  agrees with the handover closes the review's own row (the laundry found the
+  piece). `TaskService::complete()` re-checks the leg under a row lock, and
+  `piece_discrepancies.order_task_id` is unique — a leg disagrees at most once.
+  `PieceDiscrepancy` carries `order_id` and no `laundry_id`, so — like
+  `OrderTask` — it is reached only through the scoped `Order`
+  (`PieceCheck::resolveById()` → `OrderRepository::findDiscrepancy()`). **The
+  driver app is not shown `expected_pieces` on a counted leg until it is
+  completed, nor on the delivery leg until the collection is** (the owner's
+  call: shown first, a driver copies it — and one driver usually holds all four
+  legs, so the delivery's count would give the others away). «توجد مشكلة ← عدد القطع غير مطابق»
+  (`PieceCountMismatch`, halts the order) is the separate path for a driver who
+  will not complete the handover at all.
 - `cleaning`, `ready_for_delivery`, `completed` and `returned` currently have
   **no endpoint driving them** — a known gap, not something to paper over.
 
@@ -207,6 +254,39 @@ negotiable:
 3. **offers the requested service** (`laundry_services`, active). Nothing that
 fails these is ever chosen, by any path, including the panel's picker.
 
+**A zone is drawn on the map** (2026-09-29). `zones.boundary` is the ring of
+`[lat, lng]` corners the owner drew on the zone form (`<x-zone-drawer>`, our
+own small tool on the Leaflet already on every panel page — no drawing plugin),
+with `min/max_lat/lng` beside it for an indexed SQL pre-filter.
+`Zone/Services/ZoneLocator` decides an address's zone from its pin, in
+`AddressController` on create and edit: **inside a drawn, active zone → that
+zone and its city, whatever `zone_id` the app sent**; a zone **not drawn yet**
+is still taken at the app's word, so an install moves over one zone at a time;
+a pin **outside every drawn zone gets no zone**, and its order is accepted
+unassigned (the owner's choice — the same as an uncovered area always was).
+Drawings **may not overlap** (`ZoneLocator::assertNoOverlap()`, from
+`ZoneRequest::after()` and again inside the save's transaction with the
+neighbours locked; against every drawn zone, inactive ones too). A border
+shared along the same street is not an overlap: `Support/Geo/Polygon` is plane
+arithmetic (no spatial extension) with a **tolerance of about 10 cm**
+(`Polygon::TOLERANCE`), and the drawer **snaps** a corner onto a neighbour's
+corner or edge — computed on plain lat/lng, the plane the server checks on, not
+on the screen's projection. Overlap is found by edges crossing *or* a point
+just inside an edge lying well inside the other ring, which is what catches the
+same ring drawn twice. A ring with no area, a spike, or over 500 corners is
+refused, each with its own message. Redrawing a zone, or switching a drawn one
+on, re-locates the addresses it takes in or lets go, through the models
+(`ZoneLocator::relocateAround()`): only an address a drawn active zone now
+claims, or this zone's own outside its new drawing — never another switched-off
+zone's — and **an address with an order under way is not left in no zone**
+(held, and the flash says how many). Switching a zone off moves nothing. A zone
+in a switched-off city claims nothing. A save that does not send `boundary` (a
+spreadsheet row) keeps the drawing; the zones sheet has a read-only `drawn`. **Laundries and drivers are still matched by `zone_id`** —
+unchanged, and right by construction once an address's zone is its pin's: a
+driver given a zone is only offered trips inside it. A laundry may sit outside
+the zones it serves (the owner's choice). `GET /cities` carries each zone's
+`boundary` (null = not drawn).
+
 Then, among what is left: **the nearest by road wins, unless a nearly-as-close
 one has more room.**
 
@@ -243,6 +323,32 @@ they are different answers. It counts the **pickup** leg only: it is about
 washing machines, where `time_slots.capacity` is about vans and counts both
 legs across the whole platform. The two do not constrain each other.
 
+**The delivery leaves the service its time** (`Order/Services/Turnaround`,
+2026-09-28). A service's `duration_min`–`duration_max` was display-only, so a
+2–4-day wash could be collected and returned the same afternoon. The owner's
+rules: **the middle of the range** (2–4 days = 3, 24–48 hours = 36); a service
+in **hours is exact** — from the end of the pickup window to the start of the
+delivery window; in **days, whole days** (picked up Monday, back from Thursday
+in any window); no turnaround set, no rule beyond «not before pickup». Enforced
+at `POST /orders` (`Concerns/DeliveryAfterTurnaround`, 422 on `delivery_date`
+naming the earliest), surfaced as `too_early` on `GET /time-slots` (given
+`service_id` + `pickup_date` + `pickup_slot_id`) and on the reschedule options,
+and `delivery_after` (`{value, unit}` in the service's own unit — a day service
+is «from the Nth day», never N×24 hours) on `GET /services`. **A postponed pickup pushes the
+delivery** to the first window with room that fits (`RescheduleService::
+keepDeliveryAfterPickup()`, legs' `due_at` moved with it, `delivery_moved` in the
+response); a delivery rebooked too soon is refused. The quote takes no dates, so
+it has nothing to check. **The range has a far end too**: `Delivery_Window_Days` (settings,
+operations tab, 14 by default) after the earliest day; past it is `too_late`,
+refused the same way — **for a new booking only**. A rebooked delivery is held
+to the turnaround alone (`problem(..., withLatest: false)`): the window is
+measured from the original pickup, and an order postponed weeks later would
+have no day left. `OrderService::place()` holds the rule as a backstop. `GET /delivery-window` (`GeoController::deliveryWindow`)
+gives the app the whole picture — `earliest`/`latest`, `chosen` with the exact
+refusal message, a `suggestion`, and the day's `windows` with `available` — so
+its bottom sheet fixes a conflict in place. `Turnaround::problem()` /
+`message()` are the one source of both the check and its words.
+
 **Nothing here ever refuses an order at checkout.** A zone whose laundries are
 all full is the same shape of problem as a zone nothing covers, and
 `SlotOverflowBehavior` (`Slot_Overflow_Behavior`) is where an operator says what
@@ -259,6 +365,23 @@ they are handed. Same boundary as the commission rate.
 and the reason it lost — and `assign()` is that method keeping only the answer.
 The order screen renders the rest, so the picker and the router cannot disagree.
 
+**Automatic assignment can be switched off** (`Order/Services/AutoAssign`,
+settings `Auto_Assign_Laundry` / `Auto_Assign_Driver`, operations tab; blank =
+on = the old behaviour). Laundry off: `place()` stores no laundry — the fee is
+still measured from the one the assigner *would* pick, and the quote's
+`laundry` is null — and choosing one by hand recomputes the fee as always.
+Driver off: `DriverDispatcher::automatically()` (leg creation, after a failed
+attempt, after a reschedule) and the `tasks:dispatch` sweep do nothing; the
+operators' own «وزّع» buttons still call `dispatch()` — a person deciding is not
+what the switch stops. Either way `AssignmentNotifier` rings the bell of
+platform staff holding `order.update` / `order_task.update` (one notice per
+order's legs, not per leg). An automatic path added later goes through
+`automatically()`, never `dispatch()`. **An order with no laundry is never dispatched
+automatically** — `automatically()` and the sweep skip it (a driver would collect
+a bag with nowhere to take it), and `OrderService::assignLaundry()` offers its
+waiting legs once a laundry is set. Until 2026-09-28 an uncovered area's pickup
+was dispatched regardless.
+
 ### Money: who owns which share
 
 Added after the rest of the panel; `docs/order-cycle-explained.md` covers it in
@@ -268,14 +391,77 @@ prose. The total is composed in exactly one place, `OrderPricing::compose()`:
 
 It splits four ways: **tax** → the state, never divided and never commissioned;
 **delivery fee + cash surcharge** → the platform, which pays the driver out of
-them; and **cleaning revenue** (`Order::cleaningRevenue()` = subtotal − discount)
-is the only part the platform and the laundry divide.
+them; and **cleaning revenue** (`Order::cleaningRevenue()` = the laundry's own
+piece prices, less their share of the discount) is the only part the platform
+and the laundry divide.
+
+**The percentage on a laundry is what the *laundry* receives** — 10 means the
+laundry gets 10 of the hundred and the platform keeps 90. It was the other way
+round (the platform's cut) until 2026-09-27; the client reversed it, and
+`2026_09_27_100100_turn_commission_rules_into_laundry_shares` rewrote every stored
+rate so no laundry's payout moved. The columns kept their names:
+`commission_amount` is still the platform's part, `laundry_amount` the laundry's,
+and `order_settlements.laundry_share_rate` is the rate the laundry was paid at —
+null on rows settled the old way. «Per piece» (the client's wording) is the same
+money as per order: the basis *is* the sum of the laundry's piece prices after
+the discount, and computing it per piece would only move piastres of rounding.
+
+**Who pays for a coupon is its own decision** (2026-09-27). The laundry's share
+is measured on its prices *before* the discount; `coupons.discount_laundry_share`
+(0 = the platform, 100 = the laundry, between = a split, null = the
+`Coupon_Laundry_Share` setting, which empty means 0) says how much of the
+discount comes off the laundry. It is **copied onto the order at placement**
+(`orders.discount_laundry_share`, `discount_covers_delivery`) and never re-read.
+The part of a coupon that came off the delivery fee is always the platform's.
+The laundry is floored at zero; the platform is not — `commission_amount` can be
+negative, and `settleFor()` then debits the super admin wallet under
+`TransactionReason::DiscountFunded` with `allowOverdraft: true`, the only caller
+allowed to overdraw. Setting the bearer on a coupon gates on `setting.update`
+(`CouponRequest::prepareForValidation()` drops it from every input bag — query
+string and JSON too — otherwise).
+
+**A coupon can be limited to part of an order** (2026-09-28): `coupons.scope_type`
+(null = the whole order / `service` / `category` / `item`) and `scope_ids`, one
+kind and several of it. An offer's discount *is* its coupon, so an offer is
+limited the same way — the owner's answer to «offers on a category, a service
+or an item». `CouponService::validate()` takes the priced basket
+(`OrderPricing::lines()`, extracted from `quote()` for this) and the discount
+comes off `Coupon::eligibleSubtotal()` only; the minimum order is still the
+whole order's. A code on some pieces **never discounts the delivery fee**
+(`coversDeliveryFee()`), whatever its box says. `POST /coupons/check` takes
+`service_id` + `items` to price the basket as checkout does; without them a
+limited code answers 422 «worked out at checkout», never «invalid».
+`applies_to` (`Coupon::scopeSummaries()`, one query per kind) is in the check
+response and in `GET /offers`. The limit is **copied onto the order** (`orders.discount_scope`: type, ids,
+the agreed discount, the rate) and `OrderReviewService` works the discount out
+again on the pieces actually counted — a percentage re-worked, a fixed amount
+capped, never above what was agreed. `discount_covers_delivery` is stamped
+from `coversDeliveryFee()`, never the raw box: the settlement splits on it.
+
+**A catalogue-wide price rise** lives in `Pricing/Services/PriceIncrease`, set from
+the card above the price grid (`admin.pricing.increase`, `item_price.update`).
+*For a period*, `item_prices` is untouched and the rate (`Price_Increase_Rate`,
+optional `Price_Increase_Ends_At` — past it the rate reads as zero, no job
+involved) is applied wherever a piece price is read: the quote, the review, the
+review form, the grid preview, the app catalogue and the landing page (whose
+cache key carries both rates). *Permanently*, it is written into `item_prices`
+in one transaction and the period rate is cleared. The rise is the laundry's
+price — it goes under the platform fee, into `base_unit_price` — and is stamped on
+the order as `orders.price_increase_rate`, because `OrderReviewService` reads the
+matrix again at review and must price at the rate the customer agreed to. Typed
+prices on a quoted service never rise.
+
+**Every rise is in a history** (`price_changes`, `price_change_items`), shown
+under the card. A permanent rise records each price before and after, so it can
+be **undone** (`admin.pricing.increase.undo`): only the latest permanent rise
+still standing, and only prices still holding the rise's value — a price
+corrected by hand since is left alone and counted.
 
 | Class | Role |
 | --- | --- |
 | `Payment/Services/SettlementService` | resolves rules, computes the split, moves money |
 | `Payment/Models/OrderSettlement` (+ `Line`) | one order's division — `pending\|settled\|cancelled` |
-| `Payment/Models/CommissionRule` | one platform charge, percent or fixed |
+| `Payment/Models/CommissionRule` | a laundry's share — percent only, one active per laundry |
 | `Payment/Services/EarningService` + `Models/DriverEarning` | per-leg driver bonus — `pending\|released\|cancelled` |
 | `Driver/Services/BonusResolver` | which rule a driver is on, what one leg pays |
 | `Driver/Services/MonthlyBonusService` | measures a month, applies gates, picks a tier |
@@ -284,18 +470,25 @@ is the only part the platform and the laundry divide.
 
 At `Confirmed` a `pending` settlement is written (visible, nothing moved). At
 `Completed`, `OrderStateMachine::settleMoney()` releases the driver's bonus and,
-in one transaction, credits the platform its commission and the laundry owner the
-remainder. `Cancelled`/`Returned` cancels both.
+in one transaction, credits the laundry owner its share and the platform the
+remainder (plus the customer's platform fee). `Cancelled`/`Returned` cancels both.
 
 Rules that are easy to break by accident:
 
 - **The commission basis is `cleaningRevenue()`, not `preTaxTotal()`.** Widening
   it re-creates the bug where the platform booked a cut of the delivery fee while
   also paying the driver out of it. See `SettlementService::basisFor()`.
-- **A null rule means opposite things on each side.** No commission rule → falls
-  back to the `Commission_Rate` setting; a laundry that truly pays nothing needs
-  an attached 0% rule. No driver bonus rule → **no bonus at all**. Inactive
-  counts as absent on both.
+- **A missing rule means different things on each side.** No share rule on a
+  laundry → the general **`Laundry_Share_Rate`** setting; with neither, **nothing
+  is divided** — the settlement stays `pending` and `settleFor()` refuses to move
+  money, rather than paying the platform the whole of the laundry's work.
+  `admin.settlement.settle` («سوِّ الآن», `setting.update`) pays it once a share
+  exists. `Commission_Rate` is the *customer's* platform fee and is never read as
+  a laundry's share. No driver bonus rule → **no bonus at all**. Inactive counts
+  as absent on both.
+- **One active share per laundry.** The rule form, the toggle and the laundry
+  dialog all refuse a second; the fixed-amount basis is retired and cannot be
+  switched back on. `CommissionBasis::Fixed` stays only so old rows still read.
 - **Pending recomputes, settled/approved is frozen.** A `pending` settlement and a
   `due` award are rewritten on every recompute; once money moved the row is
   immutable and stores its measurements rather than deriving them.
@@ -306,8 +499,9 @@ Rules that are easy to break by accident:
   A laundry owner holds `laundry.update` by design, so gating its commission on
   it would hand the payer the dial. Same boundary for a driver's bonus rule.
 - `per_order` bonuses pay only on `DeliverToCustomer` (four legs would pay 4×);
-  tiers pay the **highest reached**, never summed; the laundry share is computed
-  by subtraction so halves always reconcile.
+  tiers pay the **highest reached**, never summed; the laundry's share is the
+  figure rounded and the platform's part is taken by subtraction, so the halves
+  always reconcile.
 
 ### Tenant scoping (laundry owners share the panel)
 
@@ -384,6 +578,95 @@ event delivers on **both** channels — `NotificationEvent::channels()` returns
   "device gone", so the dispatcher deleted every handset it notified. `data` is
   now set only when non-empty with string values, and **400 is no longer
   treated as permanent** (only 403/404). Don't reintroduce it.
+
+### Excel export and import
+
+`app/Support/Spreadsheet/` — one engine, one `Sheet` class per screen in
+`Sheets/` (auto-discovered by `SheetRegistry`), one controller
+(`Admin\SpreadsheetController`, `admin.spreadsheet.{export,template,import}`),
+one Blade component (`<x-spreadsheet-actions sheet="city" search="#…" :filters="[…]" />`).
+
+- **Export** is the screen's own scoped query narrowed by the same search term
+  and filters the list sends, gated on `{model}.view`. Written row by row to a
+  temp file (openspout), values never formulas. `query()` must carry no
+  `orderBy` or join — the exporter walks it with `lazyById`.
+- **Import** validates each row by building **the screen's own FormRequest**
+  (`RowValidator`: POST for a new row, PUT with the route id for an edit, full
+  `validateResolved()` cycle) and stores it through the module's own crud
+  service. Row by row — good rows saved, bad rows reported with their sheet row
+  number (the owner's choice). A row with `id` edits that record (looked up
+  through the scoped query), without one it is added; nothing is ever deleted;
+  a blank cell leaves the field alone (translatable columns merge per language).
+  Capped at `Importer::MAX_ROWS` because it runs in the request. Gated on
+  `{model}.create`/`.update`, and refused outright for anybody inside a laundry.
+- Headers are field keys (`name_ar`, `country_id`), not translated labels, so a
+  sheet round-trips. `Column::readOnly()` helpers (a country's name beside its
+  id) are ignored on import.
+- **Money and operations sheets are export-only** — a payment or a settlement
+  typed into a spreadsheet is a ledger entry nobody earned.
+- **Every string is written as a text cell** (`Exporter::row()`, `StringCell`).
+  OpenSpout's own `Row::fromValues()` turns any string starting with `=` into a
+  live formula, and names, notes and a *public* driver application all reach
+  these sheets as typed — a `=WEBSERVICE(…)` name would send the other rows'
+  phone numbers out the moment an operator opened the file. Do not go back to
+  `Row::fromValues()` for data rows.
+
+### The activity log — who changed what
+
+`App\Services\ActivityLogger`, fed by wildcard Eloquent events
+(`eloquent.{created,updated,deleted}: *`) registered in
+`ActivityLogServiceProvider`, plus panel sign-in/sign-out. One `activity_logs`
+row per model written: actor (name and role **copied**, so a deleted account
+still reads), source (`dashboard` / `api` / `site` / `system`), route name, IP,
+and `diff` — each field `{old, new}`. The column is `diff`, not `changes`:
+that name is Eloquent's own `$changes` property.
+
+- **Every screen and endpoint is covered without its own code** — a module
+  added next month is recorded on the day it ships. What it cannot see is a
+  bulk write that loads no model (`Model::where()->update()`, `DB::table()`):
+  those fire no event. Route a change a person makes through a model.
+- **A logging failure never fails the change** — caught, logged as
+  `[activity] not recorded`. The row is written in the change's own
+  transaction, so a rolled-back change leaves no row.
+- **Secrets are recorded as changed, never by value** (`••••`):
+  `config/activity.php` `redacted` substrings (`password`, `token`, `otp`,
+  `secret`, `payload`, `api_key`) and `redacted_setting_keys`
+  (`Google_Maps_Key`). A new credential column or setting goes on that list.
+- **Excluded** models (logs of their own, delivery artefacts, rows derived from
+  a recorded parent) and **ignored** attributes (timestamps, the driver's
+  position, OTP, remember token) are in the same file; an update touching only
+  ignored attributes writes nothing.
+- **It is read by the owner, so it is worded for the owner.**
+  `App\Services\ActivityPresenter` turns a row into a sentence — «تعديل مدينة
+  «القاهرة»» — with who by role name (`activity.roles`), where from by the
+  sidebar screen the route belongs to, and only the fields that mean something
+  (`hidden_fields` / `hidden_suffixes`), each in words: enums by their label
+  (read off the model's casts), ids by the name of what they point at
+  (`activity.references`, scopes left **on**), a password as «changed», a date
+  in the display timezone. What a record *is* comes from `activity.nouns`. The
+  screen, its Excel export and the order history all word a change through it —
+  add a noun there when you add a model, or it reads by its class name.
+- **A record's name is kept in every language** (`subject_label` holds the JSON
+  for a translatable name, `ActivityLog::subjectName()` picks the reader's), so
+  a change made on the English panel does not read in English on the Arabic one.
+- **`order_id` is stamped** on the order's row and on anything carrying
+  `order_id`, which is what `Order/Services/OrderHistory` reads: the order
+  screen's «السجل» merges `order_status_logs` (the statuses, never pruned — the
+  app's tracking screen is built from them) with these rows, and drops the
+  order's `status` from its own diffs so a transition is not shown twice.
+- **The order's history is an allow-list, not a way round other permissions.**
+  Everybody who may see the order — a laundry owner included — sees only its
+  working parts (`OrderHistory::OPEN`: the order, its pieces, legs, photos, price
+  queries, coupon use). A complaint, a driver's pay, a payment, a refund, the
+  settlement, a rating show only with their own screen's `.view` (`GATED`), and
+  any kind of record nobody named only to `activity_log.view`. A laundry never
+  reads a complaint — its body and the platform's `internal_note` were one
+  missing entry away from every laundry owner's screen.
+- The global screen is `admin/activity-log` (`activity_log.view`, system group),
+  read-only, export-only sheet; it leaves out any model on the `excluded` list,
+  including rows written before it joined. Permissions are excluded — the
+  seeder writes them on every deploy. `laundo:prune` keeps `retention_days`
+  (183 — six months, the owner's call).
 
 ### List pages: server render + AJAX search
 
@@ -481,7 +764,39 @@ right for the app-override keys it was built for. Both write
 `{code}_web.json`; the landing screen can only write the `landing.` namespace,
 so it cannot touch the ten keys the apps read.
 
-All four editors hang off `admin/language/shared/controlBut`. They used to hang
+**Validation messages have their own editor** — «تعديل رسائل التحقق»
+(`admin.language.validation`, `language.update`). `lang/{code}/validation.php`
+is PHP, which no screen can safely write, so it stays the shipped default and
+what the screen saves goes to **`storage/app/lang/{code}_validation.json`**
+(`config('app.validation_overrides_path')`; flat keys — `required`,
+`min.string`, `attributes.phone`). In `storage/`, **not** `resources/lang/`:
+it is runtime data, and a tracked directory the server writes into is one
+`git pull` refuses (see the deploy notes). `ValidationOverrideLoader` decorates
+`translation.loader` — registered with `extend()` in
+`AppServiceProvider::register()`, because the translation provider is deferred
+and would replace a plain binding — and lays the file over the `validation`
+group with `lay()`, **not `Arr::undot()`**: everything after `attributes.` is
+one key, because a field name can hold dots (`items.*.quantity`).
+- The rows are **`en`'s keys with the language's own laid over them** — Arabic
+  ships 37 fewer messages than English (`password.*`, `decimal`, …), which
+  answer Arabic users in English, and those are the ones most needing a box.
+- Two guards in `Services/languages/ValidationMessages::save()`, all or
+  nothing: **only keys the shipped files have**, and **every `:placeholder`
+  kept** in a spelling Laravel fills (`:min`, `:Min`, `:MIN` — not `:mIN`),
+  refused keyed by the input's own name (`messages[min.string]`) so the
+  background submit paints it beside the box. `lay()` re-checks the
+  placeholders at load, so an override a later release outgrew is not served.
+- A language with **no `validation.php` of its own** is laid over `en`'s
+  lines, not over nothing: Laravel falls back per message but reads
+  `validation.attributes` as one array, so naming one field would un-name the
+  rest. Blank is a reset; an emptied file is deleted; a rename moves the file,
+  a deletion deletes it. Each save is an activity-log row against the language
+  (`ActivityLogger::recordChanges()`, the wording before and after).
+- The wording now reaches every refusal, so **no validation text may be printed
+  unescaped**. `footer_script`'s toasts were `showErrorToast("{!! $error !!}")`
+  — one quote closed the string — and are `@json()` now; keep them that way.
+
+All the editors hang off `admin/language/shared/controlBut`. They used to hang
 off `x-action-button-lang`, **which nothing renders** — so `admin.language.panel`,
 `.mobile` and `.web` were reachable only by typing the URL. Do not "tidy" that
 partial back to the component: its action trio is ungated and the language
@@ -518,6 +833,22 @@ The **laundry** pages (`/laundry/login`, `/laundry/register`, `/laundry/applied`
 
 Laundries can also **apply for themselves**: `GET /laundry/register` files the laundry `inactive` with `approved_at` null and the owner `inactive`, and `admin/laundry/pending` is where an operator approves or rejects. Approval flips both halves *and every staff account on the laundry* — turning on one of two is a half-open door. **Pending is a null `approved_at`, never a third `status` value**: `status` is the binary the toggle button drives and a dozen queries filter on, and a pending laundry is simply `inactive`, which they already exclude. A laundry the panel creates is stamped approved on the spot, because an operator creating one *is* the approval.
 
+**A laundry's services change only when the platform approves.** The application
+names at least one (`services[]`, filed as `laundry_services` rows on the
+inactive laundry — approving the application approves them). Afterwards the
+laundry's own services screen does **not** write: saving it files one
+`LaundryServiceRequest` per difference (`open`/`close`, one pending per laundry
+and service, a new ask supersedes the old), and `laundry_services` — what
+`LaundryAssigner` reads — stays as it was until somebody approves on
+`admin/laundry-service-request` (`laundry_service_request.*`, badge in the
+sidebar). So a service asked to open brings no orders yet and one asked to close
+keeps bringing them. A refusal requires a note, which the laundry sees beside the
+service; both sides hear in the panel bell (`LaundryServiceRequestNotifier`). An
+operator saving the same screen writes at once and supersedes the laundry's
+pending asks — the edit *is* the approval, as with driver records.
+`LaundryServiceRequestReview::mayReview()` refuses any actor inside a laundry,
+even one somebody granted the permission to.
+
 **Sign-in is gated on `status = active`** (`LoginController::credentials()`). It was not, for the whole life of the panel — `AuthenticatesUsers` matches email and password and nothing else, so any inactive account signed straight in while the API refused it. A pending laundry gets a «still being reviewed» message rather than the generic failure; everyone else gets the generic one, so the form cannot be used to discover which addresses hold accounts.
 
 A locked-out owner is given a new password from the **laundry edit screen** (`owner_password`, blank means unchanged) — `Laundry::owner()` is the relation that finds them. Note it is a plain constrained `hasOne` ordered by id: `latestOfMany()` builds its aggregate subquery *without* the constraints declared before it, so on a laundry that also has staff it picks the newest staff row and the role filter then discards it, returning null.
@@ -547,8 +878,17 @@ user's `*.view` permissions. Four top-level keys:
 - **`groups`** — the dropdowns, each `{order, title, icon, items: [model keys]}`.
   Eight of them: `locations`(1), `catalog`(2), `laundries`(3), `delivery`(4),
   `marketing`(6), `operations`(8), `money`(9), `system`(99).
-- **`singles`** — a `model => order` **map** (`user`:5, `order`:7, `report`:10),
-  interleaved with the groups by that number.
+- **`singles`** — a `model => order` **map** (`user`:5, `report`:10),
+  interleaved with the groups by that number. `order` used to be a single; it is
+  now the first item of an **`order`** group (7) beside `order_today`, the way
+  Marketing holds its screens.
+- **`permissions`** — a key that borrows another model's `.view` permission
+  rather than having its own. `order_today` («طلبات اليوم», `admin.order_today.*`)
+  is the orders list read as a day's work, so it answers to `order.view`; a new
+  permission would need a model to generate it and a grant to every role that
+  can already see orders. `MenuBuilder::visible()` reads it. Its routes stay
+  `admin.order_today.*` on purpose: the sidebar lights an item by route prefix,
+  and under `admin.order.*` «All orders» would light up on this page too.
 - **`icons` / `titles` / `routes`** — three parallel maps keyed by model name,
   one entry each per screen and exactly as many as `groups` + `singles`. A key
   present in two of the three renders with a null in the third, so the three
@@ -834,6 +1174,14 @@ Don't "fix" these blind, but know they're there:
 - `Banner` and `Intro` model **classes are lowercase** (`class banner`, `class intro`) — match existing usage rather than renaming casually.
 - `CachingService::getSystemSettings()` plucks by a `name` column; the `settings` table has `key`. It is currently unreferenced — dead code.
 - Settings are key/value rows with **PascalCase keys** (`App_Name`, `App_Logo`, `About`, `Privacy_Policy`, `Terms`, `Country_Id`, `Currency`, `Cash_Surcharge`, `Commission_Rate`); `About`/`Privacy_Policy`/`Terms` hold translatable JSON.
+- **The settings screen is four tabs on one form** (عام / التواصل / المالية /
+  العمليات), so a save still posts every field and a closed tab is never
+  blanked. `form-validation.js`'s `reveal()` opens the tab holding the first
+  refused field, and the page remembers the open tab across a save. There were
+  no tabs in the panel before this — it is the pattern to copy. A switch
+  (boolean) setting needs the hidden-`0` input before its checkbox, or «off» is
+  never posted and never saved. `Cash_Surcharge` was validated and read at
+  checkout but had no field until 2026-09-28.
 - Those three hold **HTML documents, not strings**, and are printed unescaped.
   They are authored in a TinyMCE box (`setupRichText()` in
   `layouts/footer_script.blade.php`), which is used because TinyMCE 5.10.5 is

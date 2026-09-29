@@ -43,7 +43,7 @@ use Tests\TestCase;
  *
  *   1. the customer's total  = subtotal + delivery − discount + surcharge + tax
  *   2. the settlement basis  = that total, less the tax
- *   3. commission + laundry share = the basis, to the piastre
+ *   3. platform's part + laundry share = the basis, to the piastre
  *   4. every wallet reconciles against its own ledger
  *
  * The second half walks the paths where money must **not** move. A cancelled
@@ -98,13 +98,17 @@ class OrderMoneyCycleTest extends TestCase
         Cache::flush();
     }
 
-    private function charge(string $basis, float $value, string $name): CommissionRule
+    /**
+     * The laundry's share of the washing — what it receives; the platform
+     * keeps the rest.
+     */
+    private function share(float $percent, string $name): CommissionRule
     {
         $rule = CommissionRule::create([
-            'name' => json_encode(['en' => $name, 'ar' => 'رسوم'], JSON_UNESCAPED_UNICODE),
-            'basis' => $basis,
-            'rate' => $basis === 'percent' ? $value : null,
-            'amount' => $basis === 'fixed' ? $value : null,
+            'name' => json_encode(['en' => $name, 'ar' => 'نسبة'], JSON_UNESCAPED_UNICODE),
+            'basis' => 'percent',
+            'rate' => $percent,
+            'amount' => null,
             'status' => 'active',
         ]);
 
@@ -186,9 +190,8 @@ class OrderMoneyCycleTest extends TestCase
         $this->setting('Cash_Surcharge', '10');
         $this->setting('Commission_Rate', '0');
 
-        // Two charges that stack: 10% of the order plus a flat 5.
-        $this->charge('percent', 10, 'Base commission');
-        $this->charge('fixed', 5, 'Platform fee');
+        // The laundry receives 10% of the washing; the platform keeps the rest.
+        $this->share(10, 'Laundry share');
 
         $driver = $this->driverOnBonus();
         $platform = PlatformAccount::user();
@@ -279,15 +282,19 @@ class OrderMoneyCycleTest extends TestCase
             (float) $settlement->basis
         );
 
-        // 3. The two halves add back to the basis, and the lines add back to the
-        //    commission they explain.
+        // 3. The two halves add back to the basis, and the line adds back to the
+        //    laundry's share it explains.
         $this->assertTrue($settlement->reconciles());
         $this->assertTrue($settlement->linesReconcile());
-        $this->assertCount(2, $settlement->lines);
+        $this->assertCount(1, $settlement->lines);
 
-        // The stacked charges came to what they should: 10% of the basis, plus 5.
+        // The laundry was paid 10% of the basis, and the platform kept the rest.
         $this->assertEquals(
-            round((float) $settlement->basis * 0.10 + 5, 2),
+            round((float) $settlement->basis * 0.10, 2),
+            (float) $settlement->laundry_amount
+        );
+        $this->assertEquals(
+            round((float) $settlement->basis - (float) $settlement->laundry_amount, 2),
             (float) $settlement->commission_amount
         );
 
@@ -325,7 +332,7 @@ class OrderMoneyCycleTest extends TestCase
         $this->setting('Tax', '14');
         $this->setting('Cash_Surcharge', '0');
         $this->setting('Commission_Rate', '0');
-        $this->charge('percent', 20, 'Base');
+        $this->share(80, 'Base');
 
         $driver = $this->driverOnBonus();
         $order = $this->completedOrder($driver);
@@ -340,7 +347,7 @@ class OrderMoneyCycleTest extends TestCase
         // Everything the customer paid is accounted for, and nothing invented.
         // Five parts, and only two of them ever reach a wallet:
         //
-        //     total = tax + delivery + cash surcharge + commission + laundry share
+        //     total = tax + delivery + cash surcharge + platform's part + laundry share
         //
         // The tax is held for the state, and the delivery and surcharge are
         // simply not paid out — the platform keeps them because it is the
@@ -470,7 +477,7 @@ class OrderMoneyCycleTest extends TestCase
     public function replaying_the_completion_pays_nobody_twice(): void
     {
         $this->setting('Commission_Rate', '0');
-        $this->charge('percent', 10, 'Base');
+        $this->share(90, 'Base');
 
         $driver = $this->driverOnBonus();
         $order = $this->completedOrder($driver);
@@ -498,10 +505,10 @@ class OrderMoneyCycleTest extends TestCase
     }
 
     #[Test]
-    public function a_zero_commission_still_pays_the_laundry_everything(): void
+    public function a_full_share_pays_the_laundry_everything(): void
     {
         $this->setting('Commission_Rate', '0');
-        $this->charge('percent', 0, 'Free of charge');
+        $this->share(100, 'Everything');
 
         $driver = $this->driverOnBonus();
         $order = $this->completedOrder($driver);
@@ -511,9 +518,8 @@ class OrderMoneyCycleTest extends TestCase
 
         $this->assertEquals(0.0, (float) $settlement->commission_amount);
         $this->assertEquals((float) $settlement->basis, (float) $settlement->laundry_amount);
-        // A charge of nothing writes no line: a settlement row reading «EGP 0.00»
-        // explains nothing.
-        $this->assertCount(0, $settlement->lines);
+        // One line, naming the terms the laundry was paid on.
+        $this->assertCount(1, $settlement->lines);
         $this->assertTrue($settlement->linesReconcile());
 
         $this->assertSame('0.00', app(WalletService::class)->forUser(PlatformAccount::user())->fresh()->balance);

@@ -13,11 +13,18 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Support\Carbon;
 
 /**
- * One charge the platform makes on a laundry's order.
+ * The share of the washing a laundry receives.
  *
- * A laundry may carry several, and **their results add together** — the owner's
- * decision. One number per laundry could only ever express one agreement, and a
- * real contract is «10% of the order, plus 5 EGP a job».
+ * **The laundry's share, not the platform's cut.** For the life of the project
+ * the number here was what the platform took; the client turned it round —
+ * «المغسلة هي اللي هتاخد النسبة» — so 10 now means the laundry is paid 10 in the
+ * hundred and the platform keeps 90. The table kept its name because every
+ * screen, permission and route already carried it; the migration that flipped
+ * the meaning rewrote every stored rate so no laundry's payout moved.
+ *
+ * **One active rule per laundry, percentage only.** They used to stack and
+ * could be a fixed amount per order; both went with the reversal. A fixed rule
+ * still in the table is history — it cannot be switched back on.
  *
  * @property int $id
  * @property CommissionBasis $basis
@@ -96,29 +103,6 @@ class CommissionRule extends Model
     public function isActive(): bool
     {
         return $this->status === 'active';
-    }
-
-    /**
-     * What this rule takes off one order of the given size.
-     *
-     * The basis is the order total before tax — tax is the state's money passing
-     * through, and charging commission on it would have the platform billing a
-     * laundry for the treasury's share.
-     *
-     * Never more than the basis: a flat charge of 20 on an order worth 12 would
-     * otherwise hand the laundry a negative payout, and a bill that makes a
-     * laundry owe money for having done work is a bill that is wrong rather
-     * than harsh.
-     */
-    public function chargeOn(float $basis): float
-    {
-        $basis = max($basis, 0.0);
-
-        $charge = $this->basis->isFixed()
-            ? round((float) $this->amount, 2)
-            : round($basis * $this->clampedRate() / 100, 2);
-
-        return round(min(max($charge, 0.0), $basis), 2);
     }
 
     /**

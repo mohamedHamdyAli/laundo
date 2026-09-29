@@ -50,8 +50,8 @@
             "admin.zone.toggleStatus",
             "admin.zone.update"
         ],
-        "node_count": 199,
-        "cohesion": 0.624,
+        "node_count": 217,
+        "cohesion": 0.572,
         "screens": [
             {
                 "key": "country",
@@ -100,15 +100,19 @@
             "App\\Modules\\ItemCategory\\Models\\ItemCategory",
             "App\\Modules\\Item\\Models\\Item",
             "App\\Modules\\Pricing\\Models\\ItemPrice",
+            "App\\Modules\\Pricing\\Models\\PriceChange",
+            "App\\Modules\\Pricing\\Models\\PriceChangeItem",
             "App\\Modules\\Service\\Models\\Service"
         ],
         "tables": [
             "item_categories",
             "items",
             "item_prices",
+            "price_changes",
+            "price_change_items",
             "services"
         ],
-        "route_count": 29,
+        "route_count": 31,
         "routes": [
             "admin.item.create",
             "admin.item.delete",
@@ -128,6 +132,8 @@
             "admin.item_category.store",
             "admin.item_category.toggleStatus",
             "admin.item_category.update",
+            "admin.pricing.increase",
+            "admin.pricing.increase.undo",
             "admin.pricing.index",
             "admin.pricing.update",
             "admin.service.create",
@@ -140,8 +146,8 @@
             "admin.service.toggleStatus",
             "admin.service.update"
         ],
-        "node_count": 232,
-        "cohesion": 0.606,
+        "node_count": 262,
+        "cohesion": 0.522,
         "screens": [
             {
                 "key": "service",
@@ -197,6 +203,7 @@
         ],
         "models": [
             "App\\Modules\\LaundryService\\Models\\LaundryService",
+            "App\\Modules\\LaundryService\\Models\\LaundryServiceRequest",
             "App\\Modules\\LaundryStaff\\Models\\LaundryStaff",
             "App\\Modules\\LaundryZone\\Models\\LaundryZone",
             "App\\Modules\\Laundry\\Models\\Laundry",
@@ -204,12 +211,13 @@
         ],
         "tables": [
             "laundry_services",
+            "laundry_service_requests",
             "users",
             "laundry_zones",
             "laundries",
             "laundry_slot_capacities"
         ],
-        "route_count": 28,
+        "route_count": 32,
         "routes": [
             "admin.laundry.approve",
             "admin.laundry.commission",
@@ -226,6 +234,10 @@
             "admin.laundry.update",
             "admin.laundry_service.index",
             "admin.laundry_service.update",
+            "admin.laundry_service_request.approve",
+            "admin.laundry_service_request.index",
+            "admin.laundry_service_request.reject",
+            "admin.laundry_service_request.search",
             "admin.laundry_slot_capacity.index",
             "admin.laundry_slot_capacity.update",
             "admin.laundry_staff.create",
@@ -240,8 +252,8 @@
             "admin.laundry_zone.index",
             "admin.laundry_zone.update"
         ],
-        "node_count": 239,
-        "cohesion": 0.51,
+        "node_count": 274,
+        "cohesion": 0.498,
         "screens": [
             {
                 "key": "laundry",
@@ -282,6 +294,14 @@
                 "modules": [
                     "Laundry"
                 ]
+            },
+            {
+                "key": "laundry_service_request",
+                "title": "Service Requests",
+                "route": "admin.laundry_service_request.index",
+                "modules": [
+                    "LaundryService"
+                ]
             }
         ],
         "menu_keys": [
@@ -289,7 +309,8 @@
             "laundry_staff",
             "laundry_service",
             "laundry_zone",
-            "laundry_slot_capacity"
+            "laundry_slot_capacity",
+            "laundry_service_request"
         ]
     },
     {
@@ -319,6 +340,7 @@
             "App\\Modules\\Order\\Models\\OrderRecurrence",
             "App\\Modules\\Order\\Models\\OrderStatusLog",
             "App\\Modules\\Order\\Models\\OrderTask",
+            "App\\Modules\\Order\\Models\\PieceDiscrepancy",
             "App\\Modules\\Order\\Models\\RecurrencePrompt",
             "App\\Modules\\Payment\\Models\\CommissionRule",
             "App\\Modules\\Payment\\Models\\DriverEarning",
@@ -345,6 +367,7 @@
             "order_recurrences",
             "order_status_logs",
             "order_tasks",
+            "piece_discrepancies",
             "recurrence_prompts",
             "commission_rules",
             "driver_earnings",
@@ -355,7 +378,7 @@
             "payments",
             "refunds"
         ],
-        "route_count": 75,
+        "route_count": 79,
         "routes": [
             "admin.commission_rule.create",
             "admin.commission_rule.delete",
@@ -398,8 +421,8 @@
             "admin.driver_bonus_rule.toggleStatus",
             "admin.driver_bonus_rule.update"
         ],
-        "node_count": 971,
-        "cohesion": 0.484,
+        "node_count": 1066,
+        "cohesion": 0.461,
         "screens": [
             {
                 "key": "order_task",
@@ -496,7 +519,7 @@
             "admin.user.update"
         ],
         "node_count": 78,
-        "cohesion": 0.245,
+        "cohesion": 0.218,
         "screens": [
             {
                 "key": "user",
@@ -586,8 +609,8 @@
             "admin.journey_step.edit",
             "admin.journey_step.index"
         ],
-        "node_count": 444,
-        "cohesion": 0.689,
+        "node_count": 455,
+        "cohesion": 0.659,
         "screens": [
             {
                 "key": "offer",
@@ -651,7 +674,7 @@
         "slug": "order",
         "title": "Orders",
         "source": "menu",
-        "evidence": "config/menu.php → singles.order",
+        "evidence": "config/menu.php → groups.order",
         "order": 7,
         "modules": [
             "Order",
@@ -669,6 +692,7 @@
             "App\\Modules\\Order\\Models\\OrderRecurrence",
             "App\\Modules\\Order\\Models\\OrderStatusLog",
             "App\\Modules\\Order\\Models\\OrderTask",
+            "App\\Modules\\Order\\Models\\PieceDiscrepancy",
             "App\\Modules\\Order\\Models\\RecurrencePrompt",
             "App\\Modules\\Payment\\Models\\CommissionRule",
             "App\\Modules\\Payment\\Models\\DriverEarning",
@@ -688,6 +712,7 @@
             "order_recurrences",
             "order_status_logs",
             "order_tasks",
+            "piece_discrepancies",
             "recurrence_prompts",
             "commission_rules",
             "driver_earnings",
@@ -698,7 +723,7 @@
             "payments",
             "refunds"
         ],
-        "route_count": 41,
+        "route_count": 45,
         "routes": [
             "admin.commission_rule.create",
             "admin.commission_rule.delete",
@@ -724,6 +749,7 @@
             "admin.order.delete",
             "admin.order.index",
             "admin.order.invoice",
+            "admin.order.piece_check.resolve",
             "admin.order.query.answer",
             "admin.order.review",
             "admin.order.search",
@@ -732,30 +758,38 @@
             "admin.order.tasks.dispatch",
             "admin.order.tasks.generate",
             "admin.order.tasks.release",
+            "admin.order_today.index",
+            "admin.order_today.search",
             "admin.payment.index",
             "admin.payment.search",
             "admin.refund.approve",
             "admin.refund.index",
-            "admin.refund.reject",
-            "admin.refund.search",
-            "admin.refund.settle",
-            "admin.settlement.index"
+            "admin.refund.reject"
         ],
-        "node_count": 667,
-        "cohesion": 0.429,
+        "node_count": 762,
+        "cohesion": 0.415,
         "screens": [
             {
                 "key": "order",
-                "title": "Orders",
+                "title": "All orders",
                 "route": "admin.order.index",
                 "modules": [
                     "Order",
                     "Payment"
                 ]
+            },
+            {
+                "key": "order_today",
+                "title": "Today's orders",
+                "route": "admin.order_today.index",
+                "modules": [
+                    "Order"
+                ]
             }
         ],
         "menu_keys": [
-            "order"
+            "order",
+            "order_today"
         ],
         "inferred_modules": [
             "Address",
@@ -785,6 +819,7 @@
             "App\\Modules\\Order\\Models\\OrderRecurrence",
             "App\\Modules\\Order\\Models\\OrderStatusLog",
             "App\\Modules\\Order\\Models\\OrderTask",
+            "App\\Modules\\Order\\Models\\PieceDiscrepancy",
             "App\\Modules\\Order\\Models\\RecurrencePrompt",
             "App\\Modules\\TimeSlot\\Models\\TimeSlot"
         ],
@@ -799,10 +834,11 @@
             "order_recurrences",
             "order_status_logs",
             "order_tasks",
+            "piece_discrepancies",
             "recurrence_prompts",
             "time_slots"
         ],
-        "route_count": 28,
+        "route_count": 31,
         "routes": [
             "admin.complaint.index",
             "admin.complaint.note",
@@ -816,6 +852,7 @@
             "admin.order.bulkDelete",
             "admin.order.delete",
             "admin.order.index",
+            "admin.order.piece_check.resolve",
             "admin.order.query.answer",
             "admin.order.review",
             "admin.order.search",
@@ -824,6 +861,8 @@
             "admin.order.tasks.dispatch",
             "admin.order.tasks.generate",
             "admin.order.tasks.release",
+            "admin.order_today.index",
+            "admin.order_today.search",
             "admin.time_slot.create",
             "admin.time_slot.delete",
             "admin.time_slot.edit",
@@ -833,8 +872,8 @@
             "admin.time_slot.toggleStatus",
             "admin.time_slot.update"
         ],
-        "node_count": 482,
-        "cohesion": 0.383,
+        "node_count": 566,
+        "cohesion": 0.378,
         "screens": [
             {
                 "key": "complaint",
@@ -910,7 +949,7 @@
             "wallets",
             "wallet_transactions"
         ],
-        "route_count": 32,
+        "route_count": 33,
         "routes": [
             "admin.commission_rule.create",
             "admin.commission_rule.delete",
@@ -938,6 +977,7 @@
             "admin.refund.settle",
             "admin.settlement.index",
             "admin.settlement.search",
+            "admin.settlement.settle",
             "admin.wallet.adjust",
             "admin.wallet.freeze",
             "admin.wallet.index",
@@ -945,8 +985,8 @@
             "admin.wallet.search",
             "admin.wallet.show"
         ],
-        "node_count": 380,
-        "cohesion": 0.513,
+        "node_count": 389,
+        "cohesion": 0.491,
         "screens": [
             {
                 "key": "payment",
@@ -1031,7 +1071,7 @@
             "admin.report.revenue"
         ],
         "node_count": 99,
-        "cohesion": 0.488,
+        "cohesion": 0.486,
         "screens": [
             {
                 "key": "report",
@@ -1057,7 +1097,7 @@
         ],
         "models": [],
         "tables": [],
-        "route_count": 104,
+        "route_count": 105,
         "routes": [
             "api.v1.addresses.default",
             "api.v1.addresses.destroy",
@@ -1082,6 +1122,7 @@
             "api.v1.complaints.show",
             "api.v1.complaints.store",
             "api.v1.coupons.check",
+            "api.v1.delivery-window",
             "api.v1.devices.forget",
             "api.v1.devices.register",
             "api.v1.driver.availability",
@@ -1097,11 +1138,10 @@
             "api.v1.driver.summary",
             "api.v1.driver.tasks.complete",
             "api.v1.driver.tasks.fail",
-            "api.v1.driver.tasks.failure-reasons",
-            "api.v1.driver.tasks.history"
+            "api.v1.driver.tasks.failure-reasons"
         ],
-        "node_count": 266,
-        "cohesion": 0.407
+        "node_count": 269,
+        "cohesion": 0.392
     },
     {
         "slug": "authentication",
@@ -1127,7 +1167,7 @@
             "password.update"
         ],
         "node_count": 52,
-        "cohesion": 0.364
+        "cohesion": 0.361
     },
     {
         "slug": "database",
@@ -1142,8 +1182,8 @@
         "tables": [],
         "route_count": 0,
         "routes": [],
-        "node_count": 199,
-        "cohesion": 0.433
+        "node_count": 215,
+        "cohesion": 0.448
     },
     {
         "slug": "public_site",
@@ -1159,7 +1199,7 @@
         "route_count": 0,
         "routes": [],
         "node_count": 13,
-        "cohesion": 0.19
+        "cohesion": 0.163
     },
     {
         "slug": "quality",
@@ -1175,8 +1215,8 @@
         "tables": [],
         "route_count": 0,
         "routes": [],
-        "node_count": 1374,
-        "cohesion": 0.381
+        "node_count": 1603,
+        "cohesion": 0.363
     },
     {
         "slug": "routing_and_distance",
@@ -1192,7 +1232,7 @@
         "route_count": 0,
         "routes": [],
         "node_count": 36,
-        "cohesion": 0.252
+        "cohesion": 0.248
     },
     {
         "slug": "system",
@@ -1210,6 +1250,7 @@
             "Roles"
         ],
         "models": [
+            "App\\Models\\ActivityLog",
             "App\\Models\\Language",
             "App\\Models\\Permission",
             "App\\Models\\Role",
@@ -1220,6 +1261,7 @@
             "App\\Modules\\Setting\\Models\\Setting"
         ],
         "tables": [
+            "activity_logs",
             "languages",
             "permissions",
             "roles",
@@ -1229,9 +1271,11 @@
             "notification_preferences",
             "settings"
         ],
-        "route_count": 60,
+        "route_count": 67,
         "routes": [
             "/up",
+            "admin.activity_log.index",
+            "admin.activity_log.search",
             "admin.generalSetting.updateGeneralSetting",
             "admin.generalSetting.updatePrivacyAndTerms",
             "admin.generalSetting.viewGeneralSetting",
@@ -1251,6 +1295,8 @@
             "admin.language.show",
             "admin.language.store",
             "admin.language.update",
+            "admin.language.validation",
+            "admin.language.validation.update",
             "admin.language.web",
             "admin.language.web.update",
             "admin.moderator.create",
@@ -1266,14 +1312,10 @@
             "admin.myNotifications.read",
             "admin.myNotifications.read-all",
             "admin.myNotifications.unread",
-            "admin.notification.compose",
-            "admin.notification.index",
-            "admin.notification.search",
-            "admin.notification.send",
-            "admin.roles.index"
+            "admin.notification.compose"
         ],
-        "node_count": 688,
-        "cohesion": 0.389,
+        "node_count": 1103,
+        "cohesion": 0.444,
         "screens": [
             {
                 "key": "moderator",
@@ -1309,6 +1351,15 @@
                 ]
             },
             {
+                "key": "activity_log",
+                "title": "Activity Log",
+                "route": "admin.activity_log.index",
+                "modules": [
+                    "Platform",
+                    "AdminShell"
+                ]
+            },
+            {
                 "key": "setting",
                 "title": "Settings",
                 "route": "admin.generalSetting.viewGeneralSetting",
@@ -1322,6 +1373,7 @@
             "role",
             "language",
             "notification_log",
+            "activity_log",
             "setting"
         ],
         "inferred_modules": [

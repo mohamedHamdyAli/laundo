@@ -40,17 +40,22 @@
             <div class="col-md-12">
                 <div class="card">
                     <div class="card-body">
-                        <div class="d-flex justify-content-end mb-3 gap-2">
-                            <select id="refundStatusFilter" class="form-select" style="max-width: 220px;">
-                                <option value="pending" @selected($status === 'pending')>{{ __('Under review') }}</option>
-                                <option value="approved" @selected($status === 'approved')>{{ __('Approved') }}</option>
-                                <option value="settled" @selected($status === 'settled')>{{ __('Refunded') }}</option>
-                                <option value="rejected" @selected($status === 'rejected')>{{ __('Rejected') }}</option>
-                                <option value="all" @selected($status === 'all')>{{ __('All') }}</option>
-                            </select>
-                            <div class="input-group" style="max-width: 320px;">
-                                <input type="text" id="refundSearchInput" class="form-control"
-                                    placeholder="{{ __('Search by order or customer...') }}">
+                        <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
+                            {{-- Excel: the export holds what the filter and the search show. --}}
+                            <x-spreadsheet-actions sheet="refund" search="#refundSearchInput"
+                                :filters="['status' => '#refundStatusFilter']" />
+                            <div class="d-flex flex-wrap gap-2 ms-auto">
+                                <select id="refundStatusFilter" class="form-select" style="max-width: 220px;">
+                                    <option value="pending" @selected($status === 'pending')>{{ __('Under review') }}</option>
+                                    <option value="approved" @selected($status === 'approved')>{{ __('Approved') }}</option>
+                                    <option value="settled" @selected($status === 'settled')>{{ __('Refunded') }}</option>
+                                    <option value="rejected" @selected($status === 'rejected')>{{ __('Rejected') }}</option>
+                                    <option value="all" @selected($status === 'all')>{{ __('All') }}</option>
+                                </select>
+                                <div class="input-group" style="max-width: 320px;">
+                                    <input type="text" id="refundSearchInput" class="form-control"
+                                        placeholder="{{ __('Search by order or customer...') }}">
+                                </div>
                             </div>
                         </div>
 

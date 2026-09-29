@@ -38,6 +38,9 @@ class RescheduleService
     public function __construct(
         private readonly DriverDispatcher $dispatcher,
         private readonly SlotCapacity $slots,
+        private readonly Turnaround $turnaround,
+        private readonly TaskGenerator $tasks,
+        private readonly OrderStateMachine $machine,
     ) {}
 
     /**
@@ -105,6 +108,18 @@ class RescheduleService
             throw new RuntimeException('date_in_the_past');
         }
 
+        // A delivery rebooked for sooner than the service can turn the pieces
+        // round is refused — the same as at checkout (Turnaround). Not held to
+        // the booking window: that is measured from the original pickup, and
+        // an order postponed weeks later would have no day left to choose.
+        if (! $collection && $order->service) {
+            $problem = $this->turnaround->problem($order->service, $order->pickup_date, $order->pickupSlot, $date, $slot, withLatest: false);
+
+            if ($problem !== null) {
+                throw new RuntimeException('delivery_'.$problem);
+            }
+        }
+
         return DB::transaction(function () use ($order, $task, $slot, $date, $collection) {
             // The same cap as the wizard. Without it a full window is reachable
             // through the back door — postpone, then rebook into it.
@@ -125,14 +140,141 @@ class RescheduleService
                 'failure_reason' => null,
                 'failure_note' => null,
                 'attempts' => 0,
-                'due_at' => $date->copy()->setTimeFromTimeString($slot->start_time ?? '09:00'),
             ]);
 
+            // Both legs of the end that moved are due by the new window — the
+            // same rule the legs were created with (TaskGenerator::dueFor()), so
+            // the partner leg is not left «late» at the old time.
+            $this->refreshDue($order->refresh(), $collection
+                ? [TaskType::PickupFromCustomer, TaskType::DeliverToLaundry]
+                : [TaskType::CollectFromLaundry, TaskType::DeliverToCustomer]);
+
+            // A pickup moved later can leave the delivery too soon after it for
+            // the service. The owner's rule: the delivery moves with it, to the
+            // first window with room that leaves the service its time.
+            if ($collection) {
+                $this->keepDeliveryAfterPickup($order->refresh());
+            }
+
             // Offered immediately — but for the new time, which is the difference
-            // between this and what used to happen.
-            $this->dispatcher->dispatch($task->refresh());
+            // between this and what used to happen. Left for a person when
+            // automatic assignment is off.
+            $this->dispatcher->automatically($task->refresh());
 
             return $order->fresh();
         });
+    }
+
+    /**
+     * Re-derive the due time of these legs from the order's windows as they now
+     * stand. Finished legs are history and keep theirs.
+     *
+     * @param  array<int, TaskType>  $types
+     */
+    private function refreshDue(Order $order, array $types): void
+    {
+        $order->tasks()
+            ->whereIn('type', array_map(fn (TaskType $type) => $type->value, $types))
+            ->whereNotIn('status', [TaskStatus::Completed->value, TaskStatus::Cancelled->value])
+            ->get()
+            ->each(fn (OrderTask $leg) => $leg->update(['due_at' => $this->tasks->dueFor($order, $leg->type)]));
+    }
+
+    /**
+     * Move the delivery out to the first window the service allows, when the
+     * pickup has just moved past it. Nothing when it still fits.
+     *
+     * @throws RuntimeException when no window in the next weeks has room — the
+     *                          whole reschedule is then refused, rather than
+     *                          leaving a delivery nobody can make
+     */
+    private function keepDeliveryAfterPickup(Order $order): void
+    {
+        $service = $order->service;
+
+        if (! $service || ! $order->delivery_date) {
+            return;
+        }
+
+        // Only when the pickup has pushed past it. A delivery the customer booked
+        // further out stays where they put it — the booking window bounds new
+        // bookings, it is not a reason to pull an agreed one in.
+        $problem = $this->turnaround->problem($service, $order->pickup_date, $order->pickupSlot, $order->delivery_date, $order->deliverySlot, withLatest: false);
+
+        if ($problem !== Turnaround::TOO_EARLY) {
+            return;
+        }
+
+        // The first window with room — and if somebody takes its last place
+        // between the search and the claim, the one after it. A refusal here
+        // would name the pickup window the customer chose, which was fine.
+        $first = null;
+
+        foreach ($this->turnaround->deliveryWindows($service, $order->pickup_date, $order->pickupSlot) as $window) {
+            try {
+                $this->slots->claim($window['slot']->id, $window['date']);
+            } catch (RuntimeException $e) {
+                if ($e->getMessage() === 'slot_full') {
+                    continue;
+                }
+
+                throw $e;
+            }
+
+            $first = $window;
+
+            break;
+        }
+
+        if ($first === null) {
+            throw new RuntimeException('no_delivery_after_pickup');
+        }
+
+        $order->forceFill([
+            'delivery_slot_id' => $first['slot']->id,
+            'delivery_date' => $first['date']->toDateString(),
+        ])->save();
+
+        $order->refresh();
+
+        // The two legs that bring the pieces back are due by the new window. A
+        // driver already holding one planned it for the old day: it is handed
+        // back and offered again for the new one — through the automatic path,
+        // so with drivers assigned by hand it waits for a person.
+        $legs = [TaskType::CollectFromLaundry, TaskType::DeliverToCustomer];
+
+        $released = $order->tasks()
+            ->whereIn('type', array_map(fn (TaskType $type) => $type->value, $legs))
+            ->where('status', TaskStatus::Assigned->value)
+            ->get()
+            ->each(fn (OrderTask $leg) => $this->dispatcher->release($leg))
+            ->count();
+
+        $this->refreshDue($order, $legs);
+
+        $waiting = $order->tasks()
+            ->whereIn('type', array_map(fn (TaskType $type) => $type->value, $legs))
+            ->whereNull('driver_id')
+            ->where('status', TaskStatus::Pending->value)
+            ->get()
+            ->each(fn (OrderTask $leg) => $this->dispatcher->automatically($leg->setRelation('order', $order), announce: false))
+            ->filter(fn (OrderTask $leg) => $leg->fresh()?->driver_id === null)
+            ->count();
+
+        // Legs somebody had assigned by hand are back on the board: with drivers
+        // assigned by hand, say so rather than leave them looking covered.
+        if ($released > 0 && $waiting > 0 && ! $this->dispatcher->assignsAutomatically() && $order->laundry_id !== null) {
+            $this->dispatcher->announceWaiting($order, $waiting);
+        }
+
+        $this->machine->note(
+            $order,
+            __('Delivery moved to :date, :window — the service needs :time after the pickup.', [
+                'date' => $first['date']->toDateString(),
+                'window' => $first['slot']->label(),
+                'time' => $this->turnaround->describe($service),
+            ]),
+            'customer',
+        );
     }
 }

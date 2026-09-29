@@ -15,7 +15,8 @@
             <div class="col-md-12">
                 <div class="card">
                     <div class="card-body">
-                        <div class="d-flex justify-content-end mb-3">
+                        <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
+                            <x-spreadsheet-actions sheet="item_category" search="#itemcategorySearchInput" />
                             <div class="input-group" style="max-width: 350px;">
                                 <input type="text" id="itemcategorySearchInput" class="form-control"
                                     placeholder="{{ __('Search...') }}">

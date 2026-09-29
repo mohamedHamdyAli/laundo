@@ -56,6 +56,12 @@ class LaundryApplicationRequest extends FormRequest
             'owner_phone' => ['required', 'string', 'max:191', 'regex:'.phoneRegex(), 'unique:users,phone'],
             'owner_password' => ['required', 'string', 'min:8', 'confirmed'],
 
+            // What it will do. At least one — a laundry offering nothing can
+            // never be handed an order — and only services the platform runs.
+            // Approving the application approves these with it.
+            'services' => ['required', 'array', 'min:1'],
+            'services.*' => ['integer', Rule::exists('services', 'id')->where(fn ($q) => $q->where('status', 'active'))],
+
             'accepts_terms' => ['required', 'accepted'],
         ];
     }
@@ -88,6 +94,8 @@ class LaundryApplicationRequest extends FormRequest
             'lat.required' => __('Please pick your laundry on the map.'),
             'lng.required' => __('Please pick your laundry on the map.'),
             'accepts_terms.accepted' => __('Please agree to the terms to continue.'),
+            'services.required' => __('Choose at least one service you will offer.'),
+            'services.min' => __('Choose at least one service you will offer.'),
         ];
     }
 }

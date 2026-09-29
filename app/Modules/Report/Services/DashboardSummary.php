@@ -219,6 +219,17 @@ class DashboardSummary
                 ...$this->legsHint('Dispatch found nobody eligible', $snapshot['tasks_queued']),
             ],
             [
+                'key' => 'piece_mismatch',
+                'label' => 'The piece count does not match',
+                'count' => $this->openPieceChecks(),
+                'route' => 'admin.order.index',
+                'params' => ['status' => OrderRepository::PIECE_MISMATCH],
+                // Pieces may be missing. Nothing else on this list means that.
+                'severity' => 'critical',
+                // A driver at a handover, or the laundry at its review.
+                'hint' => 'Two counts of the same pieces disagreed',
+            ],
+            [
                 'key' => 'awaiting_customer',
                 'label' => 'Waiting on a customer to confirm a price',
                 'count' => count($snapshot['orders_awaiting_customer']),
@@ -369,11 +380,21 @@ class DashboardSummary
      * These four are the laundry's actual working day. Everything else on their
      * page is context; this is the list.
      *
-     * @return array<int, array{key: string, label: string, count: int, hint: string, severity: string}>
+     * @return array<int, array{key: string, label: string, count: int, hint: string, severity: string, route?: string, params?: array<string, string>}>
      */
     public function laundryQueue(): array
     {
         $items = [
+            [
+                // Theirs to know about, the platform's to close.
+                'key' => 'piece_mismatch',
+                'label' => 'The piece count does not match',
+                'count' => $this->openPieceChecks(),
+                'route' => 'admin.order.index',
+                'params' => ['status' => OrderRepository::PIECE_MISMATCH],
+                'severity' => 'critical',
+                'hint' => 'Two counts of your pieces disagreed — the platform is looking into it',
+            ],
             [
                 'key' => 'to_count',
                 'label' => 'Waiting to be counted',
@@ -470,6 +491,15 @@ class DashboardSummary
             ->orderBy('created_at')
             ->limit($limit)
             ->get();
+    }
+
+    /**
+     * Orders with a piece count a driver disagreed on and nobody has reviewed —
+     * the same number as the sidebar badge and the filter it links to.
+     */
+    private function openPieceChecks(): int
+    {
+        return Order::withOpenPieceCheck()->count();
     }
 
     /**

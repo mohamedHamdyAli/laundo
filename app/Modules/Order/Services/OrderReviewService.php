@@ -2,13 +2,16 @@
 
 namespace App\Modules\Order\Services;
 
+use App\Modules\Coupon\Models\Coupon;
 use App\Modules\Notification\Services\OrderNotifier;
+use App\Modules\Notification\Services\PieceCountNotifier;
 use App\Modules\Order\Enums\OrderStatus;
 use App\Modules\Order\Models\Order;
 use App\Modules\Order\Models\OrderItem;
 use App\Modules\Order\Models\OrderPriceQuery;
 use App\Modules\Pricing\Models\ItemPrice;
 use App\Modules\Pricing\Services\PlatformFee;
+use App\Modules\Pricing\Services\PriceIncrease;
 use App\Modules\Service\Models\Service;
 use App\Modules\User\Models\User;
 use Illuminate\Support\Facades\DB;
@@ -43,6 +46,9 @@ class OrderReviewService
         private readonly TaskGenerator $tasks,
         private readonly OrderPricing $pricing,
         private readonly PlatformFee $platformFee,
+        private readonly PriceIncrease $priceIncrease,
+        private readonly PieceCheck $pieceCheck,
+        private readonly PieceCountNotifier $pieceNotifier,
     ) {}
 
     /**
@@ -69,7 +75,7 @@ class OrderReviewService
         // somebody already agreed to — and an order placed before the fee
         // existed carries null, which prices exactly as it always did.
         [$priced, $count, $subtotal, $unpriced, $baseSubtotal] = $this->price(
-            $service, $lines, (float) $order->platform_fee_rate
+            $service, $lines, (float) $order->platform_fee_rate, (float) $order->price_increase_rate
         );
 
         if ($unpriced !== []) {
@@ -82,7 +88,9 @@ class OrderReviewService
             throw new RuntimeException('empty_review');
         }
 
-        return DB::transaction(function () use ($order, $priced, $count, $subtotal, $baseSubtotal, $note, $actor) {
+        $discrepancy = null;
+
+        $reviewed = DB::transaction(function () use ($order, $priced, $count, $subtotal, $baseSubtotal, $note, $actor, &$discrepancy) {
             // A re-review replaces the previous final set rather than adding to
             // it. The estimated rows, and therefore the original agreement,
             // survive both.
@@ -101,10 +109,35 @@ class OrderReviewService
             // `cash_surcharge`**, so a cash customer's handling fee was charged
             // on the estimate and silently dropped the moment their order was
             // reviewed. Two places that add an order up is one too many.
+            // …except a discount limited to some pieces: it comes off those pieces
+            // only, so counted fewer of them it shrinks with them. Capped, never
+            // grown — the customer agreed to the figure on the estimate — and
+            // read from the limit copied onto the order at placement, not from
+            // the coupon as somebody may have edited it since.
+            $discount = (float) $order->discount_total;
+
+            if (is_array($order->discount_scope)) {
+                // Against the figure agreed at placement, so a second review that
+                // finds the pieces after all gives the discount back.
+                $discount = (float) ($order->discount_scope['agreed'] ?? $discount);
+                $eligible = Coupon::eligibleFor(
+                    (string) ($order->discount_scope['type'] ?? ''),
+                    (array) ($order->discount_scope['ids'] ?? []),
+                    $order->service_id,
+                    $priced,
+                    $subtotal,
+                ) + ($order->discount_covers_delivery ? (float) $order->delivery_fee : 0.0);
+
+                $rate = $order->discount_scope['rate'] ?? null;
+                $worth = $rate !== null ? round($eligible * (float) $rate / 100, 2) : $eligible;
+
+                $discount = round(min($discount, $worth), 2);
+            }
+
             $money = $this->pricing->compose(
                 $subtotal,
                 (float) $order->delivery_fee,
-                (float) $order->discount_total,
+                $discount,
                 (float) $order->cash_surcharge,
                 $order->taxRate(),
             );
@@ -112,6 +145,7 @@ class OrderReviewService
             $order->update([
                 'final_items_count' => $count,
                 'final_subtotal' => $subtotal,
+                'discount_total' => $discount,
                 // Recomputed, not carried over: the pieces changed, so the fee
                 // inside their prices changed with them. The *rate* is the one
                 // thing not re-read — it is whatever was stamped at placement,
@@ -133,8 +167,21 @@ class OrderReviewService
                 $note ?: __('Pieces reviewed and priced.')
             );
 
+            // The laundry's count against what was handed to it: a piece that
+            // went missing between the van and the counting table is named
+            // here, not three steps later.
+            $discrepancy = $this->pieceCheck->afterReview($order, $count, $actor);
+
             return $order->refresh();
         });
+
+        // After the commit, as at a handover: a review rolled back announces
+        // nothing.
+        if ($discrepancy) {
+            $this->pieceNotifier->mismatch($discrepancy);
+        }
+
+        return $reviewed;
     }
 
     /**
@@ -286,7 +333,7 @@ class OrderReviewService
      * @param  array<int, array{item_id: int, qty: int, unit_price?: float|string|null}>  $lines
      * @return array{0: array<int, array<string, mixed>>, 1: int, 2: float, 3: array<int, int>, 4: float}
      */
-    private function price(Service $service, array $lines, float $feeRate): array
+    private function price(Service $service, array $lines, float $feeRate, float $increaseRate = 0.0): array
     {
         // «تنظيف جاف» carries no catalogue prices by design — the cost of
         // cleaning a suit depends on the fabric and the stain, which is the whole
@@ -337,7 +384,11 @@ class OrderReviewService
 
                 continue;
             } else {
-                $base = (float) $prices[$itemId];
+                // At the catalogue-wide rise stamped on the order, not today's:
+                // a period rise that ended while the bag sat in the laundry
+                // must not drop the bill below what the customer agreed to. A
+                // typed price above is the laundry's own figure and never rises.
+                $base = $this->priceIncrease->onBaseAt((float) $prices[$itemId], $increaseRate);
             }
 
             // The platform's fee is folded in here too, and on **both** branches.

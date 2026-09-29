@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Modules\City\Models\City;
 use App\Modules\Laundry\Requests\LaundryApplicationRequest;
 use App\Modules\Laundry\Services\LaundryApplicationService;
+use App\Modules\Service\Models\Service;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\View\View;
 
@@ -30,6 +31,8 @@ class LaundryApplicationController extends Controller
             // city with no laundries and no zones takes an application that can
             // never be given an order.
             'cities' => City::where('status', 'active')->orderBy('id')->get(),
+            // What the platform runs, for the applicant to say which it will do.
+            'services' => Service::where('status', 'active')->orderBy('sort_order')->get(['id', 'name']),
         ]);
     }
 

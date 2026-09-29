@@ -23,7 +23,11 @@ class CountryRequest extends FormRequest
      */
     public function rules(): array
     {
-        $countryId = $this->route('country');
+        // The route is `/country/update/{id}`. This read `route('country')`,
+        // which is always null, so the unique rule below never ignored the row
+        // being edited and saving a country without changing its code failed
+        // with «already taken».
+        $countryId = $this->route('id');
 
         if ($this->isMethod('PUT') || $this->isMethod('PATCH')) {
             return [

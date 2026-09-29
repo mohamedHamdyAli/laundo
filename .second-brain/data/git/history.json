@@ -1,8 +1,26 @@
 {
     "available": true,
-    "head": "035dbff09ea5e5ad1f0c1b1becaa63bf0ee21a88",
-    "commits_scanned": 108,
+    "head": "57c360c1243a0ad06211dcd75b577460ccf6b6c4",
+    "commits_scanned": 111,
     "recent": [
+        {
+            "sha": "57c360c1",
+            "date": "2026-09-23",
+            "subject": "chore: commit the Second Brain and the working tree with it",
+            "files": 2
+        },
+        {
+            "sha": "789445c9",
+            "date": "2026-09-23",
+            "subject": "fix: an override file overrides something, or holds nothing",
+            "files": 2
+        },
+        {
+            "sha": "d4551b30",
+            "date": "2026-09-23",
+            "subject": "feat: the dashboard's validation answers in Arabic too",
+            "files": 1
+        },
         {
             "sha": "035dbff0",
             "date": "2026-09-23",
@@ -74,24 +92,6 @@
             "date": "2026-09-21",
             "subject": "update",
             "files": 0
-        },
-        {
-            "sha": "9896f108",
-            "date": "2026-09-21",
-            "subject": "fix: store notification links as paths, not as whichever host built them",
-            "files": 6
-        },
-        {
-            "sha": "54b34c23",
-            "date": "2026-09-21",
-            "subject": "feat: nothing a driver says about their own papers takes effect until somebody looks",
-            "files": 26
-        },
-        {
-            "sha": "f72392fa",
-            "date": "2026-09-21",
-            "subject": "feat: let the driver keep their own papers, and stop handing both apps the same words",
-            "files": 20
         }
     ],
     "hottest_files": {

@@ -79,6 +79,14 @@
             <span class="status-pill tone-{{ $order->status->tone() }}">
                 {{ __($order->status->label()) }}
             </span>
+            {{-- A driver counted a different number and nobody has reviewed it.
+                 Beside the status, because it is about what state the pieces
+                 are really in. --}}
+            @if ($order->piece_check_open ?? false)
+                <span class="status-pill tone-bad">
+                    <i class="fa fa-exclamation-triangle"></i> {{ __('Piece count differs') }}
+                </span>
+            @endif
             {{-- The pickup date belongs with the status: together they say what
                  is happening and when. --}}
             <span class="row-sub">

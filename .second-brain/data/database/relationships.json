@@ -581,9 +581,102 @@
             "column": "reviewed_by",
             "to": "users",
             "migration": "database/migrations/2026_09_21_140000_create_driver_record_submissions_table.php"
+        },
+        {
+            "from": "laundry_service_requests",
+            "column": "laundry_id",
+            "to": "laundries",
+            "migration": "database/migrations/2026_09_27_130000_create_laundry_service_requests_table.php"
+        },
+        {
+            "from": "laundry_service_requests",
+            "column": "service_id",
+            "to": "services",
+            "migration": "database/migrations/2026_09_27_130000_create_laundry_service_requests_table.php"
+        },
+        {
+            "from": "laundry_service_requests",
+            "column": "requested_by",
+            "to": "users",
+            "migration": "database/migrations/2026_09_27_130000_create_laundry_service_requests_table.php"
+        },
+        {
+            "from": "laundry_service_requests",
+            "column": "reviewed_by",
+            "to": "users",
+            "migration": "database/migrations/2026_09_27_130000_create_laundry_service_requests_table.php"
+        },
+        {
+            "from": "price_changes",
+            "column": "applied_by",
+            "to": "users",
+            "migration": "database/migrations/2026_09_27_140000_create_price_changes_tables.php"
+        },
+        {
+            "from": "price_changes",
+            "column": "undone_by",
+            "to": "users",
+            "migration": "database/migrations/2026_09_27_140000_create_price_changes_tables.php"
+        },
+        {
+            "from": "price_change_items",
+            "column": "price_change_id",
+            "to": "price_changes",
+            "migration": "database/migrations/2026_09_27_140000_create_price_changes_tables.php"
+        },
+        {
+            "from": "price_change_items",
+            "column": "item_id",
+            "to": "items",
+            "migration": "database/migrations/2026_09_27_140000_create_price_changes_tables.php"
+        },
+        {
+            "from": "price_change_items",
+            "column": "service_id",
+            "to": "services",
+            "migration": "database/migrations/2026_09_27_140000_create_price_changes_tables.php"
+        },
+        {
+            "from": "activity_logs",
+            "column": "user_id",
+            "to": "users",
+            "migration": "database/migrations/2026_09_27_150000_create_activity_logs_table.php"
+        },
+        {
+            "from": "piece_discrepancies",
+            "column": "order_id",
+            "to": "orders",
+            "migration": "database/migrations/2026_09_28_120000_create_piece_discrepancies_table.php"
+        },
+        {
+            "from": "piece_discrepancies",
+            "column": "order_task_id",
+            "to": "order_tasks",
+            "migration": "database/migrations/2026_09_28_120000_create_piece_discrepancies_table.php"
+        },
+        {
+            "from": "piece_discrepancies",
+            "column": "counted_by",
+            "to": "users",
+            "migration": "database/migrations/2026_09_28_120000_create_piece_discrepancies_table.php"
+        },
+        {
+            "from": "piece_discrepancies",
+            "column": "resolved_by",
+            "to": "users",
+            "migration": "database/migrations/2026_09_28_120000_create_piece_discrepancies_table.php"
         }
     ],
     "eloquent": [
+        {
+            "from": "App\\Models\\ActivityLog",
+            "to": "App\\Modules\\User\\Models\\User",
+            "type": "belongs_to",
+            "method": "user",
+            "foreign_key": null,
+            "from_table": "activity_logs",
+            "to_table": "users"
+        },
         {
             "from": "App\\Models\\Role",
             "to": "App\\Models\\Permission",
@@ -891,6 +984,33 @@
             "to_table": "services"
         },
         {
+            "from": "App\\Modules\\LaundryService\\Models\\LaundryServiceRequest",
+            "to": "App\\Modules\\Laundry\\Models\\Laundry",
+            "type": "belongs_to",
+            "method": "laundry",
+            "foreign_key": "laundry_id",
+            "from_table": "laundry_service_requests",
+            "to_table": "laundries"
+        },
+        {
+            "from": "App\\Modules\\LaundryService\\Models\\LaundryServiceRequest",
+            "to": "App\\Modules\\Service\\Models\\Service",
+            "type": "belongs_to",
+            "method": "service",
+            "foreign_key": "service_id",
+            "from_table": "laundry_service_requests",
+            "to_table": "services"
+        },
+        {
+            "from": "App\\Modules\\LaundryService\\Models\\LaundryServiceRequest",
+            "to": "App\\Modules\\User\\Models\\User",
+            "type": "belongs_to",
+            "method": "reviewer",
+            "foreign_key": null,
+            "from_table": "laundry_service_requests",
+            "to_table": "users"
+        },
+        {
             "from": "App\\Modules\\LaundryZone\\Models\\LaundryZone",
             "to": "App\\Modules\\Zone\\Models\\Zone",
             "type": "belongs_to",
@@ -1078,6 +1198,15 @@
             "foreign_key": "order_id",
             "from_table": "orders",
             "to_table": "order_tasks"
+        },
+        {
+            "from": "App\\Modules\\Order\\Models\\Order",
+            "to": "App\\Modules\\Order\\Models\\PieceDiscrepancy",
+            "type": "has_many",
+            "method": "pieceDiscrepancies",
+            "foreign_key": "order_id",
+            "from_table": "orders",
+            "to_table": "piece_discrepancies"
         },
         {
             "from": "App\\Modules\\Order\\Models\\Order",
@@ -1278,6 +1407,42 @@
             "to_table": "orders"
         },
         {
+            "from": "App\\Modules\\Order\\Models\\OrderTask",
+            "to": "App\\Modules\\Order\\Models\\PieceDiscrepancy",
+            "type": "has_one",
+            "method": "discrepancy",
+            "foreign_key": "order_task_id",
+            "from_table": "order_tasks",
+            "to_table": "piece_discrepancies"
+        },
+        {
+            "from": "App\\Modules\\Order\\Models\\PieceDiscrepancy",
+            "to": "App\\Modules\\Order\\Models\\Order",
+            "type": "belongs_to",
+            "method": "order",
+            "foreign_key": "order_id",
+            "from_table": "piece_discrepancies",
+            "to_table": "orders"
+        },
+        {
+            "from": "App\\Modules\\Order\\Models\\PieceDiscrepancy",
+            "to": "App\\Modules\\Order\\Models\\OrderTask",
+            "type": "belongs_to",
+            "method": "task",
+            "foreign_key": "order_task_id",
+            "from_table": "piece_discrepancies",
+            "to_table": "order_tasks"
+        },
+        {
+            "from": "App\\Modules\\Order\\Models\\PieceDiscrepancy",
+            "to": "App\\Modules\\User\\Models\\User",
+            "type": "belongs_to",
+            "method": "resolver",
+            "foreign_key": null,
+            "from_table": "piece_discrepancies",
+            "to_table": "users"
+        },
+        {
             "from": "App\\Modules\\Order\\Models\\RecurrencePrompt",
             "to": "App\\Modules\\Order\\Models\\Order",
             "type": "belongs_to",
@@ -1447,6 +1612,24 @@
             "foreign_key": "service_id",
             "from_table": "item_prices",
             "to_table": "services"
+        },
+        {
+            "from": "App\\Modules\\Pricing\\Models\\PriceChange",
+            "to": "App\\Modules\\Pricing\\Models\\PriceChangeItem",
+            "type": "has_many",
+            "method": "items",
+            "foreign_key": null,
+            "from_table": "price_changes",
+            "to_table": "price_change_items"
+        },
+        {
+            "from": "App\\Modules\\Pricing\\Models\\PriceChange",
+            "to": "App\\Modules\\User\\Models\\User",
+            "type": "belongs_to",
+            "method": "undoneBy",
+            "foreign_key": null,
+            "from_table": "price_changes",
+            "to_table": "users"
         },
         {
             "from": "App\\Modules\\Service\\Models\\Service",

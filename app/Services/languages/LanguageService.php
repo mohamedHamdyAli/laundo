@@ -5,6 +5,7 @@ namespace App\Services\languages;
 use App\Helpers\LanguageHelper;
 use App\Models\Language;
 use App\Services\CachingService;
+use App\Support\Translation\ValidationOverrideLoader;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 use Illuminate\Validation\ValidationException;
@@ -88,9 +89,11 @@ class LanguageService
     public function updateRecord($request)
     {
         $filteredRequest = array_filter($request, fn ($value) => ! is_null($value));
+        $previousCode = null;
 
-        $language = DB::transaction(function () use ($filteredRequest) {
+        $language = DB::transaction(function () use ($filteredRequest, &$previousCode) {
             $existingLanguage = Language::findOrFail($filteredRequest['id']);
+            $previousCode = (string) $existingLanguage->code;
 
             // Before the write: the guard reads the row's current state, and
             // after `update()` that state is gone.
@@ -120,6 +123,8 @@ class LanguageService
 
             return $existingLanguage;
         });
+
+        $this->moveValidationMessages($previousCode, (string) $language->code);
 
         clearLanguageCache($language->code);
         rebuildLanguageCache();
@@ -269,6 +274,27 @@ class LanguageService
         });
     }
 
+    /**
+     * A language whose code changed keeps the validation messages edited for
+     * it. The file is named by the code, so left where it was they would stop
+     * answering — and would answer instead for the next language given the old
+     * code. A file already under the new code is not overwritten.
+     */
+    private function moveValidationMessages(?string $from, string $to): void
+    {
+        if ($from === null || $from === $to
+            || ! ValidationOverrideLoader::isLocale($from) || ! ValidationOverrideLoader::isLocale($to)) {
+            return;
+        }
+
+        $source = ValidationOverrideLoader::pathFor($from);
+        $target = ValidationOverrideLoader::pathFor($to);
+
+        if (is_file($source) && ! is_file($target)) {
+            File::move($source, $target);
+        }
+    }
+
     public function deleteRecord($id)
     {
         $languageCode = null;
@@ -288,6 +314,12 @@ class LanguageService
                 base_path("resources/lang/{$languageCode}_web.json"),
                 base_path("resources/lang/{$languageCode}.json"),
             ];
+
+            // Its edited validation messages, which live with the rest of the
+            // runtime data rather than beside the shipped files.
+            if (ValidationOverrideLoader::isLocale((string) $languageCode)) {
+                $files[] = ValidationOverrideLoader::pathFor($languageCode);
+            }
 
             foreach ($files as $file) {
                 if (File::exists($file)) {

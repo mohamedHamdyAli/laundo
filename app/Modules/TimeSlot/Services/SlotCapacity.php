@@ -60,6 +60,37 @@ class SlotCapacity
     }
 
     /**
+     * The same count as booked(), for every day of a range at once — two grouped
+     * queries instead of two per day, for a caller searching weeks ahead for a
+     * free window.
+     *
+     * @return array<string, int> keyed by Y-m-d; a day with nothing booked is absent
+     */
+    public function bookedBetween(TimeSlot $slot, CarbonInterface|string $from, CarbonInterface|string $to): array
+    {
+        $first = Carbon::parse($from)->toDateString();
+        $last = Carbon::parse($to)->toDateString();
+        $counts = [];
+
+        foreach (['pickup', 'delivery'] as $leg) {
+            Order::withoutGlobalScopes()
+                ->where("{$leg}_slot_id", $slot->id)
+                ->whereDate("{$leg}_date", '>=', $first)
+                ->whereDate("{$leg}_date", '<=', $last)
+                ->whereNotIn('status', self::RELEASED)
+                ->selectRaw("DATE({$leg}_date) as day, COUNT(*) as visits")
+                ->groupByRaw("DATE({$leg}_date)")
+                ->toBase()
+                ->get()
+                ->each(function ($row) use (&$counts) {
+                    $counts[(string) $row->day] = ($counts[(string) $row->day] ?? 0) + (int) $row->visits;
+                });
+        }
+
+        return $counts;
+    }
+
+    /**
      * Places left, or null when the window is uncapped.
      *
      * Null and 0 are different answers and the app must draw them differently:

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
+use App\Modules\Order\Services\Turnaround;
 use App\Modules\Pricing\Services\pricingService;
 use App\Modules\Service\Repositories\ServiceRepository;
 use Illuminate\Http\JsonResponse;
@@ -34,6 +35,13 @@ class CatalogController extends Controller
             'pricing_mode' => $service->pricing_mode,
             'duration' => $service->durationLabel(),
             'duration_unit' => $service->duration_unit,
+            // How soon after the pickup the pieces can come back — the middle of
+            // the range above, in the service's own unit: `{value: 3, unit: day}`
+            // is «from the third day after the pickup day, any window», and
+            // `{value: 36, unit: hour}` is «36 hours after the pickup window
+            // ends». Null when the service has no turnaround. The order is
+            // refused on the same rule; see Turnaround.
+            'delivery_after' => app(Turnaround::class)->after($service),
         ])->values();
 
         return successReturnData($services);

@@ -6,9 +6,11 @@ use App\Modules\Address\Models\Address;
 use App\Modules\Coupon\Models\Coupon;
 use App\Modules\Coupon\Services\CouponService;
 use App\Modules\Laundry\Models\Laundry;
+use App\Modules\Notification\Services\AssignmentNotifier;
 use App\Modules\Notification\Services\OrderNotifier;
 use App\Modules\Offer\Models\Offer;
 use App\Modules\Order\Enums\OrderStatus;
+use App\Modules\Order\Enums\TaskStatus;
 use App\Modules\Order\Models\Order;
 use App\Modules\Order\Models\OrderItem;
 use App\Modules\Service\Models\Service;
@@ -39,6 +41,10 @@ class OrderService
         private readonly TaskGenerator $tasks,
         private readonly CouponService $coupons,
         private readonly SlotCapacity $slots,
+        private readonly AutoAssign $autoAssign,
+        private readonly AssignmentNotifier $assignments,
+        private readonly DriverDispatcher $dispatcher,
+        private readonly Turnaround $turnaround,
     ) {}
 
     /**
@@ -93,7 +99,12 @@ class OrderService
         return $quote + [
             'coupon_code' => $coupon?->code,
             'coupon_error' => $couponError,
-            'laundry' => $laundry ? ['id' => $laundry->id, 'name' => getLocalizedValue($laundry, 'name')] : null,
+            // None when the laundry is chosen by hand: the order will not be given
+            // this one, and naming it would promise the customer a laundry. The
+            // fee above is still measured from it, so the price is a real one.
+            'laundry' => $laundry && $this->autoAssign->laundries()
+                ? ['id' => $laundry->id, 'name' => getLocalizedValue($laundry, 'name')]
+                : null,
             'service' => ['id' => $service->id, 'pricing_mode' => $service->pricing_mode],
         ];
     }
@@ -141,6 +152,22 @@ class OrderService
             $data['payment_method'] ?? null,
         );
 
+        // The delivery leaves the service its time and is inside the booking
+        // window. OrderRequest refuses it first, with the same words; this is
+        // the backstop for any caller that places an order without it.
+        $pickupSlot = isset($data['pickup_slot_id']) ? TimeSlot::find($data['pickup_slot_id']) : null;
+        $problem = $this->turnaround->problem(
+            $service,
+            $data['pickup_date'] ?? null,
+            $pickupSlot,
+            $data['delivery_date'] ?? null,
+            isset($data['delivery_slot_id']) ? TimeSlot::find($data['delivery_slot_id']) : null,
+        );
+
+        if ($problem !== null) {
+            throw new RuntimeException('delivery_date:'.$this->turnaround->message($service, $problem, $data['pickup_date'] ?? null, $pickupSlot));
+        }
+
         // A basket containing a piece this service is not priced for would
         // otherwise be silently short-charged.
         if ($quote['unpriced'] !== []) {
@@ -162,8 +189,10 @@ class OrderService
             $order = Order::create([
                 'code' => Order::generateCode(),
                 'user_id' => $customer->id,
-                // Null when nothing covers the zone. Accepted by decision.
-                'laundry_id' => $laundry?->id,
+                // Null when nothing covers the zone — accepted by decision — or
+                // when automatic assignment is off and a person chooses (the fee
+                // is still the one measured from this laundry; see AutoAssign).
+                'laundry_id' => $this->autoAssign->laundries() ? $laundry?->id : null,
                 'service_id' => $service->id,
                 'status' => OrderStatus::AwaitingPickup,
                 'pickup_address_id' => $pickup->id,
@@ -189,6 +218,27 @@ class OrderService
                 // the customer is shown the reason rather than a false figure.
                 'delivery_fee' => $quote['delivery_fee'] ?? 0,
                 'discount_total' => $quote['discount'],
+                // Who pays for that discount, copied off the coupon now and never
+                // re-read — the same rule as the tax rate. A coupon edited next
+                // week must not restate who funded an order placed today.
+                'discount_laundry_share' => $coupon && $quote['discount'] > 0 ? $coupon->laundryShareOfDiscount() : null,
+                // Whether any of it came off the delivery fee — the coupon's own
+                // rule, not its raw box: a code on some pieces never touches the
+                // journey, whatever the box says, and the settlement splits on this.
+                'discount_covers_delivery' => $coupon !== null && $quote['discount'] > 0 && $coupon->coversDeliveryFee(),
+                // What the coupon was limited to, copied like the rest: the
+                // review caps the discount at the pieces it applies to, and a
+                // coupon re-scoped next week must not move an order placed today.
+                'discount_scope' => $coupon !== null && $quote['discount'] > 0 && $coupon->isScoped()
+                    ? [
+                        'type' => $coupon->scope_type,
+                        'ids' => $coupon->scopeIds(),
+                        'agreed' => $quote['discount'],
+                        // A percentage is re-worked on the pieces the review counts;
+                        // a fixed amount is only capped at them.
+                        'rate' => $coupon->type === Coupon::PERCENTAGE ? (float) $coupon->value : null,
+                    ]
+                    : null,
                 'cash_surcharge' => $quote['cash_surcharge'],
                 // Already inside `estimated_subtotal`; recorded separately so the
                 // settlement can take it back out. Same copy-at-placement rule as
@@ -196,6 +246,10 @@ class OrderService
                 // how an order placed today is divided.
                 'platform_fee' => $quote['platform_fee'],
                 'platform_fee_rate' => $quote['platform_fee_rate'],
+                // The catalogue-wide rise in force now. Stamped for the same
+                // reason: the review reads the matrix again, and a period rise
+                // that ended in between must not move an agreed price.
+                'price_increase_rate' => $quote['price_increase_rate'] > 0 ? $quote['price_increase_rate'] : null,
                 // Copied onto the order for the same reason the unit prices are:
                 // tax is charged at the rate in force on the day, and a state
                 // that raises it next quarter must not restate this invoice.
@@ -244,6 +298,13 @@ class OrderService
             // left to notice by refreshing its own panel.
             if ($order->laundry_id) {
                 $this->announceLaundryAssignment($order);
+            } elseif (! $this->autoAssign->laundries() && $laundry !== null) {
+                // Waiting on a person by choice: tell the people who choose. Only
+                // when there is somebody to choose — an area no laundry covers is
+                // the home page's «no laundry» queue, as it always was, and a bell
+                // saying «choose one» over an empty picker is an order nobody can
+                // follow.
+                $this->assignments->laundryWaiting($order);
             }
 
             return $order;
@@ -288,6 +349,7 @@ class OrderService
         }
 
         return DB::transaction(function () use ($order, $laundryId, $actor) {
+            $hadNoLaundry = $order->laundry_id === null;
             $order->laundry_id = $laundryId;
             $order->save();
 
@@ -342,6 +404,23 @@ class OrderService
             $this->machine->note($order, "Assigned to laundry #{$laundryId}.", 'admin', $actor);
 
             $order->refresh();
+
+            // The legs held back while there was nowhere to take the pieces are
+            // offered now — through the automatic path, so with drivers set to
+            // be assigned by hand they keep waiting for a person.
+            $waiting = $order->tasks()
+                ->whereNull('driver_id')
+                ->where('status', TaskStatus::Pending->value)
+                ->get()
+                ->each(fn ($task) => $this->dispatcher->automatically($task->setRelation('order', $order), announce: false))
+                ->filter(fn ($task) => $task->fresh()?->driver_id === null);
+
+            // With drivers assigned by hand, this is the moment the legs become
+            // somebody's to assign — the placement said nothing while there was
+            // no laundry.
+            if ($hadNoLaundry && ! $this->dispatcher->assignsAutomatically() && $waiting->isNotEmpty()) {
+                $this->dispatcher->announceWaiting($order, $waiting->count());
+            }
 
             // The laundry that has just been given the work. Reassignment
             // included: the new one has to know, and the old one has already
@@ -650,6 +729,10 @@ class OrderService
                 $customer,
                 $base['subtotal'],
                 (float) ($base['delivery_fee'] ?? 0),
+                // The basket itself, for a coupon limited to a service, some
+                // categories or some pieces — it comes off only those.
+                $service->id,
+                $base['lines'],
             );
         } catch (RuntimeException $e) {
             return [null, 0.0, $this->coupons->message($e->getMessage())];

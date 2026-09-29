@@ -6,6 +6,7 @@ use App\Modules\Driver\Models\Driver;
 use App\Modules\Notification\Data\NotificationMessage;
 use App\Modules\Notification\Enums\NotificationEvent;
 use App\Modules\Notification\Services\NotificationDispatcher;
+use App\Modules\Notification\Services\PieceCountNotifier;
 use App\Modules\Order\Enums\OrderStatus;
 use App\Modules\Order\Enums\TaskFailureReason;
 use App\Modules\Order\Enums\TaskStatus;
@@ -13,6 +14,7 @@ use App\Modules\Order\Enums\TaskType;
 use App\Modules\Order\Models\Order;
 use App\Modules\Order\Models\OrderMedia;
 use App\Modules\Order\Models\OrderTask;
+use App\Modules\Order\Repositories\OrderRepository;
 use App\Modules\Payment\Services\EarningService;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
@@ -37,6 +39,9 @@ class TaskService
         private readonly OrderStateMachine $machine,
         private readonly DriverDispatcher $dispatcher,
         private readonly EarningService $earnings,
+        private readonly PieceCheck $pieceCheck,
+        private readonly PieceCountNotifier $pieceNotifier,
+        private readonly OrderRepository $orders,
     ) {}
 
     /**
@@ -120,7 +125,19 @@ class TaskService
             throw new RuntimeException('piece_count_required');
         }
 
-        return DB::transaction(function () use ($task, $driver, $data, $photos, $signature, $type) {
+        $raised = [];
+
+        $completed = DB::transaction(function () use ($task, $driver, $data, $photos, $signature, $type, &$raised) {
+            // Re-checked under a row lock: the same «تأكيد» sent twice at once —
+            // a double tap, a retry on a slow line — would otherwise pass the
+            // check above twice and complete the leg twice, its earnings and
+            // its piece count with it.
+            $locked = $this->orders->lockTask($task->id);
+
+            if (! $locked || $locked->status !== TaskStatus::Started) {
+                throw new RuntimeException('task_not_started');
+            }
+
             $update = [
                 'status' => TaskStatus::Completed,
                 'completed_at' => now(),
@@ -129,6 +146,13 @@ class TaskService
 
             if ($type->countsPieces()) {
                 $update['piece_count'] = (int) $data['piece_count'];
+
+                // What the count is measured against, stamped now: the
+                // laundry's review can change the order's count later, and the
+                // question is what this handover was held to at the time.
+                [$expected, $source] = $this->pieceCheck->expectedFor($task);
+                $update['expected_piece_count'] = $expected;
+                $update['expected_piece_source'] = $source;
             }
 
             if ($type === TaskType::DeliverToLaundry) {
@@ -147,6 +171,15 @@ class TaskService
             }
 
             $task->update($update);
+
+            // In the handover's own transaction: a leg recorded without the
+            // disagreement it raised would be a mismatch nobody is ever asked
+            // to look at.
+            if ($type->countsPieces()) {
+                $raised = $this->pieceCheck->afterHandover(
+                    $task, $update['piece_count'], $update['expected_piece_count'], $update['expected_piece_source'],
+                );
+            }
 
             foreach ($photos as $photo) {
                 $path = uploadOrUpdateImage($photo, 'images/orders/tasks');
@@ -179,6 +212,14 @@ class TaskService
 
             return $task->refresh();
         });
+
+        // After the commit: a handover rolled back must not have announced a
+        // mismatch in a count that was never recorded.
+        foreach ($raised as $discrepancy) {
+            $this->pieceNotifier->mismatch($discrepancy);
+        }
+
+        return $completed;
     }
 
     /**
@@ -262,9 +303,10 @@ class TaskService
                 return $task->refresh();
             }
 
-            // Back to the queue, and offered straight away to anyone else eligible.
+            // Back to the queue, and offered straight away to anyone else
+            // eligible — or left for a person, with automatic assignment off.
             $this->dispatcher->release($task);
-            $this->dispatcher->dispatch($task->refresh());
+            $this->dispatcher->automatically($task->refresh());
 
             $this->machine->note(
                 $task->order,

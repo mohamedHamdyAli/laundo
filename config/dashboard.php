@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\ActivityLog;
 use App\Models\Language;
 use App\Models\Role;
 use App\Modules\Banner\Models\banner;
@@ -20,6 +21,7 @@ use App\Modules\JourneyStep\Models\JourneyStep;
 use App\Modules\Laundry\Models\Laundry;
 use App\Modules\Laundry\Models\LaundrySlotCapacity;
 use App\Modules\LaundryService\Models\LaundryService;
+use App\Modules\LaundryService\Models\LaundryServiceRequest;
 use App\Modules\LaundryStaff\Models\LaundryStaff;
 use App\Modules\LaundryZone\Models\LaundryZone;
 use App\Modules\Moderator\Models\Moderator;
@@ -62,6 +64,11 @@ return [
         Item::class,
         ItemPrice::class,
         LaundryService::class,
+        // A laundry asking to open or close a service; reviewing it is its own
+        // permission so it can be handed to somebody short of super admin.
+        LaundryServiceRequest::class,
+        // Who changed what; `activity_log.view` is the only permission it uses.
+        ActivityLog::class,
         Zone::class,
         TimeSlot::class,
         LaundryZone::class,

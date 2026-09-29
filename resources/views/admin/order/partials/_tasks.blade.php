@@ -107,7 +107,24 @@
                                     @endif
                                 </td>
                                 <td>{{ $task->due_at ? humanDate($task->due_at) : '—' }}</td>
-                                <td>{{ $task->piece_count ?? '—' }}</td>
+                                <td>
+                                    @php $discrepancy = $row->pieceDiscrepancies->firstWhere('order_task_id', $task->id); @endphp
+                                    @if ($discrepancy)
+                                        {{-- Red for good, reviewed or not: the count really did
+                                             differ. What was found is under the banner above. --}}
+                                        <span class="text-danger fw-bold">{{ $task->piece_count }}</span>
+                                        <small class="d-block text-danger">
+                                            {{ __('expected :count', ['count' => $discrepancy->expected]) }}
+                                        </small>
+                                        @unless ($discrepancy->open)
+                                            <small class="d-block text-muted">
+                                                {{ __('Reviewed') }}@if ($discrepancy->confirmed_count !== null) · {{ __('really :count', ['count' => $discrepancy->confirmed_count]) }}@endif
+                                            </small>
+                                        @endunless
+                                    @else
+                                        {{ $task->piece_count ?? '—' }}
+                                    @endif
+                                </td>
                                 <td class="text-end">
                                     @if (canDo('order_task.update') && ! $task->status->isFinished())
                                         @php $remainingLegs = $row->tasks->reject(fn ($t) => $t->status->isFinished())->count(); @endphp

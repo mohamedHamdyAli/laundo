@@ -12,6 +12,7 @@ use App\Modules\Order\Models\OrderTask;
 use App\Modules\Order\Repositories\OrderRepository;
 use App\Modules\Pricing\Models\ItemPrice;
 use App\Modules\Pricing\Services\PlatformFee;
+use App\Modules\Pricing\Services\PriceIncrease;
 use App\Modules\User\Models\User;
 use App\Services\Routing\Coordinate;
 use App\Services\Routing\RouteLeg;
@@ -68,12 +69,17 @@ class orderCrudService
             'needsLaundry' => OrderRepository::NEEDS_LAUNDRY,
             'needsRescue' => OrderRepository::NEEDS_RESCUE,
             'needsPriceAnswer' => OrderRepository::NEEDS_PRICE_ANSWER,
+            'pieceMismatch' => OrderRepository::PIECE_MISMATCH,
             'counts' => $this->orders->counts(),
         ];
 
         if ($id) {
             $row = $this->orders->findById($id);
             $data['row'] = $row;
+
+            // Everything that happened to it and who did it: its statuses and
+            // every recorded change to it and to what hangs off it.
+            $data['history'] = app(OrderHistory::class)->for($row);
 
             // Only offered while the order can still be moved, and only for the
             // laundries that actually cover it — an operator should not be able to
@@ -525,7 +531,7 @@ class orderCrudService
                 // base.
                 'price' => $quoted
                     ? $this->typedPriceFor($order, $item->id, $final)
-                    : (float) $prices[$item->id],
+                    : app(PriceIncrease::class)->onBaseAt((float) $prices[$item->id], (float) $order->price_increase_rate),
                 // What the customer will actually be charged for this piece —
                 // the same figure at the same stamped rate the save will use.
                 // The screen used to total the *base* prices while the save
@@ -534,7 +540,7 @@ class orderCrudService
                 'customer_price' => $quoted
                     ? null
                     : app(PlatformFee::class)->onUnitAt(
-                        (float) $prices[$item->id],
+                        app(PriceIncrease::class)->onBaseAt((float) $prices[$item->id], (float) $order->price_increase_rate),
                         (float) $order->platform_fee_rate
                     ),
                 'estimated_qty' => $estimatedQty,

@@ -8,11 +8,16 @@ use App\Modules\City\Models\City;
 use App\Modules\Laundry\Services\LaundryLoad;
 use App\Modules\Order\Enums\SlotOverflowBehavior;
 use App\Modules\Order\Services\LaundryAssigner;
+use App\Modules\Order\Services\Turnaround;
+use App\Modules\Service\Models\Service;
+use App\Modules\Service\Repositories\ServiceRepository;
+use App\Modules\TimeSlot\Models\TimeSlot;
 use App\Modules\TimeSlot\Repositories\TimeSlotRepository;
 use App\Modules\TimeSlot\Services\SlotCapacity;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
+use Illuminate\Validation\Rule;
 
 /**
  * Geography and scheduling lookups for the address form and the wizard's
@@ -25,6 +30,8 @@ class GeoController extends Controller
         private readonly SlotCapacity $capacity,
         private readonly LaundryAssigner $assigner,
         private readonly LaundryLoad $load,
+        private readonly Turnaround $turnaround,
+        private readonly ServiceRepository $services,
     ) {}
 
     /**
@@ -60,6 +67,11 @@ class GeoController extends Controller
                 $zones[] = [
                     'id' => $zone->id,
                     'name' => getLocalizedValue($zone, 'name'),
+                    // The drawing, [[lat, lng], …] — null for a zone not drawn
+                    // yet, which the customer still picks from the list. For a
+                    // drawn one the server decides from the pin, so the app can
+                    // show the area and say «outside coverage» before saving.
+                    'boundary' => $zone->polygon()?->points(),
                 ];
             }
 
@@ -89,6 +101,14 @@ class GeoController extends Controller
      *
      * Both new parameters are optional and a client that sends neither gets
      * exactly the response it got before.
+     *
+     * **Too early for the service.** Asked for delivery windows with the
+     * `service_id` and the pickup the customer chose (`pickup_date`, and
+     * `pickup_slot_id` for a service measured in hours), each window says
+     * `too_early` when it would bring the pieces back before the service's
+     * turnaround — the same rule the order itself is refused on (Turnaround).
+     * Null when that cannot be asked. A client that sends none of these gets
+     * what it got before.
      */
     public function timeSlots(Request $request): JsonResponse
     {
@@ -107,6 +127,9 @@ class GeoController extends Controller
              */
             'address_id' => ['nullable', 'integer', 'exists:addresses,id'],
             'service_id' => ['nullable', 'integer', 'exists:services,id'],
+            // The pickup the delivery has to leave time after.
+            'pickup_date' => ['nullable', 'date'],
+            'pickup_slot_id' => ['nullable', 'integer', 'exists:time_slots,id'],
         ]);
 
         $type = $data['type'] ?? null;
@@ -128,7 +151,14 @@ class GeoController extends Controller
         // have taken.
         $hideWhenFull = SlotOverflowBehavior::current() === SlotOverflowBehavior::HideSlot;
 
-        $payload = $slots->map(function ($slot) use ($date, $covering, $hideWhenFull) {
+        // The earliest a delivery may start, when the service and the pickup
+        // were both sent.
+        $service = isset($data['service_id'], $data['pickup_date']) ? Service::find($data['service_id']) : null;
+        $pickupSlot = isset($data['pickup_slot_id']) ? TimeSlot::find($data['pickup_slot_id']) : null;
+        $earliest = $service ? $this->turnaround->earliestDelivery($service, $data['pickup_date'], $pickupSlot) : null;
+        $latest = $service ? $this->turnaround->latestDelivery($service, $data['pickup_date'], $pickupSlot) : null;
+
+        $payload = $slots->map(function ($slot) use ($date, $covering, $hideWhenFull, $earliest, $latest) {
             $row = [
                 'id' => $slot->id,
                 'start_time' => substr((string) $slot->start_time, 0, 5),
@@ -167,10 +197,61 @@ class GeoController extends Controller
                 'remaining' => $remaining,
                 'is_full' => $platformFull || ($hideWhenFull && $laundriesFull),
                 'laundries_full' => $covering === [] || ! $slot->appliesTo('pickup') ? null : $laundriesFull,
-            ];
+            ] + ($slot->appliesTo('delivery')
+                // Before the service's turnaround is up, or past the booking
+                // window (`Delivery_Window_Days` after the earliest day). Null
+                // when the service and pickup were not sent, or for a window
+                // nothing is delivered in.
+                ? $this->turnaround->windowFlags($earliest, $latest, $date, $slot)
+                : ['too_early' => null, 'too_late' => null]);
         })->values();
 
         return successReturnData($payload);
+    }
+
+    /**
+     * «ميعاد التسليم لازم يبقى من يوم كذا ليوم كذا» — everything the app needs to
+     * hold the delivery to the service's time, and to fix it in place.
+     *
+     * Asked with the service and the pickup the customer chose. Answers:
+     *
+     *   - `turnaround` — the service's time, `{value, unit, label}`, or null;
+     *   - `earliest` / `latest` — the range the delivery must fall in: from the
+     *     day the service is done to `Delivery_Window_Days` after it;
+     *   - `chosen` — when a delivery was sent too: whether it fits, why not
+     *     (`too_early` / `too_late`), and the message to show — the same words
+     *     the order is refused with;
+     *   - `suggestion` — the first delivery window with room inside the range,
+     *     so the app's bottom sheet can open with it already picked;
+     *   - `windows` — every delivery window on `windows_date` (the day asked
+     *     about, or the suggestion's day), each saying whether it can be booked.
+     *
+     * The app calls it as the customer picks the pickup, when they pick a
+     * delivery, and again inside the bottom sheet as they change the day — so a
+     * conflict is fixed on the spot and the chosen time goes straight into the
+     * order request, without sending the customer back a step.
+     */
+    public function deliveryWindow(Request $request): JsonResponse
+    {
+        // Windows by their own end: a pickup-only window is not a delivery the
+        // order would accept, so it is not one this could call valid.
+        $data = $request->validate([
+            'service_id' => ['required', 'integer', Rule::exists('services', 'id')->where('status', 'active')],
+            'pickup_date' => ['required', 'date', 'after_or_equal:today'],
+            'pickup_slot_id' => ['nullable', 'integer', Rule::exists('time_slots', 'id')
+                ->where('status', 'active')->whereIn('applies_to', ['pickup', 'both'])],
+            'delivery_date' => ['nullable', 'date'],
+            'delivery_slot_id' => ['nullable', 'integer', Rule::exists('time_slots', 'id')
+                ->where('status', 'active')->whereIn('applies_to', ['delivery', 'both'])],
+        ]);
+
+        return successReturnData($this->turnaround->window(
+            $this->services->findById($data['service_id']),
+            (string) $data['pickup_date'],
+            isset($data['pickup_slot_id']) ? $this->timeSlotRepository->findById($data['pickup_slot_id']) : null,
+            $data['delivery_date'] ?? null,
+            isset($data['delivery_slot_id']) ? $this->timeSlotRepository->findById($data['delivery_slot_id']) : null,
+        ));
     }
 
     /**

@@ -8,7 +8,15 @@
                     {{ getLocalizedValueDashboard($zone, 'name') }}
                 @endif
             </span>
-            <span class="row-sub">#{{ $zone->id }}</span>
+            <span class="row-sub">
+                #{{ $zone->id }} ·
+                {{-- Which zones still go by the customer's pick from a list. --}}
+                @if ($zone->isDrawn())
+                    <span class="text-success">{{ __('Drawn on the map') }}</span>
+                @else
+                    <span class="text-muted">{{ __('Not drawn yet') }}</span>
+                @endif
+            </span>
         </div>
         <div>
             <span class="row-main">{{ $zone->city ? getLocalizedValueDashboard($zone->city, 'name') : '-' }}</span>

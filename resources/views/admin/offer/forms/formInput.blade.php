@@ -109,7 +109,7 @@
                     @foreach ($coupons as $coupon)
                         <option value="{{ $coupon->id }}"
                             {{ (string) old('coupon_id', $row->coupon_id ?? '') === (string) $coupon->id ? 'selected' : '' }}>
-                            {{ $coupon->code }} — {{ $coupon->discountLabel() }}
+                            {{ $coupon->code }} — {{ $coupon->discountLabel() }}@if (isset($couponScopes[$coupon->id])) · {{ implode('، ', $couponScopes[$coupon->id]['names']) }}@endif
                         </option>
                     @endforeach
                 </select>
@@ -119,6 +119,7 @@
                      expires or runs out. --}}
                 <div class="form-text">
                     {{ __('The discount badge is taken from this coupon, and hidden while the coupon is not usable.') }}
+                    {{ __('A coupon limited to some pieces or services limits the offer the same way — set that on the coupon.') }}
                 </div>
             </div>
         </div>

@@ -12,6 +12,7 @@ use App\Modules\Order\Enums\OrderStatus;
 use App\Modules\Order\Enums\TaskType;
 use App\Modules\Pricing\Models\ItemPrice;
 use App\Modules\Pricing\Services\PlatformFee;
+use App\Modules\Pricing\Services\PriceIncrease;
 use App\Modules\Service\Models\Service;
 use App\Modules\TimeSlot\Models\TimeSlot;
 use App\Modules\Zone\Models\Zone;
@@ -48,7 +49,10 @@ use Illuminate\Support\Facades\Cache;
  */
 class LandingContentService
 {
-    public function __construct(private readonly PlatformFee $platformFee = new PlatformFee) {}
+    public function __construct(
+        private readonly PlatformFee $platformFee = new PlatformFee,
+        private readonly PriceIncrease $priceIncrease = new PriceIncrease,
+    ) {}
 
     /**
      * Keyed per locale because the money and the translated names are baked in.
@@ -79,7 +83,23 @@ class LandingContentService
     {
         $stamp = @filemtime(__FILE__) ?: 0;
 
-        return self::CACHE_KEY.'_'.$locale.'_'.$stamp;
+        // And the two rates every advertised price is built from. A catalogue
+        // rise switched on — or ending by its date — must reach the front page
+        // at once, not an hour later, or the page advertises a price the
+        // checkout then contradicts.
+        $rates = $this->platformFee->rate().'-'.$this->priceIncrease->rate();
+
+        // And the list itself: a permanent rise, or undoing one, rewrites
+        // `item_prices` without touching either rate, and left the front page
+        // advertising the old prices for the rest of the hour.
+        // The sum as well as the latest time: two changes inside one second share
+        // a timestamp, and a rise then its undo would otherwise read as nothing.
+        $version = ItemPrice::query()->toBase()
+            ->selectRaw('COUNT(*) as n, SUM(price) as total, MAX(updated_at) as touched')
+            ->first();
+        $list = md5(json_encode($version) ?: '');
+
+        return self::CACHE_KEY.'_'.$locale.'_'.$stamp.'_'.$rates.'_'.$list;
     }
 
     /**
@@ -254,7 +274,7 @@ class LandingContentService
                     'prices' => $services
                         ->mapWithKeys(fn (Service $service) => [
                             $service->id => isset($itemPrices[$service->id])
-                                ? moneyFormat($this->platformFee->onUnit((float) $itemPrices[$service->id]))
+                                ? moneyFormat($this->platformFee->onUnit($this->priceIncrease->onBase((float) $itemPrices[$service->id])))
                                 : null,
                         ])
                         ->all(),
@@ -351,7 +371,7 @@ class LandingContentService
 
         foreach ($items as $index => $item) {
             $quantity = $quantities[$index] ?? 1;
-            $unit = $this->platformFee->onUnit((float) $pricesByItem[$item->id]);
+            $unit = $this->platformFee->onUnit($this->priceIncrease->onBase((float) $pricesByItem[$item->id]));
 
             $lines[] = [
                 'name' => getLocalizedValue($item, 'name'),

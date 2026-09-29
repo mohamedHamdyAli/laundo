@@ -19,7 +19,9 @@
                             {{ __('Driver accounts are created here. There is no self-registration in the driver app.') }}
                         </p>
 
-                        <div class="d-flex justify-content-end mb-3">
+                        <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
+                            {{-- Excel: the export holds what the search shows. --}}
+                            <x-spreadsheet-actions sheet="driver" search="#driverSearchInput" />
                             <div class="input-group" style="max-width: 350px;">
                                 <input type="text" id="driverSearchInput" class="form-control"
                                     placeholder="{{ __('Search by name or phone...') }}">

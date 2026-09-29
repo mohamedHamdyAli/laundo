@@ -16,12 +16,13 @@
                 <div class="card">
                     <div class="card-body">
                         <p class="text-muted small">
-                            {{ __('A laundry can carry several charges and they add together — each one appears as its own line on the settlement.') }}
-                            <strong>{{ __('A laundry with nothing attached follows the general rate in Settings.') }}</strong>
-                            {{ __('A laundry that pays nothing needs a charge of 0, not an empty list.') }}
+                            {{ __('Each rule is the share of the washing a laundry receives; the rest stays with the platform. A laundry is on one share at a time.') }}
+                            <strong>{{ __('A laundry on no share follows the general share in Settings.') }}</strong>
                         </p>
 
-                        <div class="d-flex justify-content-end mb-3">
+                        <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
+                            {{-- Excel: the export holds what the search shows. --}}
+                            <x-spreadsheet-actions sheet="commission_rule" search="#commissionSearchInput" />
                             <div class="input-group" style="max-width: 350px;">
                                 <input type="text" id="commissionSearchInput" class="form-control"
                                     placeholder="{{ __('Search commissions...') }}">
@@ -37,7 +38,7 @@
 
                             <div class="stack-head" style="--stack-cols: {{ $stackCols }}">
                                 <span>{{ __('Name') }}</span>
-                                <span>{{ __('Takes') }}</span>
+                                <span>{{ __('Laundry share') }}</span>
                                 <span>{{ __('Laundries') }}</span>
                                 <span>{{ __('Status') }}</span>
                                 <span class="text-end">{{ __('Action') }}</span>

@@ -16,7 +16,9 @@
                 <div class="card">
 
                     <div class="card-body">
-                        <div class="d-flex justify-content-end mb-3">
+                        <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
+                            {{-- Excel: the export holds what the search shows. --}}
+                            <x-spreadsheet-actions sheet="city" search="#citySearchInput" />
                             <div class="input-group" style="max-width: 350px;">
                                 <input type="text" id="citySearchInput" name="citySearch"
                                     value="{{ request('citySearch') }}" class="form-control" placeholder="Search City...">

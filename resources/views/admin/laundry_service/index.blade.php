@@ -45,6 +45,15 @@
                                 </form>
                             @endunless
 
+                            @if ($asksForApproval)
+                                {{-- Said before the switches, not after the save: a
+                                     laundry that expects its tick to apply at once
+                                     would read «waiting» as a bug. --}}
+                                <div class="alert alert-info small">
+                                    {{ __('Opening or closing a service is sent to the platform for approval. Until it is approved nothing changes: a service you asked to open brings no orders yet, and one you asked to close keeps bringing them.') }}
+                                </div>
+                            @endif
+
                             <form action="{{ route('admin.laundry_service.update') }}" method="POST">
                                 @csrf
                                 @method('PUT')
@@ -59,19 +68,40 @@
 
                                 <div class="row g-3">
                                     @foreach ($services as $service)
+                                        @php
+                                            $offered = isset($enabled[$service->id]);
+                                            $pending = $requestState['pending'][$service->id] ?? null;
+                                            $refused = $requestState['rejected'][$service->id] ?? null;
+                                            // The switch shows what the laundry asked for, so a
+                                            // save that only filed a request does not redraw the
+                                            // old position and look as if it failed.
+                                            $wanted = $pending ? $pending === 'open' : $offered;
+                                        @endphp
                                         <div class="col-lg-6" data-filter-item>
                                             <div class="card h-100 p-3">
                                                 <div class="form-check form-switch">
                                                     <input class="form-check-input" type="checkbox" role="switch"
                                                         id="svc-{{ $service->id }}" name="services[]"
                                                         value="{{ $service->id }}"
-                                                        {{ isset($enabled[$service->id]) ? 'checked' : '' }}
+                                                        {{ $wanted ? 'checked' : '' }}
                                                         {{ canDo('laundry_service.update') ? '' : 'disabled' }}>
                                                     <label class="form-check-label fw-semibold"
                                                         for="svc-{{ $service->id }}">
                                                         {{ getLocalizedValueDashboard($service, 'name') }}
                                                     </label>
                                                 </div>
+
+                                                @if ($pending)
+                                                    <span class="status-pill tone-warn d-inline-block mt-2">
+                                                        {{ $pending === 'open' ? __('Opening — waiting for approval') : __('Closing — waiting for approval') }}
+                                                    </span>
+                                                @elseif ($refused !== null)
+                                                    {{-- The note travels with the refusal: told only «rejected», a
+                                                         laundry sends the same request again. --}}
+                                                    <div class="small text-danger mt-2">
+                                                        {{ __('Your last request was not approved:') }} {{ $refused }}
+                                                    </div>
+                                                @endif
 
                                                 <div class="text-muted small mt-1">
                                                     @if ($service->pricing_mode === 'quote')
@@ -91,7 +121,9 @@
                                 </div>
 
                                 @if (canDo('laundry_service.update'))
-                                    <button type="submit" class="btn btn-primary mt-4">{{ __('Save') }}</button>
+                                    <button type="submit" class="btn btn-primary mt-4">
+                                        {{ $asksForApproval ? __('Send for approval') : __('Save') }}
+                                    </button>
                                 @endif
                             </form>
                         @endif

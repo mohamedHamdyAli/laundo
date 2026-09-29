@@ -301,7 +301,7 @@
                     "offers"
                   ]
                 },
-                "description": "«عروض متميزة» — the featured-offers carousel on the home screen. Public.\n\nIts own endpoint rather than a filter on /banners: the home screen has two carousels with different card shapes, and one flat list left the app guessing which banner belonged to which.\n\nReturns only live offers — active, and inside `starts_at`/`ends_at` when either is set.\n\n`badge` is the «20% off» chip, derived from the linked coupon and null when there is no coupon **or** when the coupon would be refused (inactive, out of date, or exhausted) — so a card never advertises a discount the checkout would reject.\n\n`action` is `{type, value}` or null, the same shape /banners returns. `ends_at` is ISO 8601 or null, for «ينتهي بعد …».",
+                "description": "«عروض متميزة» — the featured-offers carousel on the home screen. Public.\n\nIts own endpoint rather than a filter on /banners: the home screen has two carousels with different card shapes, and one flat list left the app guessing which banner belonged to which.\n\nReturns only live offers — active, and inside `starts_at`/`ends_at` when either is set.\n\n`badge` is the «20% off» chip, derived from the linked coupon and null when there is no coupon **or** when the coupon would be refused (inactive, out of date, or exhausted) — so a card never advertises a discount the checkout would reject.\n\n`action` is `{type, value}` or null, the same shape /banners returns. `ends_at` is ISO 8601 or null, for «ينتهي بعد …».\n\n`applies_to` on each offer: null when its discount is on the whole order (or there is no badge), else `{type: service|category|item, ids, names}` — for «20% off shirts» on the card.",
                 "auth": {
                   "type": "noauth"
                 }
@@ -589,7 +589,7 @@
                     "services"
                   ]
                 },
-                "description": "Wizard step 2: the active services with their turnaround and `pricing_mode` (how each one is costed).",
+                "description": "Wizard step 2: the active services with their turnaround and `pricing_mode` (how each one is costed).\n\n`delivery_after`: the least time between pickup and delivery in the service's own unit — `{value: 3, unit: day}` is from the third day after the pickup day in any window, `{value: 36, unit: hour}` is 36 hours after the pickup window ends — where the delivery calendar should start. Null when the service has no turnaround.",
                 "auth": {
                   "type": "noauth"
                 }
@@ -713,7 +713,7 @@
                     }
                   ]
                 },
-                "description": "Active cities, each with its active zones — the two dropdowns on the address form (المدينة / المنطقة).\n\n`city_id` narrows it to one city. Unfiltered fills both of the address form's dropdowns in one call - they are filled together, and a round trip between picking a city and seeing its zones is a spinner in the middle of a form.\n\nA city that exists but is inactive comes back as an empty list, so `city_id` cannot reach an area we have stopped serving.",
+                "description": "Active cities, each with its active zones — the two dropdowns on the address form (المدينة / المنطقة).\n\n`city_id` narrows it to one city. Unfiltered fills both of the address form's dropdowns in one call - they are filled together, and a round trip between picking a city and seeing its zones is a spinner in the middle of a form.\n\nA city that exists but is inactive comes back as an empty list, so `city_id` cannot reach an area we have stopped serving.\n\nEach zone carries `boundary` — the area the owner drew on the map, `[[lat, lng], …]` — or `null` for a zone not drawn yet. For a drawn zone **the server decides from the pin**: an address whose pin is inside it is in that zone, whatever `zone_id` was sent. The app can draw the areas and say «outside coverage» before the customer saves.",
                 "auth": {
                   "type": "noauth"
                 }
@@ -784,10 +784,97 @@
                       "value": "1",
                       "description": "Optional, and only meaningful beside `address_id`. Narrows the capacity check to the laundries that actually offer this service.",
                       "disabled": true
+                    },
+                    {
+                      "key": "pickup_date",
+                      "value": "2026-10-05",
+                      "disabled": true,
+                      "description": "The pickup the delivery has to leave time after."
+                    },
+                    {
+                      "key": "pickup_slot_id",
+                      "value": "1",
+                      "disabled": true,
+                      "description": "The pickup window; needed for a service measured in hours."
                     }
                   ]
                 },
-                "description": "The windows a customer may choose to be visited in.\n\n**These are the platform's visiting windows, not a laundry's opening hours.** A laundry has no opening hours anywhere in this system. A slot is the three-hour window in which a *driver* comes to the customer, and the customer is the one who picks it - «02:00 مساءً – 05:00 مساءً» in the design.\n\nWindows rather than exact times, because a driver on a route cannot promise 16:07. Five cover the day: 09-12, 12-15, 15-18, 18-21, 21-24.\n\n| Parameter | In | Notes |\n|---|---|---|\n| `type` | query | `pickup` or `delivery`. Returns slots marked for that end plus every `both` slot. |\n\nEach slot carries `applies_to` (`pickup` / `delivery` / `both`), and the order request enforces it - a delivery-only window cannot be sent as a pickup.\n\nWhat a chosen slot actually does: it tells the customer when to expect somebody, and it sets `due_at` on that leg, which is the only thing «متأخرة» in the driver app means.\n\n**Capacity is enforced.** Pass `date` and each slot comes back with `remaining` and `is_full`, so the wizard can grey out a full window instead of finding out at submit.\n\n- A pickup and a delivery in the same window are two journeys to two doors, so both count.\n- A cancelled order gives its place back.\n- `remaining: null` means uncapped; `0` means choose another window. The app must draw those differently.\n- Placing an order into a full window is a **422** on `pickup_slot_id`. Rescheduling into one is refused too. A confirmed repeat-schedule prompt is the one exemption — that screen has no slot picker to send the customer back to.\n\n**Laundry capacity is a second, separate question.** `remaining` and `is_full` above are the *platform's* windows - how many visits can be made that day. Each laundry separately has an intake ceiling per window, and `address_id` is what lets this endpoint answer it.\n\n- `laundries_full: true` means every laundry covering that address has filled its intake for the window.\n- `laundries_full: null` means the question could not be asked: no `address_id`, an address with no zone, a zone nothing covers, or a delivery-only window. **Null is not «full»** - an uncovered zone is a coverage gap, and an order placed there is still accepted and assigned by hand.\n- `is_full` folds `laundries_full` in **only** when the `Slot_Overflow_Behavior` setting is `hide_slot`. On the other two settings the order is still accepted, so withholding the window would refuse business the server would have taken.\n\nBoth parameters are optional and additive: a client that sends neither gets exactly the response it got before.",
+                "description": "The windows a customer may choose to be visited in.\n\n**These are the platform's visiting windows, not a laundry's opening hours.** A laundry has no opening hours anywhere in this system. A slot is the three-hour window in which a *driver* comes to the customer, and the customer is the one who picks it - «02:00 مساءً – 05:00 مساءً» in the design.\n\nWindows rather than exact times, because a driver on a route cannot promise 16:07. Five cover the day: 09-12, 12-15, 15-18, 18-21, 21-24.\n\n| Parameter | In | Notes |\n|---|---|---|\n| `type` | query | `pickup` or `delivery`. Returns slots marked for that end plus every `both` slot. |\n\nEach slot carries `applies_to` (`pickup` / `delivery` / `both`), and the order request enforces it - a delivery-only window cannot be sent as a pickup.\n\nWhat a chosen slot actually does: it tells the customer when to expect somebody, and it sets `due_at` on that leg, which is the only thing «متأخرة» in the driver app means.\n\n**Capacity is enforced.** Pass `date` and each slot comes back with `remaining` and `is_full`, so the wizard can grey out a full window instead of finding out at submit.\n\n- A pickup and a delivery in the same window are two journeys to two doors, so both count.\n- A cancelled order gives its place back.\n- `remaining: null` means uncapped; `0` means choose another window. The app must draw those differently.\n- Placing an order into a full window is a **422** on `pickup_slot_id`. Rescheduling into one is refused too. A confirmed repeat-schedule prompt is the one exemption — that screen has no slot picker to send the customer back to.\n\n**Laundry capacity is a second, separate question.** `remaining` and `is_full` above are the *platform's* windows - how many visits can be made that day. Each laundry separately has an intake ceiling per window, and `address_id` is what lets this endpoint answer it.\n\n- `laundries_full: true` means every laundry covering that address has filled its intake for the window.\n- `laundries_full: null` means the question could not be asked: no `address_id`, an address with no zone, a zone nothing covers, or a delivery-only window. **Null is not «full»** - an uncovered zone is a coverage gap, and an order placed there is still accepted and assigned by hand.\n- `is_full` folds `laundries_full` in **only** when the `Slot_Overflow_Behavior` setting is `hide_slot`. On the other two settings the order is still accepted, so withholding the window would refuse business the server would have taken.\n\nBoth parameters are optional and additive: a client that sends neither gets exactly the response it got before.\n\n**`too_early`.** With `type=delivery`, a `date`, the `service_id` and the customer's pickup (`pickup_date`, plus `pickup_slot_id` for a service measured in hours), each window says whether it would bring the pieces back before the service's turnaround — the middle of its range (2–4 days is 3, 24–48 hours is 36), hours counted from the end of the pickup window to the start of the delivery window, days as whole days. The order is refused on the same rule. Null when not asked.",
+                "auth": {
+                  "type": "noauth"
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Delivery window",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Responds with the API envelope', function () {",
+                      "    const body = pm.response.json();",
+                      "    pm.expect(body).to.have.property('key');",
+                      "    pm.expect(body).to.have.property('code', pm.response.code);",
+                      "});"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "lang",
+                    "value": "{{lang}}",
+                    "description": "ar | en — read by the ApiLocale middleware. Optional; falls back to the default language."
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/v1/delivery-window?service_id=1&pickup_date=2026-10-05&pickup_slot_id=1&delivery_date=2026-10-06&delivery_slot_id=2",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "delivery-window"
+                  ],
+                  "query": [
+                    {
+                      "key": "service_id",
+                      "value": "1",
+                      "description": "Required. The service chosen."
+                    },
+                    {
+                      "key": "pickup_date",
+                      "value": "2026-10-05",
+                      "description": "Required. The pickup day."
+                    },
+                    {
+                      "key": "pickup_slot_id",
+                      "value": "1",
+                      "description": "The pickup window — needed for a service measured in hours."
+                    },
+                    {
+                      "key": "delivery_date",
+                      "value": "2026-10-06",
+                      "description": "Optional. The delivery the customer picked, to check it."
+                    },
+                    {
+                      "key": "delivery_slot_id",
+                      "value": "2",
+                      "description": "Optional. Its window."
+                    }
+                  ]
+                },
+                "description": "«ميعاد التسليم لازم يكون من يوم كذا ليوم كذا» — the range a delivery must fall in for this service and pickup, and everything the app's bottom sheet needs to fix a conflict in place.\n\n- `turnaround` — `{value, unit, label}`, null when the service has none.\n- `earliest` `{date, time}` / `latest` `{date}` — the delivery calendar's min and max. `time` only for a service in hours: a window must start at or after it.\n- `chosen` — only when `delivery_date` is sent: `{valid, reason: too_early|too_late, message}`; the message is the one `POST /orders` refuses with.\n- `suggestion` — the first delivery window with room inside the range, to preselect.\n- `windows_date` + `windows` — the delivery windows of that day (the one asked about when in range, else the suggestion's), each with `available` to draw from and `too_early` / `too_late` / `is_full` saying why not.\n\nRule: the middle of the service's range (2–4 days = 3, 24–48 hours = 36); hours exact from the end of the pickup window, days as whole days; the far end is `Delivery_Window_Days` (settings, 14 by default) after the earliest day. Public, like `/time-slots`.",
                 "auth": {
                   "type": "noauth"
                 }
@@ -1631,7 +1718,7 @@
                     "addresses"
                   ]
                 },
-                "description": "`lat` / `lng` are required by business decision: every address carries a map pin so a driver has a point to navigate to, not just a text description.\n\nThe **first** address a customer saves becomes the default whether or not `is_default` was sent — otherwise they would have none.\n\n`contact_phone` null means «use the account number». `zone_id` must be an *active* zone; it drives laundry and driver assignment.\n\n**Saves `data.id` into `address_id`.**\n\n`notes` and `driver_note` are different fields and both come back in the payload. `notes` (max 1000) is the customer's own note about the place. `driver_note` (max 500) is the standing instruction whoever arrives will read — written once here, every order to this address carries it, and it is what the panel's order screen shows the dispatcher. The order's own `driver_note` is for that one delivery and does not replace it.",
+                "description": "`lat` / `lng` are required by business decision: every address carries a map pin so a driver has a point to navigate to, not just a text description.\n\nThe **first** address a customer saves becomes the default whether or not `is_default` was sent — otherwise they would have none.\n\n`contact_phone` null means «use the account number». `zone_id` must be an *active* zone; it drives laundry and driver assignment.\n\n**Saves `data.id` into `address_id`.**\n\n`notes` and `driver_note` are different fields and both come back in the payload. `notes` (max 1000) is the customer's own note about the place. `driver_note` (max 500) is the standing instruction whoever arrives will read — written once here, every order to this address carries it, and it is what the panel's order screen shows the dispatcher. The order's own `driver_note` is for that one delivery and does not replace it.\n\n**The zone follows the pin.** If the pin is inside a zone drawn on the map, that is the address's zone and city, whatever `zone_id` says. A zone not drawn yet is still taken from `zone_id`. A pin outside every drawn zone is saved with `zone: null` — orders from it are accepted and wait for an operator to place them. Read `data.zone` from the response rather than assuming what was sent.",
                 "body": {
                   "mode": "raw",
                   "raw": "{\n    \"label\": \"Home\",\n    \"city_id\": 1,\n    \"zone_id\": 1,\n    \"street\": \"12 Gameat El Dewal El Arabeya\",\n    \"building\": \"7\",\n    \"floor\": \"3\",\n    \"apartment\": \"12\",\n    \"landmark\": \"Next to the pharmacy\",\n    \"notes\": \"Second entrance from the side street; the main gate is locked after 8 PM\",\n    \"driver_note\": \"Call before arriving, the bell on the left doesn't work\",\n    \"contact_phone\": \"01012345678\",\n    \"lat\": 30.0444,\n    \"lng\": 31.2357,\n    \"is_default\": true\n}",
@@ -1736,7 +1823,7 @@
                     "{{address_id}}"
                   ]
                 },
-                "description": "On update the required fields relax to `sometimes`, so a partial payload is fine.\n\nIn practice `driver_note` is the field customers change most, so it is worth having in the partial example.",
+                "description": "On update the required fields relax to `sometimes`, so a partial payload is fine.\n\nIn practice `driver_note` is the field customers change most, so it is worth having in the partial example.\n\n**The zone follows the pin.** If the pin is inside a zone drawn on the map, that is the address's zone and city, whatever `zone_id` says. A zone not drawn yet is still taken from `zone_id`. A pin outside every drawn zone is saved with `zone: null` — orders from it are accepted and wait for an operator to place them. Read `data.zone` from the response rather than assuming what was sent.",
                 "body": {
                   "mode": "raw",
                   "raw": "{\n    \"label\": \"Work\",\n    \"street\": \"5 Tahrir Square\",\n    \"driver_note\": \"Ask at reception, I am on the fourth floor\",\n    \"lat\": 30.0444,\n    \"lng\": 31.2357\n}",
@@ -2127,7 +2214,7 @@
                     "orders"
                   ]
                 },
-                "description": "`accepts_review_terms` is **required and must be truthy** — the whole of the review flow rests on it: the customer is agreeing that the price they just saw is an estimate and the real one arrives after the pieces are counted.\n\n`items` may be an empty array for a quote-priced service costed after inspection; the service rejects an empty basket where it matters.\n\nAn absent `delivery_address_id` means «same address».\n\nHandover is asked **once per leg**: `pickup_method` for the bag going out and `delivery_method` for the clean clothes coming back. Each is `door` (handed over in person) or `leave` (left at the door), and each defaults to `door`. The example sends two different values on purpose — a customer may well want the bag taken from their hands and the clean clothes left at the door, and one field could not say that.\n\nTo attach stain photos (max 5, jpg/jpeg/png/webp, 5 MB each) switch the body to **form-data** and send `photos[]`.\n\n**Saves `data.id` into `order_id`.**\n\n`payment_method` accepts **`cash` | `card` | `wallet` | `instapay`**. It is read by pricing, not merely stored: choosing `cash` adds the configured `Cash_Surcharge` as its own line in the response (`cash_surcharge`), applied **after** any coupon - a coupon discounts the washing, not the cost of handling notes. Sending nothing returns a surcharge of 0, which is right for a quote taken before the customer has chosen how to pay.\n\n**Photos** - «أضف صوراً للبقع الصعبة» - are accepted here as up to 5 image files under `photos[]`. That needs a `multipart/form-data` body rather than the JSON above; duplicate the request and switch the body mode to form-data to try it.\n\n`coupon_code` and `offer_id` are **mutually exclusive** — one discount per order. Send `offer_id` when the customer arrived through a card in «عروض متميزة»: the offer's own coupon is applied and a `coupon_code` sent beside it is **refused with a message** rather than quietly dropped, because charging the offer's price while the customer believes a second discount applied is the worst outcome of the three. An offer that only points at a service carries no coupon, so a promo code beside *that* one passes through.\n\n**Answering a repeat schedule.** Send `prompt_id` (from `POST /recurrences/prompts/{id}/confirm`) and this same call also closes that question: the order is stamped with the schedule's `recurrence_id` and the prompt is marked confirmed, in one transaction. A prompt that is not the caller's is a 404; one already answered is a 400. Everything else on the body stays authoritative — the basket, window and payment method are the customer's to change.",
+                "description": "`accepts_review_terms` is **required and must be truthy** — the whole of the review flow rests on it: the customer is agreeing that the price they just saw is an estimate and the real one arrives after the pieces are counted.\n\n`items` may be an empty array for a quote-priced service costed after inspection; the service rejects an empty basket where it matters.\n\nAn absent `delivery_address_id` means «same address».\n\nHandover is asked **once per leg**: `pickup_method` for the bag going out and `delivery_method` for the clean clothes coming back. Each is `door` (handed over in person) or `leave` (left at the door), and each defaults to `door`. The example sends two different values on purpose — a customer may well want the bag taken from their hands and the clean clothes left at the door, and one field could not say that.\n\nTo attach stain photos (max 5, jpg/jpeg/png/webp, 5 MB each) switch the body to **form-data** and send `photos[]`.\n\n**Saves `data.id` into `order_id`.**\n\n`payment_method` accepts **`cash` | `card` | `wallet` | `instapay`**. It is read by pricing, not merely stored: choosing `cash` adds the configured `Cash_Surcharge` as its own line in the response (`cash_surcharge`), applied **after** any coupon - a coupon discounts the washing, not the cost of handling notes. Sending nothing returns a surcharge of 0, which is right for a quote taken before the customer has chosen how to pay.\n\n**Photos** - «أضف صوراً للبقع الصعبة» - are accepted here as up to 5 image files under `photos[]`. That needs a `multipart/form-data` body rather than the JSON above; duplicate the request and switch the body mode to form-data to try it.\n\n`coupon_code` and `offer_id` are **mutually exclusive** — one discount per order. Send `offer_id` when the customer arrived through a card in «عروض متميزة»: the offer's own coupon is applied and a `coupon_code` sent beside it is **refused with a message** rather than quietly dropped, because charging the offer's price while the customer believes a second discount applied is the worst outcome of the three. An offer that only points at a service carries no coupon, so a promo code beside *that* one passes through.\n\n**Answering a repeat schedule.** Send `prompt_id` (from `POST /recurrences/prompts/{id}/confirm`) and this same call also closes that question: the order is stamped with the schedule's `recurrence_id` and the prompt is marked confirmed, in one transaction. A prompt that is not the caller's is a 404; one already answered is a 400. Everything else on the body stays authoritative — the basket, window and payment method are the customer's to change.\n\n**`delivery_date` must leave the service its time** after the pickup (see `GET /time-slots` `too_early`); otherwise 422 on `delivery_date` naming the earliest day.",
                 "body": {
                   "mode": "raw",
                   "raw": "{\n    \"prompt_id\": null,\n    \"service_id\": 1,\n    \"items\": [\n        {\n            \"item_id\": 1,\n            \"qty\": 3\n        },\n        {\n            \"item_id\": 2,\n            \"qty\": 1\n        }\n    ],\n    \"pickup_address_id\": \"{{address_id}}\",\n    \"delivery_address_id\": null,\n    \"pickup_date\": \"2026-09-05\",\n    \"delivery_date\": \"2026-09-07\",\n    \"pickup_slot_id\": 1,\n    \"delivery_slot_id\": 2,\n    \"pickup_method\": \"door\",\n    \"delivery_method\": \"leave\",\n    \"driver_note\": \"Call before arriving\",\n    \"special_instructions\": \"Separate the whites\",\n    \"accepts_review_terms\": true,\n    \"coupon_code\": null,\n    \"offer_id\": null,\n    \"payment_method\": \"cash\"\n}",
@@ -2430,7 +2517,7 @@
                     "reschedule"
                   ]
                 },
-                "description": "Whether the order is waiting for a new time after «طلب التأجيل», which end of the order it is about, and only the slots that leg may actually use.\n\n`needs_new_time: false` when nothing is waiting — the app uses this to decide whether to show the prompt at all rather than inferring it from a status.\n\n`leg` is `pickup` or `delivery`. `current_date` / `current_slot_id` (also sent as `date` / `slot_id`) are the booking being replaced.\n\n**`slots[]` has the same shape as `GET /time-slots`**: `id`, `from`, `to`, `label`, `applies_to`, `capacity`, `remaining`, `is_full`. `remaining` is counted against `?date=` when given, otherwise against the leg's own date, otherwise today. `remaining: null` is an uncapped window — «as many as you like» — and `0` is «choose another one»; they are different answers and must be drawn differently.\n"
+                "description": "Whether the order is waiting for a new time after «طلب التأجيل», which end of the order it is about, and only the slots that leg may actually use.\n\n`needs_new_time: false` when nothing is waiting — the app uses this to decide whether to show the prompt at all rather than inferring it from a status.\n\n`leg` is `pickup` or `delivery`. `current_date` / `current_slot_id` (also sent as `date` / `slot_id`) are the booking being replaced.\n\n**`slots[]` has the same shape as `GET /time-slots`**: `id`, `from`, `to`, `label`, `applies_to`, `capacity`, `remaining`, `is_full`. `remaining` is counted against `?date=` when given, otherwise against the leg's own date, otherwise today. `remaining: null` is an uncapped window — «as many as you like» — and `0` is «choose another one»; they are different answers and must be drawn differently.\n\n\nFor a delivery leg each slot carries `too_early` — before the service's turnaround after the pickup."
               },
               "response": []
             },
@@ -2481,7 +2568,7 @@
                     "reschedule"
                   ]
                 },
-                "description": "Books the new time. Today counts: a customer postponed at nine in the morning may well want the afternoon.\n\n**This is a re-booking of the same order.** No new order row, no new `code` — the same `id` comes back, and the response carries the booked result so the screen can redraw without a second request:\n\n`id`, `code` (unchanged), `leg`, `date`, `time_slot: {id, from, to, label}`, `needs_new_time` (false), `status`, `status_label`.\n\nThe new slot is validated against the same capacity cap as the wizard: a full window is not reachable through the back door by postponing and rebooking into it.\n",
+                "description": "Books the new time. Today counts: a customer postponed at nine in the morning may well want the afternoon.\n\n**This is a re-booking of the same order.** No new order row, no new `code` — the same `id` comes back, and the response carries the booked result so the screen can redraw without a second request:\n\n`id`, `code` (unchanged), `leg`, `date`, `time_slot: {id, from, to, label}`, `needs_new_time` (false), `status`, `status_label`.\n\nThe new slot is validated against the same capacity cap as the wizard: a full window is not reachable through the back door by postponing and rebooking into it.\n\n\n**The delivery moves with a postponed pickup.** When the new pickup leaves the booked delivery too soon after it for the service, the delivery moves to the first window with room that fits, and the response carries `delivery_moved: {date, time_slot}` (null when it stayed). A delivery rebooked too soon after the pickup is refused with a message naming the earliest day.",
                 "body": {
                   "mode": "raw",
                   "raw": "{\n    \"slot_id\": 1,\n    \"date\": \"2026-09-06\"\n}",
@@ -3864,10 +3951,10 @@
                     "check"
                   ]
                 },
-                "description": "Checking **never consumes** the code. Most baskets a code is asked about are never ordered, and spending a customer's single use of a welcome code on a screen they walked away from would be indefensible.\n\nA refused code comes back as a validation error naming why.",
+                "description": "Checking **never consumes** the code. Most baskets a code is asked about are never ordered, and spending a customer's single use of a welcome code on a screen they walked away from would be indefensible.\n\nA refused code comes back as a validation error naming why.\n\n**Send the basket** (`service_id` + `items`), not just `subtotal`: a code limited to some services, categories or pieces comes off only what it applies to, and the basket is priced exactly as checkout prices it. `subtotal` alone still works for a code on the whole order; a limited code sent without the basket is answered 422 with a message saying it is worked out at checkout.\n\nThe response carries `applies_to` — null for the whole order, else `{type: service|category|item, ids, names}` — and `applies_to_delivery` is false for any code on some pieces.",
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n    \"code\": \"WELCOME10\",\n    \"subtotal\": 250,\n    \"delivery_fee\": 20\n}",
+                  "raw": "{\n    \"code\": \"SHIRTS\",\n    \"service_id\": 1,\n    \"items\": [\n        {\n            \"item_id\": 1,\n            \"qty\": 2\n        },\n        {\n            \"item_id\": 2,\n            \"qty\": 1\n        }\n    ],\n    \"delivery_fee\": 20\n}",
                   "options": {
                     "raw": {
                       "language": "json"

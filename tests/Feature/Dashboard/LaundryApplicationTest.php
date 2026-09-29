@@ -35,6 +35,8 @@ class LaundryApplicationTest extends TestCase
 
     private array $geo;
 
+    private array $catalog;
+
     protected function setUp(): void
     {
         parent::setUp();
@@ -42,6 +44,8 @@ class LaundryApplicationTest extends TestCase
         Cache::flush();
         $this->seedCore();
         $this->geo = $this->seedGeo();
+        // An application names the services it will offer.
+        $this->catalog = $this->seedCatalog();
         Mail::fake();
     }
 
@@ -326,6 +330,7 @@ class LaundryApplicationTest extends TestCase
             'owner_phone' => '+201066660002',
             'owner_password' => 'a-good-password',
             'owner_password_confirmation' => 'a-good-password',
+            'services' => [$this->catalog['service']->id],
             'accepts_terms' => '1',
         ], $extra);
     }

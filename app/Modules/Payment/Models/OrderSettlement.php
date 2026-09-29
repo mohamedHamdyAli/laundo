@@ -29,8 +29,11 @@ use Illuminate\Support\Carbon;
  * @property int|null $laundry_id
  * @property string $basis
  * @property string $commission_rate
+ * @property string|null $laundry_share_rate
  * @property string $commission_amount
  * @property string $laundry_amount
+ * @property string $discount_amount
+ * @property string $laundry_discount_amount
  * @property string $tax_amount
  * @property string $platform_fee_amount
  * @property string $status
@@ -66,7 +69,8 @@ class OrderSettlement extends Model
 
     protected $fillable = [
         'order_id', 'laundry_id',
-        'basis', 'commission_rate', 'commission_amount', 'laundry_amount',
+        'basis', 'commission_rate', 'laundry_share_rate', 'commission_amount', 'laundry_amount',
+        'discount_amount', 'laundry_discount_amount',
         'tax_amount', 'platform_fee_amount', 'status', 'settled_at',
     ];
 
@@ -75,8 +79,11 @@ class OrderSettlement extends Model
         return [
             'basis' => 'decimal:2',
             'commission_rate' => 'decimal:2',
+            'laundry_share_rate' => 'decimal:2',
             'commission_amount' => 'decimal:2',
             'laundry_amount' => 'decimal:2',
+            'discount_amount' => 'decimal:2',
+            'laundry_discount_amount' => 'decimal:2',
             'tax_amount' => 'decimal:2',
             'platform_fee_amount' => 'decimal:2',
             'settled_at' => 'datetime',
@@ -100,6 +107,41 @@ class OrderSettlement extends Model
     public function lines(): HasMany
     {
         return $this->hasMany(OrderSettlementLine::class, 'order_settlement_id')->orderBy('id');
+    }
+
+    /**
+     * Whether this row was divided on a laundry share — the percentage the
+     * laundry receives — rather than on the platform's charges.
+     *
+     * Rows settled before the share changed sides carry null, and their lines
+     * are the platform's charges adding up to `commission_amount`. On every
+     * other row the one line is the laundry's share and adds up to
+     * `laundry_amount`. The screens read the lines differently on that alone.
+     */
+    public function isOnLaundryShare(): bool
+    {
+        return $this->laundry_share_rate !== null;
+    }
+
+    /**
+     * The part of the discount the platform bore — everything the laundry did
+     * not. Derived, because the two stored figures already fix it.
+     */
+    public function platformDiscount(): float
+    {
+        return round((float) $this->discount_amount - (float) $this->laundry_discount_amount, 2);
+    }
+
+    /**
+     * Pending with no share to divide by: nothing will move until somebody sets
+     * one for the laundry, or the general share in Settings.
+     */
+    public function awaitsShare(): bool
+    {
+        return $this->status === self::PENDING
+            && $this->laundry_share_rate === null
+            && $this->lines->isEmpty()
+            && (float) $this->basis + (float) $this->discount_amount > 0;
     }
 
     /**
@@ -136,23 +178,33 @@ class OrderSettlement extends Model
     }
 
     /**
-     * Prove the charges add up to the commission they are supposed to explain.
+     * Prove the lines add up to the figure they are supposed to explain.
      *
      * A second redundancy on top of `reconciles()`, and a different one: that
      * asks whether the split adds back to what it divided, this asks whether the
      * breakdown adds back to the total shown. A settlement can satisfy one and
-     * fail the other, and the failure would be a laundry shown three lines that
-     * do not come to the number it was charged.
+     * fail the other, and the failure would be a laundry shown lines that do not
+     * come to the number it was paid.
+     *
+     * Which figure depends on the row. On a laundry share the one line is the
+     * laundry's terms before any discount, so it explains `laundry_amount` plus
+     * the part of the discount the laundry bore; on a row settled before the
+     * share changed sides the lines are the platform's charges and explain
+     * `commission_amount`.
      */
     public function linesReconcile(): bool
     {
+        $explained = $this->isOnLaundryShare()
+            ? (float) $this->laundry_amount + (float) $this->laundry_discount_amount
+            : (float) $this->commission_amount;
+
         if ($this->lines->isEmpty()) {
-            return (float) $this->commission_amount === 0.0;
+            return $explained === 0.0;
         }
 
         return abs(
             round((float) $this->lines->sum(fn ($line) => (float) $line->amount), 2)
-            - round((float) $this->commission_amount, 2)
+            - round($explained, 2)
         ) < 0.01;
     }
 }

@@ -7,6 +7,7 @@ use App\Modules\Zone\Models\Zone;
 use App\Trait\DashboardModel;
 use App\Trait\Scopes\Searchable;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Carbon;
 
@@ -49,7 +50,10 @@ class City extends Model
         return json_decode((string) $value);
     }
 
-    public function country()
+    /**
+     * @return BelongsTo<Country, $this>
+     */
+    public function country(): BelongsTo
     {
         return $this->belongsTo(Country::class);
     }

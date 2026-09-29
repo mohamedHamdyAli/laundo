@@ -85,6 +85,15 @@ return [
     'faker_locale' => env('APP_FAKER_LOCALE', 'en_US'),
 
     /*
+    | Where «Edit Validation Messages» keeps what an operator typed —
+    | `{code}_validation.json`, laid over `lang/{code}/validation.php` by
+    | ValidationOverrideLoader. In `storage/`, not `resources/lang/`: it is data
+    | written at runtime, and a tracked directory the server writes into is one
+    | `git pull` refuses to update.
+    */
+    'validation_overrides_path' => storage_path('app/lang'),
+
+    /*
     |--------------------------------------------------------------------------
     | Encryption Key
     |--------------------------------------------------------------------------

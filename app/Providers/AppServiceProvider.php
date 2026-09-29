@@ -6,6 +6,7 @@ use App\Models\Language;
 use App\Services\MenuBuilder;
 use App\Services\Push\PushSender;
 use App\Services\Sms\SmsSender;
+use App\Support\Translation\ValidationOverrideLoader;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\Paginator;
@@ -23,6 +24,15 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
+        // The validation messages edited from the panel, laid over the shipped
+        // `lang/{code}/validation.php`. `extend` rather than a new binding: the
+        // translation provider is deferred and binds its loader when first asked,
+        // which would replace a binding made here — an extender survives that.
+        $this->app->extend('translation.loader', fn ($loader, $app) => new ValidationOverrideLoader(
+            $loader,
+            (string) $app['config']->get('app.fallback_locale', 'en'),
+        ));
+
         // Resolve the SMS sender from config so call sites depend on the contract
         // and never on a concrete vendor.
         $this->app->bind(SmsSender::class, function () {

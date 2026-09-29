@@ -2,7 +2,9 @@
 
 namespace App\Modules\Payment\Repositories;
 
+use App\Modules\Laundry\Models\Laundry;
 use App\Modules\Payment\Models\CommissionRule;
+use Illuminate\Database\Eloquent\Collection;
 
 /**
  * The only place raw Eloquent for commission rules lives.
@@ -35,6 +37,32 @@ class CommissionRuleRepository
     public function create(array $data)
     {
         return CommissionRule::create($data);
+    }
+
+    /**
+     * Of these laundries, the ones already on another active share.
+     *
+     * A laundry has one share — they stopped stacking when the percentage moved
+     * to the laundry's side — so these are the ones a rule cannot also be
+     * active on. Unscoped: the rules screen is the platform's, and a laundry the
+     * viewer's tenant scope hid would slip through as «no conflict».
+     *
+     * @param  array<int, int>  $laundryIds
+     * @return Collection<int, Laundry>
+     */
+    public function laundriesOnAnotherShare(array $laundryIds, ?int $exceptRuleId = null): Collection
+    {
+        if ($laundryIds === []) {
+            return new Collection;
+        }
+
+        return Laundry::withoutGlobalScopes()
+            ->whereIn('id', $laundryIds)
+            ->whereHas('commissionRules', fn ($query) => $query
+                ->where('commission_rules.status', 'active')
+                ->when($exceptRuleId, fn ($q) => $q->where('commission_rules.id', '<>', $exceptRuleId)))
+            ->orderBy('id')
+            ->get(['id', 'name']);
     }
 
     public function update($id, array $data)

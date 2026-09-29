@@ -48,6 +48,10 @@
                              Pushed to the far end, the pair left 274px of empty
                              card to their left and read as floating. --}}
                         <div class="list-toolbar">
+                            {{-- Excel: the export holds what the search and the
+                                 filter show, through the same tenant scope. --}}
+                            <x-spreadsheet-actions sheet="order" search="#orderSearchInput"
+                                :filters="['status' => '#orderStatusFilter']" />
                             <input type="text" id="orderSearchInput" class="form-control list-toolbar-search"
                                 placeholder="{{ __('Search by order code, customer or phone...') }}">
                             <select id="orderStatusFilter" class="form-select list-toolbar-filter">
@@ -77,6 +81,9 @@
                                     </option>
                                     <option value="{{ $needsPriceAnswer }}" @selected(($activeStatus ?? null) === $needsPriceAnswer)>
                                         {{ __('Has an unanswered price question') }}
+                                    </option>
+                                    <option value="{{ $pieceMismatch }}" @selected(($activeStatus ?? null) === $pieceMismatch)>
+                                        {{ __('The piece count does not match') }}
                                     </option>
                                 </optgroup>
 

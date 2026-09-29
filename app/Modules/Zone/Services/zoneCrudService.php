@@ -5,6 +5,7 @@ namespace App\Modules\Zone\Services;
 use App\Modules\City\Models\City;
 use App\Modules\Zone\Repositories\ZoneRepository;
 use App\Services\ResponseService;
+use App\Support\Geo\Polygon;
 use Illuminate\Support\Facades\DB;
 
 class zoneCrudService
@@ -13,20 +14,84 @@ class zoneCrudService
 
     protected $responseService;
 
-    public function __construct(ZoneRepository $zoneRepository, ResponseService $responseService)
-    {
+    public function __construct(
+        ZoneRepository $zoneRepository,
+        ResponseService $responseService,
+        private readonly ZoneLocator $locator,
+    ) {
         $this->zoneRepository = $zoneRepository;
         $this->responseService = $responseService;
     }
 
+    /**
+     * What the last save or toggle did to addresses: how many moved zone, and
+     * how many were left where they were because an order on them is still
+     * under way. The controller puts it in the flash.
+     *
+     * @var array{moved: int, held: int}
+     */
+    private array $relocated = ['moved' => 0, 'held' => 0];
+
     public function addNew(array $request)
     {
-        return DB::transaction(fn () => $this->zoneRepository->create($this->payload($request)));
+        return DB::transaction(function () use ($request) {
+            $payload = $this->payload($request);
+            $this->guardOverlap($payload, null);
+
+            $zone = $this->zoneRepository->create($payload);
+
+            // A zone drawn on creation takes in the addresses already inside it.
+            $this->relocated = $zone->isDrawn() && $zone->status === 'active'
+                ? $this->locator->relocateAround($zone, null)
+                : ['moved' => 0, 'held' => 0];
+
+            return $zone;
+        });
     }
 
     public function updateRecord(array $request)
     {
-        return DB::transaction(fn () => $this->zoneRepository->update($request['id'], $this->payload($request)));
+        return DB::transaction(function () use ($request) {
+            $payload = $this->payload($request);
+            $this->guardOverlap($payload, (int) $request['id']);
+
+            $before = $this->zoneRepository->findById($request['id']);
+            $drawingBefore = $before->boundary;
+
+            $zone = $this->zoneRepository->update($request['id'], $payload);
+
+            // Redrawn: the addresses it now covers — or stops covering — move
+            // with it, so their orders follow the map. Switching a zone off is
+            // not a redraw: its addresses keep it, as they always have.
+            $this->relocated = $zone->boundary !== $drawingBefore
+                ? $this->locator->relocateAround($zone, $before->polygon())
+                : ['moved' => 0, 'held' => 0];
+
+            return $zone;
+        });
+    }
+
+    /**
+     * @return array{moved: int, held: int}
+     */
+    public function relocated(): array
+    {
+        return $this->relocated;
+    }
+
+    /**
+     * The overlap rule again, inside the save's transaction with the
+     * neighbours locked — ZoneRequest checked it too, but outside any lock.
+     *
+     * @param  array<string, mixed>  $payload
+     */
+    private function guardOverlap(array $payload, ?int $id): void
+    {
+        $polygon = isset($payload['boundary']) ? Polygon::fromArray($payload['boundary']) : null;
+
+        if ($polygon) {
+            $this->locator->assertNoOverlap($polygon, $id, lock: true);
+        }
     }
 
     public function deleteRecord($id)
@@ -40,6 +105,17 @@ class zoneCrudService
         $data = [
             'zones' => $this->zoneRepository->getAllPaginated(),
             'cities' => City::where('status', 'active')->get(),
+            // Drawn faintly on the map, so a zone is drawn up to its
+            // neighbours rather than over them — every drawn zone but this one.
+            'otherZones' => $this->zoneRepository->drawnExcept($id ? (int) $id : null)
+                // What the server reads, not the raw column — a stored ring
+                // that is not a usable shape is not drawn as far as anything
+                // else is concerned.
+                ->filter(fn ($zone) => $zone->isDrawn())
+                ->map(fn ($zone) => [
+                    'name' => getLocalizedValueDashboard($zone, 'name'),
+                    'points' => $zone->polygon()?->points(),
+                ])->values()->all(),
         ];
 
         if ($id) {
@@ -56,7 +132,19 @@ class zoneCrudService
 
     public function toggleStatus($id, $status)
     {
-        return $this->responseService->toggleStatus($this->zoneRepository->findById($id), $status);
+        $zone = $this->zoneRepository->findById($id);
+        $response = $this->responseService->toggleStatus($zone, $status);
+
+        // A drawn zone switched on claims the addresses whose pins are inside
+        // it — the ones saved while it was off went elsewhere or nowhere.
+        // Switched off, nothing moves: that has always meant «paused».
+        $zone->refresh();
+
+        if ($zone->status === 'active' && $zone->isDrawn()) {
+            DB::transaction(fn () => $this->relocated = $this->locator->relocateAround($zone, null));
+        }
+
+        return $response;
     }
 
     /**
@@ -82,6 +170,23 @@ class zoneCrudService
 
         if (isset($request['name'])) {
             $data['name'] = json_encode($request['name'], JSON_UNESCAPED_UNICODE);
+        }
+
+        // Only when the form sent the field: a spreadsheet row, or any caller
+        // that knows nothing of the drawing, must not erase it. Blank is «not
+        // drawn». The ring is stored as ZoneRequest accepted it, and its box
+        // beside it for the SQL pre-filter.
+        if (array_key_exists('boundary', $request)) {
+            $polygon = ($request['boundary'] === null || $request['boundary'] === '')
+                ? null
+                : Polygon::fromArray(json_decode((string) $request['boundary'], true));
+
+            $data['boundary'] = $polygon?->points();
+            $box = $polygon?->boundingBox();
+
+            foreach (['min_lat', 'max_lat', 'min_lng', 'max_lng'] as $edge) {
+                $data[$edge] = $box[$edge] ?? null;
+            }
         }
 
         return $data;

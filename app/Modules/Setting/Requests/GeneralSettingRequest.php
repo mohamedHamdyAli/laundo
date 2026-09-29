@@ -83,10 +83,16 @@ class GeneralSettingRequest extends FormRequest
                 'Invoice_Legal_Name' => 'nullable|string|max:191',
                 'Invoice_Address' => 'nullable|string|max:500',
                 'Invoice_Tax_Number' => 'nullable|string|max:60',
-                // What the platform takes from a laundry on each order. The
-                // general rate; a laundry that negotiated its own overrides it
-                // on its own row.
+                // The customer's platform fee, folded into every piece price.
+                // It kept the name from when it was a laundry's commission.
                 'Commission_Rate' => 'nullable|numeric|min:0|max:100',
+                // The share of the washing a laundry receives when it has none
+                // of its own. Empty is a real answer: such a laundry's
+                // settlements wait rather than paying the platform everything.
+                'Laundry_Share_Rate' => 'nullable|numeric|min:0|max:100',
+                // How much of a coupon discount the laundry bears when the coupon
+                // does not say. Empty is zero: the super admin pays.
+                'Coupon_Laundry_Share' => 'nullable|numeric|min:0|max:100',
                 // A closed list, not free text: an unrecognised code reaches
                 // NumberFormatter and renders as the literal string on every
                 // price in the panel and both apps.
@@ -140,6 +146,12 @@ class GeneralSettingRequest extends FormRequest
                 'Balance_Tolerance_Km' => 'nullable|numeric|min:0|max:50',
                 // A closed list; `SlotOverflowBehavior` is the vocabulary.
                 'Slot_Overflow_Behavior' => 'nullable|in:unassigned,nearest,hide_slot',
+                // «التعيين التلقائي» — see AutoAssign. 0 or 1; blank reads as on.
+                'Auto_Assign_Laundry' => 'nullable|in:0,1',
+                'Auto_Assign_Driver' => 'nullable|in:0,1',
+                // Days after the earliest delivery a delivery may still be booked
+                // (Turnaround). Blank is the default, 14.
+                'Delivery_Window_Days' => 'nullable|integer|min:1|max:365',
             ];
         } elseif (Route::is('admin.generalSetting.updatePrivacyAndTerms')) {
             $rules = [

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\V1;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\V1\AddressRequest;
 use App\Modules\Address\Models\Address;
+use App\Modules\Zone\Services\ZoneLocator;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -19,6 +20,8 @@ use Illuminate\Support\Facades\DB;
  */
 class AddressController extends Controller
 {
+    public function __construct(private readonly ZoneLocator $zones) {}
+
     public function index(Request $request): JsonResponse
     {
         $addresses = $request->user()
@@ -39,7 +42,8 @@ class AddressController extends Controller
 
     public function store(AddressRequest $request): JsonResponse
     {
-        $data = $request->validated();
+        // The zone follows the pin (ZoneLocator), not the app's pick.
+        $data = $this->zones->placeAddress($request->validated(), null);
 
         $address = DB::transaction(function () use ($request, $data) {
             $user = $request->user();
@@ -80,7 +84,7 @@ class AddressController extends Controller
             return failReturnNotFound('Address not found.');
         }
 
-        $data = $request->validated();
+        $data = $this->zones->placeAddress($request->validated(), $address);
 
         DB::transaction(function () use ($request, $address, $data) {
             $address->update($data);

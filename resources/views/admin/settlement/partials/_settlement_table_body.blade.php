@@ -30,9 +30,24 @@
                  an earning does. --}}
             <span class="row-main">{{ moneyFormat($row->basis) }}</span>
             <span class="row-sub">
-                {{ __('at') }} {{ rtrim(rtrim(number_format((float) $row->commission_rate, 2), '0'), '.') }}%
+                @if ($row->isOnLaundryShare())
+                    {{-- The laundry's share since it changed sides; the old
+                         column is the platform's cut and is what rows settled
+                         before then are read by. --}}
+                    {{ __('laundry share') }} {{ rtrim(rtrim(number_format((float) $row->laundry_share_rate, 2), '0'), '.') }}%
+                @elseif ($row->awaitsShare())
+                    {{ __('no share set') }}
+                @else
+                    {{ __('at') }} {{ rtrim(rtrim(number_format((float) $row->commission_rate, 2), '0'), '.') }}%
+                @endif
                 @if ((float) $row->tax_amount > 0)
                     · {{ __('tax') }} {{ moneyFormat($row->tax_amount) }}
+                @endif
+                @if ((float) $row->discount_amount > 0)
+                    {{-- The basis is after the coupon, so the coupon is named
+                         beside it, with the part the laundry bore. --}}
+                    · {{ __('discount') }} {{ moneyFormat($row->discount_amount) }}
+                    ({{ __('laundry') }} {{ moneyFormat($row->laundry_discount_amount) }})
                 @endif
             </span>
         </div>
@@ -42,7 +57,10 @@
                  laundry can only accept or argue with; naming the three charges
                  is what makes it checkable. --}}
             <span class="row-sub">
-                @if ($row->lines->isEmpty())
+                @if ($row->isOnLaundryShare() || $row->lines->isEmpty())
+                    {{-- On a laundry share the platform's part is simply what is
+                         left; the line names the laundry's terms and sits under
+                         the laundry's amount instead. --}}
                     {{ __('Platform') }}
                 @else
                     {{ $row->lines->map(fn ($line) => getLocalizedValueDashboard($line, 'name').' '.$line->explain())->implode(' · ') }}
@@ -52,9 +70,20 @@
         <div>
             @if ($pending)
                 {{-- «معلقة». A settlement that has been pending since before the
-                     order completed is one whose payee could not be found — the
-                     screen is where that surfaces. --}}
-                <span class="status-pill tone-warn">{{ __('Pending') }}</span>
+                     order completed is one whose payee or share could not be
+                     found — the screen is where that surfaces, and where it is
+                     paid once whatever was missing has been set. --}}
+                <span class="status-pill tone-warn">
+                    {{ $row->awaitsShare() ? __('Waiting for a share') : __('Pending') }}
+                </span>
+                @if (canDo('setting.update') && $row->order?->status === \App\Modules\Order\Enums\OrderStatus::Completed)
+                    {{-- A plain form: there is nothing typed here to keep across
+                         a failure, and the flash says why it did not pay. --}}
+                    <form method="POST" action="{{ route('admin.settlement.settle', $row->id) }}" class="d-inline">
+                        @csrf
+                        <button type="submit" class="btn btn-sm btn-outline-primary ms-1">{{ __('Settle now') }}</button>
+                    </form>
+                @endif
             @elseif ($cancelled)
                 <span class="status-pill tone-bad">{{ __('Cancelled') }}</span>
             @else

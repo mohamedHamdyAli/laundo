@@ -1,3 +1,240 @@
+# Zones drawn on the map (asked 2026-09-28)
+
+«العميل محتاج يعمل زون تتحدد ف المكان زي رسمه بحدد نطاق المكان دا علي الخريطه».
+Today a zone is a name + city + rates, picked from a dropdown by the app; the
+server never derives it from the pin and nothing is geometric.
+
+Owner's decisions (2026-09-29): an address outside every drawn zone is
+accepted and handled by hand (as today); a driver is only handed trips inside
+their zones (dispatch, not live-GPS alerts); a laundry may sit outside the zones
+it serves; zones may not overlap.
+
+- [x] Migration `2026_09_29_100000`: `zones.boundary` + indexed bounding box.
+- [x] `Support/Geo/Polygon`: contains, overlaps (edge crossing or an interior
+      sample well inside), validity (area, spikes, touching edges, ≤ 500),
+      10 cm tolerance so shared borders are not overlaps.
+- [x] `ZoneLocator`: zoneAt, forAddress / placeAddress (the address API),
+      assertNoOverlap (form and save, locked), relocateAround (redraw and
+      switch-on; never another switched-off zone's addresses; holds addresses
+      with an order under way).
+- [x] Zone form: `<x-zone-drawer>` — add / move / remove corners, undo, clear,
+      neighbours in grey, snapping onto their corners and edges, 500-corner
+      cap. Driven in a browser harness (the panel cannot boot without MySQL).
+      Zones list: a map of every drawn zone + «drawn / not drawn yet».
+- [x] `/cities` carries `boundary`; Postman + reference; app note
+      `docs/mobile-2026-09-29-zones.md`; zones sheet `drawn` column.
+- [x] `ZoneBoundaryTest` (23), `PolygonTest` (11). `/code-review` (16): all
+      fixed with tests.
+- [x] Full suite 1,814 green. `/security-review`: nothing met the bar.
+- Not seen: the real zone screen in a browser (MySQL down — the drawing tool
+  was driven in a harness page with its own script lifted from the Blade).
+
+# Piece count check (2026-09-28)
+
+«لو ف اختلاف هحتاج ان الداش بورد سواء السوبر ادمن او المغسله يجيلهه زي تنبيه واضح».
+Decisions: each leg compared with the handover before it (customer's order →
+pickup count → laundry's review); the alert stays until somebody at the
+platform presses «تمت المراجعة» with a note.
+
+- [x] Migration: `order_tasks.expected_piece_count`, `expected_piece_source`,
+      `piece_check_resolved_at/_by`, `piece_check_note`,
+      `piece_check_confirmed_count`, `piece_check_open` (indexed).
+- [x] `PieceCheck` (expected + resolve), stamped in `TaskService::complete()`.
+- [x] `PieceCountNotifier` → platform (`order.update`) + the order's laundry,
+      through `PanelAudience`, in the panel's language.
+- [x] Order screen banner + «تمت المراجعة» (note + real count); transport cell in red.
+- [x] Sidebar badge, home queue (both roles), orders filter + sheet filter —
+      one `Order::withOpenPieceCheck()`.
+- [x] Driver app `expected_pieces` = the same number; mobile note.
+- [x] `PieceCheckTest` (19). Full suite before the review fixes: 1,767 green.
+      `/code-review` (16): 15 fixed with tests; one is a product question for
+      the owner — should a laundry's review count that differs from the count
+      handed to it raise the same alert?
+- [x] Full suite after the fixes: 1,773 green (472s). `/security-review`:
+      nothing met the bar.
+- [x] Owner (2026-09-29): the laundry's review count is checked against what
+      was handed to it; the driver is not shown the expected count before
+      confirming. Reshaped into `piece_discrepancies` (one row per
+      disagreement). Second `/code-review` (15) — all fixed with tests.
+      `PieceCheckTest` (29).
+- [x] Full suite 1,782 green. `/security-review` of the reshape: nothing met
+      the bar.
+
+# Validation messages editor (2026-09-28)
+
+«انت نسيت هنا الصفحه الي هقدر اعدل فيها الفالديشين ف اللغه».
+
+- [x] `ValidationOverrideLoader` over `translation.loader` (`extend()`), store
+      `{code}_validation.json`, flat dotted keys over the shipped PHP file.
+- [x] `Services/languages/ValidationMessages`: groups (messages / field names),
+      save — known keys only, placeholders kept (all-or-nothing), blank resets.
+- [x] `admin.language.validation{,.update}` (`language.update`), view with a
+      client filter, link in the Languages actions menu, deleted with the
+      language. `ValidationMessagesEditorTest` (13).
+- [x] Docs: CLAUDE.md, Changelog, QA guide + PDF.
+- [x] Full suite 1,745 green. `/code-review` (15 findings) — fixed with tests:
+      unescaped toast sink (`@json`), store moved to `storage/app/lang`, `en`
+      keys merged into the rows, `attributes` wiped for a language with no file,
+      Laravel-only placeholder spellings + re-check at load, dotted field names,
+      atomic write + UTF-8, rename moves the file, activity-log row, filter on
+      wording, `old()` null, FA5 icons, one `pathFor()`.
+      `ValidationMessagesEditorTest` (22).
+- [x] Full suite again 1,754 green (297s). `/security-review`: no finding met
+      the bar.
+
+# Delivery leaves the service its time (2026-09-28)
+
+«خدمة مدتها من يومين لـ 4 والعميل بيختار الاستلام والتسليم في نفس اليوم».
+Decisions: the middle of the range; hours exact, days whole days; a postponed
+pickup pushes the delivery.
+
+- [x] `Order/Services/Turnaround` + `Concerns/DeliveryAfterTurnaround` on
+      `POST /orders`; `too_early` on `/time-slots` and the reschedule options;
+      `delivery_after` on `/services`; `RescheduleService` moves the delivery.
+- [x] `TurnaroundTest` (13). `/code-review` (10 findings, 9 fixed with tests,
+      1 not reproducible); `/security-review`: nothing met the bar.
+- [x] Docs: CLAUDE.md, Changelog, QA guide + PDF, Postman, reference, app note
+      `docs/mobile-2026-09-28-turnaround.md`. Full suite 1,719 green.
+
+# Next batch — queued 2026-09-28 (start after the activity-log task is shown)
+
+The owner's next four requests, in their words, to discuss and then build. A
+fifth point is to be discussed with the owner once these are done.
+
+Decisions taken with the owner (2026-09-28):
+
+- Offer scope lives **on the coupon** (the offer's discount *is* its coupon),
+  so a typed code is scoped too; **one kind** (category / service / item) with
+  **several values**; the discount comes off the matching pieces only.
+- Auto-assign off → the work waits for a person **and** the operators get a
+  bell notification each time.
+- Red discount on the order screen, the review form **and the invoice**.
+- Settings tabs: عام / التواصل / الفلوس / التشغيل; add the missing
+  `Cash_Surcharge` input to the money tab.
+
+- [x] **Discounts in red** — order screen pricing card, settlement card,
+      review form, invoice. `InvoiceDocumentTest`.
+- [x] **Settings page in tabs** — four tabs; a 422 opens the tab holding the
+      first bad field; the open tab survives a save; `Cash_Surcharge` input.
+      `GeneralSettingTabsTest`; `commission.spec.js` opens the money tab.
+- [x] **Auto-assign on/off** — `Auto_Assign_Laundry`, `Auto_Assign_Driver`
+      (on by default = today). Laundry: `place()` leaves it unassigned. Driver:
+      `TaskGenerator`, `tasks:dispatch` sweep, re-dispatch after a failed
+      attempt and after a reschedule all stop; the operator's own «auto pick»
+      buttons still work. Bell to whoever holds `order.update` /
+      `order_task.update`.
+- [x] **Coupon scope** — `coupons.scope_type` (null = whole order / category /
+      service / item) + values; `Coupon::discountFor()` on the matching lines'
+      subtotal; quote/place pass the lines; `/coupons/check` with items;
+      offer form shows the scope; app note + Postman.
+
+Review (2026-09-28):
+
+- Coupon scope: `coupons.scope_type`/`scope_ids`, `Coupon::eligibleSubtotal()`
+  / `eligibleFor()`, `OrderPricing::lines()`, `CouponService::check()`;
+  copied to `orders.discount_scope` and re-worked at review. `CouponScopeTest`
+  (14). App note `docs/mobile-2026-09-28-coupon-scope.md`, Postman + reference.
+- Auto-assign: `AutoAssign`, `AssignmentNotifier`,
+  `DriverDispatcher::automatically()`; an order with no laundry is never
+  dispatched automatically and is offered on assignment. `AutoAssignTest` (9).
+- `/code-review` (10 findings) all fixed with tests; `/security-review`: no
+  finding met the bar.
+- Not run: the browser suite and a look at the new screens — MySQL was down
+  for the whole session. Deploy: migrate (two new migrations today).
+
+# Activity log — worded for the owner (2026-09-28)
+
+- [x] `ActivityPresenter`: one sentence per row («تعديل مدينة «القاهرة»»), who by
+      role, where from by the screen's name, only meaningful fields in words.
+- [x] Order history and the Excel export worded through it.
+- [x] Permissions no longer recorded or listed; panel sign-in is «لوحة التحكم».
+- [x] Record names kept in every language, read in the reader's.
+- [x] `/code-review` (8 findings) — all fixed with tests: coupon bearer via
+      query/JSON; period rise made permanent charged twice on in-flight orders
+      (re-stamp on permanent/undo); landing cache missed permanent rise/undo;
+      bulk writes invisible to the log; in-flight discounted orders' payout
+      (migration 2026_09_28_100000); today's search; stale settlement docblock;
+      driver pay in the order history.
+- [x] `/security-review` (2 MEDIUM) — fixed with tests: Excel formula injection
+      (every string a StringCell); complaints and internal notes in the order
+      history for laundry roles (allow-list `OPEN` + `GATED`).
+- [x] Docs (CLAUDE.md, Changelog, QA guide + PDF). Full suite green: 1,677 tests, 337s.
+
+# Laundry share — the laundry takes the percentage (2026-09-27)
+
+Client change: the percentage set on a laundry is what the **laundry receives**
+from the washing; the platform keeps the rest. Today it is the reverse (the rule
+is the platform's commission). Decisions taken with the owner:
+
+- No rule on a laundry → a general **`Laundry_Share_Rate`** setting applies; with
+  neither, the settlement stays **pending** and nothing moves.
+- Existing rules are **converted per laundry** on deploy so nobody's payout moves
+  (platform 10% → laundry 90%). Settled rows are never touched.
+- **Percentage only** — the fixed-per-order basis is retired; a laundry carrying
+  a fixed rule is reported, not guessed at.
+- **One active share per laundry** — no stacking.
+- Per-piece vs per-order: audited by running the real code — identical except
+  piastres of rounding; the basis already is the laundry's piece prices after the
+  discount. Left per order, as agreed.
+
+## Plan
+
+- [x] Migration: `order_settlements.laundry_share_rate` (nullable) — the % the
+      laundry was paid at; null on legacy rows and on a pending row with no share.
+- [x] Migration (data): convert rules per laundry, one active share each; fixed
+      and stacked handled explicitly; rule-less laundries pinned at 100% so their
+      payout does not change; logged.
+- [x] `SettlementService`: resolve share (rule → setting → none); laundry =
+      round(basis × share), platform = basis − laundry; unresolved → pending,
+      settleFor refuses.
+- [x] Settle-now action for a pending settlement of a completed order
+      (`setting.update`), so a share set later can be paid.
+- [x] Rules: percent only, one active rule per laundry (request, toggle,
+      laundry modal → single choice).
+- [x] Setting `Laundry_Share_Rate` on the general settings form + request.
+- [x] Views: settlement list, order show card, laundry list cell, rule form copy.
+- [x] Translations (ar), tests updated + new, docs (order-cycle-explained, QA
+      guide, CLAUDE.md money section), Changelog, second-brain update.
+- [x] Full suite
+- [ ] /code-review + /security-review — before commit (client has more changes queued)
+
+## Review
+
+- Split lives in `SettlementService::splitFor()`; laundry amount rounded, platform
+  by subtraction. Unresolved share → pending, `settleFor()` refuses; `settleWaiting()`
+  + `admin.settlement.settle` pays later, row locked against a double click.
+- Migration converts per laundry (single flip / stacked combine / unruled 100% /
+  fixed left waiting + logged). `LaundryShareMigrationTest` asserts each laundry is
+  paid the same on the same basis before and after.
+- Coupon bearer (decided with the owner): per coupon — platform (default) /
+  laundry / split — with `Coupon_Laundry_Share` as the default; laundry's share
+  measured before the discount; delivery part always the platform's; laundry
+  floored at 0, platform may go negative (wallet overdraft, `discount_funded`);
+  field gated on `setting.update`. Copied onto the order at placement.
+- Price increase: `PriceIncrease` (period = settings rate + optional end,
+  read-time; permanent = rewrite `item_prices` + clear). Laundry's price, under
+  the fee; stamped on the order for the review. `PriceIncreaseTest`.
+- «طلبات اليوم»: `OrderTodayController` / `OrderTodayService` / `OrderRepository::todayBoard()`;
+  scopes in_laundry (legs) / delivery_today / pickup_today, nearest first; totals by
+  service→item; `menu.permissions` alias → `order.view`. `OrderTodayTest`.
+- «طلبات اليوم» moved into an «Orders» sidebar group (with «All orders»); routes stay
+  `admin.order_today.*` so the two items light up apart.
+- Laundry services need approval: `LaundryServiceRequest` + `LaundryServiceRequestReview`;
+  registration names services; review screen `admin.laundry_service_request.*`.
+  `LaundryServiceRequestTest`. Deploy: PermissionSeeder.
+- Browser specs rewritten but not run: dev MySQL was down this session.
+- Excel export/import: `app/Support/Spreadsheet` + 32 sheets; import through each
+  screen's FormRequest + crud service, row by row. `Spreadsheet*Test`.
+- Price increase history + undo of the latest standing permanent rise
+  (`PriceChange` / `PriceChangeItem`); hand-corrected prices kept. 5% backfilled.
+- Activity log: `ActivityLogger` on wildcard Eloquent events + sign-in/out,
+  `activity_logs.diff`, secrets `••••`, excluded models / ignored attributes in
+  `config/activity.php`, source dashboard/api/site/system; screen
+  `admin.activity_log.*` (`activity_log.view`); order screen history =
+  `OrderHistory` (status logs + rows by `order_id`, ids named); prune 6 months.
+  `ActivityLogTest`. Deploy: migrate + PermissionSeeder. Known gap: bulk
+  query-builder writes fire no event.
+
 # Second Brain — codebase knowledge graph
 
 ## Phase 1 — architecture discovered (done, from inspection)

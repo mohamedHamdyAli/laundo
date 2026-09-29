@@ -3,6 +3,7 @@
 namespace Tests\Feature\Dashboard;
 
 use App\Modules\City\Models\City;
+use App\Modules\Service\Models\Service;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 use PHPUnit\Framework\Attributes\Test;
@@ -117,6 +118,8 @@ class LaundryRegisterValidationTest extends TestCase
             // once it is approved.
             'lat' => 30.0444,
             'lng' => 31.2357,
+            // At least one service it will offer.
+            'services' => [$this->anyService()],
             'accepts_terms' => 1,
             // A 302 to «تم التقديم», not a 200: success is still a redirect and
             // the script follows it, which is the half of the behaviour that
@@ -124,5 +127,13 @@ class LaundryRegisterValidationTest extends TestCase
         ])->assertRedirect(route('laundry.applied'));
 
         $this->assertDatabaseHas('users', ['email' => 'rania@example.test']);
+    }
+
+    private function anyService(): int
+    {
+        return Service::create([
+            'name' => json_encode(['en' => 'Wash', 'ar' => 'غسيل'], JSON_UNESCAPED_UNICODE),
+            'pricing_mode' => 'per_item', 'sort_order' => 1, 'status' => 'active',
+        ])->id;
     }
 }

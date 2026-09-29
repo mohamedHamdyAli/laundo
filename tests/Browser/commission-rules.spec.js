@@ -2,16 +2,16 @@ import { test, expect } from '@playwright/test';
 import { ACCOUNTS, login } from './helpers.js';
 
 /**
- * Commissions, in a real browser.
+ * Laundry shares, in a real browser.
  *
- * A laundry can carry several charges and they add together, so the half a PHP
- * test cannot reach is the choosing: that the percentage box and the amount box
- * swap when the basis changes, that the laundry dialog shows exactly what is
- * already attached and nothing else, and that ticking two of them leaves the
- * row reading «10% + 5 ج» rather than one blended number.
+ * A rule is the share of the washing a laundry **receives** — the platform keeps
+ * the rest — and a laundry is on one share at a time. The half a PHP test cannot
+ * reach is the choosing: that the form asks for a percentage and nothing else,
+ * that the laundry dialog offers one share at a time and pre-selects exactly the
+ * one the laundry is on, and that choosing another replaces it.
  *
- * Everything here cleans up after itself — it drives the development database,
- * and a laundry left on a charge nobody agreed to is real money next month.
+ * Everything here puts back what it found — it drives the development database,
+ * and a laundry left on a share nobody agreed to is real money next month.
  */
 
 async function settled(page) {
@@ -22,19 +22,13 @@ async function settled(page) {
   });
 }
 
-/** Create a charge through the UI and hand back its name. */
-async function createCharge(page, { name, basis, value }) {
+/** Create a share through the UI and hand back its name. */
+async function createShare(page, { name, value }) {
   await page.goto('/admin/commission-rule/create');
   await settled(page);
 
   await page.locator('#commission-name').fill(name);
-  await page.selectOption('#commission-basis', basis);
-
-  if (basis === 'fixed') {
-    await page.locator('#commission-amount').fill(String(value));
-  } else {
-    await page.locator('#commission-rate').fill(String(value));
-  }
+  await page.locator('#commission-rate').fill(String(value));
 
   await page.locator('form.store button[type="submit"]').click();
   await page.waitForLoadState('networkidle');
@@ -42,7 +36,7 @@ async function createCharge(page, { name, basis, value }) {
   return name;
 }
 
-async function deleteCharge(page, name) {
+async function deleteShare(page, name) {
   await page.goto('/admin/commission-rule');
   await settled(page);
 
@@ -55,33 +49,49 @@ async function deleteCharge(page, name) {
   }
 }
 
-test.describe('a commission charge', () => {
+/** Open the first laundry's dialog and report which share it is on ('' = general). */
+async function openFirstLaundry(page) {
+  await page.goto('/admin/laundry');
+  await settled(page);
+
+  await page.locator('#laundry-table-body .stack-row').first().locator('.js-commission-btn').click();
+
+  const modal = page.locator('#commissionModal');
+  await expect(modal).toBeVisible();
+
+  return modal.locator('.js-commission-rule:checked').inputValue();
+}
+
+async function chooseAndSave(page, value) {
+  const modal = page.locator('#commissionModal');
+  await modal.locator(`.js-commission-rule[value="${value}"]`).check();
+  await modal.locator('button[type="submit"]').click();
+  await page.waitForLoadState('networkidle');
+}
+
+test.describe('a laundry share', () => {
   test.beforeEach(async ({ page }) => {
     await login(page, ACCOUNTS.superAdmin);
     await page.goto('/admin/set-language/en');
   });
 
-  test('the percentage and the amount are never both on screen', async ({ page }) => {
+  test('it is a percentage and nothing else', async ({ page }) => {
     await page.goto('/admin/commission-rule/create');
     await settled(page);
 
-    // They are the same question asked two ways, and the basis decides which is
-    // being asked. Showing both invites somebody to fill both, and only one
-    // would ever be read.
-    await page.selectOption('#commission-basis', 'percent');
-    await expect(page.locator('#commission-rate-field')).toBeVisible();
-    await expect(page.locator('#commission-amount-field')).toBeHidden();
-
-    await page.selectOption('#commission-basis', 'fixed');
-    await expect(page.locator('#commission-amount-field')).toBeVisible();
-    await expect(page.locator('#commission-rate-field')).toBeHidden();
+    // The fixed amount went when the share moved to the laundry's side, so
+    // there is no basis to choose and no second box to fill.
+    await expect(page.locator('#commission-rate')).toBeVisible();
+    await expect(page.locator('#commission-basis')).toHaveCount(0);
+    await expect(page.locator('#commission-amount')).toHaveCount(0);
+    await expect(page.locator('body')).toContainText('the laundry receives 10 of every 100');
   });
 
-  test('a charge created here shows its terms and its laundry count', async ({ page }) => {
-    const name = 'PW Charge ' + Math.floor(Math.random() * 100000);
+  test('a share created here shows its terms and its laundry count', async ({ page }) => {
+    const name = 'PW Share ' + Math.floor(Math.random() * 100000);
 
     try {
-      await createCharge(page, { name, basis: 'percent', value: 11 });
+      await createShare(page, { name, value: 11 });
 
       const body = page.locator('#commission-table-body');
       await expect(body).toContainText(name);
@@ -89,104 +99,70 @@ test.describe('a commission charge', () => {
       // Nothing attached yet, so the count is the honest zero.
       await expect(body.locator('.stack-row', { hasText: name })).toContainText('0');
     } finally {
-      await deleteCharge(page, name);
+      await deleteShare(page, name);
     }
   });
 });
 
-test.describe('attaching charges to a laundry', () => {
+test.describe('putting a laundry on a share', () => {
   test.beforeEach(async ({ page }) => {
     await login(page, ACCOUNTS.superAdmin);
     await page.goto('/admin/set-language/en');
   });
 
-  test('the dialog lists the charges and says what ticking nothing means', async ({ page }) => {
+  test('the dialog offers one share at a time and says what none means', async ({ page }) => {
     const name = 'PW Dialog ' + Math.floor(Math.random() * 100000);
 
     try {
-      await createCharge(page, { name, basis: 'fixed', value: 7 });
-
-      await page.goto('/admin/laundry');
-      await settled(page);
-      await page.locator('.js-commission-btn').first().click();
+      await createShare(page, { name, value: 7 });
+      await openFirstLaundry(page);
 
       const modal = page.locator('#commissionModal');
-      await expect(modal).toBeVisible();
       await expect(modal).toContainText(name);
-      // The distinction the whole model rests on.
-      await expect(modal).toContainText('Tick nothing to follow the general rate');
-      await expect(modal).toContainText('charge of 0');
+      // Radios, not tickboxes: one share at a time.
+      await expect(modal.locator('.js-commission-rule[type="checkbox"]')).toHaveCount(0);
+      await expect(modal).toContainText('General laundry share (Settings)');
     } finally {
-      await deleteCharge(page, name);
+      await deleteShare(page, name);
     }
   });
 
-  test('two charges tick on, stack on the row, and tick back off', async ({ page }) => {
-    const stamp = Math.floor(Math.random() * 100000);
-    const percent = 'PW Pct ' + stamp;
-    const fixed = 'PW Fix ' + stamp;
+  test('the dialog pre-selects exactly the share the laundry is on', async ({ page }) => {
+    await openFirstLaundry(page);
+
+    // Exactly one — the laundry's own share, or «general». Nothing selected
+    // would have Save quietly move the laundry to the general share.
+    expect(await page.locator('.js-commission-rule:checked').count()).toBe(1);
+  });
+
+  test('choosing a share replaces the one before, and the laundry is put back', async ({ page }) => {
+    const name = 'PW Pick ' + Math.floor(Math.random() * 100000);
+    let original = null;
 
     try {
-      await createCharge(page, { name: percent, basis: 'percent', value: 9 });
-      await createCharge(page, { name: fixed, basis: 'fixed', value: 4 });
+      await createShare(page, { name, value: 9 });
 
-      await page.goto('/admin/laundry');
-      await settled(page);
+      original = await openFirstLaundry(page);
+      const ruleId = await page
+        .locator('#commissionModal label', { hasText: name })
+        .evaluate((label) => document.getElementById(label.htmlFor).value);
 
-      const row = page.locator('#laundry-table-body .stack-row').first();
-      await row.locator('.js-commission-btn').click();
+      await chooseAndSave(page, ruleId);
 
-      const modal = page.locator('#commissionModal');
-      await expect(modal).toBeVisible();
-
-      await modal.locator('label', { hasText: percent }).click();
-      await modal.locator('label', { hasText: fixed }).click();
-      await modal.locator('button[type="submit"]').click();
-      await page.waitForLoadState('networkidle');
-
-      // Every charge named, not a blended figure: «9% + 4 ج» is what the
-      // agreement says, and collapsing it to one number is what made a single
-      // column insufficient in the first place.
       const first = page.locator('#laundry-table-body .stack-row').first();
       await expect(first).toContainText('9%');
-      await expect(first).toContainText('2 charges');
+      await expect(first).toContainText(name);
 
-      // Untick them both: sync() has to take them off, or a charge nobody can
-      // remove is the worst kind.
+      // Reopened, the new share is the one selected — the old one came off.
       await first.locator('.js-commission-btn').click();
-      await expect(modal).toBeVisible();
-      await modal.locator('label', { hasText: percent }).click();
-      await modal.locator('label', { hasText: fixed }).click();
-      await modal.locator('button[type="submit"]').click();
-      await page.waitForLoadState('networkidle');
-
-      await expect(page.locator('#laundry-table-body .stack-row').first())
-        .toContainText('General rate');
-    } finally {
-      await deleteCharge(page, percent);
-      await deleteCharge(page, fixed);
-    }
-  });
-
-  test('the dialog pre-ticks only what is already attached', async ({ page }) => {
-    const name = 'PW Preticked ' + Math.floor(Math.random() * 100000);
-
-    try {
-      await createCharge(page, { name, basis: 'percent', value: 6 });
-
-      await page.goto('/admin/laundry');
-      await settled(page);
-
-      // Nothing attached, so nothing is ticked. Pre-ticking would pin a laundry
-      // that follows the general rate onto today's value of it the moment
-      // somebody opened the dialog and pressed Save.
-      await page.locator('.js-commission-btn').first().click();
       await expect(page.locator('#commissionModal')).toBeVisible();
-
-      const checked = await page.locator('.js-commission-rule:checked').count();
-      expect(checked).toBe(0);
+      expect(await page.locator('.js-commission-rule:checked').inputValue()).toBe(ruleId);
     } finally {
-      await deleteCharge(page, name);
+      if (original !== null) {
+        await openFirstLaundry(page);
+        await chooseAndSave(page, original);
+      }
+      await deleteShare(page, name);
     }
   });
 

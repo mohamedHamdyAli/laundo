@@ -53,10 +53,19 @@ class TaskGenerator
                 ]);
 
                 // Dispatched immediately so the queue only ever holds what nobody
-                // could take, rather than everything nobody has looked at.
-                $this->dispatcher->dispatch($task);
+                // could take, rather than everything nobody has looked at —
+                // unless automatic assignment is off, and a person picks.
+                $this->dispatcher->automatically($task->setRelation('order', $order), announce: false);
 
                 $tasks[] = $task->refresh();
+            }
+
+            // One announcement for the order's legs, not one per leg — and only
+            // once there is a laundry to take the pieces to. Until then the legs
+            // are not assignable, and OrderService::assignLaundry() announces
+            // them when they become so.
+            if (! $this->dispatcher->assignsAutomatically() && $order->laundry_id !== null) {
+                $this->dispatcher->announceWaiting($order, count($tasks));
             }
 
             return $tasks;
@@ -92,6 +101,15 @@ class TaskGenerator
      * laundry's turnaround is not modelled — the laundry sets its own pace, and
      * inventing a deadline for it would create lateness that nobody agreed to.
      */
+    /**
+     * When one leg is due, for a caller that has just moved the order's window
+     * — the same answer the legs were created with.
+     */
+    public function dueFor(Order $order, TaskType $type): ?Carbon
+    {
+        return $this->dueAt($order, $type);
+    }
+
     private function dueAt(Order $order, TaskType $type): ?Carbon
     {
         $pickup = $this->windowEnd($order->pickup_date, $order->pickupSlot?->end_time);

@@ -3,6 +3,7 @@
 namespace App\Modules\Payment\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Modules\Payment\Enums\CommissionBasis;
 use App\Modules\Payment\Models\CommissionRule;
 use App\Modules\Payment\Requests\CommissionRuleRequest;
 use App\Modules\Payment\Services\commissionRuleCrudService;
@@ -75,19 +76,26 @@ class CommissionRuleController extends Controller
 
     public function toggleStatus(Request $request, $id)
     {
+        if ($request->status === 'active' && ($refusal = $this->ruleService->activationRefusal($id)) !== null) {
+            return response()->json(['success' => false, 'message' => $refusal], 422);
+        }
+
         $rule = $this->ruleService->toggleStatus($id, $request->status);
 
         return response()->json(['success' => true, 'status' => $rule->status]);
     }
 
     /**
-     * The charges an operator can attach, for the laundry dialog.
+     * The shares an operator can put a laundry on, for the laundry dialog.
      *
-     * Active only: putting a laundry on a switched-off charge would look like it
-     * billed and bill nothing.
+     * Active percentage rules only: putting a laundry on a switched-off rule
+     * would look like terms and pay on none, and a fixed rule is retired.
      */
     public static function attachableRules()
     {
-        return CommissionRule::active()->orderBy('id')->get();
+        return CommissionRule::active()
+            ->where('basis', CommissionBasis::Percent->value)
+            ->orderBy('id')
+            ->get();
     }
 }

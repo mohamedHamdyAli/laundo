@@ -110,6 +110,9 @@ Route::get('/pages/{page}', [AppSettingController::class, 'page'])->name('api.v1
 // Geography and scheduling, for the address form and the wizard's schedule step.
 Route::get('/cities', [GeoController::class, 'cities'])->name('api.v1.cities');
 Route::get('/time-slots', [GeoController::class, 'timeSlots'])->name('api.v1.time-slots');
+// «من يوم كذا ليوم كذا» — the range a delivery must fall in for this service and
+// pickup, whether the chosen one fits, and a suggestion to fix it in place.
+Route::get('/delivery-window', [GeoController::class, 'deliveryWindow'])->name('api.v1.delivery-window');
 
 /*
 |--------------------------------------------------------------------------

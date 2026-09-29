@@ -6,8 +6,10 @@ use App\Modules\Coupon\Models\Coupon;
 use App\Modules\Coupon\Models\CouponRedemption;
 use App\Modules\Order\Models\Order;
 use App\Modules\Order\Services\OrderService;
+use App\Modules\Setting\Models\Setting;
 use App\Modules\User\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Cache;
 use Laravel\Sanctum\Sanctum;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
@@ -276,6 +278,65 @@ class CouponTest extends TestCase
         // the customer's one use of a welcome code.
         $this->assertSame(0, $coupon->fresh()->redemptions_count);
         $this->assertSame(0, CouponRedemption::count());
+    }
+
+    #[Test]
+    public function placing_an_order_copies_who_pays_for_the_discount(): void
+    {
+        $coupon = $this->coupon([
+            'code' => 'SPLIT40', 'type' => Coupon::FIXED, 'value' => 10,
+            'applies_to_delivery' => true, 'discount_laundry_share' => 40,
+        ]);
+
+        Sanctum::actingAs($this->customer);
+
+        $this->postJson('/api/v1/orders', [
+            'service_id' => $this->catalog['service']->id,
+            'pickup_address_id' => $this->address->id,
+            'items' => [['item_id' => $this->catalog['items'][0]->id, 'qty' => 2]],
+            'accepts_review_terms' => true,
+            'coupon_code' => 'SPLIT40',
+        ], $this->apiHeaders())->assertCreated();
+
+        $order = Order::withoutGlobalScopes()->firstOrFail();
+
+        $this->assertSame('40.00', $order->discount_laundry_share);
+        $this->assertTrue($order->discount_covers_delivery);
+
+        // Copied, not referenced: editing the coupon next week does not restate
+        // who pays for an order placed today.
+        $coupon->update(['discount_laundry_share' => 100]);
+        $this->assertSame('40.00', $order->fresh()->discount_laundry_share);
+    }
+
+    #[Test]
+    public function a_coupon_that_does_not_say_follows_the_general_setting(): void
+    {
+        Setting::updateOrCreate(['key' => 'Coupon_Laundry_Share'], ['value' => '25']);
+        Cache::flush();
+
+        $this->coupon(['code' => 'PLAIN', 'type' => Coupon::FIXED, 'value' => 10]);
+
+        Sanctum::actingAs($this->customer);
+
+        $this->postJson('/api/v1/orders', [
+            'service_id' => $this->catalog['service']->id,
+            'pickup_address_id' => $this->address->id,
+            'items' => [['item_id' => $this->catalog['items'][0]->id, 'qty' => 2]],
+            'accepts_review_terms' => true,
+            'coupon_code' => 'PLAIN',
+        ], $this->apiHeaders())->assertCreated();
+
+        $this->assertSame('25.00', Order::withoutGlobalScopes()->firstOrFail()->discount_laundry_share);
+    }
+
+    #[Test]
+    public function with_nothing_set_the_platform_pays(): void
+    {
+        // «المفروض الكوبون يكون على السوبر أدمن».
+        $coupon = $this->coupon(['code' => 'OWNER', 'type' => Coupon::FIXED, 'value' => 10]);
+
+        $this->assertSame(0.0, $coupon->laundryShareOfDiscount());
     }
 
     #[Test]

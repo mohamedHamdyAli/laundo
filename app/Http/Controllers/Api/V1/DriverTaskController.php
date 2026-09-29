@@ -493,6 +493,38 @@ class DriverTaskController extends Controller
     }
 
     /**
+     * `expected_pieces`.
+     *
+     * **Withheld on a counted leg until the driver has confirmed** — the
+     * owner's call: shown the number first, a driver copies it instead of
+     * counting, and the check the count feeds (PieceCheck) is worth nothing.
+     * Once the leg is done it answers with what the count was held to at the
+     * time (or, where it was held to nothing, what the driver counted), so the
+     * app can say «the office has been told» when the two differ.
+     *
+     * The last leg counts nothing and keeps the order's count — but only once
+     * the collection from the laundry is done. One driver usually holds all
+     * four legs at once, and before then the delivery's count is exactly the
+     * number a leg still to be counted is held to.
+     */
+    private function expectedPieces(OrderTask $task): ?int
+    {
+        if ($task->type->countsPieces()) {
+            return $task->status === TaskStatus::Completed
+                ? ($task->expected_piece_count ?? $task->piece_count)
+                : null;
+        }
+
+        if (! $task->predecessorComplete()) {
+            return null;
+        }
+
+        $order = $task->order;
+
+        return (int) ($order->final_items_count ?? $order->estimated_items_count);
+    }
+
+    /**
      * @return array<string, mixed>
      */
     private function detail(OrderTask $task): array
@@ -538,10 +570,14 @@ class DriverTaskController extends Controller
             'driver_note' => $order?->driver_note,
             'special_instructions' => $order?->special_instructions,
 
-            // «مراجعة الكمية — القطع الأصلية: 12» on the collection from the laundry.
+            // «مراجعة الكمية — القطع الأصلية: 12» on the collection from the
+            // laundry, in the design — now shown only once the count is in.
             // Not nullsafe: order_id is a cascade-deleting FK, so a task without
             // an order cannot exist.
-            'expected_pieces' => $order->final_items_count ?? $order->estimated_items_count,
+            //
+            // Null on a counted leg until the driver has confirmed — see
+            // expectedPieces().
+            'expected_pieces' => $this->expectedPieces($task),
             'laundry_note' => $order?->review_note,
             'piece_count' => $task->piece_count,
 

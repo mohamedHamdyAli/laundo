@@ -56,30 +56,37 @@
                             {{ __('A balance is never edited directly — every change is a transaction.') }}
                         </p>
 
-                        <div class="d-flex justify-content-end mb-3 gap-2">
-                            <select id="walletTypeFilter" class="form-select" style="max-width: 240px;">
-                                {{-- This option used to read «All wallets» while
-                                     hiding every empty wallet, and was reported
-                                     as a bug the first time somebody counted the
-                                     rows. The rule it drives is a good default —
-                                     the screen opens on «where is the money» —
-                                     so the rule stayed and the label changed to
-                                     say what it does, with a real «all» beside
-                                     it. --}}
-                                <option value="">{{ __('Wallets holding money') }}</option>
-                                <option value="{{ \App\Modules\Wallet\Controllers\WalletController::EVERY }}"
-                                    @selected($every)>
-                                    {{ __('Every wallet') }}
-                                </option>
-                                @foreach ($types as $case)
-                                    <option value="{{ $case->value }}" @selected($type === $case)>
-                                        {{ __($case->label()) }}
+                        <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
+                            {{-- Excel: the export holds what the filter and the
+                                 search show. An empty `type` is sent as nothing,
+                                 which is the funded-only default here too. --}}
+                            <x-spreadsheet-actions sheet="wallet" search="#walletSearchInput"
+                                :filters="['type' => '#walletTypeFilter']" />
+                            <div class="d-flex flex-wrap gap-2 ms-auto">
+                                <select id="walletTypeFilter" class="form-select" style="max-width: 240px;">
+                                    {{-- This option used to read «All wallets» while
+                                         hiding every empty wallet, and was reported
+                                         as a bug the first time somebody counted the
+                                         rows. The rule it drives is a good default —
+                                         the screen opens on «where is the money» —
+                                         so the rule stayed and the label changed to
+                                         say what it does, with a real «all» beside
+                                         it. --}}
+                                    <option value="">{{ __('Wallets holding money') }}</option>
+                                    <option value="{{ \App\Modules\Wallet\Controllers\WalletController::EVERY }}"
+                                        @selected($every)>
+                                        {{ __('Every wallet') }}
                                     </option>
-                                @endforeach
-                            </select>
-                            <div class="input-group" style="max-width: 350px;">
-                                <input type="text" id="walletSearchInput" class="form-control"
-                                    placeholder="{{ __('Search by name or phone...') }}">
+                                    @foreach ($types as $case)
+                                        <option value="{{ $case->value }}" @selected($type === $case)>
+                                            {{ __($case->label()) }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                                <div class="input-group" style="max-width: 350px;">
+                                    <input type="text" id="walletSearchInput" class="form-control"
+                                        placeholder="{{ __('Search by name or phone...') }}">
+                                </div>
                             </div>
                         </div>
 

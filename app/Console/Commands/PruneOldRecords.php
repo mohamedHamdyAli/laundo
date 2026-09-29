@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Models\ActivityLog;
 use App\Modules\Notification\Models\DeviceToken;
 use App\Modules\Notification\Models\NotificationLog;
 use App\Modules\Payment\Models\Payment;
@@ -43,7 +44,8 @@ class PruneOldRecords extends Command
         {--logs=90 : Keep delivered notification logs for this many days}
         {--failed-logs=365 : Keep FAILED notification logs for this many days}
         {--payloads=180 : Clear payment provider payloads older than this many days}
-        {--tokens=180 : Remove device tokens unused for this many days}';
+        {--tokens=180 : Remove device tokens unused for this many days}
+        {--activity= : Keep activity log rows for this many days (default: config activity.retention_days)}';
 
     protected $description = 'Apply retention to notification logs, payment payloads and device tokens';
 
@@ -59,6 +61,7 @@ class PruneOldRecords extends Command
         $removed += $this->pruneNotificationLogs($dryRun);
         $removed += $this->prunePaymentPayloads($dryRun);
         $removed += $this->pruneDeviceTokens($dryRun);
+        $removed += $this->pruneActivityLogs($dryRun);
 
         $this->newLine();
         $this->info($dryRun
@@ -158,6 +161,26 @@ class PruneOldRecords extends Command
         $count = (clone $query)->count();
 
         $this->line("device_tokens — unused for {$keepDays}d: {$count}");
+
+        if ($dryRun) {
+            return $count;
+        }
+
+        return $this->chunkDelete($query);
+    }
+
+    /**
+     * The activity log — six months by the owner's decision. `order_status_logs`
+     * is never touched: the customer app's tracking screen is built from it.
+     */
+    private function pruneActivityLogs(bool $dryRun): int
+    {
+        $keepDays = (int) ($this->option('activity') ?: config('activity.retention_days', 183));
+        $query = ActivityLog::where('created_at', '<', now()->subDays($keepDays));
+
+        $count = (clone $query)->count();
+
+        $this->line("activity_logs — older than {$keepDays}d: {$count}");
 
         if ($dryRun) {
             return $count;

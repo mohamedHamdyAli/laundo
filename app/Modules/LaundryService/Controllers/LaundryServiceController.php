@@ -4,6 +4,7 @@ namespace App\Modules\LaundryService\Controllers;
 
 use App\Http\Controllers\Controller;
 use App\Modules\LaundryService\Services\laundryServiceCrudService;
+use App\Support\LaundryContext;
 use Illuminate\Http\Request;
 
 class LaundryServiceController extends Controller
@@ -28,11 +29,21 @@ class LaundryServiceController extends Controller
 
         $count = $this->laundryServiceCrudService->sync(
             $validated['laundry_id'] ?? null,
-            $validated['services'] ?? []
+            $validated['services'] ?? [],
+            $request->user(),
         );
+
+        // From inside a laundry the save asked rather than wrote, and says so:
+        // «updated» over a list that still shows the old ticks reads as a
+        // save that failed.
+        $message = LaundryContext::currentId() !== null
+            ? ($count > 0
+                ? trans_choice(':count change sent for approval.|:count changes sent for approval.', $count, ['count' => $count])
+                : __('Nothing to change.'))
+            : __('Updated Successfully')." ({$count})";
 
         return redirect()
             ->route('admin.laundry_service.index', array_filter(['laundry_id' => $validated['laundry_id'] ?? null]))
-            ->with('success', __('Updated Successfully')." ({$count})");
+            ->with('success', $message);
     }
 }

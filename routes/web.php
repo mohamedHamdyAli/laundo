@@ -1,8 +1,10 @@
 <?php
 
+use App\Http\Controllers\Admin\ActivityLogController;
 use App\Http\Controllers\Admin\LanguageController;
 use App\Http\Controllers\Admin\NotificationController;
 use App\Http\Controllers\Admin\RoleController;
+use App\Http\Controllers\Admin\SpreadsheetController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\LandingController;
 use App\Http\Controllers\LaundryApplicationController;
@@ -25,6 +27,7 @@ use App\Modules\JourneyStep\Controllers\JourneyStepController;
 use App\Modules\Laundry\Controllers\LaundryController;
 use App\Modules\Laundry\Controllers\LaundrySlotCapacityController;
 use App\Modules\LaundryService\Controllers\LaundryServiceController;
+use App\Modules\LaundryService\Controllers\LaundryServiceRequestController;
 use App\Modules\LaundryStaff\Controllers\LaundryStaffController;
 use App\Modules\LaundryZone\Controllers\LaundryZoneController;
 use App\Modules\Moderator\Controllers\ModeratorController;
@@ -35,6 +38,7 @@ use App\Modules\Order\Controllers\DispatchController;
 use App\Modules\Order\Controllers\OrderController;
 use App\Modules\Order\Controllers\OrderReviewController as DashboardOrderReviewController;
 use App\Modules\Order\Controllers\OrderTaskController;
+use App\Modules\Order\Controllers\OrderTodayController;
 use App\Modules\Payment\Controllers\CommissionRuleController;
 use App\Modules\Payment\Controllers\InvoiceController;
 use App\Modules\Payment\Controllers\LaundryRevenueController;
@@ -177,6 +181,29 @@ Route::middleware(['auth', 'dashboard.only'])->prefix('/admin')->group(function 
     | No permission gate: these are the signed-in user's own notifications, and
     | there is nothing here anybody else can see.
     */
+    /*
+    | Excel export and import for the list screens — one route per verb serving
+    | every sheet in app/Support/Spreadsheet/Sheets. The permission is the
+    | screen's own and is checked in the controller, because one route serves
+    | every model: `.view` to export, `.create`/`.update` to import.
+    */
+    /*
+    | «سجل النشاط» — who changed what. Read only: no route edits or deletes a row.
+    */
+    Route::controller(ActivityLogController::class)->group(function () {
+        Route::get('/activity-log', 'index')
+            ->middleware('permission:activity_log.view')->name('admin.activity_log.index');
+        Route::get('/activity-log/search', 'search')
+            ->middleware('permission:activity_log.view')->name('admin.activity_log.search');
+    });
+
+    Route::controller(SpreadsheetController::class)->prefix('spreadsheet/{sheet}')
+        ->where(['sheet' => '[a-z_]+'])->name('admin.spreadsheet.')->group(function () {
+            Route::get('/export', 'export')->name('export');
+            Route::get('/template', 'template')->name('template');
+            Route::post('/import', 'import')->name('import');
+        });
+
     Route::controller(NotificationController::class)->prefix('my-notifications')->name('admin.myNotifications.')->group(function () {
         Route::get('/', 'index')->name('index');
         Route::get('/unread', 'unread')->name('unread');
@@ -216,6 +243,11 @@ Route::middleware(['auth', 'dashboard.only'])->prefix('/admin')->group(function 
         // language file — no new permission, no seeder run.
         Route::get('/language/landing/{id}', 'showLanding')->middleware('permission:language.update')->name('admin.language.landing');
         Route::post('/language/landing/update/{id}', 'updateLanding')->middleware('permission:language.update')->name('admin.language.landing.update');
+
+        // What a refused request is told, per language — laid over the shipped
+        // `lang/{code}/validation.php` from `{code}_validation.json`.
+        Route::get('/language/validation/{id}', 'showValidation')->middleware('permission:language.update')->name('admin.language.validation');
+        Route::post('/language/validation/update/{id}', 'updateValidation')->middleware('permission:language.update')->name('admin.language.validation.update');
 
         Route::get('/language/download/{type}/{code}', 'downloadJson')
             ->middleware('permission:language.view')
@@ -538,6 +570,11 @@ Route::middleware(['auth', 'dashboard.only'])->prefix('/admin')->group(function 
     Route::controller(PricingController::class)->group(function () {
         Route::get('/pricing', 'index')->middleware('permission:item_price.view')->name('admin.pricing.index');
         Route::put('/pricing/update', 'update')->middleware('permission:item_price.update')->name('admin.pricing.update');
+        // A rise across the whole catalogue, for a period or for good. The same
+        // permission as editing the grid: it is the grid, all at once.
+        Route::post('/pricing/increase', 'increase')->middleware('permission:item_price.update')->name('admin.pricing.increase');
+        // Undo a permanent rise from the history under the card.
+        Route::post('/pricing/increase/{id}/undo', 'undoIncrease')->middleware('permission:item_price.update')->name('admin.pricing.increase.undo');
     });
 
     /*
@@ -548,6 +585,22 @@ Route::middleware(['auth', 'dashboard.only'])->prefix('/admin')->group(function 
     Route::controller(LaundryServiceController::class)->group(function () {
         Route::get('/laundry-service', 'index')->middleware('permission:laundry_service.view')->name('admin.laundry_service.index');
         Route::put('/laundry-service/update', 'update')->middleware('permission:laundry_service.update')->name('admin.laundry_service.update');
+    });
+
+    /*
+    | «طلبات خدمات المغاسل» — a laundry asking to open or close a service, and
+    | somebody deciding. Its own permission rather than `laundry_service.update`:
+    | a laundry owner holds that one by design, and must not approve its own ask.
+    */
+    Route::controller(LaundryServiceRequestController::class)->group(function () {
+        Route::get('/laundry-service-request', 'index')
+            ->middleware('permission:laundry_service_request.view')->name('admin.laundry_service_request.index');
+        Route::get('/laundry-service-request/search', 'search')
+            ->middleware('permission:laundry_service_request.view')->name('admin.laundry_service_request.search');
+        Route::post('/laundry-service-request/approve/{id}', 'approve')
+            ->middleware('permission:laundry_service_request.update')->name('admin.laundry_service_request.approve');
+        Route::post('/laundry-service-request/reject/{id}', 'reject')
+            ->middleware('permission:laundry_service_request.update')->name('admin.laundry_service_request.reject');
     });
 
     /*
@@ -587,6 +640,22 @@ Route::middleware(['auth', 'dashboard.only'])->prefix('/admin')->group(function 
     | ones, which fall outside every tenant's scope by construction.
     |
     */
+    /*
+    | «طلبات اليوم» — the orders in the laundry now, or due to be picked up or
+    | delivered on a day, with the pieces counted per order and in total. The
+    | second item of the «Orders» menu group, beside the full list. Named
+    | `admin.order_today.*`, not `admin.order.*`: the sidebar lights an item by
+    | its route prefix, and under `admin.order.*` «All orders» would light up on
+    | this page too. It answers to `order.view` and the Order tenant scope does the
+    | confining.
+    */
+    Route::controller(OrderTodayController::class)->group(function () {
+        Route::get('/order-today', 'index')
+            ->middleware('permission:order.view')->name('admin.order_today.index');
+        Route::get('/order-today/search', 'search')
+            ->middleware('permission:order.view')->name('admin.order_today.search');
+    });
+
     Route::controller(OrderController::class)->group(function () {
         Route::get('/order', 'index')->middleware('permission:order.view')->name('admin.order.index');
         Route::get('/order/search', 'search')->middleware('permission:order.view')->name('admin.order.search');
@@ -673,6 +742,12 @@ Route::middleware(['auth', 'dashboard.only'])->prefix('/admin')->group(function 
         // minutes to find out whether it worked. `{id}` is the order.
         Route::post('/order/task/dispatch/{id}', 'redispatch')
             ->middleware('permission:order_task.update')->name('admin.order.tasks.dispatch');
+        // «تمت المراجعة» on a piece count that disagreed — at a handover or at
+        // the laundry's review. `{id}` is the PieceDiscrepancy. `order.update`,
+        // and `PieceCheck::resolve()` refuses anybody inside a laundry — an
+        // owner holds `order.update` by design.
+        Route::post('/order/piece-check/{id}', 'resolvePieces')
+            ->middleware('permission:order.update')->name('admin.order.piece_check.resolve');
     });
 
     /*
@@ -1044,6 +1119,13 @@ Route::middleware(['auth', 'dashboard.only'])->prefix('/admin')->group(function 
             ->middleware('permission:order_settlement.view')->name('admin.settlement.index');
         Route::get('/settlement/search', 'search')
             ->middleware('permission:order_settlement.view')->name('admin.settlement.search');
+        // Pays a completed order whose settlement was left waiting — on a
+        // laundry share nobody had set, or a payee that did not exist. It moves
+        // money, so it gates on `setting.update` like every other money term:
+        // a laundry owner reads this screen and must not be the one who pays
+        // itself.
+        Route::post('/settlement/settle/{id}', 'settle')
+            ->middleware('permission:setting.update')->name('admin.settlement.settle');
     });
 
     /*

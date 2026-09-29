@@ -3,17 +3,13 @@
 namespace App\Modules\Payment\Enums;
 
 /**
- * What one commission charge is measured on.
+ * What a laundry's share is measured on.
  *
- * Two cases, because a real contract is usually both at once — «10% of the
- * order, plus 5 EGP a job» — and a laundry carries as many rules as the
- * agreement needs. They add together.
- *
- * Deliberately NOT a third case for «a share of the delivery fee». The basis
- * every rule is measured against is the order total before tax, so a charge on
- * the delivery leg alone would be a second basis and a second thing to explain
- * on a dispute. If that is ever wanted it belongs as a column on the rule
- * naming the base, not as another case here.
+ * **Only `Percent` is live.** A rule is the laundry's share of the washing, and
+ * the client's terms are a percentage of it. `Fixed` — a flat amount per order —
+ * belonged to the time the rule was the platform's charge and could stack with
+ * a percentage; it is kept only so the rules and settlement lines written under
+ * it still read. No form offers it, and a fixed rule cannot be switched back on.
  */
 enum CommissionBasis: string
 {
@@ -23,16 +19,16 @@ enum CommissionBasis: string
     public function label(): string
     {
         return match ($this) {
-            self::Percent => 'A share of the order',
-            self::Fixed => 'A fixed amount per order',
+            self::Percent => 'Laundry share of the washing',
+            self::Fixed => 'A fixed amount per order (retired)',
         };
     }
 
     public function short(): string
     {
         return match ($this) {
-            self::Percent => 'Share',
-            self::Fixed => 'Fixed',
+            self::Percent => 'Laundry share',
+            self::Fixed => 'Fixed (retired)',
         };
     }
 

@@ -47,7 +47,8 @@
         .totals td { border: none; padding: 4px 10px; }
         .totals .sep td { border-top: 1px solid #ddd; }
         .totals .grand td { border-top: 2px solid #222; font-weight: bold; font-size: 16px; }
-        .credit { color: #157347; }
+        /* A discount in red on the invoice too — the owner's call. */
+        .credit { color: #b02a37; }
 
         .stamp { display: inline-block; padding: 4px 12px; border-radius: 4px; font-size: 13px; }
         .paid { background: #e6f6ea; color: #157347; }

@@ -16,7 +16,8 @@
                 <div class="card">
 
                     <div class="card-body">
-                        <div class="d-flex justify-content-end mb-3">
+                        <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
+                            <x-spreadsheet-actions sheet="country" search="#countrySearchInput" />
                             <div class="input-group" style="max-width: 350px;">
                                 <input type="text" id="countrySearchInput" name="countrySearch"
                                     value="{{ request('countrySearch') }}" class="form-control"

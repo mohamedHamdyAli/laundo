@@ -2487,3 +2487,21 @@ the tolerance of the last would let an order travel arbitrarily far from the
 customer, one hop at a time, while every individual comparison looked reasonable.
 
 **Rule:** a tolerance is a radius around a fixed point, not a step size.
+
+---
+
+## Text that lives in a file the panel cannot write has no editor until you build one
+
+The validation work made the dashboard and both apps answer in Arabic — through
+`lang/{code}/validation.php`, a PHP file — and was shown as finished. The owner's
+first question was where to edit it: every other piece of copy in the product
+(panel, mobile, web, landing) already had a screen under the Languages row's
+menu, so wording that only a developer could change read as a missing page, not
+as a design choice.
+
+**Rule:** when a change adds or moves words a customer or an operator reads,
+check the Languages actions menu before calling it done — if the words are not
+reachable from there, the owner cannot fix a typo in them. And when a screen
+makes a class of text editable, grep for every place that text is *printed*
+before shipping it: the validation editor turned `showErrorToast("{!! $error !!}")`
+from a latent sink into stored XSS the day it went in.

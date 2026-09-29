@@ -52,6 +52,9 @@ use Illuminate\Support\Str;
  * @property string $estimated_subtotal
  * @property string $delivery_fee
  * @property string $discount_total
+ * @property string|null $discount_laundry_share
+ * @property bool $discount_covers_delivery
+ * @property array{type: string, ids: list<int>, agreed: float, rate: float|null}|null $discount_scope
  * @property string $estimated_total
  * @property int|null $final_items_count
  * @property string|null $final_subtotal
@@ -81,6 +84,7 @@ use Illuminate\Support\Str;
  *
  * @method static Builder<static>|Order active()
  * @method static Builder<static>|Order unassigned()
+ * @method static Builder<static>|Order withOpenPieceCheck()
  * @method static Builder<static>|Order search(?string $search, array $columns = [])
  */
 class Order extends Model
@@ -96,7 +100,8 @@ class Order extends Model
         'delivery_method', 'pickup_method', 'offer_id',
         'driver_note', 'special_instructions', 'review_terms_accepted_at',
         'estimated_items_count', 'estimated_subtotal', 'delivery_fee',
-        'discount_total', 'cash_surcharge', 'platform_fee', 'platform_fee_rate',
+        'discount_total', 'discount_laundry_share', 'discount_covers_delivery', 'discount_scope',
+        'cash_surcharge', 'platform_fee', 'platform_fee_rate', 'price_increase_rate',
         'tax_rate', 'estimated_tax', 'estimated_total',
         'final_items_count', 'final_subtotal', 'final_tax', 'final_total', 'review_note', 'reviewed_at',
         'review_round', 'confirmed_at',
@@ -117,9 +122,13 @@ class Order extends Model
             'estimated_subtotal' => 'decimal:2',
             'delivery_fee' => 'decimal:2',
             'discount_total' => 'decimal:2',
+            'discount_laundry_share' => 'decimal:2',
+            'discount_covers_delivery' => 'boolean',
+            'discount_scope' => 'array',
             'cash_surcharge' => 'decimal:2',
             'platform_fee' => 'decimal:2',
             'platform_fee_rate' => 'decimal:2',
+            'price_increase_rate' => 'decimal:2',
             'tax_rate' => 'decimal:2',
             'estimated_tax' => 'decimal:2',
             'estimated_total' => 'decimal:2',
@@ -358,6 +367,30 @@ class Order extends Model
     }
 
     /**
+     * Orders with a piece count a driver disagreed on that nobody has reviewed.
+     *
+     * The one definition behind the sidebar badge, both home-page queues, the
+     * orders filter and its export: all of them count **orders**, so a badge
+     * reading 1 opens a list of one — an order with two open legs is one order
+     * to look at. Rooted here, the tenant scope applies: a laundry counts its own.
+     */
+    public function scopeWithOpenPieceCheck(Builder $query): Builder
+    {
+        return $query->whereIn($query->qualifyColumn('id'), PieceDiscrepancy::open()->select('order_id'));
+    }
+
+    /**
+     * Every time two counts of this order's pieces disagreed — at a handover or
+     * at the laundry's review — open or reviewed.
+     *
+     * @return HasMany<PieceDiscrepancy, $this>
+     */
+    public function pieceDiscrepancies(): HasMany
+    {
+        return $this->hasMany(PieceDiscrepancy::class, 'order_id')->orderBy('id');
+    }
+
+    /**
      * The figure that actually applies: the final price once the laundry has set
      * one, the estimate until then.
      */
@@ -387,73 +420,116 @@ class Order extends Model
     }
 
     /**
-     * What the laundry actually earned: the washing, after any discount.
+     * The laundry's own prices for the pieces — what its share is measured on.
      *
      * **Not the same as `preTaxTotal()`**, and the difference is the whole of
-     * how an order is divided. The customer's pre-tax total also carries the
-     * delivery fee and the cash handling fee, and neither of those is the
-     * laundry's work:
+     * how an order is divided. The customer's pre-tax total also carries three
+     * things that are not the laundry's work:
      *
      *   - the **delivery fee** is the platform's, and the platform pays the
      *     driver out of it. Sharing it with the laundry as well meant paying for
-     *     the same journey twice — on a 10% commission the platform booked a
-     *     tenth of the fee and paid out a fifth of it.
+     *     the same journey twice.
      *   - the **cash handling fee** is what it costs the platform to take notes.
      *   - the **platform fee** is the platform's charge on the order, folded
      *     into the per-piece prices so the customer sees one number. It sits
      *     inside the subtotal and it is not the laundry's, so it comes out
-     *     before anything is divided. An order placed before that fee existed
-     *     carries null, which subtracts nothing — the old arithmetic exactly.
+     *     before anything is measured. An order placed before that fee existed
+     *     carries null, which subtracts nothing.
      *
-     * The discount comes off, because a coupon reduces what was collected for
-     * the washing and `OrderPricing` already caps it at the subtotal — so this
-     * can never go negative.
-     *
-     * **The discount is shared, not borne by one side.** It is taken off the
-     * customer-facing subtotal, which already has the fee inside it, so the
-     * laundry's base and the platform's fee are each reduced in proportion. Any
-     * other split would need a rule about who pays for a coupon, and a rule
-     * nobody wrote down is one that gets decided differently the next time.
+     * **Before the discount.** Who pays for a coupon is decided separately —
+     * `discountOnPieces()` and `laundryShareOfDiscount()` — rather than by taking
+     * it off here, which used to make the laundry bear its own percentage of
+     * every discount the platform handed out.
      *
      * Final if the pieces have been counted, the estimate until then, the same
      * rule every other figure on this order follows.
      */
-    public function cleaningRevenue(): float
+    public function laundryBase(): float
     {
-        $subtotal = (float) ($this->hasFinalPrice() ? $this->final_subtotal : $this->estimated_subtotal);
-        $discount = (float) $this->discount_total;
-
-        $base = round(max($subtotal - (float) $this->platform_fee, 0.0), 2);
-
-        // The base's own share of the discount. Guarded on the subtotal rather
-        // than assumed positive: a zero subtotal with a discount on it is not a
-        // division anybody wants to perform.
-        $share = $subtotal > 0 ? round($discount * ($base / $subtotal), 2) : 0.0;
-
-        return round(max($base - $share, 0.0), 2);
+        return round(max($this->pieceSubtotal() - (float) $this->platform_fee, 0.0), 2);
     }
 
     /**
-     * The platform's fee on this order, as the settlement divides it.
+     * What the customer paid for the laundry's work: its base, less the whole
+     * discount. The settlement's `basis` — the figure the platform's part and the
+     * laundry's part add back up to.
      *
-     * The stored figure less its own share of any discount — the mirror of what
-     * `cleaningRevenue()` keeps, so the two always sum back to the discounted
-     * subtotal and nothing falls between them.
+     * Can be below zero, and deliberately is not floored: a coupon larger than
+     * the laundry's prices (possible once the platform fee sits inside the
+     * subtotal) is a coupon the platform funds from its own fee, and flooring
+     * this would lose the piastres that prove it.
+     */
+    public function cleaningRevenue(): float
+    {
+        return round($this->laundryBase() - $this->effectiveDiscount(), 2);
+    }
+
+    /**
+     * The platform's fee on this order, whole.
+     *
+     * It used to be reduced by its own share of a discount. The discount now
+     * comes entirely off `cleaningRevenue()` — the platform's side of it lands
+     * in the settlement's `commission_amount` — so the fee is recorded as it was
+     * charged, and the fee and the platform's part still add up to what the
+     * platform keeps.
      */
     public function platformFeeEarned(): float
     {
-        $subtotal = (float) ($this->hasFinalPrice() ? $this->final_subtotal : $this->estimated_subtotal);
-        $fee = round(max((float) $this->platform_fee, 0.0), 2);
+        return round(max((float) $this->platform_fee, 0.0), 2);
+    }
 
-        if ($fee <= 0 || $subtotal <= 0) {
-            return 0.0;
+    /**
+     * The discount as it actually came off the washing.
+     *
+     * Capped at the subtotal: the coupon was sized on the estimate and never
+     * re-read, so a review that counted fewer pieces can leave a stored discount
+     * larger than what it now applies to.
+     */
+    public function effectiveDiscount(): float
+    {
+        return round(min(max((float) $this->discount_total, 0.0), $this->pieceSubtotal()), 2);
+    }
+
+    /**
+     * The part of the discount that came off the pieces rather than the
+     * delivery fee.
+     *
+     * A coupon that «also discounts the delivery fee» was sized on the pieces
+     * and the journey together; the journey's part is **always the platform's**,
+     * because the delivery fee is the platform's to begin with. Split in
+     * proportion to the two figures it was measured on, the same way it was
+     * worked out.
+     */
+    public function discountOnPieces(): float
+    {
+        $discount = $this->effectiveDiscount();
+
+        if (! $this->discount_covers_delivery) {
+            return $discount;
         }
 
-        $discounted = round(max($subtotal - (float) $this->discount_total, 0.0), 2);
+        $pieces = $this->pieceSubtotal();
+        $measured = $pieces + max((float) $this->delivery_fee, 0.0);
 
-        // By subtraction, never by its own percentage: the two halves have to
-        // reconcile to the penny, and two independent roundings do not.
-        return round(max($discounted - $this->cleaningRevenue(), 0.0), 2);
+        return $measured > 0 ? round($discount * ($pieces / $measured), 2) : 0.0;
+    }
+
+    /**
+     * The share of the discount the laundry bears, 0–100, as copied onto the
+     * order at placement. Null — an order placed before the choice existed, or
+     * one with no coupon — is the platform bearing it.
+     */
+    public function laundryShareOfDiscount(): float
+    {
+        return round(max(min((float) ($this->discount_laundry_share ?? 0), 100.0), 0.0), 2);
+    }
+
+    /**
+     * The pieces' total as the customer is charged it — final once counted.
+     */
+    private function pieceSubtotal(): float
+    {
+        return round(max((float) ($this->hasFinalPrice() ? $this->final_subtotal : $this->estimated_subtotal), 0.0), 2);
     }
 
     /**

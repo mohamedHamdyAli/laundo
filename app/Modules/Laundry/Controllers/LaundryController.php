@@ -7,7 +7,9 @@ use App\Modules\Laundry\Models\Laundry;
 use App\Modules\Laundry\Requests\LaundryRequest;
 use App\Modules\Laundry\Services\LaundryApplicationService;
 use App\Modules\Laundry\Services\laundryCrudService;
+use App\Modules\Payment\Enums\CommissionBasis;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 use RuntimeException;
 
 class LaundryController extends Controller
@@ -89,7 +91,9 @@ class LaundryController extends Controller
     {
         $laundries = Laundry::withoutGlobalScopes()
             ->pending()
-            ->with(['city', 'owner'])
+            // The services it applied to offer: approving the application
+            // approves them, so the reviewer has to see them here.
+            ->with(['city', 'owner', 'services' => fn ($q) => $q->withoutGlobalScopes()->with('service:id,name')])
             ->paginate(10);
 
         $view = view('admin.laundry.pending', compact('laundries'));
@@ -134,38 +138,37 @@ class LaundryController extends Controller
      * is platform configuration, so it sits behind the permission that governs
      * the general rate beside it.
      *
-     * **Several may be chosen, and they add together** — the owner's decision.
-     * **Choosing none charges this laundry nothing.** There is no general rate
-     * behind it any more: the setting that used to serve as one is now the fee
-     * the *customer* pays, and reading it here would bill the laundry for a
-     * charge the customer has already covered. A laundry that pays nothing and a
-     * laundry nobody has configured now cost the same, so the only way the
-     * platform gets paid by a laundry is somebody attaching a charge to it.
+     * **One share, or none.** The number on a rule is what the *laundry*
+     * receives from the washing — the platform keeps the rest — and a laundry
+     * is on one share at a time; they stopped stacking when the percentage
+     * changed sides. Choosing none puts the laundry on the general share in
+     * Settings, and with that unset too its settlements wait rather than pay
+     * the platform the whole of the laundry's work.
      *
-     * `sync()` rather than `attach()`: the form posts the complete set every
-     * time, so a rule the operator unticked has to come off. Attaching would
-     * only ever add, and a charge nobody can remove is the worst kind.
+     * `sync()` with the one id, so whatever it was on before comes off.
      */
     public function commission(Request $request, $id)
     {
         $data = $request->validate([
-            'commission_rule_ids' => ['nullable', 'array'],
-            'commission_rule_ids.*' => ['integer', 'exists:commission_rules,id'],
+            'commission_rule_id' => [
+                'nullable', 'integer',
+                // Only a live share. Putting a laundry on a switched-off rule,
+                // or a retired fixed one, would look like terms and pay on none.
+                Rule::exists('commission_rules', 'id')
+                    ->where('status', 'active')
+                    ->where('basis', CommissionBasis::Percent->value),
+            ],
         ]);
 
         $laundry = Laundry::withoutGlobalScopes()->findOrFail($id);
 
-        $ids = array_values(array_unique(array_map('intval', $data['commission_rule_ids'] ?? [])));
+        $ruleId = isset($data['commission_rule_id']) ? (int) $data['commission_rule_id'] : null;
 
-        $laundry->commissionRules()->sync($ids);
+        $laundry->commissionRules()->sync($ruleId === null ? [] : [$ruleId]);
 
-        return back()->with('success', $ids === []
-            ? __('Commission cleared. This laundry is now charged nothing until a charge is attached.')
-            : trans_choice(
-                ':count charge applies to this laundry.|:count charges apply to this laundry.',
-                count($ids),
-                ['count' => count($ids)]
-            ));
+        return back()->with('success', $ruleId === null
+            ? __('This laundry now follows the general laundry share in Settings.')
+            : __('Laundry share saved.'));
     }
 
     public function toggleStatus(Request $request, $id)

@@ -9,6 +9,7 @@ use App\Modules\Order\Models\Order;
 use App\Modules\Order\Services\OrderReviewService;
 use App\Modules\Order\Services\OrderService;
 use App\Modules\Order\Services\OrderStateMachine;
+use App\Modules\Payment\Enums\CommissionBasis;
 use App\Modules\Payment\Models\CommissionRule;
 use App\Modules\Payment\Models\OrderSettlement;
 use App\Modules\Payment\Services\SettlementService;
@@ -25,11 +26,13 @@ use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 /**
- * «الكوميشين بتاع السوبر ادمن على كل اوردر».
+ * «الكوميشين بتاع السوبر ادمن على كل اوردر» — and then turned round.
  *
- * The owner's own worked example is the specification, and the first test is
- * literally it: «لو الطلب كله ب 100 وبياخد من الفيندور 10 ف ميه يبقا هيدخل ف
- * حسابه 10 والمغسله 90».
+ * The owner's first worked example was «لو الطلب كله ب 100 وبياخد من الفيندور 10
+ * ف ميه يبقا هيدخل ف حسابه 10 والمغسله 90». The client later reversed it: the
+ * percentage set on a laundry is what the **laundry** receives, and the platform
+ * keeps the rest — «المغسله انا بقول تاخد 10% يبقا 90 ف حساب السوبر ادمن 10 ف
+ * حساب المغسله». The first test is that sentence.
  *
  * What is asserted hardest is what money does, because everything else is
  * recoverable and this is not:
@@ -37,8 +40,9 @@ use Tests\TestCase;
  *  - **The halves always add back to the basis.** Two independent roundings would
  *    leave a piastre belonging to nobody, and a ledger that does not reconcile is
  *    one nobody can defend.
- *  - **Nothing moves until the order completes**, and nothing moves twice.
- *  - **A laundry cannot set its own commission**, even though it holds
+ *  - **Nothing moves until the order completes**, nothing moves twice, and
+ *    nothing moves on terms nobody set — a laundry with no share waits.
+ *  - **A laundry cannot set its own share**, even though it holds
  *    `laundry.update` on its own record by design.
  *  - **A laundry sees its own settlements and no other laundry's.**
  */
@@ -127,41 +131,35 @@ class CommissionSettlementTest extends TestCase
         return $order->fresh();
     }
 
-    /**
-     * A commission charge, not yet attached to anybody.
-     */
-    private function charge(string $basis, float $value, string $name = 'Charge'): CommissionRule
-    {
-        return CommissionRule::create([
-            'name' => json_encode(['en' => $name, 'ar' => 'رسوم'], JSON_UNESCAPED_UNICODE),
-            'basis' => $basis,
-            'rate' => $basis === 'percent' ? $value : null,
-            'amount' => $basis === 'fixed' ? $value : null,
-            'status' => 'active',
-        ]);
-    }
-
     private function attach(Laundry $laundry, CommissionRule $rule): void
     {
         $laundry->commissionRules()->syncWithoutDetaching([$rule->id]);
     }
 
     /**
-     * What this tenant's laundry pays, as an attached rule.
+     * A share rule — what a laundry **receives** — not yet attached to anybody.
      *
-     * These tests used to say it with `setting('Commission_Rate', '10')`, which
-     * was the fallback for a laundry nobody had configured. That key is now the
-     * fee the **customer** pays — the other side of the order — so saying it
-     * that way would set up the wrong charge entirely and assert against a
-     * laundry that is charged nothing.
-     *
-     * An explicit rule is also how the code has always said a laundry's charge
-     * is properly expressed, and it is what the migration attached to every
-     * laundry that had been leaning on the fallback.
+     * The number on a rule used to be the platform's cut. It is the laundry's
+     * share now, so 10 means the laundry is paid 10 in the hundred and the
+     * platform keeps 90.
      */
-    private function laundryPays(float $percent): CommissionRule
+    private function share(float $percent, string $name = 'Share', string $status = 'active'): CommissionRule
     {
-        $rule = $this->charge('percent', $percent, 'General rate');
+        return CommissionRule::create([
+            'name' => json_encode(['en' => $name, 'ar' => 'نسبة'], JSON_UNESCAPED_UNICODE),
+            'basis' => 'percent',
+            'rate' => $percent,
+            'amount' => null,
+            'status' => $status,
+        ]);
+    }
+
+    /**
+     * What this tenant's laundry receives, as an attached rule.
+     */
+    private function laundryGets(float $percent, string $name = 'Share'): CommissionRule
+    {
+        $rule = $this->share($percent, $name);
         $this->attach($this->tenant['laundry'], $rule);
 
         return $rule;
@@ -175,16 +173,15 @@ class CommissionSettlementTest extends TestCase
     // -------------------------------------------------------------- the split
 
     #[Test]
-    public function ten_per_cent_of_a_hundred_leaves_ninety(): void
+    public function the_laundry_receives_the_percentage_and_the_platform_keeps_the_rest(): void
     {
-        // The owner's own example — «لو الطلب كله ب 100 وبياخد من الفيندور 10 ف
-        // ميه يبقا هيدخل ف حسابه 10 والمغسله 90» — priced so the arithmetic is
-        // legible. The 100 is the **washing** now, not the whole order: the
-        // delivery fee was taken out of the basis once the overlap with the
-        // driver's share was priced.
+        // The client's own statement of the reversal — «المغسله انا بقول تاخد
+        // 10% يبقا 90 ف حساب السوبر ادمن 10 ف حساب المغسله». The 100 is the
+        // washing, not the whole order: the delivery fee was taken out of the
+        // basis once the overlap with the driver's share was priced.
         $this->setting('Tax', null);
         $this->setting('Commission_Rate', '0');
-        $this->laundryPays(10);
+        $this->laundryGets(10);
 
         $order = $this->confirmedOrder();
         $order->forceFill([
@@ -197,19 +194,19 @@ class CommissionSettlementTest extends TestCase
         $settlement = app(SettlementService::class)->recordFor($order->fresh());
 
         $this->assertSame('100.00', $settlement->basis);
-        $this->assertSame('10.00', $settlement->commission_amount);
-        $this->assertSame('90.00', $settlement->laundry_amount);
+        $this->assertSame('10.00', $settlement->laundry_amount);
+        $this->assertSame('90.00', $settlement->commission_amount);
+        $this->assertSame('10.00', $settlement->laundry_share_rate);
     }
 
     #[Test]
     public function the_delivery_fee_is_not_the_laundrys_to_share(): void
     {
-        // The reason the basis changed. The platform pays the driver out of the
-        // delivery fee, so dividing that same fee with the laundry meant paying
-        // for one journey twice.
+        // The platform pays the driver out of the delivery fee, so dividing that
+        // same fee with the laundry would pay for one journey twice.
         $this->setting('Tax', null);
         $this->setting('Commission_Rate', '0');
-        $this->laundryPays(10);
+        $this->laundryGets(10);
 
         $order = $this->confirmedOrder();
         $order->forceFill([
@@ -221,33 +218,134 @@ class CommissionSettlementTest extends TestCase
 
         $settlement = app(SettlementService::class)->recordFor($order->fresh());
 
-        // The 50 is nowhere in the split. It stays with the platform, which is
-        // what pays the driver.
+        // The 50 is nowhere in the split. It stays with the platform.
         $this->assertSame('100.00', $settlement->basis);
-        $this->assertSame('90.00', $settlement->laundry_amount);
+        $this->assertSame('10.00', $settlement->laundry_amount);
     }
 
-    #[Test]
-    public function a_discount_comes_off_what_the_laundry_is_paid_on(): void
+    /**
+     * An order carrying a coupon discount, borne as the order says.
+     *
+     * Written straight onto the order, the way placement copies it off the
+     * coupon: 200 of washing, 50 off.
+     */
+    private function discountedOrder(?float $laundryBears, bool $coversDelivery = false, float $deliveryFee = 0): Order
     {
         $this->setting('Tax', null);
         $this->setting('Commission_Rate', '0');
-        $this->laundryPays(10);
 
         $order = $this->confirmedOrder();
         $order->forceFill([
             'final_subtotal' => 200,
             'discount_total' => 50,
-            'final_total' => 150,
-            'delivery_fee' => 0,
+            'discount_laundry_share' => $laundryBears,
+            'discount_covers_delivery' => $coversDelivery,
+            'final_total' => 150 + $deliveryFee,
+            'delivery_fee' => $deliveryFee,
         ])->save();
 
-        $settlement = app(SettlementService::class)->recordFor($order->fresh());
+        return $order->fresh();
+    }
 
-        // 150 was collected for the washing, so 150 is what is divided.
+    #[Test]
+    public function by_default_the_platform_pays_for_the_discount(): void
+    {
+        // «المفروض الكوبون يكون على السوبر أدمن». The laundry's 10% is measured
+        // on its prices before the coupon, and the platform's part absorbs it.
+        $this->laundryGets(10);
+
+        $settlement = app(SettlementService::class)->recordFor($this->discountedOrder(null));
+
         $this->assertSame('150.00', $settlement->basis);
-        $this->assertSame('15.00', $settlement->commission_amount);
-        $this->assertSame('135.00', $settlement->laundry_amount);
+        $this->assertSame('20.00', $settlement->laundry_amount);
+        $this->assertSame('130.00', $settlement->commission_amount);
+        $this->assertSame('50.00', $settlement->discount_amount);
+        $this->assertSame('0.00', $settlement->laundry_discount_amount);
+        $this->assertTrue($settlement->reconciles());
+    }
+
+    #[Test]
+    public function a_coupon_the_laundry_bears_comes_off_its_share(): void
+    {
+        $this->laundryGets(30);
+
+        // 30% of 200 is 60; the laundry bears the whole 50.
+        $settlement = app(SettlementService::class)->recordFor($this->discountedOrder(100));
+
+        $this->assertSame('10.00', $settlement->laundry_amount);
+        $this->assertSame('50.00', $settlement->laundry_discount_amount);
+        $this->assertSame('140.00', $settlement->commission_amount);
+        $this->assertTrue($settlement->reconciles());
+        $this->assertTrue($settlement->load('lines')->linesReconcile());
+    }
+
+    #[Test]
+    public function a_split_coupon_is_borne_in_the_agreed_proportion(): void
+    {
+        $this->laundryGets(30);
+
+        // 60 less 40% of the 50.
+        $settlement = app(SettlementService::class)->recordFor($this->discountedOrder(40));
+
+        $this->assertSame('40.00', $settlement->laundry_amount);
+        $this->assertSame('20.00', $settlement->laundry_discount_amount);
+        $this->assertEquals(30.0, $settlement->platformDiscount());
+        $this->assertTrue($settlement->reconciles());
+    }
+
+    #[Test]
+    public function the_laundry_never_goes_below_zero_on_a_coupon(): void
+    {
+        // Its 10% of 200 is 20, and it was to bear the whole 50. It is paid
+        // nothing on this order and the platform carries the other 30 — nobody
+        // owes for having done the work.
+        $this->laundryGets(10);
+
+        $settlement = app(SettlementService::class)->recordFor($this->discountedOrder(100));
+
+        $this->assertSame('0.00', $settlement->laundry_amount);
+        $this->assertSame('20.00', $settlement->laundry_discount_amount);
+        $this->assertSame('150.00', $settlement->commission_amount);
+    }
+
+    #[Test]
+    public function the_delivery_part_of_a_coupon_is_always_the_platforms(): void
+    {
+        // Sized on 200 of pieces and 50 of delivery, so a fifth of the 50 off
+        // came off the journey. The laundry bears all of the pieces' part — 40 —
+        // and none of the journey's.
+        $this->laundryGets(30);
+
+        $settlement = app(SettlementService::class)->recordFor($this->discountedOrder(100, true, 50));
+
+        $this->assertSame('40.00', $settlement->laundry_discount_amount);
+        $this->assertSame('20.00', $settlement->laundry_amount);
+    }
+
+    #[Test]
+    public function the_platform_pays_the_difference_from_its_wallet(): void
+    {
+        // A laundry on 90% with the platform bearing a 50 coupon on 200: the
+        // laundry is owed 180 in full, the customer paid 150, and the platform
+        // funds the 30 — out of a wallet that holds nothing yet.
+        $platform = $this->superAdmin();
+        $this->laundryGets(90);
+
+        $order = $this->complete($this->discountedOrder(0));
+        $settlement = $this->settlementFor($order);
+
+        $this->assertSame(OrderSettlement::SETTLED, $settlement->status);
+        $this->assertSame('180.00', $settlement->laundry_amount);
+        $this->assertSame('-30.00', $settlement->commission_amount);
+
+        $wallets = app(WalletService::class);
+        $this->assertSame(180.0, (float) $wallets->forUser($this->tenant['owner'])->balance);
+        $this->assertSame(-30.0, (float) $wallets->forUser($platform)->balance);
+
+        $this->assertDatabaseHas('wallet_transactions', [
+            'wallet_id' => $wallets->forUser($platform)->id,
+            'reason' => TransactionReason::DiscountFunded->value,
+        ]);
     }
 
     #[Test]
@@ -255,7 +353,7 @@ class CommissionSettlementTest extends TestCase
     {
         $this->setting('Tax', '10');
         $this->setting('Commission_Rate', '0');
-        $this->laundryPays(10);
+        $this->laundryGets(10);
 
         $order = $this->confirmedOrder();
         $settlement = $this->settlementFor($order);
@@ -270,9 +368,9 @@ class CommissionSettlementTest extends TestCase
     #[Test]
     public function the_two_halves_always_add_back_to_the_basis(): void
     {
-        // A rate that does not divide evenly is the case two independent
+        // A share that does not divide evenly is the case two independent
         // roundings would get wrong.
-        $this->setting('Commission_Rate', '13.33');
+        $this->laundryGets(13.33);
 
         $order = $this->confirmedOrder();
         $settlement = $this->settlementFor($order);
@@ -284,150 +382,139 @@ class CommissionSettlementTest extends TestCase
         );
     }
 
-    // ---------------------------------------------------------------- the rate
+    #[Test]
+    public function the_laundrys_share_is_the_one_rounded(): void
+    {
+        // 10% of 17.35 is 1.735. Rounding the laundry's share gives 1.74; the
+        // stop-gap of a 90% platform rule would have rounded the platform's
+        // 15.615 up and left the laundry 1.73 — a piastre short at every half.
+        $this->laundryGets(10);
+
+        $split = app(SettlementService::class)->splitFor($this->tenant['laundry']->fresh(), 17.35);
+
+        $this->assertSame(1.74, $split['laundry']);
+        $this->assertSame(15.61, $split['commission']);
+    }
+
+    // --------------------------------------------------------------- the share
 
     #[Test]
-    public function a_laundry_with_nothing_attached_is_charged_nothing(): void
+    public function a_laundry_on_no_share_follows_the_general_share(): void
     {
-        // This used to fall back to `Commission_Rate`, which was the general
-        // rate a laundry paid when nobody had configured it. That key is now the
-        // fee the **customer** pays, and reading it here would bill the laundry
-        // for a charge the customer has already covered — the platform taking
-        // the same money twice.
-        //
-        // So an unconfigured laundry is charged nothing, and «charged nothing»
-        // is now only ever a fact somebody entered. The migration that moved the
-        // key attached an explicit rule at the old rate to every laundry that
-        // had been relying on the fallback, so no laundry's bill changed on the
-        // day the meaning did.
-        $this->setting('Commission_Rate', '15');
+        // `Commission_Rate` is the customer's platform fee and must never be
+        // read as the laundry's share — the two are paid by different people.
+        $this->setting('Commission_Rate', '20');
+        $this->setting('Laundry_Share_Rate', '15');
 
+        $split = app(SettlementService::class)->splitFor($this->tenant['laundry']->fresh(), 200.0);
+
+        $this->assertSame(15.0, $split['share_rate']);
+        $this->assertSame(30.0, $split['laundry']);
+        $this->assertSame(170.0, $split['commission']);
+        // Named as the general share on the settlement, with no rule behind it.
+        $this->assertCount(1, $split['lines']);
+        $this->assertNull($split['lines'][0]['commission_rule_id']);
+    }
+
+    #[Test]
+    public function its_own_share_wins_over_the_general_one(): void
+    {
+        $this->setting('Laundry_Share_Rate', '15');
+        $this->laundryGets(12);
+
+        $split = app(SettlementService::class)->splitFor($this->tenant['laundry']->fresh(), 200.0);
+
+        $this->assertSame(12.0, $split['share_rate']);
+        $this->assertSame(24.0, $split['laundry']);
+    }
+
+    #[Test]
+    public function with_no_share_anywhere_nothing_is_divided(): void
+    {
+        // Not zero for the laundry and everything for the platform: nobody has
+        // decided, so there is no split at all and the settlement waits.
+        $this->setting('Commission_Rate', '20');
+        $this->setting('Laundry_Share_Rate', null);
+
+        $split = app(SettlementService::class)->splitFor($this->tenant['laundry']->fresh(), 200.0);
+
+        $this->assertNull($split['share_rate']);
+        $this->assertSame(0.0, $split['laundry']);
+        $this->assertSame(0.0, $split['commission']);
+        $this->assertSame([], $split['lines']);
+    }
+
+    #[Test]
+    public function a_share_of_zero_is_a_decision_and_no_share_is_not(): void
+    {
+        $this->setting('Laundry_Share_Rate', '15');
+
+        // An attached 0% is somebody saying «this laundry is paid nothing».
+        $this->laundryGets(0);
+        $split = app(SettlementService::class)->splitFor($this->tenant['laundry']->fresh(), 200.0);
+
+        $this->assertSame(0.0, $split['share_rate']);
+        $this->assertSame(0.0, $split['laundry']);
+        $this->assertSame(200.0, $split['commission']);
+    }
+
+    #[Test]
+    public function an_inactive_share_falls_back_to_the_general_one(): void
+    {
         $laundry = $this->tenant['laundry'];
+        $this->laundryGets(10)->update(['status' => 'inactive']);
 
-        $this->assertFalse($laundry->hasOwnCommission());
+        $this->setting('Laundry_Share_Rate', '15');
+        $this->assertSame(15.0, app(SettlementService::class)->splitFor($laundry->fresh(), 200.0)['share_rate']);
 
-        $commission = app(SettlementService::class)->commissionFor($laundry, 200.0);
-
-        $this->assertSame(0.0, $commission['total']);
-        $this->assertSame([], $commission['lines']);
+        // And with no general share either, nothing is divided — «switched off
+        // but still paying» would make the toggle a lie.
+        $this->setting('Laundry_Share_Rate', null);
+        $this->assertNull(app(SettlementService::class)->splitFor($laundry->fresh(), 200.0)['share_rate']);
     }
 
     #[Test]
-    public function attached_charges_win_over_the_general_rate(): void
+    public function a_retired_fixed_rule_pays_nothing(): void
     {
-        $this->setting('Commission_Rate', '15');
+        // Written directly: no form can create one any more. It is history, and
+        // reading it as terms would pay a flat sum nobody agreed to under the
+        // new meaning.
+        $fixed = CommissionRule::create([
+            'name' => json_encode(['en' => 'Old flat'], JSON_UNESCAPED_UNICODE),
+            'basis' => 'fixed', 'rate' => null, 'amount' => 5, 'status' => 'active',
+        ]);
+        $this->attach($this->tenant['laundry'], $fixed);
 
-        $this->attach($this->tenant['laundry'], $this->charge('percent', 12));
-
-        $commission = app(SettlementService::class)->commissionFor($this->tenant['laundry']->fresh(), 200.0);
-
-        $this->assertSame(24.0, $commission['total']);
-        $this->assertCount(1, $commission['lines']);
+        $this->assertNull(app(SettlementService::class)->splitFor($this->tenant['laundry']->fresh(), 200.0)['share_rate']);
     }
 
     #[Test]
-    public function several_charges_add_together(): void
+    public function two_active_shares_written_by_hand_do_not_add_up(): void
     {
-        // The owner's decision — «تتجمع على بعض». 10% of 200, plus a flat 5,
-        // plus 3% of 200.
-        $this->setting('Commission_Rate', '15');
-        $laundry = $this->tenant['laundry'];
+        // The forms refuse this; a row written by hand gets the oldest share,
+        // deterministically, rather than the two stacking the way rules used to.
+        $this->laundryGets(10);
+        $this->laundryGets(30);
 
-        $this->attach($laundry, $this->charge('percent', 10));
-        $this->attach($laundry, $this->charge('fixed', 5));
-        $this->attach($laundry, $this->charge('percent', 3));
+        $split = app(SettlementService::class)->splitFor($this->tenant['laundry']->fresh(), 200.0);
 
-        $commission = app(SettlementService::class)->commissionFor($laundry->fresh(), 200.0);
-
-        $this->assertSame(31.0, $commission['total']);
-        $this->assertCount(3, $commission['lines']);
-        $this->assertSame(
-            31.0,
-            round(array_sum(array_column($commission['lines'], 'amount')), 2)
-        );
+        $this->assertSame(10.0, $split['share_rate']);
+        $this->assertSame(20.0, $split['laundry']);
     }
 
     #[Test]
-    public function a_charge_of_zero_is_a_deal_and_an_empty_list_is_not(): void
-    {
-        $this->setting('Commission_Rate', '15');
-        $laundry = $this->tenant['laundry'];
-
-        // Both now come to zero, and the distinction has moved from the money
-        // to the record: an attached 0% rule is somebody saying «this laundry
-        // pays nothing», and no rule at all is nobody having said anything. They
-        // bill the same and they do not mean the same, which is why the rule is
-        // still worth attaching — the settlement shows a named line either way
-        // rather than a silence.
-        $this->attach($laundry, $this->charge('percent', 0));
-        $this->assertSame(0.0, app(SettlementService::class)->commissionFor($laundry->fresh(), 200.0)['total']);
-        $this->assertTrue($laundry->fresh()->hasOwnCommission());
-
-        $laundry->commissionRules()->detach();
-        $this->assertSame(0.0, app(SettlementService::class)->commissionFor($laundry->fresh(), 200.0)['total']);
-        $this->assertFalse($laundry->fresh()->hasOwnCommission());
-    }
-
-    #[Test]
-    public function an_inactive_charge_bills_nothing(): void
+    public function the_settlement_records_the_laundrys_terms_as_its_line(): void
     {
         $this->setting('Commission_Rate', '0');
-        $laundry = $this->tenant['laundry'];
-
-        $rule = $this->charge('percent', 10);
-        $this->attach($laundry, $rule);
-
-        $rule->update(['status' => 'inactive']);
-
-        // Switching a charge off is how an operator stops billing under it
-        // without detaching it from forty laundries. «Inactive but still
-        // charging» would make the toggle a lie.
-        $this->assertSame(0.0, app(SettlementService::class)->commissionFor($laundry->fresh(), 200.0)['total']);
-    }
-
-    #[Test]
-    public function stacked_charges_can_never_exceed_the_order(): void
-    {
-        $this->setting('Commission_Rate', '0');
-        $laundry = $this->tenant['laundry'];
-
-        $this->attach($laundry, $this->charge('percent', 80));
-        $this->attach($laundry, $this->charge('percent', 80));
-
-        $commission = app(SettlementService::class)->commissionFor($laundry->fresh(), 100.0);
-
-        // A settlement that pays the laundry a negative number is a bill for
-        // having done the work.
-        $this->assertSame(100.0, $commission['total']);
-        $this->assertGreaterThanOrEqual(0.0, round(100.0 - $commission['total'], 2));
-    }
-
-    #[Test]
-    public function a_flat_charge_larger_than_the_order_is_capped(): void
-    {
-        $this->setting('Commission_Rate', '0');
-        $laundry = $this->tenant['laundry'];
-
-        $this->attach($laundry, $this->charge('fixed', 500));
-
-        $this->assertSame(12.0, app(SettlementService::class)->commissionFor($laundry->fresh(), 12.0)['total']);
-    }
-
-    #[Test]
-    public function the_settlement_records_a_line_for_every_charge(): void
-    {
-        $this->setting('Commission_Rate', '0');
-        $laundry = $this->tenant['laundry'];
-
-        $this->attach($laundry, $this->charge('percent', 10, 'Base'));
-        $this->attach($laundry, $this->charge('fixed', 5, 'Platform fee'));
+        $rule = $this->laundryGets(10, 'Base');
 
         $order = $this->confirmedOrder();
         $settlement = $this->settlementFor($order)->load('lines');
 
-        $this->assertCount(2, $settlement->lines);
-        // The lines must add back to the total they explain, or a laundry is
-        // shown a breakdown that does not come to what it was charged.
+        $this->assertCount(1, $settlement->lines);
+        $this->assertSame($rule->id, $settlement->lines->first()->commission_rule_id);
+        // The line explains the laundry's amount now, not the platform's.
+        $this->assertSame((float) $settlement->laundry_amount, (float) $settlement->lines->first()->amount);
         $this->assertTrue($settlement->linesReconcile());
         $this->assertTrue($settlement->reconciles());
     }
@@ -436,9 +523,7 @@ class CommissionSettlementTest extends TestCase
     public function a_line_keeps_the_terms_it_was_charged_at(): void
     {
         $this->setting('Commission_Rate', '0');
-        $laundry = $this->tenant['laundry'];
-        $rule = $this->charge('percent', 10, 'Base');
-        $this->attach($laundry, $rule);
+        $rule = $this->laundryGets(10, 'Base');
 
         $order = $this->confirmedOrder();
         $before = (float) $this->settlementFor($order)->load('lines')->lines->first()->amount;
@@ -459,7 +544,7 @@ class CommissionSettlementTest extends TestCase
     public function confirming_records_the_split_without_moving_anything(): void
     {
         $this->setting('Commission_Rate', '0');
-        $this->laundryPays(10);
+        $this->laundryGets(10);
 
         $order = $this->confirmedOrder();
         $settlement = $this->settlementFor($order);
@@ -478,7 +563,7 @@ class CommissionSettlementTest extends TestCase
     public function completing_credits_both_wallets(): void
     {
         $this->setting('Commission_Rate', '0');
-        $this->laundryPays(10);
+        $this->laundryGets(10);
         $platform = $this->superAdmin();
 
         $order = $this->complete($this->confirmedOrder());
@@ -502,7 +587,7 @@ class CommissionSettlementTest extends TestCase
     public function each_side_gets_a_transaction_naming_the_order(): void
     {
         $this->setting('Commission_Rate', '0');
-        $this->laundryPays(10);
+        $this->laundryGets(10);
         $platform = $this->superAdmin();
 
         $order = $this->complete($this->confirmedOrder());
@@ -530,7 +615,7 @@ class CommissionSettlementTest extends TestCase
     public function a_replayed_completion_cannot_pay_twice(): void
     {
         $this->setting('Commission_Rate', '0');
-        $this->laundryPays(10);
+        $this->laundryGets(10);
         $platform = $this->superAdmin();
 
         $order = $this->complete($this->confirmedOrder());
@@ -548,7 +633,7 @@ class CommissionSettlementTest extends TestCase
     public function an_order_that_never_completes_pays_nobody(): void
     {
         $this->setting('Commission_Rate', '0');
-        $this->laundryPays(10);
+        $this->laundryGets(10);
         $this->superAdmin();
 
         // Returned rather than Cancelled, because the state machine will not
@@ -580,7 +665,7 @@ class CommissionSettlementTest extends TestCase
     public function a_settled_order_is_not_re_recorded_when_the_rate_changes(): void
     {
         $this->setting('Commission_Rate', '0');
-        $this->laundryPays(10);
+        $this->laundryGets(10);
         // Without a platform account the row stays pending and re-recording it
         // is correct — which is what this assertion would otherwise be quietly
         // measuring instead of the freeze it means to prove.
@@ -589,21 +674,21 @@ class CommissionSettlementTest extends TestCase
         $order = $this->complete($this->confirmedOrder());
         $this->assertSame(OrderSettlement::SETTLED, $this->settlementFor($order)->status);
 
-        $original = (float) $this->settlementFor($order)->commission_amount;
+        $original = (float) $this->settlementFor($order)->laundry_amount;
 
         // Money has moved against those figures. A row that restates itself
         // afterwards is a row that cannot be audited.
-        $this->setting('Commission_Rate', '40');
+        CommissionRule::query()->update(['rate' => 40]);
         app(SettlementService::class)->recordFor($order->fresh());
 
-        $this->assertSame($original, (float) $this->settlementFor($order)->commission_amount);
+        $this->assertSame($original, (float) $this->settlementFor($order)->laundry_amount);
     }
 
     #[Test]
     public function a_platform_with_no_super_admin_leaves_the_settlement_pending(): void
     {
         $this->setting('Commission_Rate', '0');
-        $this->laundryPays(10);
+        $this->laundryGets(10);
 
         // Deliberately no superAdmin() in this test: an install with no platform
         // account is a fault somebody has to fix, and a settlement sitting at
@@ -637,16 +722,16 @@ class CommissionSettlementTest extends TestCase
     // ------------------------------------------------------------- who may set it
 
     #[Test]
-    public function a_laundry_owner_cannot_set_its_own_commission(): void
+    public function a_laundry_owner_cannot_set_its_own_share(): void
     {
-        $this->setting('Commission_Rate', '15');
         $laundry = $this->tenant['laundry'];
 
         // The owner holds laundry.update by design — that is how they edit their
-        // own record — so the commission must not ride that permission.
+        // own record — so the share must not ride that permission. Here the
+        // payee choosing its own share is the one who would gain from it.
         $this->actingAs($this->tenant['owner'])
             ->post(route('admin.laundry.commission', $laundry->id), [
-                'commission_rule_ids' => [$this->charge('percent', 0)->id],
+                'commission_rule_id' => $this->share(100)->id,
             ])->assertForbidden();
 
         $this->assertSame(0, $laundry->fresh()->commissionRules()->count());
@@ -657,7 +742,7 @@ class CommissionSettlementTest extends TestCase
     {
         $laundry = $this->tenant['laundry'];
 
-        // There is no commission column left to mass-assign. The charges live
+        // There is no commission column left to mass-assign. The shares live
         // in a pivot that only `admin.laundry.commission` writes, and that route
         // is gated on `setting.update` — so the boundary is structural now
         // rather than a fillable list somebody could edit in good faith.
@@ -673,31 +758,252 @@ class CommissionSettlementTest extends TestCase
         $this->grant('super_admin', ['laundry.view', 'setting.update']);
         $laundry = $this->tenant['laundry'];
 
-        $first = $this->charge('percent', 12.5);
-        $second = $this->charge('fixed', 5);
+        $first = $this->share(12.5);
+        $second = $this->share(20);
 
         $this->actingAs($this->superAdmin())
-            ->post(route('admin.laundry.commission', $laundry->id), [
-                'commission_rule_ids' => [$first->id, $second->id],
-            ])->assertRedirect();
+            ->post(route('admin.laundry.commission', $laundry->id), ['commission_rule_id' => $first->id])
+            ->assertRedirect();
 
-        $this->assertSame(2, $laundry->fresh()->commissionRules()->count());
+        $this->assertSame([$first->id], $laundry->fresh()->commissionRules()->pluck('commission_rules.id')->all());
 
-        // sync(), not attach(): a charge the operator unticked has to come off,
-        // and a charge nobody can remove is the worst kind.
+        // One share at a time: choosing another replaces it, never adds to it.
         $this->actingAs($this->superAdmin())
-            ->post(route('admin.laundry.commission', $laundry->id), [
-                'commission_rule_ids' => [$second->id],
-            ])->assertRedirect();
+            ->post(route('admin.laundry.commission', $laundry->id), ['commission_rule_id' => $second->id])
+            ->assertRedirect();
 
         $this->assertSame([$second->id], $laundry->fresh()->commissionRules()->pluck('commission_rules.id')->all());
 
-        // An empty list returns the laundry to the general rate.
+        // None hands the laundry to the general share.
         $this->actingAs($this->superAdmin())
-            ->post(route('admin.laundry.commission', $laundry->id), [])
+            ->post(route('admin.laundry.commission', $laundry->id), ['commission_rule_id' => ''])
             ->assertRedirect();
 
         $this->assertSame(0, $laundry->fresh()->commissionRules()->count());
+    }
+
+    #[Test]
+    public function the_laundry_list_refuses_a_share_that_pays_on_nothing(): void
+    {
+        $this->grant('super_admin', ['laundry.view', 'setting.update']);
+        $laundry = $this->tenant['laundry'];
+
+        $off = $this->share(10, 'Off', 'inactive');
+        $fixed = CommissionRule::create([
+            'name' => json_encode(['en' => 'Old flat'], JSON_UNESCAPED_UNICODE),
+            'basis' => 'fixed', 'rate' => null, 'amount' => 5, 'status' => 'active',
+        ]);
+
+        foreach ([$off, $fixed] as $rule) {
+            $this->actingAs($this->superAdmin())
+                ->post(route('admin.laundry.commission', $laundry->id), ['commission_rule_id' => $rule->id])
+                ->assertSessionHasErrors('commission_rule_id');
+        }
+
+        $this->assertSame(0, $laundry->fresh()->commissionRules()->count());
+    }
+
+    #[Test]
+    public function the_rule_form_will_not_put_a_laundry_on_a_second_share(): void
+    {
+        $laundry = $this->tenant['laundry'];
+        $this->laundryGets(10);
+
+        $payload = [
+            'name' => ['en' => 'Second'],
+            'rate' => 25,
+            'laundry_ids' => [$laundry->id],
+            'status' => 'active',
+        ];
+
+        $this->actingAs($this->superAdmin())
+            ->post(route('admin.commission_rule.store'), $payload)
+            ->assertSessionHasErrors('laundry_ids');
+
+        $this->assertSame(1, CommissionRule::count());
+
+        // Switched off, it is not a second share, and the form accepts it.
+        $this->actingAs($this->superAdmin())
+            ->post(route('admin.commission_rule.store'), ['status' => 'inactive'] + $payload)
+            ->assertSessionHasNoErrors();
+
+        $this->assertSame(2, CommissionRule::count());
+    }
+
+    #[Test]
+    public function an_edit_that_leaves_the_status_out_is_still_checked(): void
+    {
+        // An update may omit `status`, and the rule keeps the one it has. An
+        // active rule must not pick up a laundry already on another share just
+        // by not resending it.
+        $laundry = $this->tenant['laundry'];
+        $this->laundryGets(10);
+        $other = $this->share(25, 'Other');
+
+        $this->actingAs($this->superAdmin())
+            ->put(route('admin.commission_rule.update', $other->id), [
+                'name' => ['en' => 'Other'],
+                'rate' => 25,
+                'laundry_ids' => [$laundry->id],
+            ])
+            ->assertSessionHasErrors('laundry_ids');
+
+        $this->assertSame(0, $other->fresh()->laundries()->count());
+    }
+
+    #[Test]
+    public function the_rule_form_writes_a_percentage_whatever_it_is_sent(): void
+    {
+        $this->actingAs($this->superAdmin())
+            ->post(route('admin.commission_rule.store'), [
+                'name' => ['en' => 'Sent as fixed'],
+                'basis' => 'fixed',
+                'amount' => 5,
+                'rate' => 10,
+                'status' => 'active',
+            ])
+            ->assertSessionHasNoErrors();
+
+        $rule = CommissionRule::latest('id')->first();
+
+        $this->assertTrue($rule->basis === CommissionBasis::Percent);
+        $this->assertNull($rule->amount);
+        $this->assertEquals(10.0, (float) $rule->rate);
+    }
+
+    #[Test]
+    public function a_rule_cannot_be_switched_on_over_another_share(): void
+    {
+        $laundry = $this->tenant['laundry'];
+        $this->laundryGets(10);
+
+        $dormant = $this->share(40, 'Dormant', 'inactive');
+        $this->attach($laundry, $dormant);
+
+        $this->actingAs($this->superAdmin())
+            ->postJson(route('admin.commission_rule.toggleStatus', $dormant->id), ['status' => 'active'])
+            ->assertStatus(422)
+            ->assertJson(['success' => false]);
+
+        $this->assertSame('inactive', $dormant->fresh()->status);
+    }
+
+    #[Test]
+    public function a_retired_fixed_rule_cannot_be_switched_back_on(): void
+    {
+        $fixed = CommissionRule::create([
+            'name' => json_encode(['en' => 'Old flat'], JSON_UNESCAPED_UNICODE),
+            'basis' => 'fixed', 'rate' => null, 'amount' => 5, 'status' => 'inactive',
+        ]);
+
+        $this->actingAs($this->superAdmin())
+            ->postJson(route('admin.commission_rule.toggleStatus', $fixed->id), ['status' => 'active'])
+            ->assertStatus(422);
+
+        $this->assertSame('inactive', $fixed->fresh()->status);
+    }
+
+    // -------------------------------------------------- a settlement that waits
+
+    #[Test]
+    public function a_completed_order_with_no_share_waits_and_moves_nothing(): void
+    {
+        $this->setting('Commission_Rate', '0');
+        $this->setting('Laundry_Share_Rate', null);
+        $platform = $this->superAdmin();
+
+        $order = $this->complete($this->confirmedOrder());
+        $settlement = $this->settlementFor($order);
+
+        // Paying here would credit the platform the whole basis for work the
+        // laundry did, on terms nobody set.
+        $this->assertSame(OrderSettlement::PENDING, $settlement->status);
+        $this->assertNull($settlement->laundry_share_rate);
+        $this->assertTrue($settlement->load('lines')->awaitsShare());
+
+        $wallets = app(WalletService::class);
+        $this->assertSame(0.0, (float) $wallets->forUser($platform)->balance);
+        $this->assertSame(0.0, (float) $wallets->forUser($this->tenant['owner'])->balance);
+    }
+
+    #[Test]
+    public function settle_now_pays_it_once_a_share_is_set(): void
+    {
+        $this->setting('Commission_Rate', '0');
+        $this->setting('Laundry_Share_Rate', null);
+        $platform = $this->superAdmin();
+
+        $order = $this->complete($this->confirmedOrder());
+        $settlement = $this->settlementFor($order);
+
+        // Still nothing to divide by: the button says so and moves nothing.
+        $this->actingAs($platform)
+            ->post(route('admin.settlement.settle', $settlement->id))
+            ->assertSessionHas('error');
+
+        $this->assertSame(OrderSettlement::PENDING, $settlement->fresh()->status);
+
+        // Somebody sets the laundry's share; the same button now pays it.
+        $this->laundryGets(10);
+
+        $this->actingAs($platform)
+            ->post(route('admin.settlement.settle', $settlement->id))
+            ->assertSessionHas('success');
+
+        $settlement = $settlement->fresh();
+        $this->assertSame(OrderSettlement::SETTLED, $settlement->status);
+        $this->assertSame('10.00', $settlement->laundry_share_rate);
+        $this->assertSame(round((float) $settlement->basis * 0.10, 2), (float) $settlement->laundry_amount);
+
+        $wallets = app(WalletService::class);
+        $this->assertSame((float) $settlement->laundry_amount, (float) $wallets->forUser($this->tenant['owner'])->balance);
+        $this->assertSame((float) $settlement->commission_amount, (float) $wallets->forUser($platform)->balance);
+
+        // And a second press cannot pay it again.
+        $this->actingAs($platform)
+            ->post(route('admin.settlement.settle', $settlement->id))
+            ->assertSessionHas('error');
+
+        $this->assertSame((float) $settlement->laundry_amount, (float) $wallets->forUser($this->tenant['owner'])->fresh()->balance);
+    }
+
+    #[Test]
+    public function settle_now_will_not_pay_an_order_still_in_progress(): void
+    {
+        $this->setting('Commission_Rate', '0');
+        $this->laundryGets(10);
+        $platform = $this->superAdmin();
+
+        $settlement = $this->settlementFor($this->confirmedOrder());
+
+        $this->actingAs($platform)
+            ->post(route('admin.settlement.settle', $settlement->id))
+            ->assertSessionHas('error');
+
+        $this->assertSame(OrderSettlement::PENDING, $settlement->fresh()->status);
+        $this->assertSame(0.0, (float) app(WalletService::class)->forUser($this->tenant['owner'])->balance);
+    }
+
+    #[Test]
+    public function settle_now_is_not_for_the_laundry_to_press(): void
+    {
+        $this->setting('Laundry_Share_Rate', null);
+        $this->superAdmin();
+
+        $order = $this->complete($this->confirmedOrder());
+        $settlement = $this->settlementFor($order);
+
+        $this->grant('laundry_owner', ['order_settlement.view']);
+
+        // It reads the screen; it does not decide when it is paid.
+        $this->actingAs($this->tenant['owner'])
+            ->post(route('admin.settlement.settle', $settlement->id))
+            ->assertForbidden();
+
+        $this->actingAs($this->tenant['owner'])
+            ->get(route('admin.settlement.index'))
+            ->assertOk()
+            ->assertDontSee(route('admin.settlement.settle', $settlement->id), false);
     }
 
     #[Test]
@@ -729,7 +1035,7 @@ class CommissionSettlementTest extends TestCase
     public function a_laundry_sees_its_own_settlements_and_no_others(): void
     {
         $this->setting('Commission_Rate', '0');
-        $this->laundryPays(10);
+        $this->laundryGets(10);
 
         $other = $this->laundryWithOwner('B', '+201011110003', '+201011110004');
         $this->cover($other['laundry'], $this->geo['zones'][0]->id, $this->catalog['service']->id);
@@ -763,7 +1069,7 @@ class CommissionSettlementTest extends TestCase
     public function the_search_returns_the_rows_and_the_pagination(): void
     {
         $this->setting('Commission_Rate', '0');
-        $this->laundryPays(10);
+        $this->laundryGets(10);
         $this->grant('super_admin', ['order_settlement.view']);
 
         $order = $this->confirmedOrder();
@@ -801,7 +1107,7 @@ class CommissionSettlementTest extends TestCase
     public function a_laundry_owner_reads_its_own_wallet_without_holding_wallet_view(): void
     {
         $this->setting('Commission_Rate', '0');
-        $this->laundryPays(10);
+        $this->laundryGets(10);
         $this->superAdmin();
 
         $order = $this->complete($this->confirmedOrder());
@@ -827,7 +1133,7 @@ class CommissionSettlementTest extends TestCase
     public function the_super_admin_reads_the_commission_on_its_own_wallet(): void
     {
         $this->setting('Commission_Rate', '0');
-        $this->laundryPays(10);
+        $this->laundryGets(10);
         $platform = $this->superAdmin();
 
         $order = $this->complete($this->confirmedOrder());
@@ -844,7 +1150,7 @@ class CommissionSettlementTest extends TestCase
     public function the_order_screen_shows_how_the_order_was_divided(): void
     {
         $this->setting('Commission_Rate', '0');
-        $this->laundryPays(10);
+        $this->laundryGets(10);
         $this->superAdmin();
 
         $order = $this->complete($this->confirmedOrder());

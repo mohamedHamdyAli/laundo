@@ -47,16 +47,21 @@
 
         <div class="card">
             <div class="card-body">
-                <div class="d-flex justify-content-end mb-3 gap-2">
-                    <select id="recurrenceStatusFilter" class="form-select" style="max-width: 200px;">
-                        <option value="all" @selected($status === 'all')>{{ __('All') }}</option>
-                        <option value="active" @selected($status === 'active')>{{ __('Active') }}</option>
-                        <option value="paused" @selected($status === 'paused')>{{ __('Paused') }}</option>
-                        <option value="cancelled" @selected($status === 'cancelled')>{{ __('Cancelled') }}</option>
-                    </select>
-                    <div class="input-group" style="max-width: 320px;">
-                        <input type="text" id="recurrenceSearchInput" class="form-control"
-                            placeholder="{{ __('Search by customer name or phone...') }}">
+                <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
+                    {{-- Excel: the export holds what the filter and the search show. --}}
+                    <x-spreadsheet-actions sheet="order_recurrence" search="#recurrenceSearchInput"
+                        :filters="['status' => '#recurrenceStatusFilter']" />
+                    <div class="d-flex flex-wrap gap-2 ms-auto">
+                        <select id="recurrenceStatusFilter" class="form-select" style="max-width: 200px;">
+                            <option value="all" @selected($status === 'all')>{{ __('All') }}</option>
+                            <option value="active" @selected($status === 'active')>{{ __('Active') }}</option>
+                            <option value="paused" @selected($status === 'paused')>{{ __('Paused') }}</option>
+                            <option value="cancelled" @selected($status === 'cancelled')>{{ __('Cancelled') }}</option>
+                        </select>
+                        <div class="input-group" style="max-width: 320px;">
+                            <input type="text" id="recurrenceSearchInput" class="form-control"
+                                placeholder="{{ __('Search by customer name or phone...') }}">
+                        </div>
                     </div>
                 </div>
 

@@ -26,7 +26,11 @@
                             $stackCols = 'minmax(8rem,1.1fr) minmax(8rem,auto) minmax(7rem,.9fr) minmax(7rem,.9fr) minmax(7rem,auto) minmax(6rem,auto)';
                         @endphp
 
-                        <div class="list-toolbar">
+                        <div class="list-toolbar align-items-start">
+                            {{-- Excel: every window. The filter box below only hides
+                                 rows already drawn, so there is no server search for
+                                 the export to follow. --}}
+                            <x-spreadsheet-actions sheet="time_slot" />
                             <input type="text" id="slotFilterInput" class="form-control list-toolbar-search"
                                 placeholder="{{ __('Filter windows...') }}" autocomplete="off">
                             <span class="text-muted small align-self-center" id="slotFilterInput-count"></span>

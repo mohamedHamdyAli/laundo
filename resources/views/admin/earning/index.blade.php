@@ -81,16 +81,21 @@
 
         <div class="card">
             <div class="card-body">
-                <div class="d-flex justify-content-end mb-3 gap-2">
-                    <select id="earningStatusFilter" class="form-select" style="max-width: 220px;">
-                        <option value="pending" @selected($status === 'pending')>{{ __('Held') }}</option>
-                        <option value="released" @selected($status === 'released')>{{ __('Released') }}</option>
-                        <option value="cancelled" @selected($status === 'cancelled')>{{ __('Cancelled') }}</option>
-                        <option value="all" @selected($status === 'all')>{{ __('All') }}</option>
-                    </select>
-                    <div class="input-group" style="max-width: 320px;">
-                        <input type="text" id="earningSearchInput" class="form-control"
-                            placeholder="{{ __('Search by driver name or phone...') }}">
+                <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
+                    {{-- Excel: the export holds what the filter and the search show. --}}
+                    <x-spreadsheet-actions sheet="driver_earning" search="#earningSearchInput"
+                        :filters="['status' => '#earningStatusFilter']" />
+                    <div class="d-flex flex-wrap gap-2 ms-auto">
+                        <select id="earningStatusFilter" class="form-select" style="max-width: 220px;">
+                            <option value="pending" @selected($status === 'pending')>{{ __('Held') }}</option>
+                            <option value="released" @selected($status === 'released')>{{ __('Released') }}</option>
+                            <option value="cancelled" @selected($status === 'cancelled')>{{ __('Cancelled') }}</option>
+                            <option value="all" @selected($status === 'all')>{{ __('All') }}</option>
+                        </select>
+                        <div class="input-group" style="max-width: 320px;">
+                            <input type="text" id="earningSearchInput" class="form-control"
+                                placeholder="{{ __('Search by driver name or phone...') }}">
+                        </div>
                     </div>
                 </div>
 

@@ -7,8 +7,6 @@
     $defaultCode = getDefaultLanguage('code');
     $readonly = Route::is('*.show');
 
-    $currentBasis = old('basis', isset($row) ? $row->basis->value : \App\Modules\Payment\Enums\CommissionBasis::Percent->value);
-
     $attached = old('laundry_ids', isset($row) ? $row->laundries->pluck('id')->all() : []);
 @endphp
 
@@ -23,10 +21,10 @@
                      refuse a save the server accepts. --}}
                 <input type="text" name="name[{{ $defaultCode }}]" class="form-control" id="commission-name"
                     {{ $readonly ? 'disabled' : '' }}
-                    placeholder="{{ __('e.g. Platform fee') }}"
+                    placeholder="{{ __('e.g. Standard laundry share') }}"
                     value="{{ $nameTranslations[$defaultCode] ?? '' }}">
                 <div class="form-text">
-                    {{ __('This is the name the laundry sees on its own settlement line.') }}
+                    {{ __('This is the name the laundry sees on its own settlement.') }}
                 </div>
             </div>
         </div>
@@ -44,67 +42,49 @@
                         {{ __('inactive') }}
                     </option>
                 </select>
-                <div class="form-text">{{ __('A switched-off charge bills nothing, for every laundry on it.') }}</div>
+                <div class="form-text">{{ __('A switched-off share pays nothing: every laundry on it falls back to the general share in Settings.') }}</div>
             </div>
         </div>
     </div>
 </div>
 
 <div class="row g-3 border rounded p-3 mb-3 mt-1">
-    <h5 class="mb-1">{{ __('What it takes') }}</h5>
+    <h5 class="mb-1">{{ __('What the laundry receives') }}</h5>
     <p class="text-muted small">
-        {{ __('Measured on the order total before tax. Tax is the state\'s money passing through, so it is never charged commission.') }}
-        <strong>{{ __('A laundry can carry several charges and they add together.') }}</strong>
+        {{ __('A percentage of the washing — the piece prices the laundry set, after any discount. The laundry receives this share and the rest stays with the platform. The delivery fee, the cash fee, the customer platform fee and the tax are never divided.') }}
+        <strong>{{ __('A laundry is on one share at a time.') }}</strong>
     </p>
 
-    <div class="col-md-5">
-        <div class="form-group">
-            <label for="commission-basis" class="form-label">{{ __('Based on') }}</label>
-            <div class="controls">
-                <select name="basis" id="commission-basis" class="form-select" {{ $readonly ? 'disabled' : '' }}>
-                    @foreach ($bases as $case)
-                        <option value="{{ $case->value }}" @selected($currentBasis === $case->value)>
-                            {{ __($case->label()) }}
-                        </option>
-                    @endforeach
-                </select>
+    @if (isset($row) && $row->basis->isFixed())
+        {{-- A fixed rule from before the share changed sides. Saving writes it
+             as a percentage — the service clears the amount — so the operator
+             is told what the old terms were rather than finding them gone. --}}
+        <div class="col-12">
+            <div class="alert alert-warning small mb-0">
+                {{ __('This rule was a fixed amount per order (:amount), which is retired. Saving turns it into a percentage share.', ['amount' => moneyFormat($row->amount)]) }}
             </div>
         </div>
-    </div>
+    @endif
 
-    {{-- Two boxes for one question. The basis decides which is being asked, and
-         the service nulls whichever does not apply so a rule can never carry
-         two answers. --}}
     <div class="col-md-4" id="commission-rate-field">
         <div class="form-group">
-            <label for="commission-rate" class="form-label">{{ __('Share of the order') }}</label>
+            <label for="commission-rate" class="form-label">{{ __('Laundry share') }}</label>
             <div class="input-group">
                 <input type="number" step="0.01" min="0" max="100" name="rate" id="commission-rate"
                     class="form-control" {{ $readonly ? 'disabled' : '' }}
                     value="{{ old('rate', $row->rate ?? '') }}">
                 <span class="input-group-text">%</span>
             </div>
-        </div>
-    </div>
-
-    <div class="col-md-4" id="commission-amount-field">
-        <div class="form-group">
-            <label for="commission-amount" class="form-label">{{ __('Amount per order') }}</label>
-            <div class="controls">
-                <input type="number" step="0.01" min="0" name="amount" id="commission-amount"
-                    class="form-control" {{ $readonly ? 'disabled' : '' }}
-                    value="{{ old('amount', $row->amount ?? '') }}">
-                <div class="form-text">{{ __('In :currency.', ['currency' => appCurrency()]) }}</div>
-            </div>
+            <div class="form-text">{{ __('e.g. 10 means the laundry receives 10 of every 100 and the platform keeps 90.') }}</div>
         </div>
     </div>
 </div>
 
 <div class="row g-3 border rounded p-3 mb-3">
-    <h5 class="mb-1">{{ __('Which laundries pay it') }}</h5>
+    <h5 class="mb-1">{{ __('Which laundries are on it') }}</h5>
     <p class="text-muted small">
-        {{ __('Tick as many as this charge applies to. A laundry with nothing ticked anywhere follows the general rate in Settings.') }}
-        <strong>{{ __('A laundry that genuinely pays nothing needs a charge of 0, not an empty list.') }}</strong>
+        {{ __('Tick every laundry paid on this share. A laundry already on another active share cannot be ticked here — move it from that share first.') }}
+        <strong>{{ __('A laundry on no share follows the general share in Settings.') }}</strong>
     </p>
 
     <div class="col-12">
@@ -123,22 +103,3 @@
         @endforelse
     </div>
 </div>
-
-@push('scripts')
-    <script>
-        $(document).ready(function () {
-            // The percentage box and the amount box are the same question asked
-            // two ways. Showing both invites somebody to fill both, and only one
-            // of them would ever be read.
-            function syncBasis() {
-                const fixed = $('#commission-basis').val() === 'fixed';
-
-                $('#commission-amount-field').toggle(fixed);
-                $('#commission-rate-field').toggle(!fixed);
-            }
-
-            $('#commission-basis').on('change', syncBasis);
-            syncBasis();
-        });
-    </script>
-@endpush

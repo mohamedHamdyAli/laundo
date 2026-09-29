@@ -22,28 +22,29 @@
             <span class="row-main">{{ $laundry->city ? getLocalizedValueDashboard($laundry->city, 'name') : '-' }}</span>
         </div>
         <div>
-            {{-- The effective rate, and it used to fall back to the general
-                 setting. That setting is now the fee the *customer* pays, so
-                 showing it here would state a commission this laundry is not
-                 charged — on a screen a laundry owner can open, which makes it
-                 a dispute rather than a typo.
-
-                 Nothing attached now means nothing charged, and the cell says
-                 so in words rather than showing 0%: an operator reading «0%»
-                 cannot tell whether somebody decided that or nobody has looked,
-                 and those are different situations. --}}
-            @php $charges = $laundry->commissionRules->where('status', 'active'); @endphp
-            @if ($charges->isEmpty())
-                <span class="row-main text-muted">{{ __('No charge') }}</span>
-                <span class="row-sub">{{ __('Nothing attached') }}</span>
+            {{-- What this laundry receives from the washing — its own share, or
+                 the general one it falls back to, or neither. The three are said
+                 in words rather than as a bare percentage, because an operator
+                 reading «90%» cannot tell whether somebody agreed it with this
+                 laundry or it is inherited, and «not set» is a laundry whose
+                 settlements are waiting on somebody. --}}
+            @php
+                $share = $laundry->commissionRules
+                    ->where('status', 'active')
+                    ->where('basis', \App\Modules\Payment\Enums\CommissionBasis::Percent)
+                    ->sortBy('id')
+                    ->first();
+                $generalShare = $share ? null : app(\App\Modules\Payment\Services\SettlementService::class)->defaultShareRate();
+            @endphp
+            @if ($share)
+                <span class="row-main">{{ $share->explain() }}</span>
+                <span class="row-sub">{{ getLocalizedValueDashboard($share, 'name') }}</span>
+            @elseif ($generalShare !== null)
+                <span class="row-main">{{ rtrim(rtrim(number_format($generalShare, 2), '0'), '.') }}%</span>
+                <span class="row-sub">{{ __('General share') }}</span>
             @else
-                {{-- Every charge, not a blended number: «10% + 5 ج» is what the
-                     agreement says, and collapsing it to one figure is what made
-                     a single column insufficient in the first place. --}}
-                <span class="row-main">{{ $charges->map(fn ($c) => $c->explain())->implode(' + ') }}</span>
-                <span class="row-sub">
-                    {{ trans_choice(':count charge|:count charges', $charges->count(), ['count' => $charges->count()]) }}
-                </span>
+                <span class="row-main text-danger">{{ __('Not set') }}</span>
+                <span class="row-sub">{{ __('Settlements wait') }}</span>
             @endif
         </div>
         <div>

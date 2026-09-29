@@ -183,11 +183,23 @@ class TranslationCoverageTest extends TestCase
         $arabic = $this->arabic();
         $missing = [];
 
+        // `validation.attributes.…` and the like live in a PHP group file
+        // (resources/lang/ar/validation.php), not in ar.json —
+        // ValidationLanguageTest is what checks those.
+        $groups = array_map(
+            fn (string $path) => basename($path, '.php'),
+            glob(dirname(__DIR__, 2).'/resources/lang/ar/*.php') ?: []
+        );
+
         foreach ($this->sourceFiles() as $file) {
             $source = (string) file_get_contents($file);
 
             foreach ($this->translatableLiterals($source) as $key) {
                 if ($key === '' || isset($arabic[$key])) {
+                    continue;
+                }
+
+                if (preg_match('/^([a-z_]+)\.\S/', $key, $group) && in_array($group[1], $groups, true)) {
                     continue;
                 }
 

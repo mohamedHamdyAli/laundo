@@ -3,14 +3,15 @@
 namespace App\Modules\Payment\Services;
 
 use App\Modules\Laundry\Models\Laundry;
+use App\Modules\Order\Enums\OrderStatus;
 use App\Modules\Order\Models\Order;
+use App\Modules\Payment\Enums\CommissionBasis;
 use App\Modules\Payment\Models\CommissionRule;
 use App\Modules\Payment\Models\OrderSettlement;
 use App\Modules\Payment\Models\OrderSettlementLine;
 use App\Modules\Wallet\Enums\TransactionReason;
 use App\Modules\Wallet\Services\WalletService;
 use App\Support\PlatformAccount;
-use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -18,16 +19,22 @@ use Illuminate\Support\Facades\Log;
  * Dividing an order between the platform and the laundry that cleaned it.
  *
  * «لو الطلب كله ب 100 وبياخد من الفيندور 10 ف ميه يبقا هيدخل ف حسابه 10 والمغسله
- * 90» — the owner's own statement of the rule, and this class is that sentence
- * with the edges filled in.
+ * 90» — the owner's original statement of the rule. **It has since been turned
+ * round**: the percentage set on a laundry is now what the *laundry* receives
+ * — «المغسلة هي اللي هتاخد النسبة» — and the platform keeps the rest. The
+ * columns kept their names (`commission_amount` is still the platform's part,
+ * `laundry_amount` the laundry's); `laundry_share_rate` is the rate the laundry
+ * was paid at, and null on rows settled the old way.
  *
  * Three things are worth stating, because each is a decision that could sensibly
  * have gone the other way:
  *
- * **The basis is the order total with the tax taken back out.** Tax is the
- * state's money passing through on its way to the treasury; splitting it would
- * have both parties drawing on a sum neither is owed. Everything else the
- * customer paid — the washing, the delivery, the cash handling fee — is in.
+ * **The basis is the washing alone** — `cleaningRevenue()`, the laundry's own
+ * piece prices less the discount; see `basisFor()`. The tax is the state's, the
+ * delivery fee and the cash handling fee are the platform's (it pays the driver
+ * out of them), and the customer's platform fee is the platform's own charge —
+ * none of them is divided with the laundry. Widening the basis back to the
+ * pre-tax total re-creates the bug the last paragraph below describes.
  *
  * **Nothing moves until the order completes.** A settlement is recorded the
  * moment the price is agreed, so both sides can see what is coming, and it stays
@@ -43,113 +50,156 @@ use Illuminate\Support\Facades\Log;
  * The basis was «الطلب كله» — the whole order before tax — until the delivery
  * overlap was priced out: the platform was booking a tenth of each delivery fee
  * and paying the driver a fifth of it, so every journey lost money while the
- * laundry took 90% of a fee it had not earned. The basis is now the washing
- * alone; see `basisFor()`. Every component is still stored on the row, so the
- * arithmetic can be re-cut again without archaeology.
+ * laundry took 90% of a fee it had not earned. Every component is still stored
+ * on the row, so the arithmetic can be re-cut again without archaeology.
  */
 class SettlementService
 {
     public function __construct(private readonly WalletService $wallets) {}
 
     /**
-     * The charges attached to this laundry.
+     * The general share, from Settings, for a laundry nobody has set one for.
      *
-     * Active only: switching a rule off is how an operator stops charging under
-     * it without detaching it from forty laundries one at a time, and «inactive
-     * but still charging» would make the toggle a lie.
-     *
-     * @return Collection<int, CommissionRule>
+     * Null when unset — and null is a real answer, not zero: it means nobody has
+     * decided, and a settlement with no decision behind it waits rather than
+     * paying the platform the whole of somebody else's work.
      */
-    public function rulesFor(?Laundry $laundry): Collection
+    public function defaultShareRate(): ?float
     {
-        if ($laundry === null) {
-            return collect();
+        $configured = getSettingValue('Laundry_Share_Rate');
+
+        if ($configured === null || $configured === '') {
+            return null;
         }
 
-        return CommissionRule::active()
+        // Clamped rather than trusted: the settings column is a string.
+        return round(max(min((float) $configured, 100.0), 0.0), 2);
+    }
+
+    /**
+     * The share rule attached to this laundry, if any.
+     *
+     * Active and percentage only. Switching a rule off is how an operator stops
+     * paying under it without detaching forty laundries one at a time, and the
+     * fixed basis was retired when the percentage moved to the laundry's side —
+     * a fixed rule still in the table is history, not terms.
+     *
+     * **One per laundry.** The forms refuse a second, so more than one here is a
+     * row somebody wrote by hand; the oldest wins, deterministically, and the log
+     * says so rather than the two quietly adding up the way they used to.
+     */
+    public function ruleFor(?Laundry $laundry): ?CommissionRule
+    {
+        if ($laundry === null) {
+            return null;
+        }
+
+        $rules = CommissionRule::active()
+            ->where('basis', CommissionBasis::Percent->value)
             ->whereHas('laundries', fn ($query) => $query->whereKey($laundry->id))
             ->orderBy('id')
             ->get();
+
+        if ($rules->count() > 1) {
+            Log::warning('[settlement] laundry carries more than one active share, using the oldest', [
+                'laundry' => $laundry->id,
+                'rules' => $rules->pluck('id')->all(),
+            ]);
+        }
+
+        return $rules->first();
     }
 
     /**
-     * What this laundry is charged on an order of the given size, line by line.
+     * How an order's washing divides, and on whose terms.
      *
-     * **Attached rules add together** — the owner's decision, «تتجمع على بعض» —
-     * and each lands as its own line so a laundry disputing the total is shown
-     * the arithmetic rather than a blended number it cannot reproduce.
+     * The percentage is **what the laundry receives** — «المغسلة هي اللي هتاخد
+     * النسبة» — measured on its own piece prices **before any discount**, and
+     * the platform keeps the rest. It was the other way round for the life of
+     * the project; see the migration that turned every rule round.
      *
-     * **A laundry with nothing attached is charged nothing.** `Commission_Rate`
-     * used to be the safety net here, but that key is now the customer's
-     * platform fee — a charge on the other side of the order entirely — and
-     * reading it here would bill the laundry for what the customer already
-     * paid. The rule that «a laundry paying nothing is expressed by a 0% rule,
-     * not by no rule» still stands and now costs nothing to break: the
-     * migration that moved the key attached an explicit rule at the old rate to
-     * every laundry that was relying on the fallback, so no laundry's charge
-     * changed on the day the meaning did.
+     * **Who pays for a discount is its own decision**, copied onto the order
+     * from the coupon: the laundry bears `$laundryShareOfDiscount` per cent of
+     * the part that came off the pieces, and the platform bears everything else
+     * — the rest of that part, and all of any part that came off the delivery
+     * fee. Two floors, both the owner's:
      *
-     * The total is capped at the basis. Three stacking charges can otherwise sum
-     * past the order, and a settlement that pays the laundry a negative number
-     * is a bill for having done the work.
+     *   - the laundry never goes below zero. A coupon larger than its share
+     *     leaves it with nothing on the order, and the platform carries the rest
+     *     — nobody ends up owing for having done the work.
+     *   - the platform *can* go below zero, and is not floored. A laundry on 90%
+     *     with a 50% coupon the platform funds is paid its 90 in full; the
+     *     platform's part comes out negative and `settleFor()` takes it from the
+     *     platform's wallet.
      *
-     * @return array{total: float, lines: array<int, array<string, mixed>>}
+     * Its own rule first, then the general share in Settings. With neither there
+     * is no split: `share_rate` comes back null, every amount zero, and
+     * `settleFor()` will not move anything until somebody decides.
+     *
+     * The laundry's amount is the one computed; the platform's is taken by
+     * subtraction, so the two always add back to what the customer paid for the
+     * washing (`$base - $discount`) to the piastre.
+     *
+     * @return array{share_rate: float|null, laundry: float, laundry_gross: float, laundry_discount: float, commission: float, lines: array<int, array<string, mixed>>}
      */
-    public function commissionFor(?Laundry $laundry, float $basis): array
-    {
-        $basis = max(round($basis, 2), 0.0);
-        $rules = $this->rulesFor($laundry);
+    public function splitFor(
+        ?Laundry $laundry,
+        float $base,
+        float $discount = 0.0,
+        float $discountOnPieces = 0.0,
+        float $laundryShareOfDiscount = 0.0,
+    ): array {
+        $base = max(round($base, 2), 0.0);
+        $discount = max(round($discount, 2), 0.0);
 
-        if ($rules->isEmpty()) {
-            return ['total' => 0.0, 'lines' => []];
-        }
+        $rule = $this->ruleFor($laundry);
+        $rate = $rule?->clampedRate() ?? ($laundry ? $this->defaultShareRate() : null);
 
-        $lines = [];
-        $total = 0.0;
-
-        foreach ($rules as $rule) {
-            // Charged against the remaining basis, not the original: three rules
-            // each capped at the full order could otherwise sum to three times
-            // it. Whatever is left is what there is to take.
-            $remaining = round($basis - $total, 2);
-
-            if ($remaining <= 0) {
-                break;
-            }
-
-            $amount = $rule->chargeOn($basis);
-            $amount = round(min($amount, $remaining), 2);
-
-            if ($amount <= 0) {
-                // A rule of zero explains nothing on the settlement. It still
-                // means something on the laundry — «attached, and charging
-                // nothing» — but that belongs on the laundry row, not here.
-                continue;
-            }
-
-            $lines[] = [
-                'commission_rule_id' => $rule->id,
-                // Copied, not referenced: a rename or a rate change next quarter
-                // must not restate what was already charged.
-                'name' => json_encode((array) $rule->name, JSON_UNESCAPED_UNICODE),
-                'basis' => $rule->basis->value,
-                'rate' => $rule->basis->isFixed() ? null : $rule->clampedRate(),
-                'amount' => $amount,
+        if ($rate === null) {
+            return [
+                'share_rate' => null, 'laundry' => 0.0, 'laundry_gross' => 0.0,
+                'laundry_discount' => 0.0, 'commission' => 0.0, 'lines' => [],
             ];
-
-            $total = round($total + $amount, 2);
         }
 
-        return ['total' => $total, 'lines' => $lines];
+        $gross = round(min($base * $rate / 100, $base), 2);
+
+        $bears = round(max(min($laundryShareOfDiscount, 100.0), 0.0), 2);
+        $onPieces = round(min(max($discountOnPieces, 0.0), $discount), 2);
+
+        // Floored at what the laundry was going to be paid: never below zero.
+        $laundryDiscount = round(min($onPieces * $bears / 100, $gross), 2);
+        $laundry = round($gross - $laundryDiscount, 2);
+
+        return [
+            'share_rate' => $rate,
+            'laundry' => $laundry,
+            'laundry_gross' => $gross,
+            'laundry_discount' => $laundryDiscount,
+            'commission' => round($base - $discount - $laundry, 2),
+            // One line, naming the terms the laundry was paid on and what they
+            // came to before its part of any discount. Copied rather than
+            // referenced: renaming the rule next quarter must not restate what a
+            // laundry was already paid.
+            'lines' => [[
+                'commission_rule_id' => $rule?->id,
+                'name' => json_encode(
+                    $rule ? (array) $rule->name : ['en' => 'General laundry share', 'ar' => 'نسبة المغسلة العامة'],
+                    JSON_UNESCAPED_UNICODE
+                ),
+                'basis' => CommissionBasis::Percent->value,
+                'rate' => $rate,
+                'amount' => $gross,
+            ]],
+        ];
     }
 
     /**
-     * The blended rate a settlement came to, for display only.
+     * The platform's cut as a percentage of the basis, for display only.
      *
-     * Stacking rules have no single rate — «10% plus 5 EGP» is not a percentage
-     * — so this is derived from the result rather than from any rule. It exists
-     * because `order_settlements.commission_rate` is what the list screen shows
-     * in a narrow column; the lines are the truth.
+     * Derived from the result rather than from any rule. It exists because
+     * `order_settlements.commission_rate` predates the share moving to the
+     * laundry's side, and rows settled before that are read through it.
      */
     public function effectiveRate(float $basis, float $commission): float
     {
@@ -157,21 +207,18 @@ class SettlementService
     }
 
     /**
-     * What the two parties are dividing: the washing, after any discount.
+     * What the two parties are dividing: what the customer paid for the
+     * laundry's work — its own piece prices, less the whole discount.
      *
      * **Not the whole order.** It was, and that was wrong in a way that cost
      * money on every delivery: the customer's pre-tax total carries the delivery
-     * fee, so a laundry on a 10% commission was handed 90% of a fee it had not
-     * earned while the platform separately paid the driver a fifth of that same
-     * fee out of its own tenth. The platform lost on every journey.
+     * fee, so a laundry was handed a share of a fee it had not earned while the
+     * platform separately paid the driver out of that same fee.
      *
-     * So the delivery fee and the cash handling fee both stay with the platform
-     * — it is the platform that pays the driver and the platform that pays to
-     * handle notes — and the tax stays with the state. What is left is the work
-     * the laundry did, and that is what gets split.
-     *
-     * Everything the customer paid is still accounted for. It is just no longer
-     * all of it that is divided:
+     * So the delivery fee, the cash handling fee and the customer's platform fee
+     * all stay with the platform, and the tax stays with the state. The laundry's
+     * share is measured on its prices before the discount (`splitFor()`); this
+     * figure is the one the two parts add back up to:
      *
      *     total = tax + delivery + cash surcharge + platform fee + commission + laundry share
      */
@@ -202,36 +249,47 @@ class SettlementService
         $laundry = $this->laundryFor($order);
         $basis = $this->basisFor($order);
 
-        $commission = $this->commissionFor($laundry, $basis);
-
-        // Subtracted rather than computed as its own percentage, so the two
-        // halves always add back to the basis to the piastre. Two independent
-        // roundings would leave a remainder that belongs to nobody.
-        $laundryShare = round($basis - $commission['total'], 2);
+        $split = $this->splitFor(
+            $laundry,
+            $order->laundryBase(),
+            $order->effectiveDiscount(),
+            $order->discountOnPieces(),
+            $order->laundryShareOfDiscount(),
+        );
 
         $attributes = [
             'laundry_id' => $laundry?->id,
             'basis' => $basis,
-            // Derived from the result, not from a rule: stacking charges have no
-            // single rate. The lines below are the truth; this is the column the
-            // narrow list cell shows.
-            'commission_rate' => $this->effectiveRate($basis, $commission['total']),
-            'commission_amount' => $commission['total'],
-            'laundry_amount' => $laundryShare,
+            // The platform's cut as a percentage, derived from the result. The
+            // laundry's own rate is the column below it.
+            'commission_rate' => $this->effectiveRate($basis, $split['commission']),
+            // Null when nobody has set a share for this laundry — the row then
+            // waits, and `settleFor()` refuses to move anything.
+            'laundry_share_rate' => $split['share_rate'],
+            // The platform's part of the washing, after whatever of the discount
+            // it bears. Below zero when the platform funded more of a coupon than
+            // its part came to — `settleFor()` then takes it from its wallet.
+            'commission_amount' => $split['commission'],
+            'laundry_amount' => $split['laundry'],
+            // The discount, and the part of it the laundry bore. Stored, not
+            // derived: the order's coupon terms are copied and frozen, and a
+            // settled row must say what it was paid on.
+            'discount_amount' => $order->effectiveDiscount(),
+            'laundry_discount_amount' => $split['laundry_discount'],
             'tax_amount' => $order->payableTax(),
             // The platform's own charge, already inside what the customer paid
             // and already outside `basis` — recorded so the revenue screen can
             // say what the platform earned from the customer as against what it
-            // charged the laundry. The two are paid by different people and a
+            // kept from the washing. The two are paid by different people and a
             // single «commission» figure cannot answer either question.
             'platform_fee_amount' => $order->platformFeeEarned(),
             'status' => OrderSettlement::PENDING,
         ];
 
-        return DB::transaction(function () use ($existing, $order, $attributes, $commission) {
+        return DB::transaction(function () use ($existing, $order, $attributes, $split) {
             if ($existing) {
                 $existing->update($attributes);
-                $this->writeLines($existing, $commission['lines']);
+                $this->writeLines($existing, $split['lines']);
 
                 return $existing->refresh();
             }
@@ -243,7 +301,7 @@ class SettlementService
             $settlement = OrderSettlement::withoutGlobalScope('laundry')
                 ->create($attributes + ['order_id' => $order->id]);
 
-            $this->writeLines($settlement, $commission['lines']);
+            $this->writeLines($settlement, $split['lines']);
 
             return $settlement;
         });
@@ -260,6 +318,19 @@ class SettlementService
         $settlement = $this->recordFor($order);
 
         if (! $settlement || $settlement->status !== OrderSettlement::PENDING) {
+            return $settlement;
+        }
+
+        // No share, no split. Settling here would credit the platform the
+        // whole basis and the laundry nothing — for work the laundry did, on
+        // terms nobody set. It waits on the screen as pending instead, and
+        // `SettlementController::settle()` pays it once a share exists.
+        if ($settlement->laundry_share_rate === null && (float) $settlement->basis + (float) $settlement->discount_amount > 0) {
+            Log::warning('[settlement] no laundry share set, left pending', [
+                'order' => $order->id,
+                'laundry' => $settlement->laundry_id,
+            ]);
+
             return $settlement;
         }
 
@@ -281,13 +352,44 @@ class SettlementService
         }
 
         return DB::transaction(function () use ($settlement, $order, $platform, $owner) {
+            // Re-read under a lock and checked again. Completion reaches this
+            // once, but a waiting settlement can now also be paid from a button,
+            // and two clicks racing past the pending check above would credit
+            // both wallets twice.
+            $locked = OrderSettlement::withoutGlobalScope('laundry')
+                ->lockForUpdate()
+                ->find($settlement->id);
+
+            if (! $locked || $locked->status !== OrderSettlement::PENDING) {
+                return $locked ?? $settlement;
+            }
+
+            $settlement = $locked;
+
             $commission = (float) $settlement->commission_amount;
             $share = (float) $settlement->laundry_amount;
             $platformFee = (float) $settlement->platform_fee_amount;
 
+            // The customer's fee first, so that a platform funding a coupon below
+            // its part of the washing draws on the fee it has just been paid
+            // before it draws on anything else.
+            //
+            // Credited, not merely recorded. The platform's wallet is the ledger
+            // of what the platform earned on orders, so a fee that only ever
+            // appeared on the revenue screen would leave that wallet
+            // understating earnings.
+            if ($platformFee > 0) {
+                $this->wallets->credit(
+                    $platform,
+                    $platformFee,
+                    TransactionReason::PlatformFee,
+                    $settlement,
+                    __('Platform fee on order :code', ['code' => $order->code]),
+                );
+            }
+
             // Zero is skipped, not credited. WalletService refuses a zero move on
-            // purpose — a transaction of nothing explains nothing — and a laundry
-            // on no commission produces exactly that on the platform's side.
+            // purpose — a transaction of nothing explains nothing.
             if ($commission > 0) {
                 $this->wallets->credit(
                     $platform,
@@ -298,21 +400,20 @@ class SettlementService
                 );
             }
 
-            // Credited, not merely recorded. The platform's wallet is the
-            // ledger of what the platform earned on orders — the commission
-            // lands there — so a fee that only ever appeared on the revenue
-            // screen would leave that wallet understating earnings. It also used
-            // to land there: before this, an install with a general rate set saw
-            // exactly this money arrive as commission, and a release that moves
-            // where the platform's money shows up without saying so is how
-            // somebody concludes the platform stopped being paid.
-            if ($platformFee > 0) {
-                $this->wallets->credit(
+            // Below zero: the platform funded more of a discount than its part of
+            // the washing came to, and pays the difference — the owner's rule,
+            // «المنصة تدفع الفرق». Allowed to overdraw: the laundry is owed its
+            // share in full whatever the platform's balance happens to be, and a
+            // settlement that failed here would leave the laundry unpaid for a
+            // coupon it never agreed to fund.
+            if ($commission < 0) {
+                $this->wallets->debit(
                     $platform,
-                    $platformFee,
-                    TransactionReason::PlatformFee,
+                    abs($commission),
+                    TransactionReason::DiscountFunded,
                     $settlement,
-                    __('Platform fee on order :code', ['code' => $order->code]),
+                    __('Discount funded on order :code', ['code' => $order->code]),
+                    allowOverdraft: true,
                 );
             }
 
@@ -333,6 +434,40 @@ class SettlementService
 
             return $settlement->refresh();
         });
+    }
+
+    /**
+     * Pay a completed order whose settlement was left waiting.
+     *
+     * Completion is the only moment money moves on its own, and it can find
+     * nothing to pay with — no share set for the laundry, or no owner account to
+     * credit. The row then sits pending, and until now nothing could ever move
+     * it again. This is the way back: once somebody has fixed what was missing,
+     * the settlement is recomputed on today's terms and paid.
+     *
+     * @return string|null why it could not be paid, or null when it was
+     */
+    public function settleWaiting(OrderSettlement $settlement): ?string
+    {
+        $order = $settlement->order;
+
+        if (! $order || $settlement->status !== OrderSettlement::PENDING) {
+            return __('This settlement is not waiting to be paid.');
+        }
+
+        // An order still in progress is paid when it completes. Paying it now
+        // would move money for clothes nobody has delivered.
+        if ($order->status !== OrderStatus::Completed) {
+            return __('This order has not completed yet. It is paid automatically when it does.');
+        }
+
+        $settled = $this->settleFor($order);
+
+        if ($settled?->status !== OrderSettlement::SETTLED) {
+            return __('Still waiting. Set a share for this laundry, or the general share in Settings, and make sure the laundry has an owner account.');
+        }
+
+        return null;
     }
 
     /**

@@ -91,6 +91,9 @@ return [
                 'laundry_service' => 3,
                 'laundry_zone' => 4,
                 'laundry_slot_capacity' => 5,
+                // Laundries asking to open or close a service — a queue, with a
+                // badge, beside the services screen the asks come from.
+                'laundry_service_request' => 6,
             ],
         ],
 
@@ -182,6 +185,23 @@ return [
         // Who may use the panel, what it speaks, what it sent, how it behaves.
         // Pinned last: nothing here is part of standing the platform up, and
         // nothing here is opened during a working day.
+        // «الطلبات». Two readings of the same orders: every order, and today's
+        // work. A group rather than two singles so they sit together, the way
+        // Marketing holds its screens — the owner's call. Both answer to
+        // `order.view` (see `permissions` below), so nobody is shown one
+        // without the other. Keyed `order`, the name it had as a single: the
+        // codebase map (.second-brain) names its communities after these keys,
+        // and the order lifecycle is the `order` community.
+        'order' => [
+            'order' => 7,
+            'title' => 'Orders',
+            'icon' => 'bi bi-receipt',
+            'items' => [
+                'order' => 1,
+                'order_today' => 2,
+            ],
+        ],
+
         'system' => [
             'order' => 99,
             'title' => 'System',
@@ -191,7 +211,9 @@ return [
                 'role' => 2,
                 'language' => 3,
                 'notification_log' => 4,
-                'setting' => 5,
+                // Who changed what — the audit trail of every record.
+                'activity_log' => 5,
+                'setting' => 6,
             ],
         ],
     ],
@@ -214,7 +236,6 @@ return [
 
     'singles' => [
         'user' => 5,
-        'order' => 7,
         'report' => 10,
     ],
 
@@ -241,6 +262,7 @@ return [
         'laundry' => 'bi bi-shop',
         'laundry_staff' => 'bi bi-person-workspace',
         'laundry_service' => 'bi bi-ui-checks',
+        'laundry_service_request' => 'bi bi-inbox',
         'laundry_zone' => 'bi bi-geo',
         'laundry_slot_capacity' => 'bi bi-speedometer2',
 
@@ -266,6 +288,7 @@ return [
         'faq' => 'bi bi-question-circle',
 
         'order' => 'bi bi-receipt',
+        'order_today' => 'bi bi-calendar-check',
 
         'complaint' => 'bi bi-exclamation-circle',
         'order_rating' => 'bi bi-star',
@@ -282,6 +305,7 @@ return [
         'role' => 'bi bi-shield-lock',
         'language' => 'fas fa-language',
         'notification_log' => 'bi bi-bell',
+        'activity_log' => 'bi bi-clock-history',
         'setting' => 'bi bi-gear-fill',
     ],
 
@@ -298,6 +322,7 @@ return [
         'laundry' => 'Laundries',
         'laundry_staff' => 'Laundry Staff',
         'laundry_service' => 'My Services',
+        'laundry_service_request' => 'Service Requests',
         'laundry_zone' => 'My Areas',
         'laundry_slot_capacity' => 'Intake Capacity',
 
@@ -321,7 +346,8 @@ return [
         'journey_step' => 'Journey Steps',
         'faq' => 'FAQ',
 
-        'order' => 'Orders',
+        'order' => 'All orders',
+        'order_today' => 'Today\'s orders',
 
         'complaint' => 'Complaints',
         'order_rating' => 'Ratings',
@@ -338,6 +364,7 @@ return [
         'role' => 'Roles',
         'language' => 'Languages',
         'notification_log' => 'Notification Log',
+        'activity_log' => 'Activity Log',
         'setting' => 'Settings',
     ],
 
@@ -354,6 +381,7 @@ return [
         'laundry' => 'admin.laundry.index',
         'laundry_staff' => 'admin.laundry_staff.index',
         'laundry_service' => 'admin.laundry_service.index',
+        'laundry_service_request' => 'admin.laundry_service_request.index',
         'laundry_zone' => 'admin.laundry_zone.index',
         'laundry_slot_capacity' => 'admin.laundry_slot_capacity.index',
 
@@ -378,6 +406,7 @@ return [
         'faq' => 'admin.faq.index',
 
         'order' => 'admin.order.index',
+        'order_today' => 'admin.order_today.index',
 
         'complaint' => 'admin.complaint.index',
         'order_rating' => 'admin.rating.index',
@@ -394,6 +423,24 @@ return [
         'role' => 'admin.roles.index',
         'language' => 'admin.language.index',
         'notification_log' => 'admin.notification.index',
+        'activity_log' => 'admin.activity_log.index',
         'setting' => 'admin.generalSetting.viewGeneralSetting',
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Permission aliases
+    |--------------------------------------------------------------------------
+    |
+    | A screen that is another reading of a model it has no permission of its
+    | own for. «طلبات اليوم» is the orders list as a day's work: it answers to
+    | `order.view`, and inventing an `order_today.view` would need a model to
+    | generate it and a second grant to every role that can already see orders.
+    | MenuBuilder shows the key to whoever holds `{alias}.view`.
+    |
+    */
+
+    'permissions' => [
+        'order_today' => 'order',
     ],
 ];

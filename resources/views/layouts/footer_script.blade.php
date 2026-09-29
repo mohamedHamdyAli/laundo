@@ -216,13 +216,17 @@
     {{--    @endif --}}
     {{--    @endif --}}
 
+    {{-- `@json`, never `"{!! … !!}"`: a message is text, and one quote in it
+         closed the string and ran the rest as script. Validation wording is
+         editable from the panel, so «a message» includes whatever somebody
+         typed into «Edit Validation Messages». --}}
     @if ($errors->any())
         @foreach ($errors->all() as $error)
-            showErrorToast("{!! $error !!}");
+            showErrorToast(@json($error));
         @endforeach
     @endif
     @if (Session::has('error'))
-        showErrorToast('{!! Session::get('error') !!}')
+        showErrorToast(@json(Session::get('error')))
     @endif
 
     document.addEventListener('click', function(e) {
@@ -258,6 +262,12 @@
                     button.textContent = on
                         ? button.dataset.labelActive
                         : button.dataset.labelInactive;
+                } else if (data.message) {
+                    // A refusal the server explained — a share that would put
+                    // a laundry on two at once, say. Swallowing it left the
+                    // button unchanged with no word as to why, which reads as
+                    // a click that did not register.
+                    showErrorToast(data.message);
                 }
             })
             .catch(error => {

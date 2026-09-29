@@ -47,16 +47,22 @@
 
         <div class="card">
             <div class="card-body">
-                <div class="d-flex justify-content-end mb-3 gap-2">
-                    <select id="settlementStatusFilter" class="form-select" style="max-width: 220px;">
-                        <option value="all" @selected($status === 'all')>{{ __('All') }}</option>
-                        <option value="pending" @selected($status === 'pending')>{{ __('Pending') }}</option>
-                        <option value="settled" @selected($status === 'settled')>{{ __('Settled') }}</option>
-                        <option value="cancelled" @selected($status === 'cancelled')>{{ __('Cancelled') }}</option>
-                    </select>
-                    <div class="input-group" style="max-width: 320px;">
-                        <input type="text" id="settlementSearchInput" class="form-control"
-                            placeholder="{{ __('Search by order code...') }}">
+                <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
+                    {{-- Excel: the export holds what the filter and the search
+                         show — a laundry's own rows only, through the same scope. --}}
+                    <x-spreadsheet-actions sheet="order_settlement" search="#settlementSearchInput"
+                        :filters="['status' => '#settlementStatusFilter']" />
+                    <div class="d-flex flex-wrap gap-2 ms-auto">
+                        <select id="settlementStatusFilter" class="form-select" style="max-width: 220px;">
+                            <option value="all" @selected($status === 'all')>{{ __('All') }}</option>
+                            <option value="pending" @selected($status === 'pending')>{{ __('Pending') }}</option>
+                            <option value="settled" @selected($status === 'settled')>{{ __('Settled') }}</option>
+                            <option value="cancelled" @selected($status === 'cancelled')>{{ __('Cancelled') }}</option>
+                        </select>
+                        <div class="input-group" style="max-width: 320px;">
+                            <input type="text" id="settlementSearchInput" class="form-control"
+                                placeholder="{{ __('Search by order code...') }}">
+                        </div>
                     </div>
                 </div>
 

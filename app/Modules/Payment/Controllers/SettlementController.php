@@ -4,6 +4,7 @@ namespace App\Modules\Payment\Controllers;
 
 use App\Http\Controllers\Controller;
 use App\Modules\Payment\Models\OrderSettlement;
+use App\Modules\Payment\Services\SettlementService;
 use App\Support\LaundryContext;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
@@ -61,6 +62,24 @@ class SettlementController extends Controller
             ])->render(),
             'pagination' => $settlements->withQueryString()->links()->toHtml(),
         ]);
+    }
+
+    /**
+     * Pay a completed order whose settlement was left waiting.
+     *
+     * Read through the tenant-scoped model like the rest of this screen; the
+     * route is gated on `setting.update`, which no laundry role carries.
+     */
+    public function settle(SettlementService $settlements, $id)
+    {
+        $settlement = OrderSettlement::with('order')->findOrFail($id);
+
+        $refusal = $settlements->settleWaiting($settlement);
+
+        return back()->with(
+            $refusal === null ? 'success' : 'error',
+            $refusal ?? __('Settled. Both wallets have been credited.')
+        );
     }
 
     /**

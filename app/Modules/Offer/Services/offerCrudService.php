@@ -47,8 +47,12 @@ class offerCrudService
             // Active only, both of them: an offer pointing at a disabled
             // service or a switched-off code is a card that goes nowhere.
             'services' => Service::where('status', 'active')->get(['id', 'name']),
-            'coupons' => Coupon::where('status', 'active')->get(['id', 'code', 'type', 'value']),
+            'coupons' => Coupon::where('status', 'active')->get(['id', 'code', 'type', 'value', 'scope_type', 'scope_ids']),
         ];
+
+        // What each coupon is limited to, so the picker can say «20% · قميص،
+        // بنطلون» — an offer's discount is its coupon, limit included.
+        $data['couponScopes'] = Coupon::scopeSummaries($data['coupons']);
 
         if ($id) {
             $data['row'] = $this->offerRepository->find($id);

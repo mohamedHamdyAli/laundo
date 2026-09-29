@@ -33,6 +33,8 @@
         <div class="row">
             {{-- Left: what was ordered --}}
             <div class="col-md-8">
+                @include('admin.order.partials._piece_check', ['row' => $row])
+
                 {{-- The laundry's core screen, offered only while the pieces are
                      actually here and waiting to be counted. --}}
                 @if (canDo('order.update') && $row->status->isReviewable())
@@ -97,24 +99,65 @@
                     </div>
                 </div>
 
-                {{-- The audit trail: how the order got where it is --}}
+                {{-- «سجل الطلب». Every status and every recorded change to the order
+                     and what hangs off it — the pieces, the laundry, the driver
+                     legs, the payment, a refund, the settlement — newest first,
+                     with who did it and where from. A change opens to show each
+                     field before and after. --}}
                 <div class="card mb-3">
                     <div class="card-header"><h6 class="mb-0">{{ __('History') }}</h6></div>
                     <div class="card-body">
-                        @forelse ($row->statusLogs as $log)
-                            <div class="d-flex justify-content-between border-bottom py-2">
-                                <div>
-                                    <strong>{{ __(\App\Modules\Order\Enums\OrderStatus::from($log->to_status)->label()) }}</strong>
-                                    @if ($log->from_status === $log->to_status && $log->note)
-                                        <span class="text-muted">— {{ $log->note }}</span>
-                                    @elseif ($log->note)
-                                        <small class="text-muted d-block">{{ $log->note }}</small>
-                                    @endif
-                                    <small class="text-muted d-block">
-                                        {{ __(ucfirst($log->actor_type)) }}{{ $log->actor ? ': '.$log->actor->name : '' }}
-                                    </small>
+                        @forelse ($history as $index => $entry)
+                            @php $detailsId = 'order-history-'.$index; @endphp
+                            <div class="border-bottom py-2">
+                                <div class="d-flex justify-content-between align-items-start gap-2">
+                                    <div>
+                                        <strong>
+                                            @if ($entry['kind'] === 'status')
+                                                <i class="bi bi-flag me-1 text-primary"></i>
+                                            @endif
+                                            {{ $entry['title'] }}
+                                        </strong>
+                                        @if ($entry['note'])
+                                            <small class="text-muted d-block">{{ $entry['note'] }}</small>
+                                        @endif
+                                        <small class="text-muted d-block">
+                                            {{ $entry['actor'] ?? __('The system') }}
+                                            @if ($entry['role'])
+                                                ({{ $entry['role'] }})
+                                            @endif
+                                            @if ($entry['where'])
+                                                · {{ $entry['where'] }}
+                                            @endif
+                                        </small>
+                                    </div>
+                                    <div class="text-end">
+                                        <small class="text-muted d-block">{{ humanDate($entry['at'], 'Y-m-d h:i A') }}</small>
+                                        @if ($entry['fields'])
+                                            <button type="button" class="btn btn-sm btn-link p-0" data-bs-toggle="collapse"
+                                                data-bs-target="#{{ $detailsId }}" aria-expanded="false">
+                                                {{ __('Details') }}
+                                            </button>
+                                        @endif
+                                    </div>
                                 </div>
-                                <small class="text-muted">{{ humanDate($log->created_at) }}</small>
+                                @if ($entry['fields'])
+                                    <div class="collapse" id="{{ $detailsId }}">
+                                        <table class="table table-sm mb-0 mt-2 small">
+                                            @foreach ($entry['fields'] as $field)
+                                                <tr>
+                                                    <td class="text-muted" style="width: 35%">{{ $field['label'] }}</td>
+                                                    @if ($entry['kind'] === 'updated')
+                                                        <td class="text-muted">{{ $field['old'] }}</td>
+                                                        <td class="fw-semibold">{{ $field['new'] }}</td>
+                                                    @else
+                                                        <td colspan="2">{{ $entry['kind'] === 'deleted' ? $field['old'] : $field['new'] }}</td>
+                                                    @endif
+                                                </tr>
+                                            @endforeach
+                                        </table>
+                                    </div>
+                                @endif
                             </div>
                         @empty
                             <p class="text-muted mb-0">{{ __('No history yet') }}</p>
@@ -267,41 +310,99 @@
                                         </td>
                                     </tr>
                                 @endif
-                                <tr>
-                                    <td>{{ __('Basis') }}</td>
-                                    <td class="text-end">{{ moneyFormat($settlement->basis) }}</td>
-                                </tr>
-                                @forelse ($settlement->lines as $line)
-                                    {{-- One row per charge. A laundry disputing
-                                         its payout is shown the arithmetic, not
-                                         a blended figure it cannot reproduce. --}}
+                                @if ($settlement->isOnLaundryShare() && (float) $settlement->discount_amount > 0)
+                                    {{-- The laundry's share is measured before the
+                                         discount, so its prices are shown first and
+                                         the discount as its own line, split by who
+                                         paid for it. --}}
                                     <tr>
-                                        <td class="ps-3 text-muted">
-                                            {{ getLocalizedValueDashboard($line, 'name') }}
-                                            <small>({{ $line->explain() }})</small>
-                                        </td>
-                                        <td class="text-end text-muted">{{ moneyFormat($line->amount) }}</td>
+                                        <td>{{ __('Laundry prices') }}</td>
+                                        <td class="text-end">{{ moneyFormat((float) $settlement->basis + (float) $settlement->discount_amount) }}</td>
                                     </tr>
-                                @empty
-                                @endforelse
-                                <tr>
-                                    <td>
-                                        {{ __('Commission') }}
-                                        @if ($settlement->lines->count() > 1)
-                                            <small class="text-muted">
-                                                ({{ rtrim(rtrim(number_format((float) $settlement->commission_rate, 2), '0'), '.') }}%
-                                                {{ __('effective') }})
+                                    <tr>
+                                        <td class="text-danger">
+                                            {{ __('Discount') }}
+                                            <small>
+                                                ({{ __('laundry') }} {{ moneyFormat($settlement->laundry_discount_amount) }}
+                                                · {{ __('platform') }} {{ moneyFormat($settlement->platformDiscount()) }})
                                             </small>
-                                        @endif
-                                    </td>
-                                    <td class="text-end">{{ moneyFormat($settlement->commission_amount) }}</td>
-                                </tr>
-                                <tr class="border-top">
-                                    <td><strong>{{ __('Laundry share') }}</strong></td>
-                                    <td class="text-end">
-                                        <strong>{{ moneyFormat($settlement->laundry_amount) }}</strong>
-                                    </td>
-                                </tr>
+                                        </td>
+                                        <td class="text-end text-danger">−{{ moneyFormat($settlement->discount_amount) }}</td>
+                                    </tr>
+                                @else
+                                    <tr>
+                                        <td>{{ __('Basis') }}</td>
+                                        <td class="text-end">{{ moneyFormat($settlement->basis) }}</td>
+                                    </tr>
+                                @endif
+                                @if ($settlement->isOnLaundryShare())
+                                    {{-- The laundry's share first, because it is the
+                                         figure that was set; the platform's part is
+                                         what is left of the basis and is shown as
+                                         exactly that. --}}
+                                    <tr class="border-top">
+                                        <td>
+                                            <strong>{{ __('Laundry share') }}</strong>
+                                            <small class="text-muted">
+                                                ({{ collect([
+                                                    rtrim(rtrim(number_format((float) $settlement->laundry_share_rate, 2), '0'), '.').'%',
+                                                    $settlement->lines->isNotEmpty() ? getLocalizedValueDashboard($settlement->lines->first(), 'name') : null,
+                                                ])->filter()->implode(' · ') }})
+                                            </small>
+                                        </td>
+                                        <td class="text-end">
+                                            <strong>{{ moneyFormat($settlement->laundry_amount) }}</strong>
+                                        </td>
+                                    </tr>
+                                    @if ((float) $settlement->laundry_discount_amount > 0)
+                                        <tr>
+                                            <td class="ps-3 text-danger small">
+                                                {{ __(':share less its part of the discount', ['share' => moneyFormat((float) $settlement->laundry_amount + (float) $settlement->laundry_discount_amount)]) }}
+                                            </td>
+                                            <td class="text-end text-danger small">−{{ moneyFormat($settlement->laundry_discount_amount) }}</td>
+                                        </tr>
+                                    @endif
+                                    <tr>
+                                        <td>{{ __('Platform keeps') }}</td>
+                                        <td class="text-end">{{ moneyFormat($settlement->commission_amount) }}</td>
+                                    </tr>
+                                @elseif ($settlement->awaitsShare())
+                                    <tr class="border-top">
+                                        <td colspan="2" class="text-danger small">
+                                            {{ __('No share is set for this laundry, and there is no general share in Settings. Nothing is paid until one is.') }}
+                                        </td>
+                                    </tr>
+                                @else
+                                    {{-- Settled before the share changed sides: the
+                                         lines are the platform's charges. --}}
+                                    @foreach ($settlement->lines as $line)
+                                        <tr>
+                                            <td class="ps-3 text-muted">
+                                                {{ getLocalizedValueDashboard($line, 'name') }}
+                                                <small>({{ $line->explain() }})</small>
+                                            </td>
+                                            <td class="text-end text-muted">{{ moneyFormat($line->amount) }}</td>
+                                        </tr>
+                                    @endforeach
+                                    <tr>
+                                        <td>
+                                            {{ __('Commission') }}
+                                            @if ($settlement->lines->count() > 1)
+                                                <small class="text-muted">
+                                                    ({{ rtrim(rtrim(number_format((float) $settlement->commission_rate, 2), '0'), '.') }}%
+                                                    {{ __('effective') }})
+                                                </small>
+                                            @endif
+                                        </td>
+                                        <td class="text-end">{{ moneyFormat($settlement->commission_amount) }}</td>
+                                    </tr>
+                                    <tr class="border-top">
+                                        <td><strong>{{ __('Laundry share') }}</strong></td>
+                                        <td class="text-end">
+                                            <strong>{{ moneyFormat($settlement->laundry_amount) }}</strong>
+                                        </td>
+                                    </tr>
+                                @endif
                                 @if ((float) $settlement->tax_amount > 0)
                                     <tr>
                                         <td class="text-muted">
@@ -351,8 +452,12 @@
                                  invoice called it «Subtotal», and only the
                                  invoice carried the before-tax line. --}}
                             @foreach ($row->moneyRows() as $line)
+                                {{-- A discount in red, label and amount — the owner's
+                                     call: it is money the order did not bring in,
+                                     and it has to stand out on a screen full of
+                                     figures. --}}
                                 <tr @class([
-                                    'text-success' => $line['kind'] === 'credit',
+                                    'text-danger' => $line['kind'] === 'credit',
                                     'border-top' => in_array($line['kind'], ['subtotal', 'total'], true),
                                 ])>
                                     <td>

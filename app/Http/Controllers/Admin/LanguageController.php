@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\LanguageRequest;
 use App\Models\Language;
 use App\Services\languages\LanguageService;
+use App\Services\languages\ValidationMessages;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Session;
@@ -320,6 +321,33 @@ class LanguageController extends Controller
         return redirect()
             ->route('admin.language.landing', $language->id)
             ->with('success', __('Landing page content updated'));
+    }
+
+    /**
+     * What a refused request is told, and what its fields are called — the
+     * `validation` group, for one language. See ValidationMessages for the
+     * store and the two guards.
+     */
+    public function showValidation($id, ValidationMessages $messages)
+    {
+        $language = Language::findOrFail($id);
+
+        return view('admin.language.validation', [
+            'language' => $language,
+            'groups' => $messages->groups($language->code),
+        ]);
+    }
+
+    public function updateValidation(Request $request, $id, ValidationMessages $messages)
+    {
+        $language = Language::findOrFail($id);
+        $submitted = $request->input('messages', []);
+
+        $messages->save($language, is_array($submitted) ? $submitted : []);
+
+        return redirect()
+            ->route('admin.language.validation', $language->id)
+            ->with('success', __('Validation messages updated'));
     }
 
     /**

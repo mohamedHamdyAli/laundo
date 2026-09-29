@@ -4,6 +4,7 @@ namespace App\Modules\Laundry\Services;
 
 use App\Models\Role;
 use App\Modules\Laundry\Models\Laundry;
+use App\Modules\LaundryService\Models\LaundryService;
 use App\Modules\Notification\Services\LaundryApplicationNotifier;
 use App\Modules\User\Models\User;
 use Illuminate\Support\Facades\DB;
@@ -51,6 +52,18 @@ class LaundryApplicationService
                 'rejected_at' => null,
             ]);
 
+            // The services it will do, filed with the application. The laundry
+            // is off until approved, so the assigner cannot hand it an order in
+            // any of them yet — and approving the application approves these,
+            // which is why they need no request of their own.
+            foreach (array_unique(array_map('intval', $data['services'] ?? [])) as $serviceId) {
+                LaundryService::withoutGlobalScopes()->create([
+                    'laundry_id' => $laundry->id,
+                    'service_id' => $serviceId,
+                    'status' => 'active',
+                ]);
+            }
+
             User::create([
                 'name' => $data['owner_name'],
                 'email' => $data['owner_email'],
@@ -92,7 +105,8 @@ class LaundryApplicationService
             // Every account on the laundry, not just the owner: an application
             // approved months after it was filed may already have staff, and
             // reactivating one of two accounts is the half-open door above.
-            $laundry->users()->update(['status' => 'active']);
+            // One account at a time, so each switch-on reaches the activity log.
+            $laundry->users()->get()->each(fn ($user) => $user->forceFill(['status' => 'active'])->save());
 
             $this->tell($laundry, approved: true);
 
@@ -113,7 +127,7 @@ class LaundryApplicationService
                 'rejection_reason' => $reason,
             ])->save();
 
-            $laundry->users()->update(['status' => 'inactive']);
+            $laundry->users()->get()->each(fn ($user) => $user->forceFill(['status' => 'inactive'])->save());
 
             $this->tell($laundry, approved: false);
 

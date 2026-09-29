@@ -133,6 +133,22 @@ class InvoiceDocumentTest extends TestCase
     }
 
     #[Test]
+    public function a_discount_reads_in_red_on_the_order_screen_and_the_invoice(): void
+    {
+        $order = $this->order(['discount_total' => 10]);
+        $this->actingAs($this->superAdmin());
+
+        // The owner's call: the word and the amount, in red, wherever a
+        // discount is shown.
+        $screen = $this->get(route('admin.order.show', $order->id))->assertOk()->getContent();
+        $this->assertMatchesRegularExpression('/<tr class="text-danger">\s*<td>\s*'.preg_quote(__('Discount'), '/').'/u', $screen);
+
+        $invoice = $this->get(route('admin.order.invoice', $order->id))->assertOk()->getContent();
+        $this->assertStringContainsString('.credit { color: #b02a37; }', $invoice);
+        $this->assertMatchesRegularExpression('/<td class="credit">\s*'.preg_quote(__('Discount'), '/').'/u', $invoice);
+    }
+
+    #[Test]
     public function the_before_tax_line_appears_only_when_something_moved_the_subtotal(): void
     {
         // With nothing between subtotal and tax it would restate the row above it.

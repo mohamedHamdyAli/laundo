@@ -238,31 +238,18 @@ class Laundry extends Model
     }
 
     /**
-     * The charges the platform makes on this laundry's orders.
+     * The share of the washing this laundry receives.
      *
-     * Several, and **they add together** — the owner's decision. It replaces the
-     * single `commission_rate` column this model used to carry: one number could
-     * only ever express one agreement, and a real contract is «10% of the order,
-     * plus 5 EGP a job».
-     *
-     * **Nothing attached is not the same as nothing charged.** A laundry with no
-     * rules falls back to the general rate in Settings; a laundry that genuinely
-     * pays nothing carries a rule of 0. Same distinction the old nullable column
-     * drew between null and 0, and the reason the migration that retired it
-     * carried a stored 0 across rather than dropping it.
+     * A pivot to `commission_rules`, and **at most one active rule** — shares
+     * stopped stacking when the percentage moved to the laundry's side. The
+     * number on the rule is what the laundry is paid; the platform keeps the
+     * rest. None attached means the general share in Settings, and with that
+     * unset too, settlements wait. See `SettlementService::splitFor()`.
      *
      * @return BelongsToMany<CommissionRule, $this>
      */
     public function commissionRules(): BelongsToMany
     {
         return $this->belongsToMany(CommissionRule::class, 'commission_rule_laundry')->withTimestamps();
-    }
-
-    /**
-     * True when somebody has chosen this laundry's terms explicitly.
-     */
-    public function hasOwnCommission(): bool
-    {
-        return $this->commissionRules()->where('status', 'active')->exists();
     }
 }

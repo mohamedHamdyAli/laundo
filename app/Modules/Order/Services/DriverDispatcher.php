@@ -3,9 +3,11 @@
 namespace App\Modules\Order\Services;
 
 use App\Modules\Driver\Models\Driver;
+use App\Modules\Notification\Services\AssignmentNotifier;
 use App\Modules\Notification\Services\OrderNotifier;
 use App\Modules\Order\Enums\TaskStatus;
 use App\Modules\Order\Enums\TaskType;
+use App\Modules\Order\Models\Order;
 use App\Modules\Order\Models\OrderTask;
 use App\Modules\User\Models\User;
 use Illuminate\Support\Facades\DB;
@@ -31,6 +33,58 @@ use RuntimeException;
  */
 class DriverDispatcher
 {
+    public function __construct(
+        private readonly AutoAssign $autoAssign,
+        private readonly AssignmentNotifier $assignments,
+    ) {}
+
+    /**
+     * Whether the platform picks drivers by itself — the settings switch.
+     */
+    public function assignsAutomatically(): bool
+    {
+        return $this->autoAssign->drivers();
+    }
+
+    /**
+     * The platform's own attempt to find a driver: when a leg is created, after
+     * a failed attempt, after a reschedule. With automatic assignment switched
+     * off it does nothing but say the leg is waiting — a person picks.
+     *
+     * Operators pressing «وزّع» call dispatch() directly: that is a person
+     * deciding, and the switch is about the platform deciding for them.
+     *
+     * @param  bool  $announce  false when the caller announces several legs at once
+     */
+    public function automatically(OrderTask $task, bool $announce = true): ?Driver
+    {
+        // Nowhere to take the pieces yet — no laundry covers the zone, or the
+        // laundry is being chosen by hand. A driver sent now would collect a
+        // bag with no destination; the legs are offered once a laundry is set
+        // (OrderService::assignLaundry()).
+        if ($task->order && $task->order->laundry_id === null) {
+            return null;
+        }
+
+        if ($this->assignsAutomatically()) {
+            return $this->dispatch($task);
+        }
+
+        if ($announce && $task->driver_id === null && ! $task->status->isFinished() && $task->order) {
+            $this->assignments->tripsWaiting($task->order, 1);
+        }
+
+        return null;
+    }
+
+    /**
+     * Tell the people who assign drivers that an order's legs are waiting.
+     */
+    public function announceWaiting(Order $order, int $count): void
+    {
+        $this->assignments->tripsWaiting($order, $count);
+    }
+
     /**
      * Assign a driver if one is eligible. Returns the driver, or null when the
      * task stays queued.
@@ -371,6 +425,11 @@ class DriverDispatcher
                 foreach ($tasks as $task) {
                     // Exhausted tasks are operations' problem now, not the pool's.
                     if ($task->isExhausted()) {
+                        continue;
+                    }
+
+                    // Nowhere to take the pieces yet — see automatically().
+                    if ($task->order && $task->order->laundry_id === null) {
                         continue;
                     }
 

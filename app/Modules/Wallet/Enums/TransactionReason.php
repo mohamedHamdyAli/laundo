@@ -60,13 +60,24 @@ enum TransactionReason: string
     case Bonus = 'bonus';
 
     /**
+     * A discount the platform funded beyond its part of the washing, taken from
+     * the super admin's wallet at settlement.
+     *
+     * The platform bears a coupon by default, and a coupon larger than what the
+     * platform keeps of an order still leaves the laundry owed its share in
+     * full — so the difference comes out of the platform's own wallet, under a
+     * reason that says why rather than as a negative commission nobody can read.
+     */
+    case DiscountFunded = 'discount_funded';
+
+    /**
      * Which of the design's four tabs this belongs under.
      */
     public function group(): string
     {
         return match ($this) {
             self::TopUp, self::Earning, self::Commission, self::PlatformFee, self::LaundryPayout, self::Bonus => 'additions',
-            self::OrderPayment, self::Withdrawal => 'payments',
+            self::OrderPayment, self::Withdrawal, self::DiscountFunded => 'payments',
             self::Refund => 'refunds',
             self::Adjustment => 'adjustments',
         };
@@ -85,6 +96,7 @@ enum TransactionReason: string
             self::LaundryPayout => 'Laundry share of an order',
             self::PlatformFee => 'Platform fee from the customer',
             self::Bonus => 'Monthly bonus',
+            self::DiscountFunded => 'Discount funded by the platform',
         };
     }
 

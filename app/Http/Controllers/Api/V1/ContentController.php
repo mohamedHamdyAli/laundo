@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
 use App\Modules\Banner\Models\banner;
+use App\Modules\Coupon\Models\Coupon;
 use App\Modules\Faq\Models\Faq;
 use App\Modules\Intro\Models\intro;
 use App\Modules\JourneyStep\Models\JourneyStep;
@@ -84,8 +85,13 @@ class ContentController extends Controller
             // looks broken.
             ->orderBy('sort_order')
             ->orderBy('id')
-            ->get()
-            ->map(function (Offer $row) {
+            ->get();
+
+        // What each offer's discount applies to, named in one query per kind.
+        $scopes = Coupon::scopeSummaries($offers->pluck('coupon')->filter());
+
+        $offers = $offers
+            ->map(function (Offer $row) use ($scopes) {
                 $target = $row->target();
 
                 return [
@@ -97,6 +103,10 @@ class ContentController extends Controller
                     // unless that coupon would actually be accepted, so a card
                     // cannot promise a discount the checkout then refuses.
                     'badge' => $row->badge(),
+                    // Null when the discount is on the whole order; otherwise
+                    // {type: service|category|item, ids, names} — «على القمصان».
+                    // Shown with the badge, so withheld with it.
+                    'applies_to' => $row->badge() !== null && $row->coupon ? ($scopes[$row->coupon->id] ?? null) : null,
                     // Null rather than a kind of "none", so a client can simply
                     // check for absence before drawing the button. Same shape
                     // banners already return.

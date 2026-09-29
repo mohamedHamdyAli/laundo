@@ -23,6 +23,7 @@ class pricingService
         ServiceRepository $serviceRepository,
         ItemCategoryRepository $itemCategoryRepository,
         private readonly PlatformFee $platformFee = new PlatformFee,
+        private readonly PriceIncrease $priceIncrease = new PriceIncrease,
     ) {
         $this->serviceRepository = $serviceRepository;
         $this->itemCategoryRepository = $itemCategoryRepository;
@@ -60,6 +61,14 @@ class pricingService
             // truthful while somebody is typing.
             'platformFee' => $this->platformFee,
             'platformFeeRate' => $this->platformFee->rate(),
+            // The catalogue-wide rise, for the card above the grid. The grid
+            // itself edits the prices as stored; a period rise is on top.
+            'priceIncrease' => $this->priceIncrease,
+            'priceIncreaseRate' => $this->priceIncrease->rate(),
+            'priceIncreaseEndsAt' => $this->priceIncrease->endsAt(),
+            // Every rise, newest first, and the one that can be undone.
+            'priceHistory' => $this->priceIncrease->history(),
+            'undoableIncrease' => $this->priceIncrease->undoable(),
         ];
     }
 
@@ -98,7 +107,8 @@ class pricingService
                     $blank = $value === null || $value === '';
 
                     if ($blank) {
-                        ItemPrice::where('item_id', $itemId)->where('service_id', $serviceId)->delete();
+                        // Through the model, so a price taken off reaches the activity log.
+                        ItemPrice::where('item_id', $itemId)->where('service_id', $serviceId)->get()->each->delete();
 
                         continue;
                     }
@@ -180,7 +190,7 @@ class pricingService
                             // `decimal:2` cast produced before this. The number
                             // changed; the shape the apps parse must not.
                             'price' => number_format(
-                                $this->platformFee->onUnit((float) $prices[$key]), 2, '.', ''
+                                $this->platformFee->onUnit($this->priceIncrease->onBase((float) $prices[$key])), 2, '.', ''
                             ),
                         ];
                     }

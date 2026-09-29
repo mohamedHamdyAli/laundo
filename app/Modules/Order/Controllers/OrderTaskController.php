@@ -8,6 +8,7 @@ use App\Modules\Order\Enums\TaskStatus;
 use App\Modules\Order\Models\Order;
 use App\Modules\Order\Models\OrderTask;
 use App\Modules\Order\Services\DriverDispatcher;
+use App\Modules\Order\Services\PieceCheck;
 use App\Modules\Order\Services\TaskGenerator;
 use Illuminate\Http\Request;
 use RuntimeException;
@@ -28,6 +29,7 @@ class OrderTaskController extends Controller
     public function __construct(
         private readonly DriverDispatcher $dispatcher,
         private readonly TaskGenerator $generator,
+        private readonly PieceCheck $pieceCheck,
     ) {}
 
     public function assign(Request $request, $id)
@@ -165,6 +167,39 @@ class OrderTaskController extends Controller
         $this->dispatcher->release($task);
 
         return back()->with('success', __('Task returned to the dispatch queue.'));
+    }
+
+    /**
+     * «تمت المراجعة» — a piece count that did not match has been looked into.
+     */
+    public function resolvePieces(Request $request, $id)
+    {
+        $request->validate([
+            'piece_check_note' => ['required', 'string', 'min:3', 'max:1000'],
+            // How many there really are — what the next handover is held to.
+            'piece_check_count' => ['required', 'integer', 'min:0', 'max:999'],
+        ]);
+
+        try {
+            $this->pieceCheck->resolveById(
+                $id,
+                $request->user(),
+                (string) $request->input('piece_check_note'),
+                (int) $request->input('piece_check_count'),
+            );
+        } catch (RuntimeException $e) {
+            // Only the two refusals the service means. Anything else is a
+            // RuntimeException too — another laundry's id (not found), a lock
+            // that timed out — and read as «already reviewed» it would tell the
+            // reviewer a difference is closed that is still open.
+            return back()->with('error', match ($e->getMessage()) {
+                'platform_only' => __('Only the platform can close a piece count difference.'),
+                'nothing_to_resolve' => __('This piece count difference has already been reviewed.'),
+                default => throw $e,
+            });
+        }
+
+        return back()->with('success', __('Piece count difference marked as reviewed.'));
     }
 
     /**

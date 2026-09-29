@@ -42,9 +42,9 @@
             </div>
             <div class="col-md-3 col-xl">
                 <div class="card"><div class="card-body">
-                    <h6 class="text-muted mb-1">{{ __('Commission from laundries') }}</h6>
+                    <h6 class="text-muted mb-1">{{ __('Platform share of the washing') }}</h6>
                     <h3 class="mb-0">{{ moneyFormat($summary['commission']) }}</h3>
-                    <small class="text-muted">{{ __('Taken out of what they earned') }}</small>
+                    <small class="text-muted">{{ __('What the platform kept after paying each laundry its share') }}</small>
                 </div></div>
             </div>
             <div class="col-md-3 col-xl">

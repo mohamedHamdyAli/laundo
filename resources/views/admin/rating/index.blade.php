@@ -88,16 +88,22 @@
 
         <div class="card">
             <div class="card-body">
-                <div class="d-flex justify-content-end mb-3 gap-2">
-                    <select id="ratingBandFilter" class="form-select" style="max-width: 220px;">
-                        <option value="all" @selected($band === 'all')>{{ __('All') }}</option>
-                        <option value="poor" @selected($band === 'poor')>{{ __('Unhappy') }}</option>
-                        <option value="commented" @selected($band === 'commented')>{{ __('With a comment') }}</option>
-                        <option value="good" @selected($band === 'good')>{{ __('Happy') }}</option>
-                    </select>
-                    <div class="input-group" style="max-width: 340px;">
-                        <input type="text" id="ratingSearchInput" class="form-control"
-                            placeholder="{{ __('Search by order, customer or comment...') }}">
+                <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
+                    {{-- Excel: the export holds what the band and the search
+                         show — a laundry's own verdicts only, through the scope. --}}
+                    <x-spreadsheet-actions sheet="order_rating" search="#ratingSearchInput"
+                        :filters="['band' => '#ratingBandFilter']" />
+                    <div class="d-flex flex-wrap gap-2 ms-auto">
+                        <select id="ratingBandFilter" class="form-select" style="max-width: 220px;">
+                            <option value="all" @selected($band === 'all')>{{ __('All') }}</option>
+                            <option value="poor" @selected($band === 'poor')>{{ __('Unhappy') }}</option>
+                            <option value="commented" @selected($band === 'commented')>{{ __('With a comment') }}</option>
+                            <option value="good" @selected($band === 'good')>{{ __('Happy') }}</option>
+                        </select>
+                        <div class="input-group" style="max-width: 340px;">
+                            <input type="text" id="ratingSearchInput" class="form-control"
+                                placeholder="{{ __('Search by order, customer or comment...') }}">
+                        </div>
                     </div>
                 </div>
 

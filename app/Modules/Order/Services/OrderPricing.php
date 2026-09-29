@@ -7,6 +7,7 @@ use App\Modules\Laundry\Models\Laundry;
 use App\Modules\Payment\Enums\PaymentMethod;
 use App\Modules\Pricing\Models\ItemPrice;
 use App\Modules\Pricing\Services\PlatformFee;
+use App\Modules\Pricing\Services\PriceIncrease;
 use App\Modules\Service\Models\Service;
 
 /**
@@ -22,6 +23,7 @@ class OrderPricing
     public function __construct(
         private readonly DeliveryFeeCalculator $deliveryFee,
         private readonly PlatformFee $platformFee,
+        private readonly PriceIncrease $priceIncrease,
     ) {}
 
     /**
@@ -54,6 +56,7 @@ class OrderPricing
      *     cash_surcharge: float,
      *     platform_fee: float,
      *     platform_fee_rate: float,
+     *     price_increase_rate: float,
      *     tax_rate: float,
      *     tax: float,
      *     pre_tax_total: float,
@@ -70,71 +73,13 @@ class OrderPricing
         float $discount = 0.0,
         ?string $paymentMethod = null,
     ): array {
-        $lines = [];
-        $unpriced = [];
-        $subtotal = 0.0;
-        // What the laundry prices the same basket at, carried alongside. The
-        // platform's fee is the gap between the two, taken by subtraction rather
-        // than as a second percentage — the per-piece rounding has already
-        // happened, so a re-derived figure would disagree with the lines the
-        // customer is looking at.
-        $baseSubtotal = 0.0;
-        $count = 0;
-
-        // A quoted service has no per-piece prices at all — it is costed after the
-        // pieces are inspected, in P7 — so its basket produces no lines.
-        if ($service->isPerItem()) {
-            $prices = ItemPrice::where('service_id', $service->id)
-                ->whereIn('item_id', array_column($items, 'item_id'))
-                ->pluck('price', 'item_id');
-
-            foreach ($items as $line) {
-                $itemId = (int) $line['item_id'];
-                $qty = (int) $line['qty'];
-
-                if ($qty < 1) {
-                    continue;
-                }
-
-                if (! isset($prices[$itemId])) {
-                    // The service simply is not offered for this piece. Collected
-                    // and reported rather than treated as free.
-                    $unpriced[] = $itemId;
-
-                    continue;
-                }
-
-                $base = (float) $prices[$itemId];
-
-                // The price the customer is quoted already carries the
-                // platform's fee. It is folded in here, per piece, rather than
-                // added to the subtotal at the end: the customer multiplies this
-                // number by a quantity, so it is this number that has to be
-                // true, and a line that does not equal its own unit price times
-                // its own quantity is the first thing somebody checks when they
-                // think they have been overcharged.
-                $unit = $this->platformFee->onUnit($base);
-                $total = round($unit * $qty, 2);
-
-                $lines[] = [
-                    'item_id' => $itemId,
-                    'qty' => $qty,
-                    'unit_price' => $unit,
-                    // The laundry's own figure, kept beside the customer's. It
-                    // cannot be recovered by dividing the fee back out — that is
-                    // rounded per piece — and the review form has to be able to
-                    // show the laundry what *it* charged.
-                    'base_unit_price' => $base,
-                    'line_total' => $total,
-                ];
-
-                $subtotal += $total;
-                $baseSubtotal += round($base * $qty, 2);
-                $count += $qty;
-            }
-        }
-
-        $subtotal = round($subtotal, 2);
+        [
+            'lines' => $lines,
+            'unpriced' => $unpriced,
+            'subtotal' => $subtotal,
+            'base_subtotal' => $baseSubtotal,
+            'items_count' => $count,
+        ] = $this->lines($service, $items);
 
         $fee = $this->deliveryFee->calculate($laundry, $pickup, $delivery);
 
@@ -174,11 +119,102 @@ class OrderPricing
             // there is one price.
             'platform_fee' => $this->platformFee->within($subtotal, round($baseSubtotal, 2)),
             'platform_fee_rate' => $this->platformFee->rate(),
+            // Stamped on the order so the review prices at the same rise.
+            'price_increase_rate' => $this->priceIncrease->rate(),
             'tax_rate' => $money['tax_rate'],
             'tax' => $money['tax'],
             'pre_tax_total' => $money['pre_tax_total'],
             'total' => $money['total'],
             'unpriced' => $unpriced,
+        ];
+    }
+
+    /**
+     * The basket's lines at today's prices — each piece's customer price and the
+     * laundry's own — without any of the order around them.
+     *
+     * Separate from quote() so a discount limited to some pieces can be worked
+     * out on the same lines the customer is shown, from the app's code check
+     * as well as at checkout.
+     *
+     * @param  array<int, array{item_id: int|string, qty: int|string}>  $items
+     * @return array{lines: list<array{item_id: int, qty: int, unit_price: float, base_unit_price: float, line_total: float}>, unpriced: list<int>, subtotal: float, base_subtotal: float, items_count: int}
+     */
+    public function lines(Service $service, array $items): array
+    {
+        $lines = [];
+        $unpriced = [];
+        $subtotal = 0.0;
+        // What the laundry prices the same basket at, carried alongside. The
+        // platform's fee is the gap between the two, taken by subtraction rather
+        // than as a second percentage — the per-piece rounding has already
+        // happened, so a re-derived figure would disagree with the lines the
+        // customer is looking at.
+        $baseSubtotal = 0.0;
+        $count = 0;
+
+        // A quoted service has no per-piece prices at all — it is costed after the
+        // pieces are inspected, in P7 — so its basket produces no lines.
+        if ($service->isPerItem()) {
+            $prices = ItemPrice::where('service_id', $service->id)
+                ->whereIn('item_id', array_column($items, 'item_id'))
+                ->pluck('price', 'item_id');
+
+            foreach ($items as $line) {
+                $itemId = (int) $line['item_id'];
+                $qty = (int) $line['qty'];
+
+                if ($qty < 1) {
+                    continue;
+                }
+
+                if (! isset($prices[$itemId])) {
+                    // The service simply is not offered for this piece. Collected
+                    // and reported rather than treated as free.
+                    $unpriced[] = $itemId;
+
+                    continue;
+                }
+
+                // The laundry's price, with any catalogue-wide rise in force
+                // today. The rise is the laundry's (the owner's decision), so it
+                // lands in `base_unit_price` and the platform's fee goes on top.
+                $base = $this->priceIncrease->onBase((float) $prices[$itemId]);
+
+                // The price the customer is quoted already carries the
+                // platform's fee. It is folded in here, per piece, rather than
+                // added to the subtotal at the end: the customer multiplies this
+                // number by a quantity, so it is this number that has to be
+                // true, and a line that does not equal its own unit price times
+                // its own quantity is the first thing somebody checks when they
+                // think they have been overcharged.
+                $unit = $this->platformFee->onUnit($base);
+                $total = round($unit * $qty, 2);
+
+                $lines[] = [
+                    'item_id' => $itemId,
+                    'qty' => $qty,
+                    'unit_price' => $unit,
+                    // The laundry's own figure, kept beside the customer's. It
+                    // cannot be recovered by dividing the fee back out — that is
+                    // rounded per piece — and the review form has to be able to
+                    // show the laundry what *it* charged.
+                    'base_unit_price' => $base,
+                    'line_total' => $total,
+                ];
+
+                $subtotal += $total;
+                $baseSubtotal += round($base * $qty, 2);
+                $count += $qty;
+            }
+        }
+
+        return [
+            'lines' => $lines,
+            'unpriced' => $unpriced,
+            'subtotal' => round($subtotal, 2),
+            'base_subtotal' => $baseSubtotal,
+            'items_count' => $count,
         ];
     }
 

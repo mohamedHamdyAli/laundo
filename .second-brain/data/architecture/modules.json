@@ -38,9 +38,11 @@
         },
         "depended_on_by": {
             "Order": 10,
-            "Tests": 7,
+            "Tests": 8,
+            "Zone": 4,
             "Api": 3,
             "User": 1,
+            "Platform": 1,
             "Database": 1
         }
     },
@@ -49,12 +51,18 @@
         "community": "system",
         "path": null,
         "layers": {
-            "view": 9,
-            "controller": 3
+            "view": 11,
+            "controller": 5
         },
-        "files": 12,
-        "lines": 1280,
+        "files": 16,
+        "lines": 1718,
         "classes": [
+            {
+                "fqcn": "App\\Http\\Controllers\\Admin\\ActivityLogController",
+                "layer": "controller",
+                "path": "app/Http/Controllers/Admin/ActivityLogController.php",
+                "summary": "«سجل النشاط» — who changed what, across the platform."
+            },
             {
                 "fqcn": "App\\Http\\Controllers\\Admin\\LanguageController",
                 "layer": "controller",
@@ -72,16 +80,25 @@
                 "layer": "controller",
                 "path": "app/Http/Controllers/Admin/RoleController.php",
                 "summary": ""
+            },
+            {
+                "fqcn": "App\\Http\\Controllers\\Admin\\SpreadsheetController",
+                "layer": "controller",
+                "path": "app/Http/Controllers/Admin/SpreadsheetController.php",
+                "summary": "Excel export and import for the panel's list screens."
             }
         ],
         "models": [],
         "owns_tables": [],
         "reads_tables": [
+            "activity_logs",
             "languages",
             "permissions",
             "roles"
         ],
         "routes": [
+            "admin.activity_log.index",
+            "admin.activity_log.search",
             "admin.language.create",
             "admin.language.delete",
             "admin.language.download",
@@ -97,6 +114,8 @@
             "admin.language.show",
             "admin.language.store",
             "admin.language.update",
+            "admin.language.validation",
+            "admin.language.validation.update",
             "admin.language.web",
             "admin.language.web.update",
             "admin.myNotifications.index",
@@ -106,9 +125,13 @@
             "admin.roles.index",
             "admin.roles.permissions.update",
             "admin.roles.store",
+            "admin.spreadsheet.export",
+            "admin.spreadsheet.import",
+            "admin.spreadsheet.template",
             "language.set-current"
         ],
         "permissions": [
+            "activity_log.view",
             "language.create",
             "language.delete",
             "language.view",
@@ -118,12 +141,13 @@
             "role.create"
         ],
         "tests": [],
-        "summary": "The operator's own inbox.",
+        "summary": "«سجل النشاط» — who changed what, across the platform.",
         "depends_on": {
-            "Platform": 19
+            "Platform": 36
         },
         "depended_on_by": {
-            "Routing": 3,
+            "Routing": 5,
+            "Platform": 2,
             "Tests": 2
         }
     },
@@ -135,7 +159,7 @@
             "api-controller": 22
         },
         "files": 22,
-        "lines": 4716,
+        "lines": 4932,
         "classes": [
             {
                 "fqcn": "App\\Http\\Controllers\\Api\\V1\\AddressController",
@@ -277,6 +301,7 @@
             "roles",
             "complaints",
             "banners",
+            "coupons",
             "faqs",
             "intros",
             "journey_steps",
@@ -284,15 +309,15 @@
             "order_tasks",
             "driver_earnings",
             "cities",
+            "services",
+            "time_slots",
             "languages",
             "device_tokens",
             "notification_preferences",
             "order_media",
-            "time_slots",
             "payments",
             "order_recurrences",
             "recurrence_prompts",
-            "coupons",
             "coupon_redemptions",
             "refunds",
             "wallet_transactions",
@@ -327,6 +352,7 @@
             "api.v1.complaints.show",
             "api.v1.complaints.store",
             "api.v1.coupons.check",
+            "api.v1.delivery-window",
             "api.v1.devices.forget",
             "api.v1.devices.register",
             "api.v1.driver.availability",
@@ -414,19 +440,20 @@
         "summary": "A customer's saved addresses.",
         "depends_on": {
             "Platform": 69,
-            "Order": 46,
+            "Order": 51,
             "Payment": 17,
             "Driver": 10,
+            "TimeSlot": 9,
             "Auth": 8,
-            "TimeSlot": 7,
+            "Coupon": 8,
             "Wallet": 7,
+            "Service": 6,
             "Complaint": 6,
-            "Coupon": 6,
             "Notification": 6,
             "User": 4,
             "Address": 3,
+            "Zone": 2,
             "Pricing": 2,
-            "Service": 2,
             "Banner": 2,
             "Faq": 2,
             "Intro": 2,
@@ -659,7 +686,7 @@
             "service": 1
         },
         "files": 12,
-        "lines": 635,
+        "lines": 641,
         "classes": [
             {
                 "fqcn": "App\\Modules\\City\\Controllers\\CityController",
@@ -728,8 +755,8 @@
             "Zone": 1
         },
         "depended_on_by": {
-            "Tests": 12,
-            "Platform": 3,
+            "Tests": 13,
+            "Platform": 9,
             "Laundry": 3,
             "Zone": 3,
             "Api": 2,
@@ -752,7 +779,7 @@
             "service": 1
         },
         "files": 9,
-        "lines": 1545,
+        "lines": 1550,
         "classes": [
             {
                 "fqcn": "App\\Modules\\Complaint\\Controllers\\ComplaintController",
@@ -827,10 +854,10 @@
             "Laundry": 1
         },
         "depended_on_by": {
-            "Tests": 16,
+            "Tests": 19,
             "Api": 6,
+            "Platform": 6,
             "Report": 2,
-            "Platform": 2,
             "Routing": 1
         }
     },
@@ -847,7 +874,7 @@
             "service": 1
         },
         "files": 12,
-        "lines": 592,
+        "lines": 597,
         "classes": [
             {
                 "fqcn": "App\\Modules\\Country\\Controllers\\CountryController",
@@ -914,8 +941,8 @@
             "City": 1
         },
         "depended_on_by": {
-            "Tests": 5,
-            "Platform": 3,
+            "Platform": 8,
+            "Tests": 7,
             "City": 3,
             "Database": 2,
             "Routing": 1
@@ -934,7 +961,7 @@
             "request": 1
         },
         "files": 15,
-        "lines": 1318,
+        "lines": 1829,
         "classes": [
             {
                 "fqcn": "App\\Modules\\Coupon\\Controllers\\CouponController",
@@ -994,8 +1021,11 @@
             "coupon_redemptions"
         ],
         "reads_tables": [
+            "items",
             "orders",
-            "users"
+            "users",
+            "item_categories",
+            "services"
         ],
         "routes": [
             "admin.coupon.create",
@@ -1019,18 +1049,21 @@
         "summary": "Validating and spending a discount code.",
         "depends_on": {
             "Platform": 8,
-            "Order": 5,
-            "User": 5
+            "Order": 7,
+            "User": 5,
+            "Service": 4,
+            "Item": 3,
+            "ItemCategory": 2
         },
         "depended_on_by": {
-            "Tests": 15,
-            "Api": 6,
-            "Order": 4,
+            "Tests": 18,
+            "Api": 8,
+            "Order": 7,
+            "Platform": 6,
             "Offer": 3,
             "Banner": 2,
             "User": 2,
             "Auth": 1,
-            "Platform": 1,
             "Routing": 1
         }
     },
@@ -1039,11 +1072,11 @@
         "community": "database",
         "path": null,
         "layers": {
-            "migration": 98,
+            "migration": 109,
             "seeder": 11
         },
-        "files": 109,
-        "lines": 6540,
+        "files": 120,
+        "lines": 7308,
         "classes": [
             {
                 "fqcn": "Database\\Seeders\\AdminUserSeeder",
@@ -1168,10 +1201,10 @@
         "community": "quality",
         "path": null,
         "layers": {
-            "doc": 15
+            "doc": 19
         },
-        "files": 15,
-        "lines": 9841,
+        "files": 19,
+        "lines": 10400,
         "classes": [],
         "models": [],
         "owns_tables": [],
@@ -1198,7 +1231,7 @@
             "command": 1
         },
         "files": 49,
-        "lines": 5786,
+        "lines": 5797,
         "classes": [
             {
                 "fqcn": "App\\Modules\\Driver\\Controllers\\DriverApplicationController",
@@ -1458,10 +1491,10 @@
             "City": 2
         },
         "depended_on_by": {
-            "Tests": 48,
+            "Tests": 58,
+            "Platform": 22,
             "Api": 10,
             "Order": 9,
-            "Platform": 8,
             "Payment": 5,
             "Routing": 5,
             "Notification": 4
@@ -1480,7 +1513,7 @@
             "service": 1
         },
         "files": 12,
-        "lines": 677,
+        "lines": 679,
         "classes": [
             {
                 "fqcn": "App\\Modules\\Faq\\Controllers\\FaqController",
@@ -1544,10 +1577,10 @@
             "Platform": 8
         },
         "depended_on_by": {
-            "Tests": 5,
+            "Tests": 6,
+            "Platform": 3,
             "Api": 2,
             "Landing": 1,
-            "Platform": 1,
             "Routing": 1
         }
     },
@@ -1647,7 +1680,7 @@
             "service": 1
         },
         "files": 12,
-        "lines": 559,
+        "lines": 560,
         "classes": [
             {
                 "fqcn": "App\\Modules\\Item\\Controllers\\ItemController",
@@ -1716,13 +1749,14 @@
             "Pricing": 1
         },
         "depended_on_by": {
-            "Tests": 3,
+            "Platform": 7,
+            "Tests": 5,
+            "Coupon": 3,
             "Database": 2,
             "Order": 2,
             "ItemCategory": 1,
             "Pricing": 1,
             "Landing": 1,
-            "Platform": 1,
             "Routing": 1
         }
     },
@@ -1739,7 +1773,7 @@
             "service": 1
         },
         "files": 12,
-        "lines": 546,
+        "lines": 547,
         "classes": [
             {
                 "fqcn": "App\\Modules\\ItemCategory\\Controllers\\ItemCategoryController",
@@ -1806,12 +1840,13 @@
             "Item": 1
         },
         "depended_on_by": {
+            "Platform": 7,
+            "Tests": 7,
             "Item": 3,
-            "Tests": 3,
             "Pricing": 2,
             "Database": 2,
+            "Coupon": 2,
             "Landing": 1,
-            "Platform": 1,
             "Routing": 1
         }
     },
@@ -1908,7 +1943,7 @@
             "service": 1
         },
         "files": 5,
-        "lines": 1163,
+        "lines": 1183,
         "classes": [
             {
                 "fqcn": "App\\Services\\Landing\\LandingContentService",
@@ -1936,7 +1971,7 @@
         "tests": [],
         "summary": "Everything the landing page states about the business, read from the business.",
         "depends_on": {
-            "Pricing": 3,
+            "Pricing": 5,
             "Order": 2,
             "Platform": 1,
             "Faq": 1,
@@ -1949,7 +1984,8 @@
             "Zone": 1
         },
         "depended_on_by": {
-            "Platform": 2
+            "Platform": 2,
+            "Tests": 1
         }
     },
     {
@@ -1957,10 +1993,10 @@
         "community": "system",
         "path": null,
         "layers": {
-            "view": 4
+            "view": 5
         },
-        "files": 4,
-        "lines": 390,
+        "files": 5,
+        "lines": 527,
         "classes": [],
         "models": [],
         "owns_tables": [],
@@ -1985,7 +2021,7 @@
             "repository": 1
         },
         "files": 20,
-        "lines": 2355,
+        "lines": 2389,
         "classes": [
             {
                 "fqcn": "App\\Modules\\Laundry\\Controllers\\LaundryController",
@@ -2064,11 +2100,11 @@
         ],
         "reads_tables": [
             "roles",
+            "laundry_services",
             "users",
             "orders",
             "cities",
             "time_slots",
-            "laundry_services",
             "laundry_zones",
             "commission_rules"
         ],
@@ -2105,23 +2141,23 @@
             "Platform": 21,
             "User": 5,
             "TimeSlot": 5,
+            "Payment": 3,
+            "LaundryService": 3,
             "Order": 3,
             "City": 3,
-            "LaundryService": 1,
             "LaundryZone": 1,
-            "Payment": 1,
             "Notification": 1
         },
         "depended_on_by": {
-            "Tests": 24,
-            "Order": 12,
-            "Platform": 10,
-            "Payment": 10,
+            "Tests": 30,
+            "Platform": 15,
+            "Order": 14,
+            "Payment": 12,
+            "LaundryService": 5,
+            "Notification": 5,
             "Report": 5,
-            "Notification": 3,
             "Database": 3,
             "Api": 2,
-            "LaundryService": 2,
             "LaundryStaff": 2,
             "LaundryZone": 2,
             "Routing": 2,
@@ -2135,19 +2171,31 @@
         "community": "laundries",
         "path": "app/Modules/LaundryService",
         "layers": {
-            "controller": 1,
-            "model": 1,
-            "service": 1,
-            "view": 1
+            "view": 3,
+            "controller": 2,
+            "model": 2,
+            "service": 2
         },
-        "files": 4,
-        "lines": 279,
+        "files": 9,
+        "lines": 1038,
         "classes": [
             {
                 "fqcn": "App\\Modules\\LaundryService\\Controllers\\LaundryServiceController",
                 "layer": "controller",
                 "path": "app/Modules/LaundryService/Controllers/LaundryServiceController.php",
                 "summary": ""
+            },
+            {
+                "fqcn": "App\\Modules\\LaundryService\\Controllers\\LaundryServiceRequestController",
+                "layer": "controller",
+                "path": "app/Modules/LaundryService/Controllers/LaundryServiceRequestController.php",
+                "summary": "«طلبات خدمات المغاسل» — laundries asking to open or close a service."
+            },
+            {
+                "fqcn": "App\\Modules\\LaundryService\\Services\\LaundryServiceRequestReview",
+                "layer": "service",
+                "path": "app/Modules/LaundryService/Services/LaundryServiceRequestReview.php",
+                "summary": "A laundry's services change only when somebody approves."
             },
             {
                 "fqcn": "App\\Modules\\LaundryService\\Services\\laundryServiceCrudService",
@@ -2160,40 +2208,58 @@
                 "layer": "model",
                 "path": "app/Modules/LaundryService/Models/LaundryService.php",
                 "summary": "A laundry's declaration that it provides a given service."
+            },
+            {
+                "fqcn": "App\\Modules\\LaundryService\\Models\\LaundryServiceRequest",
+                "layer": "model",
+                "path": "app/Modules/LaundryService/Models/LaundryServiceRequest.php",
+                "summary": "A laundry asking to open or close a service, and the answer."
             }
         ],
         "models": [
-            "App\\Modules\\LaundryService\\Models\\LaundryService"
+            "App\\Modules\\LaundryService\\Models\\LaundryService",
+            "App\\Modules\\LaundryService\\Models\\LaundryServiceRequest"
         ],
         "owns_tables": [
-            "laundry_services"
+            "laundry_services",
+            "laundry_service_requests"
         ],
         "reads_tables": [
             "laundries",
+            "users",
             "services"
         ],
         "routes": [
             "admin.laundry_service.index",
-            "admin.laundry_service.update"
+            "admin.laundry_service.update",
+            "admin.laundry_service_request.approve",
+            "admin.laundry_service_request.index",
+            "admin.laundry_service_request.reject",
+            "admin.laundry_service_request.search"
         ],
         "permissions": [
             "laundry_service.view",
-            "laundry_service.update"
+            "laundry_service.update",
+            "laundry_service_request.update",
+            "laundry_service_request.view"
         ],
         "tests": [],
-        "summary": "A laundry declaring which services it provides.",
+        "summary": "A laundry's services change only when somebody approves.",
         "depends_on": {
-            "Platform": 8,
-            "Service": 3,
-            "Laundry": 2
+            "Platform": 19,
+            "Laundry": 5,
+            "User": 5,
+            "Service": 4,
+            "Notification": 2
         },
         "depended_on_by": {
+            "Tests": 6,
+            "Platform": 5,
+            "Laundry": 3,
+            "Notification": 2,
             "Order": 2,
-            "Laundry": 1,
-            "Platform": 1,
-            "Database": 1,
-            "Routing": 1,
-            "Tests": 1
+            "Routing": 2,
+            "Database": 1
         }
     },
     {
@@ -2209,7 +2275,7 @@
             "service": 1
         },
         "files": 12,
-        "lines": 665,
+        "lines": 667,
         "classes": [
             {
                 "fqcn": "App\\Modules\\LaundryStaff\\Controllers\\LaundryStaffController",
@@ -2278,7 +2344,7 @@
             "Laundry": 2
         },
         "depended_on_by": {
-            "Platform": 1,
+            "Platform": 3,
             "Routing": 1,
             "Tests": 1
         }
@@ -2362,7 +2428,7 @@
             "service": 1
         },
         "files": 12,
-        "lines": 669,
+        "lines": 671,
         "classes": [
             {
                 "fqcn": "App\\Modules\\Moderator\\Controllers\\ModeratorController",
@@ -2430,7 +2496,7 @@
             "Notification": 2
         },
         "depended_on_by": {
-            "Platform": 1,
+            "Platform": 3,
             "Routing": 1
         }
     },
@@ -2439,7 +2505,7 @@
         "community": "system",
         "path": "app/Modules/Notification",
         "layers": {
-            "service": 9,
+            "service": 13,
             "model": 3,
             "view": 3,
             "command": 2,
@@ -2450,8 +2516,8 @@
             "request": 1,
             "notification": 1
         },
-        "files": 25,
-        "lines": 2866,
+        "files": 29,
+        "lines": 3239,
         "classes": [
             {
                 "fqcn": "App\\Modules\\Notification\\Controllers\\NotificationComposeController",
@@ -2464,6 +2530,12 @@
                 "layer": "controller",
                 "path": "app/Modules/Notification/Controllers/NotificationLogController.php",
                 "summary": "What the system has been telling people."
+            },
+            {
+                "fqcn": "App\\Modules\\Notification\\Services\\AssignmentNotifier",
+                "layer": "service",
+                "path": "app/Modules/Notification/Services/AssignmentNotifier.php",
+                "summary": "Work waiting for a person because automatic assignment is switched off."
             },
             {
                 "fqcn": "App\\Modules\\Notification\\Services\\DriverApplicationNotifier",
@@ -2484,6 +2556,12 @@
                 "summary": "Who hears about a laundry applying, and about the answer."
             },
             {
+                "fqcn": "App\\Modules\\Notification\\Services\\LaundryServiceRequestNotifier",
+                "layer": "service",
+                "path": "app/Modules/Notification/Services/LaundryServiceRequestNotifier.php",
+                "summary": "Who hears about a laundry asking to open or close a service, and about the answer."
+            },
+            {
                 "fqcn": "App\\Modules\\Notification\\Services\\ManualNotifier",
                 "layer": "service",
                 "path": "app/Modules/Notification/Services/ManualNotifier.php",
@@ -2500,6 +2578,18 @@
                 "layer": "service",
                 "path": "app/Modules/Notification/Services/OrderNotifier.php",
                 "summary": "The copy, and who gets it."
+            },
+            {
+                "fqcn": "App\\Modules\\Notification\\Services\\PanelAudience",
+                "layer": "service",
+                "path": "app/Modules/Notification/Services/PanelAudience.php",
+                "summary": "Who in the panel hears about something — one definition, for every notifier that rings the panel's bell."
+            },
+            {
+                "fqcn": "App\\Modules\\Notification\\Services\\PieceCountNotifier",
+                "layer": "service",
+                "path": "app/Modules/Notification/Services/PieceCountNotifier.php",
+                "summary": "Two counts of the same pieces disagreed — a driver at a handover, or the laundry at its review."
             },
             {
                 "fqcn": "App\\Services\\Push\\FcmPushDriver",
@@ -2603,6 +2693,8 @@
             "driver_applications",
             "driver_record_submissions",
             "laundries",
+            "laundry_service_requests",
+            "piece_discrepancies",
             "order_price_queries",
             "recurrence_prompts",
             "refunds"
@@ -2618,22 +2710,24 @@
             "notification_log.view"
         ],
         "tests": [],
-        "summary": "Somebody asked to drive. Tell the people who ring them.",
+        "summary": "Work waiting for a person because automatic assignment is switched off.",
         "depends_on": {
-            "User": 18,
-            "Order": 11,
+            "User": 21,
+            "Order": 15,
             "Platform": 11,
+            "Laundry": 5,
             "Driver": 4,
-            "Laundry": 3,
+            "LaundryService": 2,
             "Payment": 1
         },
         "depended_on_by": {
-            "Tests": 58,
+            "Tests": 60,
+            "Order": 16,
+            "Platform": 10,
             "Driver": 8,
-            "Order": 8,
             "Api": 6,
-            "Platform": 6,
             "Complaint": 3,
+            "LaundryService": 2,
             "Moderator": 2,
             "Report": 2,
             "Routing": 2,
@@ -2656,7 +2750,7 @@
             "service": 1
         },
         "files": 13,
-        "lines": 1069,
+        "lines": 1076,
         "classes": [
             {
                 "fqcn": "App\\Modules\\Offer\\Controllers\\OfferController",
@@ -2731,9 +2825,9 @@
             "Service": 2
         },
         "depended_on_by": {
-            "Tests": 4,
+            "Tests": 7,
+            "Platform": 5,
             "Api": 2,
-            "Platform": 2,
             "Order": 2,
             "Landing": 1,
             "Routing": 1
@@ -2744,17 +2838,17 @@
         "community": "order",
         "path": "app/Modules/Order",
         "layers": {
-            "service": 17,
-            "model": 9,
-            "view": 9,
-            "enum": 6,
-            "controller": 4,
+            "service": 22,
+            "view": 13,
+            "model": 10,
+            "enum": 8,
+            "controller": 5,
             "command": 2,
             "repository": 1,
             "request": 1
         },
-        "files": 49,
-        "lines": 9725,
+        "files": 62,
+        "lines": 12483,
         "classes": [
             {
                 "fqcn": "App\\Modules\\Order\\Controllers\\DispatchController",
@@ -2779,6 +2873,18 @@
                 "layer": "controller",
                 "path": "app/Modules/Order/Controllers/OrderTaskController.php",
                 "summary": "Operations' side of dispatch."
+            },
+            {
+                "fqcn": "App\\Modules\\Order\\Controllers\\OrderTodayController",
+                "layer": "controller",
+                "path": "app/Modules/Order/Controllers/OrderTodayController.php",
+                "summary": "«طلبات اليوم» — HTTP only; the counting is the service's."
+            },
+            {
+                "fqcn": "App\\Modules\\Order\\Services\\AutoAssign",
+                "layer": "service",
+                "path": "app/Modules/Order/Services/AutoAssign.php",
+                "summary": "«التعيين التلقائي» — whether the platform hands out work by itself."
             },
             {
                 "fqcn": "App\\Modules\\Order\\Services\\DeliveryFeeCalculator",
@@ -2811,6 +2917,12 @@
                 "summary": "«هيوصل امتى؟» — the question the tracking screen exists to answer."
             },
             {
+                "fqcn": "App\\Modules\\Order\\Services\\OrderHistory",
+                "layer": "service",
+                "path": "app/Modules/Order/Services/OrderHistory.php",
+                "summary": "Everything that happened to one order, newest first, and who did it."
+            },
+            {
                 "fqcn": "App\\Modules\\Order\\Services\\OrderPricing",
                 "layer": "service",
                 "path": "app/Modules/Order/Services/OrderPricing.php",
@@ -2841,6 +2953,18 @@
                 "summary": "«تتبّع الطلب» — the customer's timeline."
             },
             {
+                "fqcn": "App\\Modules\\Order\\Services\\OrderTodayService",
+                "layer": "service",
+                "path": "app/Modules/Order/Services/OrderTodayService.php",
+                "summary": "«طلبات اليوم» — one day's work: which orders, how many pieces in each, and how many of each piece across all of them."
+            },
+            {
+                "fqcn": "App\\Modules\\Order\\Services\\PieceCheck",
+                "layer": "service",
+                "path": "app/Modules/Order/Services/PieceCheck.php",
+                "summary": "«عدد القطع المستلمة», checked."
+            },
+            {
                 "fqcn": "App\\Modules\\Order\\Services\\RatingService",
                 "layer": "service",
                 "path": "app/Modules/Order/Services/RatingService.php",
@@ -2869,6 +2993,12 @@
                 "layer": "service",
                 "path": "app/Modules/Order/Services/TaskService.php",
                 "summary": "What a driver does to a task."
+            },
+            {
+                "fqcn": "App\\Modules\\Order\\Services\\Turnaround",
+                "layer": "service",
+                "path": "app/Modules/Order/Services/Turnaround.php",
+                "summary": "How soon after the pickup a service's pieces can come back."
             },
             {
                 "fqcn": "App\\Modules\\Order\\Services\\dispatchBoardService",
@@ -2937,6 +3067,12 @@
                 "summary": "One leg of an order's journey."
             },
             {
+                "fqcn": "App\\Modules\\Order\\Models\\PieceDiscrepancy",
+                "layer": "model",
+                "path": "app/Modules/Order/Models/PieceDiscrepancy.php",
+                "summary": "Two counts of the same pieces that disagreed — see PieceCheck."
+            },
+            {
                 "fqcn": "App\\Modules\\Order\\Models\\RecurrencePrompt",
                 "layer": "model",
                 "path": "app/Modules/Order/Models/RecurrencePrompt.php",
@@ -2953,6 +3089,18 @@
                 "layer": "enum",
                 "path": "app/Modules/Order/Enums/OrderStatus.php",
                 "summary": "The order lifecycle, and the only place the allowed moves are written down."
+            },
+            {
+                "fqcn": "App\\Modules\\Order\\Enums\\PieceCheckStep",
+                "layer": "enum",
+                "path": "app/Modules/Order/Enums/PieceCheckStep.php",
+                "summary": "Where two counts of the same pieces disagreed: at one of the three counted handovers, or when the laundry counted at its review a different number from the one handed to it."
+            },
+            {
+                "fqcn": "App\\Modules\\Order\\Enums\\PieceCountSource",
+                "layer": "enum",
+                "path": "app/Modules/Order/Enums/PieceCountSource.php",
+                "summary": "What a driver's count at a handover was compared with."
             },
             {
                 "fqcn": "App\\Modules\\Order\\Enums\\RatingTag",
@@ -3006,6 +3154,7 @@
             "App\\Modules\\Order\\Models\\OrderRecurrence",
             "App\\Modules\\Order\\Models\\OrderStatusLog",
             "App\\Modules\\Order\\Models\\OrderTask",
+            "App\\Modules\\Order\\Models\\PieceDiscrepancy",
             "App\\Modules\\Order\\Models\\RecurrencePrompt"
         ],
         "owns_tables": [
@@ -3017,6 +3166,7 @@
             "order_recurrences",
             "order_status_logs",
             "order_tasks",
+            "piece_discrepancies",
             "recurrence_prompts"
         ],
         "reads_tables": [
@@ -3027,6 +3177,7 @@
             "laundry_zones",
             "services",
             "item_prices",
+            "coupons",
             "time_slots",
             "offers",
             "order_settlements",
@@ -3035,7 +3186,7 @@
             "driver_earnings",
             "refunds",
             "wallet_transactions",
-            "coupons"
+            "activity_logs"
         ],
         "routes": [
             "admin.dispatch.index",
@@ -3045,6 +3196,7 @@
             "admin.order.bulkDelete",
             "admin.order.delete",
             "admin.order.index",
+            "admin.order.piece_check.resolve",
             "admin.order.query.answer",
             "admin.order.review",
             "admin.order.search",
@@ -3052,7 +3204,9 @@
             "admin.order.tasks.assign",
             "admin.order.tasks.dispatch",
             "admin.order.tasks.generate",
-            "admin.order.tasks.release"
+            "admin.order.tasks.release",
+            "admin.order_today.index",
+            "admin.order_today.search"
         ],
         "permissions": [
             "order_task.view",
@@ -3062,20 +3216,20 @@
             "order.view"
         ],
         "tests": [],
-        "summary": "Works out the delivery fee.",
+        "summary": "«التعيين التلقائي» — whether the platform hands out work by itself.",
         "depends_on": {
-            "Platform": 28,
-            "User": 22,
-            "Laundry": 12,
+            "Platform": 37,
+            "User": 25,
+            "Notification": 16,
+            "TimeSlot": 16,
+            "Laundry": 14,
+            "Pricing": 14,
             "Routing": 12,
+            "Service": 12,
             "Payment": 11,
             "Address": 10,
             "Driver": 9,
-            "Pricing": 9,
-            "TimeSlot": 9,
-            "Service": 8,
-            "Notification": 8,
-            "Coupon": 4,
+            "Coupon": 7,
             "LaundryService": 2,
             "LaundryZone": 2,
             "Offer": 2,
@@ -3083,20 +3237,22 @@
             "Wallet": 1
         },
         "depended_on_by": {
-            "Tests": 289,
-            "Api": 46,
+            "Tests": 378,
+            "Api": 51,
             "Report": 39,
-            "Payment": 25,
+            "Payment": 27,
             "Driver": 23,
-            "Notification": 11,
-            "Platform": 8,
-            "Coupon": 5,
+            "Platform": 23,
+            "Notification": 15,
+            "Coupon": 7,
             "Recurrence": 5,
+            "Routing": 5,
             "Database": 4,
-            "Routing": 4,
             "Laundry": 3,
             "TimeSlot": 3,
             "Complaint": 3,
+            "Zone": 2,
+            "Pricing": 2,
             "Rating": 2,
             "User": 2,
             "Landing": 2
@@ -3119,7 +3275,7 @@
             "gateway": 1
         },
         "files": 52,
-        "lines": 6168,
+        "lines": 6460,
         "classes": [
             {
                 "fqcn": "App\\Modules\\Payment\\Controllers\\CommissionRuleController",
@@ -3197,7 +3353,7 @@
                 "fqcn": "App\\Modules\\Payment\\Services\\commissionRuleCrudService",
                 "layer": "service",
                 "path": "app/Modules/Payment/Services/commissionRuleCrudService.php",
-                "summary": "Business rules for «قواعد العمولة»."
+                "summary": "Business rules for «قواعد العمولة» — each rule is the share of the washing a laundry receives."
             },
             {
                 "fqcn": "App\\Modules\\Payment\\Repositories\\CommissionRuleRepository",
@@ -3215,7 +3371,7 @@
                 "fqcn": "App\\Modules\\Payment\\Models\\CommissionRule",
                 "layer": "model",
                 "path": "app/Modules/Payment/Models/CommissionRule.php",
-                "summary": "One charge the platform makes on a laundry's order."
+                "summary": "The share of the washing a laundry receives."
             },
             {
                 "fqcn": "App\\Modules\\Payment\\Models\\DriverEarning",
@@ -3275,7 +3431,7 @@
                 "fqcn": "App\\Modules\\Payment\\Enums\\CommissionBasis",
                 "layer": "enum",
                 "path": "app/Modules/Payment/Enums/CommissionBasis.php",
-                "summary": "What one commission charge is measured on."
+                "summary": "What a laundry's share is measured on."
             },
             {
                 "fqcn": "App\\Modules\\Payment\\Enums\\PaymentMethod",
@@ -3378,7 +3534,8 @@
             "admin.refund.search",
             "admin.refund.settle",
             "admin.settlement.index",
-            "admin.settlement.search"
+            "admin.settlement.search",
+            "admin.settlement.settle"
         ],
         "permissions": [
             "commission_rule.create",
@@ -3399,22 +3556,22 @@
         "summary": "«تمت إضافة أرباحك إلى الرصيد المعلق» — the immediate half of a driver's bonus.",
         "depends_on": {
             "Platform": 42,
-            "Order": 25,
+            "Order": 27,
             "Wallet": 15,
+            "Laundry": 12,
             "User": 11,
-            "Laundry": 10,
             "Driver": 5,
             "Notification": 1
         },
         "depended_on_by": {
-            "Tests": 50,
+            "Tests": 63,
+            "Platform": 30,
             "Api": 17,
-            "Platform": 14,
             "Order": 11,
             "Report": 6,
             "Routing": 6,
+            "Laundry": 3,
             "Database": 2,
-            "Laundry": 1,
             "Notification": 1
         }
     },
@@ -3423,23 +3580,23 @@
         "community": "system",
         "path": null,
         "layers": {
-            "view": 60,
-            "config": 19,
-            "request": 13,
+            "view": 62,
+            "support": 44,
+            "config": 20,
+            "request": 14,
+            "service": 9,
             "middleware": 8,
-            "service": 6,
             "controller": 5,
             "command": 4,
+            "model": 4,
+            "provider": 4,
             "helper": 3,
-            "model": 3,
-            "provider": 3,
-            "support": 3,
             "trait": 3,
             "view-component": 3,
             "mail": 2
         },
-        "files": 135,
-        "lines": 12736,
+        "files": 185,
+        "lines": 19011,
         "classes": [
             {
                 "fqcn": "App\\Http\\Controllers\\Controller",
@@ -3470,6 +3627,18 @@
                 "layer": "controller",
                 "path": "app/Http/Controllers/LocaleController.php",
                 "summary": "The public language switch."
+            },
+            {
+                "fqcn": "App\\Services\\ActivityLogger",
+                "layer": "service",
+                "path": "app/Services/ActivityLogger.php",
+                "summary": "Who changed what — one row per model created, updated or deleted."
+            },
+            {
+                "fqcn": "App\\Services\\ActivityPresenter",
+                "layer": "service",
+                "path": "app/Services/ActivityPresenter.php",
+                "summary": "An activity row as the owner reads it — a sentence, not a record."
             },
             {
                 "fqcn": "App\\Services\\CachingService",
@@ -3508,6 +3677,18 @@
                 "summary": ""
             },
             {
+                "fqcn": "App\\Services\\languages\\ValidationMessages",
+                "layer": "service",
+                "path": "app/Services/languages/ValidationMessages.php",
+                "summary": "«Edit Validation Messages» — the messages a rejected request is answered with, and the names the fields are called by, for one language."
+            },
+            {
+                "fqcn": "App\\Models\\ActivityLog",
+                "layer": "model",
+                "path": "app/Models/ActivityLog.php",
+                "summary": "One change to one record — who, from where, and each field before and after."
+            },
+            {
                 "fqcn": "App\\Models\\Language",
                 "layer": "model",
                 "path": "app/Models/Language.php",
@@ -3530,6 +3711,12 @@
                 "layer": "request",
                 "path": "app/Http/Requests/Api/V1/AddressRequest.php",
                 "summary": ""
+            },
+            {
+                "fqcn": "App\\Http\\Requests\\Api\\V1\\Concerns\\DeliveryAfterTurnaround",
+                "layer": "request",
+                "path": "app/Http/Requests/Api/V1/Concerns/DeliveryAfterTurnaround.php",
+                "summary": "The delivery leaves the service its time, and is not past the booking window."
             },
             {
                 "fqcn": "App\\Http\\Requests\\Api\\V1\\Concerns\\OneDiscountPerOrder",
@@ -3694,6 +3881,12 @@
                 "summary": "The weekly summary."
             },
             {
+                "fqcn": "App\\Providers\\ActivityLogServiceProvider",
+                "layer": "provider",
+                "path": "app/Providers/ActivityLogServiceProvider.php",
+                "summary": "Wires the activity log to every model and to panel sign-ins."
+            },
+            {
                 "fqcn": "App\\Providers\\AppServiceProvider",
                 "layer": "provider",
                 "path": "app/Providers/AppServiceProvider.php",
@@ -3718,6 +3911,12 @@
                 "summary": ""
             },
             {
+                "fqcn": "App\\Support\\Geo\\Polygon",
+                "layer": "support",
+                "path": "app/Support/Geo/Polygon.php",
+                "summary": "A zone's boundary as the owner drew it on the map — a closed ring of [lat, lng] corners."
+            },
+            {
                 "fqcn": "App\\Support\\LaundryContext",
                 "layer": "support",
                 "path": "app/Support/LaundryContext.php",
@@ -3728,6 +3927,246 @@
                 "layer": "support",
                 "path": "app/Support/PlatformAccount.php",
                 "summary": "Whose wallet is «the platform's»."
+            },
+            {
+                "fqcn": "App\\Support\\Spreadsheet\\Column",
+                "layer": "support",
+                "path": "app/Support/Spreadsheet/Column.php",
+                "summary": "One column of a sheet."
+            },
+            {
+                "fqcn": "App\\Support\\Spreadsheet\\Exporter",
+                "layer": "support",
+                "path": "app/Support/Spreadsheet/Exporter.php",
+                "summary": "A sheet, as a real .xlsx."
+            },
+            {
+                "fqcn": "App\\Support\\Spreadsheet\\ImportReport",
+                "layer": "support",
+                "path": "app/Support/Spreadsheet/ImportReport.php",
+                "summary": "What an import did, row by row."
+            },
+            {
+                "fqcn": "App\\Support\\Spreadsheet\\Importer",
+                "layer": "support",
+                "path": "app/Support/Spreadsheet/Importer.php",
+                "summary": "Read a sheet back in: add the rows with no id, change the rows with one."
+            },
+            {
+                "fqcn": "App\\Support\\Spreadsheet\\RowValidator",
+                "layer": "support",
+                "path": "app/Support/Spreadsheet/RowValidator.php",
+                "summary": "Validate one sheet row with the screen's own FormRequest."
+            },
+            {
+                "fqcn": "App\\Support\\Spreadsheet\\Sheet",
+                "layer": "support",
+                "path": "app/Support/Spreadsheet/Sheet.php",
+                "summary": "What one panel screen exports, and — when it may — imports."
+            },
+            {
+                "fqcn": "App\\Support\\Spreadsheet\\SheetRegistry",
+                "layer": "support",
+                "path": "app/Support/Spreadsheet/SheetRegistry.php",
+                "summary": "Every sheet, by key."
+            },
+            {
+                "fqcn": "App\\Support\\Spreadsheet\\Sheets\\ActivityLogSheet",
+                "layer": "support",
+                "path": "app/Support/Spreadsheet/Sheets/ActivityLogSheet.php",
+                "summary": "The activity log, as a sheet — worded the way the screen words it, so the file somebody hands the owner reads like the page they saw. Export only: a log that could be imported would be a log anybody could write."
+            },
+            {
+                "fqcn": "App\\Support\\Spreadsheet\\Sheets\\CitySheet",
+                "layer": "support",
+                "path": "app/Support/Spreadsheet/Sheets/CitySheet.php",
+                "summary": ""
+            },
+            {
+                "fqcn": "App\\Support\\Spreadsheet\\Sheets\\CommissionRuleSheet",
+                "layer": "support",
+                "path": "app/Support/Spreadsheet/Sheets/CommissionRuleSheet.php",
+                "summary": "The laundry shares — export only. A money term typed into a spreadsheet is not a term anybody agreed to, so this sheet never imports."
+            },
+            {
+                "fqcn": "App\\Support\\Spreadsheet\\Sheets\\ComplaintSheet",
+                "layer": "support",
+                "path": "app/Support/Spreadsheet/Sheets/ComplaintSheet.php",
+                "summary": "«الشكاوى» — the complaint queue, export only."
+            },
+            {
+                "fqcn": "App\\Support\\Spreadsheet\\Sheets\\CountrySheet",
+                "layer": "support",
+                "path": "app/Support/Spreadsheet/Sheets/CountrySheet.php",
+                "summary": ""
+            },
+            {
+                "fqcn": "App\\Support\\Spreadsheet\\Sheets\\CouponSheet",
+                "layer": "support",
+                "path": "app/Support/Spreadsheet/Sheets/CouponSheet.php",
+                "summary": "«أكواد الخصم» — the discount codes."
+            },
+            {
+                "fqcn": "App\\Support\\Spreadsheet\\Sheets\\DriverApplicationSheet",
+                "layer": "support",
+                "path": "app/Support/Spreadsheet/Sheets/DriverApplicationSheet.php",
+                "summary": "Driver leads from the public form — export only. A lead is somebody who filled in a form, so nothing here is ever authored by a spreadsheet."
+            },
+            {
+                "fqcn": "App\\Support\\Spreadsheet\\Sheets\\DriverBonusAwardSheet",
+                "layer": "support",
+                "path": "app/Support/Spreadsheet/Sheets/DriverBonusAwardSheet.php",
+                "summary": "«مكافآت الشهر» — one month's driver bonuses, export only. Approving is a person's act on the screen, never a row in a file."
+            },
+            {
+                "fqcn": "App\\Support\\Spreadsheet\\Sheets\\DriverBonusRuleSheet",
+                "layer": "support",
+                "path": "app/Support/Spreadsheet/Sheets/DriverBonusRuleSheet.php",
+                "summary": "Driver bonus rules — export only. What a driver is paid is not set from a spreadsheet, so this sheet never imports."
+            },
+            {
+                "fqcn": "App\\Support\\Spreadsheet\\Sheets\\DriverEarningSheet",
+                "layer": "support",
+                "path": "app/Support/Spreadsheet/Sheets/DriverEarningSheet.php",
+                "summary": "«أرباح السائقين» — per-leg driver earnings, export only."
+            },
+            {
+                "fqcn": "App\\Support\\Spreadsheet\\Sheets\\DriverSheet",
+                "layer": "support",
+                "path": "app/Support/Spreadsheet/Sheets/DriverSheet.php",
+                "summary": "«السائقين» — the driver accounts, with their vehicle, licence, shift and areas."
+            },
+            {
+                "fqcn": "App\\Support\\Spreadsheet\\Sheets\\FaqSheet",
+                "layer": "support",
+                "path": "app/Support/Spreadsheet/Sheets/FaqSheet.php",
+                "summary": "The FAQ — export only."
+            },
+            {
+                "fqcn": "App\\Support\\Spreadsheet\\Sheets\\ItemCategorySheet",
+                "layer": "support",
+                "path": "app/Support/Spreadsheet/Sheets/ItemCategorySheet.php",
+                "summary": "The image is left out: a file cannot travel in a cell, and the form does not require one."
+            },
+            {
+                "fqcn": "App\\Support\\Spreadsheet\\Sheets\\ItemPriceSheet",
+                "layer": "support",
+                "path": "app/Support/Spreadsheet/Sheets/ItemPriceSheet.php",
+                "summary": "The price grid, one cell per row."
+            },
+            {
+                "fqcn": "App\\Support\\Spreadsheet\\Sheets\\ItemSheet",
+                "layer": "support",
+                "path": "app/Support/Spreadsheet/Sheets/ItemSheet.php",
+                "summary": "The image is left out: a file cannot travel in a cell, and the form does not require one."
+            },
+            {
+                "fqcn": "App\\Support\\Spreadsheet\\Sheets\\LaundryServiceRequestSheet",
+                "layer": "support",
+                "path": "app/Support/Spreadsheet/Sheets/LaundryServiceRequestSheet.php",
+                "summary": "Laundries asking to open or close a service — export only; a request is something a laundry makes, never something a spreadsheet does."
+            },
+            {
+                "fqcn": "App\\Support\\Spreadsheet\\Sheets\\LaundrySheet",
+                "layer": "support",
+                "path": "app/Support/Spreadsheet/Sheets/LaundrySheet.php",
+                "summary": "«المغاسل» — the laundries, as the panel creates them."
+            },
+            {
+                "fqcn": "App\\Support\\Spreadsheet\\Sheets\\LaundryStaffSheet",
+                "layer": "support",
+                "path": "app/Support/Spreadsheet/Sheets/LaundryStaffSheet.php",
+                "summary": "«موظفو المغاسل» — export only."
+            },
+            {
+                "fqcn": "App\\Support\\Spreadsheet\\Sheets\\ModeratorSheet",
+                "layer": "support",
+                "path": "app/Support/Spreadsheet/Sheets/ModeratorSheet.php",
+                "summary": "Moderators — export only. They are user accounts: the password, the remember token and the OTP columns are never written."
+            },
+            {
+                "fqcn": "App\\Support\\Spreadsheet\\Sheets\\NotificationLogSheet",
+                "layer": "support",
+                "path": "app/Support/Spreadsheet/Sheets/NotificationLogSheet.php",
+                "summary": "The notification log — export only; a record of what was sent is not something to type in."
+            },
+            {
+                "fqcn": "App\\Support\\Spreadsheet\\Sheets\\OfferSheet",
+                "layer": "support",
+                "path": "app/Support/Spreadsheet/Sheets/OfferSheet.php",
+                "summary": "Offers — export only."
+            },
+            {
+                "fqcn": "App\\Support\\Spreadsheet\\Sheets\\OrderRatingSheet",
+                "layer": "support",
+                "path": "app/Support/Spreadsheet/Sheets/OrderRatingSheet.php",
+                "summary": "«التقييمات» — what customers thought, export only."
+            },
+            {
+                "fqcn": "App\\Support\\Spreadsheet\\Sheets\\OrderRecurrenceSheet",
+                "layer": "support",
+                "path": "app/Support/Spreadsheet/Sheets/OrderRecurrenceSheet.php",
+                "summary": "«الاشتراكات» — the repeat schedules, export only."
+            },
+            {
+                "fqcn": "App\\Support\\Spreadsheet\\Sheets\\OrderSettlementSheet",
+                "layer": "support",
+                "path": "app/Support/Spreadsheet/Sheets/OrderSettlementSheet.php",
+                "summary": "«تسويات الطلبات» — how each order was divided, export only."
+            },
+            {
+                "fqcn": "App\\Support\\Spreadsheet\\Sheets\\OrderSheet",
+                "layer": "support",
+                "path": "app/Support/Spreadsheet/Sheets/OrderSheet.php",
+                "summary": "«الطلبات» — the orders list, export only."
+            },
+            {
+                "fqcn": "App\\Support\\Spreadsheet\\Sheets\\PaymentSheet",
+                "layer": "support",
+                "path": "app/Support/Spreadsheet/Sheets/PaymentSheet.php",
+                "summary": "«المدفوعات» — every payment, export only. A payment typed into a spreadsheet is a ledger entry nobody made."
+            },
+            {
+                "fqcn": "App\\Support\\Spreadsheet\\Sheets\\RefundSheet",
+                "layer": "support",
+                "path": "app/Support/Spreadsheet/Sheets/RefundSheet.php",
+                "summary": "«طلبات الاسترداد» — the refund queue, export only."
+            },
+            {
+                "fqcn": "App\\Support\\Spreadsheet\\Sheets\\ServiceSheet",
+                "layer": "support",
+                "path": "app/Support/Spreadsheet/Sheets/ServiceSheet.php",
+                "summary": "The image is left out: a file cannot travel in a cell, and the form does not require one. Switching `pricing_mode` to `quote` here drops the service's grid prices, exactly as the form does — the service's own update run…"
+            },
+            {
+                "fqcn": "App\\Support\\Spreadsheet\\Sheets\\TimeSlotSheet",
+                "layer": "support",
+                "path": "app/Support/Spreadsheet/Sheets/TimeSlotSheet.php",
+                "summary": "The delivery windows — export only."
+            },
+            {
+                "fqcn": "App\\Support\\Spreadsheet\\Sheets\\UserSheet",
+                "layer": "support",
+                "path": "app/Support/Spreadsheet/Sheets/UserSheet.php",
+                "summary": "«العملاء» — the customers list, `admin.user.*`."
+            },
+            {
+                "fqcn": "App\\Support\\Spreadsheet\\Sheets\\WalletSheet",
+                "layer": "support",
+                "path": "app/Support/Spreadsheet/Sheets/WalletSheet.php",
+                "summary": "«المحافظ» — every wallet, export only. A balance is never edited directly, and a spreadsheet is no exception."
+            },
+            {
+                "fqcn": "App\\Support\\Spreadsheet\\Sheets\\ZoneSheet",
+                "layer": "support",
+                "path": "app/Support/Spreadsheet/Sheets/ZoneSheet.php",
+                "summary": "Zones: every field of the form but the drawing. The drawing is a ring of corners drawn on the map (ZoneLocator) and is edited there, not in a cell — an import never touches it, since the crud service only writes `bounda…"
+            },
+            {
+                "fqcn": "App\\Support\\Translation\\ValidationOverrideLoader",
+                "layer": "support",
+                "path": "app/Support/Translation/ValidationOverrideLoader.php",
+                "summary": "Laravel's own loader, with the validation messages edited from the panel laid over the shipped ones."
             },
             {
                 "fqcn": "App\\Trait\\BelongsToLaundry",
@@ -3767,56 +4206,64 @@
             }
         ],
         "models": [
+            "App\\Models\\ActivityLog",
             "App\\Models\\Language",
             "App\\Models\\Permission",
             "App\\Models\\Role"
         ],
         "owns_tables": [
+            "activity_logs",
             "languages",
             "permissions",
             "roles"
         ],
         "reads_tables": [
             "cities",
+            "services",
             "countries",
             "laundries",
             "settings",
             "users",
-            "device_tokens",
-            "notification_logs",
-            "payments",
-            "offers",
+            "commission_rules",
             "complaints",
+            "coupons",
             "driver_applications",
             "driver_bonus_awards",
-            "driver_record_submissions",
+            "driver_bonus_rules",
+            "driver_earnings",
+            "faqs",
+            "item_categories",
+            "item_prices",
+            "items",
+            "laundry_service_requests",
+            "notification_logs",
+            "offers",
+            "order_ratings",
+            "order_recurrences",
+            "order_settlements",
             "orders",
             "order_price_queries",
             "order_tasks",
+            "payments",
             "refunds",
+            "time_slots",
+            "wallets",
+            "zones",
+            "device_tokens",
+            "driver_record_submissions",
+            "driver_bonus_tiers",
+            "order_settlement_lines",
+            "addresses",
+            "order_status_logs",
+            "price_change_items",
             "banners",
-            "coupons",
-            "driver_bonus_rules",
-            "faqs",
             "intros",
-            "item_categories",
-            "items",
             "journey_steps",
             "laundry_services",
             "laundry_zones",
             "laundry_slot_capacities",
-            "order_ratings",
-            "order_recurrences",
-            "commission_rules",
-            "driver_earnings",
             "laundry_revenues_do_not_exist",
-            "order_settlements",
-            "item_prices",
-            "reports_do_not_exist",
-            "services",
-            "time_slots",
-            "wallets",
-            "zones"
+            "reports_do_not_exist"
         ],
         "routes": [
             "/up",
@@ -3840,48 +4287,52 @@
         ],
         "permissions": [],
         "tests": [],
-        "summary": "The counts the sidebar puts beside a menu item.",
+        "summary": "Who changed what — one row per model created, updated or deleted.",
         "depends_on": {
-            "Payment": 14,
-            "Laundry": 10,
-            "Driver": 8,
-            "Order": 8,
-            "Notification": 6,
-            "Setting": 5,
-            "User": 4,
+            "Payment": 30,
+            "Order": 23,
+            "Driver": 22,
+            "Laundry": 15,
+            "Service": 11,
+            "Notification": 10,
+            "City": 9,
+            "User": 9,
+            "Country": 8,
+            "ItemCategory": 7,
+            "Item": 7,
+            "Wallet": 7,
+            "Setting": 6,
+            "Complaint": 6,
+            "Coupon": 6,
+            "Pricing": 6,
+            "TimeSlot": 6,
+            "Zone": 6,
+            "LaundryService": 5,
+            "Offer": 5,
             "Report": 3,
-            "City": 3,
-            "Country": 3,
+            "Faq": 3,
+            "LaundryStaff": 3,
+            "Moderator": 3,
             "Landing": 2,
-            "Offer": 2,
+            "AdminShell": 2,
             "Auth": 2,
-            "Complaint": 2,
             "Routing": 2,
+            "Address": 1,
             "Banner": 1,
-            "Coupon": 1,
-            "Faq": 1,
             "Intro": 1,
-            "ItemCategory": 1,
-            "Item": 1,
             "JourneyStep": 1,
-            "LaundryService": 1,
-            "LaundryStaff": 1,
-            "LaundryZone": 1,
-            "Moderator": 1,
-            "Pricing": 1,
-            "Service": 1,
-            "TimeSlot": 1,
-            "Wallet": 1,
-            "Zone": 1
+            "LaundryZone": 1
         },
         "depended_on_by": {
+            "Tests": 93,
             "Api": 69,
-            "Tests": 60,
             "Payment": 42,
+            "Order": 37,
+            "AdminShell": 36,
             "Driver": 35,
-            "Order": 28,
             "Laundry": 21,
-            "AdminShell": 19,
+            "LaundryService": 19,
+            "Zone": 16,
             "Auth": 14,
             "LaundryStaff": 14,
             "Database": 14,
@@ -3896,14 +4347,12 @@
             "ItemCategory": 8,
             "Item": 8,
             "JourneyStep": 8,
-            "LaundryService": 8,
             "LaundryZone": 8,
             "Moderator": 8,
             "Offer": 8,
             "Report": 8,
             "Service": 8,
             "Wallet": 8,
-            "Zone": 8,
             "Complaint": 7,
             "Setting": 6,
             "TimeSlot": 6,
@@ -3919,13 +4368,14 @@
         "community": "catalog",
         "path": "app/Modules/Pricing",
         "layers": {
-            "service": 2,
+            "model": 3,
+            "service": 3,
             "controller": 1,
-            "model": 1,
+            "request": 1,
             "view": 1
         },
-        "files": 5,
-        "lines": 627,
+        "files": 9,
+        "lines": 1380,
         "classes": [
             {
                 "fqcn": "App\\Modules\\Pricing\\Controllers\\PricingController",
@@ -3940,6 +4390,12 @@
                 "summary": "The platform's own charge on an order, carried by the customer."
             },
             {
+                "fqcn": "App\\Modules\\Pricing\\Services\\PriceIncrease",
+                "layer": "service",
+                "path": "app/Modules/Pricing/Services/PriceIncrease.php",
+                "summary": "A price rise across the whole catalogue — «زيادة سنوية تنزل على كل الأسعار»."
+            },
+            {
                 "fqcn": "App\\Modules\\Pricing\\Services\\pricingService",
                 "layer": "service",
                 "path": "app/Modules/Pricing/Services/pricingService.php",
@@ -3950,43 +4406,72 @@
                 "layer": "model",
                 "path": "app/Modules/Pricing/Models/ItemPrice.php",
                 "summary": "One cell of the price matrix: what one item costs under one service."
+            },
+            {
+                "fqcn": "App\\Modules\\Pricing\\Models\\PriceChange",
+                "layer": "model",
+                "path": "app/Modules/Pricing/Models/PriceChange.php",
+                "summary": "One catalogue-wide price rise — for a period, or written in for good."
+            },
+            {
+                "fqcn": "App\\Modules\\Pricing\\Models\\PriceChangeItem",
+                "layer": "model",
+                "path": "app/Modules/Pricing/Models/PriceChangeItem.php",
+                "summary": "One price as a permanent rise found it and left it."
+            },
+            {
+                "fqcn": "App\\Modules\\Pricing\\Requests\\ItemPriceRowRequest",
+                "layer": "request",
+                "path": "app/Modules/Pricing/Requests/ItemPriceRowRequest.php",
+                "summary": "One cell of the price grid, as a row: what one item costs under one service."
             }
         ],
         "models": [
-            "App\\Modules\\Pricing\\Models\\ItemPrice"
+            "App\\Modules\\Pricing\\Models\\ItemPrice",
+            "App\\Modules\\Pricing\\Models\\PriceChange",
+            "App\\Modules\\Pricing\\Models\\PriceChangeItem"
         ],
         "owns_tables": [
-            "item_prices"
+            "item_prices",
+            "price_changes",
+            "price_change_items"
         ],
         "reads_tables": [
+            "users",
             "items",
-            "services"
+            "services",
+            "orders"
         ],
         "routes": [
+            "admin.pricing.increase",
+            "admin.pricing.increase.undo",
             "admin.pricing.index",
             "admin.pricing.update"
         ],
         "permissions": [
-            "item_price.view",
-            "item_price.update"
+            "item_price.update",
+            "item_price.view"
         ],
         "tests": [],
         "summary": "The platform's own charge on an order, carried by the customer.",
         "depends_on": {
             "Platform": 4,
+            "User": 3,
             "Service": 3,
             "ItemCategory": 2,
-            "Item": 1
+            "Order": 2,
+            "Item": 1,
+            "Setting": 1
         },
         "depended_on_by": {
-            "Tests": 13,
-            "Order": 9,
+            "Tests": 22,
+            "Order": 14,
+            "Platform": 6,
+            "Landing": 5,
             "Service": 3,
-            "Landing": 3,
             "Database": 3,
             "Api": 2,
             "Item": 1,
-            "Platform": 1,
             "Routing": 1
         }
     },
@@ -3999,7 +4484,7 @@
             "controller": 1
         },
         "files": 3,
-        "lines": 361,
+        "lines": 367,
         "classes": [
             {
                 "fqcn": "App\\Modules\\Rating\\Controllers\\RatingController",
@@ -4039,7 +4524,7 @@
             "controller": 1
         },
         "files": 4,
-        "lines": 592,
+        "lines": 597,
         "classes": [
             {
                 "fqcn": "App\\Modules\\Recurrence\\Controllers\\RecurrenceController",
@@ -4090,7 +4575,7 @@
             "model": 1
         },
         "files": 18,
-        "lines": 2829,
+        "lines": 2859,
         "classes": [
             {
                 "fqcn": "App\\Modules\\Report\\Controllers\\ReportController",
@@ -4205,7 +4690,7 @@
             "Wallet": 2
         },
         "depended_on_by": {
-            "Tests": 12,
+            "Tests": 13,
             "Platform": 3,
             "Routing": 1
         }
@@ -4239,7 +4724,7 @@
             "routes": 3
         },
         "files": 9,
-        "lines": 2410,
+        "lines": 2495,
         "classes": [
             {
                 "fqcn": "App\\Services\\Routing\\Coordinate",
@@ -4288,10 +4773,11 @@
         "depends_on": {
             "Api": 22,
             "Payment": 6,
+            "AdminShell": 5,
             "Driver": 5,
+            "Order": 5,
             "Platform": 4,
-            "Order": 4,
-            "AdminShell": 3,
+            "LaundryService": 2,
             "Laundry": 2,
             "Notification": 2,
             "Banner": 1,
@@ -4304,7 +4790,6 @@
             "ItemCategory": 1,
             "Item": 1,
             "JourneyStep": 1,
-            "LaundryService": 1,
             "LaundryStaff": 1,
             "LaundryZone": 1,
             "Moderator": 1,
@@ -4339,7 +4824,7 @@
             "service": 1
         },
         "files": 12,
-        "lines": 761,
+        "lines": 784,
         "classes": [
             {
                 "fqcn": "App\\Modules\\Service\\Controllers\\ServiceController",
@@ -4406,16 +4891,17 @@
             "Pricing": 3
         },
         "depended_on_by": {
-            "Tests": 10,
-            "Order": 8,
-            "LaundryService": 3,
+            "Tests": 15,
+            "Order": 12,
+            "Platform": 11,
+            "Api": 6,
+            "Coupon": 4,
+            "LaundryService": 4,
             "Pricing": 3,
             "Database": 3,
-            "Api": 2,
             "Banner": 2,
             "Offer": 2,
             "Landing": 1,
-            "Platform": 1,
             "Routing": 1
         }
     },
@@ -4432,7 +4918,7 @@
             "service": 1
         },
         "files": 11,
-        "lines": 1596,
+        "lines": 1800,
         "classes": [
             {
                 "fqcn": "App\\Modules\\Setting\\Controllers\\SettingController",
@@ -4487,10 +4973,11 @@
             "Platform": 6
         },
         "depended_on_by": {
-            "Tests": 23,
-            "Platform": 5,
+            "Tests": 34,
+            "Platform": 6,
             "Database": 4,
             "Api": 1,
+            "Pricing": 1,
             "Routing": 1
         }
     },
@@ -4499,11 +4986,11 @@
         "community": "quality",
         "path": null,
         "layers": {
-            "test": 107,
+            "test": 125,
             "browser-test": 24
         },
-        "files": 131,
-        "lines": 40365,
+        "files": 149,
+        "lines": 47655,
         "classes": [
             {
                 "fqcn": "Tests\\Feature\\Api\\AddressTest",
@@ -4546,6 +5033,12 @@
                 "layer": "test",
                 "path": "tests/Feature/Api/ContentTest.php",
                 "summary": "The content operations writes and the apps read."
+            },
+            {
+                "fqcn": "Tests\\Feature\\Api\\CouponScopeTest",
+                "layer": "test",
+                "path": "tests/Feature/Api/CouponScopeTest.php",
+                "summary": "«الأوفر على كاتيجوري معينة أو نوع خدمة معينة أو item معين» — a coupon, and so the offer carrying it, limited to some services, categories or pieces. The discount comes off only what it applies to."
             },
             {
                 "fqcn": "Tests\\Feature\\Api\\CouponTest",
@@ -4698,6 +5191,12 @@
                 "summary": "Uploading and serving a translation set."
             },
             {
+                "fqcn": "Tests\\Feature\\Api\\TurnaroundTest",
+                "layer": "test",
+                "path": "tests/Feature/Api/TurnaroundTest.php",
+                "summary": "«خدمة مدتها من يومين لـ 4 والعميل بيختار الاستلام والتسليم في نفس اليوم» — the delivery leaves the service its time."
+            },
+            {
                 "fqcn": "Tests\\Feature\\Api\\ValidationLanguageTest",
                 "layer": "test",
                 "path": "tests/Feature/Api/ValidationLanguageTest.php",
@@ -4722,10 +5221,22 @@
                 "summary": "«ملخص أسبوعي للسوبر أدمن + لكل مغسلة تقريرها»."
             },
             {
+                "fqcn": "Tests\\Feature\\Dashboard\\ActivityLogTest",
+                "layer": "test",
+                "path": "tests/Feature/Dashboard/ActivityLogTest.php",
+                "summary": "«نعرف مين اللي عمل أي تغيير في أي أكشن» — the activity log, and the history on the order's screen that reads it."
+            },
+            {
                 "fqcn": "Tests\\Feature\\Dashboard\\AssetCacheBustingTest",
                 "layer": "test",
                 "path": "tests/Feature/Dashboard/AssetCacheBustingTest.php",
                 "summary": "The panel's hand-edited assets carry a version stamp."
+            },
+            {
+                "fqcn": "Tests\\Feature\\Dashboard\\AutoAssignTest",
+                "layer": "test",
+                "path": "tests/Feature/Dashboard/AutoAssignTest.php",
+                "summary": "«التعيين التلقائي» — the two switches that stop the platform handing out work by itself, and the bell that says the work is waiting."
             },
             {
                 "fqcn": "Tests\\Feature\\Dashboard\\CatalogTest",
@@ -4743,7 +5254,7 @@
                 "fqcn": "Tests\\Feature\\Dashboard\\CommissionSettlementTest",
                 "layer": "test",
                 "path": "tests/Feature/Dashboard/CommissionSettlementTest.php",
-                "summary": "«الكوميشين بتاع السوبر ادمن على كل اوردر»."
+                "summary": "«الكوميشين بتاع السوبر ادمن على كل اوردر» — and then turned round."
             },
             {
                 "fqcn": "Tests\\Feature\\Dashboard\\DispatchBoardTest",
@@ -4800,6 +5311,12 @@
                 "summary": "FAQs are translatable like every other content module."
             },
             {
+                "fqcn": "Tests\\Feature\\Dashboard\\GeneralSettingTabsTest",
+                "layer": "test",
+                "path": "tests/Feature/Dashboard/GeneralSettingTabsTest.php",
+                "summary": "«الإعدادات» in four tabs — one form, so a save still posts every field and a tab nobody opened is never blanked."
+            },
+            {
                 "fqcn": "Tests\\Feature\\Dashboard\\HomeTest",
                 "layer": "test",
                 "path": "tests/Feature/Dashboard/HomeTest.php",
@@ -4846,6 +5363,18 @@
                 "layer": "test",
                 "path": "tests/Feature/Dashboard/LaundryRevenueTest.php",
                 "summary": "«إيرادات المغاسل» — one row per laundry, and what it came to."
+            },
+            {
+                "fqcn": "Tests\\Feature\\Dashboard\\LaundryServiceRequestTest",
+                "layer": "test",
+                "path": "tests/Feature/Dashboard/LaundryServiceRequestTest.php",
+                "summary": "A laundry's services change only when the platform approves."
+            },
+            {
+                "fqcn": "Tests\\Feature\\Dashboard\\LaundryShareMigrationTest",
+                "layer": "test",
+                "path": "tests/Feature/Dashboard/LaundryShareMigrationTest.php",
+                "summary": "The migration that turned every commission rule into the laundry's share."
             },
             {
                 "fqcn": "Tests\\Feature\\Dashboard\\LaundrySignInTest",
@@ -4938,6 +5467,12 @@
                 "summary": "The laundry's review screen, and the boundary around it."
             },
             {
+                "fqcn": "Tests\\Feature\\Dashboard\\OrderTodayTest",
+                "layer": "test",
+                "path": "tests/Feature/Dashboard/OrderTodayTest.php",
+                "summary": "«طلبات اليوم» — a day's work: which orders, how many pieces in each, and how many of each piece across all of them, nearest first."
+            },
+            {
                 "fqcn": "Tests\\Feature\\Dashboard\\PanelLanguageTest",
                 "layer": "test",
                 "path": "tests/Feature/Dashboard/PanelLanguageTest.php",
@@ -4950,10 +5485,22 @@
                 "summary": "Money in and money out."
             },
             {
+                "fqcn": "Tests\\Feature\\Dashboard\\PieceCheckTest",
+                "layer": "test",
+                "path": "tests/Feature/Dashboard/PieceCheckTest.php",
+                "summary": "«عدد القطع المستلمة», checked against the count before it."
+            },
+            {
                 "fqcn": "Tests\\Feature\\Dashboard\\PlatformFeeTest",
                 "layer": "test",
                 "path": "tests/Feature/Dashboard/PlatformFeeTest.php",
                 "summary": "The platform's own charge, carried by the customer."
+            },
+            {
+                "fqcn": "Tests\\Feature\\Dashboard\\PriceIncreaseTest",
+                "layer": "test",
+                "path": "tests/Feature/Dashboard/PriceIncreaseTest.php",
+                "summary": "«زيادة سنوية تنزل على كل الأسعار» — a rise across the catalogue, for a period or for good."
             },
             {
                 "fqcn": "Tests\\Feature\\Dashboard\\QuotePricedReviewTest",
@@ -5010,16 +5557,58 @@
                 "summary": "An empty `<option>` is a placeholder only on a field that posts a value."
             },
             {
+                "fqcn": "Tests\\Feature\\Dashboard\\SpreadsheetCatalogTest",
+                "layer": "test",
+                "path": "tests/Feature/Dashboard/SpreadsheetCatalogTest.php",
+                "summary": "The catalogue and location sheets: countries, zones, services, item categories, items and the price grid."
+            },
+            {
+                "fqcn": "Tests\\Feature\\Dashboard\\SpreadsheetMiscTest",
+                "layer": "test",
+                "path": "tests/Feature/Dashboard/SpreadsheetMiscTest.php",
+                "summary": "The export-only sheets: laundry staff, driver applications, commissions, offers, FAQ, time slots, moderators, the notification log, service requests and driver bonus rules."
+            },
+            {
+                "fqcn": "Tests\\Feature\\Dashboard\\SpreadsheetOperationsTest",
+                "layer": "test",
+                "path": "tests/Feature/Dashboard/SpreadsheetOperationsTest.php",
+                "summary": "Excel export for the money and operations screens."
+            },
+            {
+                "fqcn": "Tests\\Feature\\Dashboard\\SpreadsheetPeopleTest",
+                "layer": "test",
+                "path": "tests/Feature/Dashboard/SpreadsheetPeopleTest.php",
+                "summary": "Excel sheets for the screens that hold people and their terms: discount codes, laundries (with their owner), drivers (with their profile and areas) and customers."
+            },
+            {
+                "fqcn": "Tests\\Feature\\Dashboard\\SpreadsheetTest",
+                "layer": "test",
+                "path": "tests/Feature/Dashboard/SpreadsheetTest.php",
+                "summary": "Excel export and import, through the engine every sheet shares — exercised on the cities sheet."
+            },
+            {
                 "fqcn": "Tests\\Feature\\Dashboard\\TenancyIsolationTest",
                 "layer": "test",
                 "path": "tests/Feature/Dashboard/TenancyIsolationTest.php",
                 "summary": "P1 — the security core. If isolation is wrong here it is wrong everywhere, because every later phase stores a laundry_id."
             },
             {
+                "fqcn": "Tests\\Feature\\Dashboard\\ValidationMessagesEditorTest",
+                "layer": "test",
+                "path": "tests/Feature/Dashboard/ValidationMessagesEditorTest.php",
+                "summary": "«Edit Validation Messages» — what a refused request is told, per language."
+            },
+            {
                 "fqcn": "Tests\\Feature\\Dashboard\\WalletFilterTest",
                 "layer": "test",
                 "path": "tests/Feature/Dashboard/WalletFilterTest.php",
                 "summary": "«محتاج اقسمها عشان اقدر افلتر» — the wallets list, by who owns the wallet."
+            },
+            {
+                "fqcn": "Tests\\Feature\\Dashboard\\ZoneBoundaryTest",
+                "layer": "test",
+                "path": "tests/Feature/Dashboard/ZoneBoundaryTest.php",
+                "summary": "Zones drawn on the map (the owner's request, 2026-09-29)."
             },
             {
                 "fqcn": "Tests\\Feature\\ExampleTest",
@@ -5118,6 +5707,12 @@
                 "summary": "The security properties of the one-time code, exercised directly so they are proven independently of the route-level throttles that sit in front of them."
             },
             {
+                "fqcn": "Tests\\Unit\\PolygonTest",
+                "layer": "test",
+                "path": "tests/Unit/PolygonTest.php",
+                "summary": "A zone's boundary as drawn on the map."
+            },
+            {
                 "fqcn": "Tests\\Unit\\RoutingTest",
                 "layer": "test",
                 "path": "tests/Unit/RoutingTest.php",
@@ -5159,8 +5754,9 @@
             "intros",
             "offers",
             "settings",
-            "coupon_redemptions",
+            "item_categories",
             "orders",
+            "coupon_redemptions",
             "users",
             "roles",
             "notification_logs",
@@ -5183,25 +5779,28 @@
             "driver_bonus_awards",
             "driver_bonus_rules",
             "driver_bonus_tiers",
+            "activity_logs",
+            "permissions",
+            "driver_profiles",
+            "order_status_logs",
+            "driver_earnings",
+            "commission_rules",
             "cities",
             "driver_applications",
-            "driver_profiles",
             "time_slots",
             "laundry_deductions",
+            "laundry_services",
+            "laundry_service_requests",
             "laundry_slot_capacities",
             "countries",
-            "permissions",
-            "driver_earnings",
             "payments",
             "refunds",
-            "commission_rules",
+            "piece_discrepancies",
             "services",
-            "journey_steps",
-            "item_categories",
+            "price_changes",
             "items",
-            "order_status_logs",
-            "order_price_queries",
-            "laundry_services"
+            "journey_steps",
+            "order_price_queries"
         ],
         "routes": [],
         "permissions": [],
@@ -5237,6 +5836,7 @@
             "tests/Feature/Api/CatalogFiltersTest.php",
             "tests/Feature/Api/ComplaintTest.php",
             "tests/Feature/Api/ContentTest.php",
+            "tests/Feature/Api/CouponScopeTest.php",
             "tests/Feature/Api/CouponTest.php",
             "tests/Feature/Api/CustomerAuthTest.php",
             "tests/Feature/Api/CustomerReferenceTest.php",
@@ -5262,11 +5862,14 @@
             "tests/Feature/Api/TrackPayloadTest.php",
             "tests/Feature/Api/TrackReturnLegTest.php",
             "tests/Feature/Api/TranslationFileTest.php",
+            "tests/Feature/Api/TurnaroundTest.php",
             "tests/Feature/Api/ValidationLanguageTest.php",
             "tests/Feature/Api/WalletTest.php",
             "tests/Feature/Console/CloseDriverBonusMonthTest.php",
             "tests/Feature/Console/WeeklyReportTest.php",
+            "tests/Feature/Dashboard/ActivityLogTest.php",
             "tests/Feature/Dashboard/AssetCacheBustingTest.php",
+            "tests/Feature/Dashboard/AutoAssignTest.php",
             "tests/Feature/Dashboard/CatalogTest.php",
             "tests/Feature/Dashboard/ClientFilterWiringTest.php",
             "tests/Feature/Dashboard/CommissionSettlementTest.php",
@@ -5279,6 +5882,7 @@
             "tests/Feature/Dashboard/DriverRecordReviewTest.php",
             "tests/Feature/Dashboard/ErrorPageTest.php",
             "tests/Feature/Dashboard/FaqTranslationTest.php",
+            "tests/Feature/Dashboard/GeneralSettingTabsTest.php",
             "tests/Feature/Dashboard/HomeTest.php",
             "tests/Feature/Dashboard/InvoiceDocumentTest.php",
             "tests/Feature/Dashboard/InvoiceTest.php",
@@ -5287,6 +5891,8 @@
             "tests/Feature/Dashboard/LaundryPasswordResetTest.php",
             "tests/Feature/Dashboard/LaundryRegisterValidationTest.php",
             "tests/Feature/Dashboard/LaundryRevenueTest.php",
+            "tests/Feature/Dashboard/LaundryServiceRequestTest.php",
+            "tests/Feature/Dashboard/LaundryShareMigrationTest.php",
             "tests/Feature/Dashboard/LaundrySignInTest.php",
             "tests/Feature/Dashboard/LaundrySlotCapacityTest.php",
             "tests/Feature/Dashboard/LegalSettingsTest.php",
@@ -5302,9 +5908,12 @@
             "tests/Feature/Dashboard/OrderDeletionTest.php",
             "tests/Feature/Dashboard/OrderMoneyCycleTest.php",
             "tests/Feature/Dashboard/OrderReviewDashboardTest.php",
+            "tests/Feature/Dashboard/OrderTodayTest.php",
             "tests/Feature/Dashboard/PanelLanguageTest.php",
             "tests/Feature/Dashboard/PaymentLedgerTest.php",
+            "tests/Feature/Dashboard/PieceCheckTest.php",
             "tests/Feature/Dashboard/PlatformFeeTest.php",
+            "tests/Feature/Dashboard/PriceIncreaseTest.php",
             "tests/Feature/Dashboard/QuotePricedReviewTest.php",
             "tests/Feature/Dashboard/RatingDashboardTest.php",
             "tests/Feature/Dashboard/RecurrenceDashboardTest.php",
@@ -5314,8 +5923,15 @@
             "tests/Feature/Dashboard/SearchFilterCompositionTest.php",
             "tests/Feature/Dashboard/SearchWiringTest.php",
             "tests/Feature/Dashboard/SelectPlaceholderWiringTest.php",
+            "tests/Feature/Dashboard/SpreadsheetCatalogTest.php",
+            "tests/Feature/Dashboard/SpreadsheetMiscTest.php",
+            "tests/Feature/Dashboard/SpreadsheetOperationsTest.php",
+            "tests/Feature/Dashboard/SpreadsheetPeopleTest.php",
+            "tests/Feature/Dashboard/SpreadsheetTest.php",
             "tests/Feature/Dashboard/TenancyIsolationTest.php",
+            "tests/Feature/Dashboard/ValidationMessagesEditorTest.php",
             "tests/Feature/Dashboard/WalletFilterTest.php",
+            "tests/Feature/Dashboard/ZoneBoundaryTest.php",
             "tests/Feature/ExampleTest.php",
             "tests/Feature/Landing/LandingContentEditorTest.php",
             "tests/Feature/Landing/LandingPageTest.php",
@@ -5332,6 +5948,7 @@
             "tests/Unit/NotificationUrlTest.php",
             "tests/Unit/OrderStatusTest.php",
             "tests/Unit/OtpServiceTest.php",
+            "tests/Unit/PolygonTest.php",
             "tests/Unit/RoutingTest.php",
             "tests/Unit/ShowPageWrapperTest.php",
             "tests/Unit/TaskTypeTest.php",
@@ -5340,39 +5957,40 @@
         ],
         "summary": "",
         "depends_on": {
-            "Order": 289,
-            "User": 71,
-            "Platform": 60,
-            "Notification": 58,
-            "Payment": 50,
-            "Driver": 48,
-            "Wallet": 45,
-            "Laundry": 24,
-            "Setting": 23,
-            "Complaint": 16,
-            "Coupon": 15,
-            "Pricing": 13,
-            "Report": 12,
-            "City": 12,
-            "TimeSlot": 12,
-            "Service": 10,
+            "Order": 378,
+            "Platform": 93,
+            "User": 86,
+            "Payment": 63,
+            "Notification": 60,
+            "Driver": 58,
+            "Wallet": 46,
+            "Setting": 34,
+            "Laundry": 30,
+            "Pricing": 22,
+            "Complaint": 19,
+            "Coupon": 18,
+            "TimeSlot": 16,
+            "Service": 15,
+            "Report": 13,
+            "City": 13,
+            "Zone": 12,
             "Database": 9,
+            "Address": 8,
             "Routing": 8,
-            "Address": 7,
-            "Zone": 7,
-            "Faq": 5,
+            "Offer": 7,
+            "ItemCategory": 7,
+            "Country": 7,
+            "Faq": 6,
+            "LaundryService": 6,
             "LaundryZone": 5,
-            "Country": 5,
-            "Offer": 4,
+            "Item": 5,
             "Auth": 3,
-            "ItemCategory": 3,
-            "Item": 3,
             "Banner": 2,
             "Intro": 2,
             "AdminShell": 2,
             "JourneyStep": 2,
-            "LaundryStaff": 1,
-            "LaundryService": 1
+            "Landing": 1,
+            "LaundryStaff": 1
         },
         "depended_on_by": []
     },
@@ -5389,7 +6007,7 @@
             "request": 1
         },
         "files": 12,
-        "lines": 724,
+        "lines": 759,
         "classes": [
             {
                 "fqcn": "App\\Modules\\TimeSlot\\Controllers\\TimeSlotController",
@@ -5461,13 +6079,13 @@
             "Order": 3
         },
         "depended_on_by": {
-            "Tests": 12,
-            "Order": 9,
-            "Api": 7,
+            "Order": 16,
+            "Tests": 16,
+            "Api": 9,
+            "Platform": 6,
             "Laundry": 5,
             "Database": 2,
             "Landing": 1,
-            "Platform": 1,
             "Routing": 1
         }
     },
@@ -5484,7 +6102,7 @@
             "request": 1
         },
         "files": 13,
-        "lines": 945,
+        "lines": 947,
         "classes": [
             {
                 "fqcn": "App\\Modules\\User\\Controllers\\UserController",
@@ -5564,21 +6182,23 @@
             "Laundry": 1
         },
         "depended_on_by": {
-            "Tests": 71,
-            "Order": 22,
-            "Notification": 18,
+            "Tests": 86,
+            "Order": 25,
+            "Notification": 21,
             "Driver": 11,
             "Payment": 11,
             "Auth": 9,
+            "Platform": 9,
             "Wallet": 6,
             "Coupon": 5,
+            "LaundryService": 5,
             "Laundry": 5,
             "Report": 5,
             "Api": 4,
             "Complaint": 4,
             "Moderator": 4,
-            "Platform": 4,
             "Database": 4,
+            "Pricing": 3,
             "LaundryStaff": 2,
             "Address": 1,
             "Routing": 1
@@ -5596,7 +6216,7 @@
             "service": 1
         },
         "files": 10,
-        "lines": 1339,
+        "lines": 1366,
         "classes": [
             {
                 "fqcn": "App\\Modules\\Wallet\\Controllers\\WalletController",
@@ -5666,13 +6286,13 @@
             "User": 6
         },
         "depended_on_by": {
-            "Tests": 45,
+            "Tests": 46,
             "Payment": 15,
             "Api": 7,
+            "Platform": 7,
             "Driver": 4,
             "Report": 2,
             "Order": 1,
-            "Platform": 1,
             "Routing": 1
         }
     },
@@ -5682,20 +6302,26 @@
         "path": "app/Modules/Zone",
         "layers": {
             "view": 7,
+            "service": 2,
             "controller": 1,
             "model": 1,
             "repository": 1,
-            "request": 1,
-            "service": 1
+            "request": 1
         },
-        "files": 12,
-        "lines": 582,
+        "files": 13,
+        "lines": 1181,
         "classes": [
             {
                 "fqcn": "App\\Modules\\Zone\\Controllers\\ZoneController",
                 "layer": "controller",
                 "path": "app/Modules/Zone/Controllers/ZoneController.php",
                 "summary": ""
+            },
+            {
+                "fqcn": "App\\Modules\\Zone\\Services\\ZoneLocator",
+                "layer": "service",
+                "path": "app/Modules/Zone/Services/ZoneLocator.php",
+                "summary": "Which zone a place is in — by where it is on the map, not by what somebody picked from a list."
             },
             {
                 "fqcn": "App\\Modules\\Zone\\Services\\zoneCrudService",
@@ -5713,7 +6339,7 @@
                 "fqcn": "App\\Modules\\Zone\\Models\\Zone",
                 "layer": "model",
                 "path": "app/Modules/Zone/Models/Zone.php",
-                "summary": "A named area inside a city: مدينة نصر, الدقي, الرحاب."
+                "summary": "An area inside a city: مدينة نصر, الدقي, الرحاب."
             },
             {
                 "fqcn": "App\\Modules\\Zone\\Requests\\ZoneRequest",
@@ -5729,6 +6355,8 @@
             "zones"
         ],
         "reads_tables": [
+            "addresses",
+            "orders",
             "cities"
         ],
         "routes": [
@@ -5750,20 +6378,23 @@
             "zone.toggle"
         ],
         "tests": [],
-        "summary": "A named area inside a city: مدينة نصر, الدقي, الرحاب.",
+        "summary": "Which zone a place is in — by where it is on the map, not by what somebody picked from a list.",
         "depends_on": {
-            "Platform": 8,
-            "City": 3
+            "Platform": 16,
+            "Address": 4,
+            "City": 3,
+            "Order": 2
         },
         "depended_on_by": {
-            "Tests": 7,
+            "Tests": 12,
+            "Platform": 6,
             "Driver": 3,
             "LaundryZone": 3,
             "Database": 3,
+            "Api": 2,
             "Address": 1,
             "City": 1,
             "Landing": 1,
-            "Platform": 1,
             "Routing": 1
         }
     }

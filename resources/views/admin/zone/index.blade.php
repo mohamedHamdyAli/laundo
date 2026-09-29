@@ -13,9 +13,22 @@
     <section class="section">
         <div class="row">
             <div class="col-md-12">
+                {{-- Every drawn zone at once — where the gaps are, and which
+                     zones still have to be drawn (the ones not on it). --}}
+                @if (! empty($drawnZones))
+                    <div class="card mb-3">
+                        <div class="card-header"><h6 class="mb-0">{{ __('The zones on the map') }}</h6></div>
+                        <div class="card-body">
+                            <input type="hidden" id="zones-overview" value="">
+                            <x-zone-drawer input="zones-overview" :others="$drawnZones" :readonly="true" height="380px" />
+                        </div>
+                    </div>
+                @endif
+
                 <div class="card">
                     <div class="card-body">
-                        <div class="d-flex justify-content-end mb-3">
+                        <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
+                            <x-spreadsheet-actions sheet="zone" search="#zoneSearchInput" />
                             <div class="input-group" style="max-width: 350px;">
                                 <input type="text" id="zoneSearchInput" class="form-control"
                                     placeholder="{{ __('Search Zone...') }}">

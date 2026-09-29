@@ -13,8 +13,9 @@ class ZoneController extends Controller
 
     public function index(Request $request)
     {
-        $zones = $this->zoneCrudService->shredData()['zones'];
-        $view = view('admin.zone.index', compact('zones'));
+        $data = $this->zoneCrudService->shredData();
+        // Every drawn zone, for the map above the list.
+        $view = view('admin.zone.index', ['zones' => $data['zones'], 'drawnZones' => $data['otherZones']]);
 
         return $request->ajax() ? response($view) : $view;
     }
@@ -40,7 +41,7 @@ class ZoneController extends Controller
     {
         $this->zoneCrudService->addNew($request->validated());
 
-        return redirect()->route('admin.zone.index')->with('success', __('Added Successfully'));
+        return redirect()->route('admin.zone.index')->with('success', $this->saved(__('Added Successfully')));
     }
 
     public function show($id)
@@ -57,7 +58,28 @@ class ZoneController extends Controller
     {
         $this->zoneCrudService->updateRecord($request->validated() + ['id' => $id]);
 
-        return redirect()->route('admin.zone.index')->with('success', __('Updated Successfully'));
+        return redirect()->route('admin.zone.index')->with('success', $this->saved(__('Updated Successfully')));
+    }
+
+    /**
+     * The flash after a save, with what the drawing did to addresses — a
+     * redraw that quietly moved three hundred customers, or left some where
+     * they were because an order on them is still under way, is something the
+     * person who drew it should be told.
+     */
+    private function saved(string $message): string
+    {
+        $relocated = $this->zoneCrudService->relocated();
+
+        if ($relocated['moved'] > 0) {
+            $message .= ' '.__(':count addresses moved to the zone their pin is in.', ['count' => $relocated['moved']]);
+        }
+
+        if ($relocated['held'] > 0) {
+            $message .= ' '.__(':count addresses kept their zone until their orders in progress are done.', ['count' => $relocated['held']]);
+        }
+
+        return $message;
     }
 
     public function destroy($id)

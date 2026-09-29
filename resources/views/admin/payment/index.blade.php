@@ -66,18 +66,23 @@
 
         <div class="card">
             <div class="card-body">
-                <div class="d-flex justify-content-end mb-3 gap-2">
-                    <select id="paymentStatusFilter" class="form-select" style="max-width: 240px;">
-                        <option value="all" @selected($status === 'all')>{{ __('All') }}</option>
-                        @foreach ($statuses as $case)
-                            <option value="{{ $case->value }}" @selected($status === $case->value)>
-                                {{ __(ucfirst(str_replace('_', ' ', $case->value))) }}
-                            </option>
-                        @endforeach
-                    </select>
-                    <div class="input-group" style="max-width: 340px;">
-                        <input type="text" id="paymentSearchInput" class="form-control"
-                            placeholder="{{ __('Search by order, customer or reference...') }}">
+                <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
+                    {{-- Excel: the export holds what the filter and the search show. --}}
+                    <x-spreadsheet-actions sheet="payment" search="#paymentSearchInput"
+                        :filters="['status' => '#paymentStatusFilter']" />
+                    <div class="d-flex flex-wrap gap-2 ms-auto">
+                        <select id="paymentStatusFilter" class="form-select" style="max-width: 240px;">
+                            <option value="all" @selected($status === 'all')>{{ __('All') }}</option>
+                            @foreach ($statuses as $case)
+                                <option value="{{ $case->value }}" @selected($status === $case->value)>
+                                    {{ __(ucfirst(str_replace('_', ' ', $case->value))) }}
+                                </option>
+                            @endforeach
+                        </select>
+                        <div class="input-group" style="max-width: 340px;">
+                            <input type="text" id="paymentSearchInput" class="form-control"
+                                placeholder="{{ __('Search by order, customer or reference...') }}">
+                        </div>
                     </div>
                 </div>
 

@@ -145,7 +145,7 @@
                             <td class="text-end text-muted">{{ moneyFormat($row->delivery_fee) }}</td>
                         </tr>
                         @if ((float) $row->discount_total > 0)
-                            <tr class="text-success">
+                            <tr class="text-danger">
                                 <td colspan="4" class="text-end">{{ __('Discount') }}</td>
                                 <td class="text-end">- {{ moneyFormat($row->discount_total) }}</td>
                             </tr>

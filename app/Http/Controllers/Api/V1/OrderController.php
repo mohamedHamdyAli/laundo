@@ -17,6 +17,7 @@ use App\Modules\Order\Services\OrderService;
 use App\Modules\Order\Services\OrderTimeline;
 use App\Modules\Order\Services\RecurrenceService;
 use App\Modules\Order\Services\RescheduleService;
+use App\Modules\Order\Services\Turnaround;
 use App\Modules\TimeSlot\Models\TimeSlot;
 use App\Modules\TimeSlot\Services\SlotCapacity;
 use Illuminate\Http\JsonResponse;
@@ -387,6 +388,14 @@ class OrderController extends Controller
     {
         $message = $e->getMessage();
 
+        // The turnaround backstop in OrderService::place() — the request refuses
+        // it first, with the same words, so this is for a caller that skipped it.
+        if (str_starts_with($message, 'delivery_date:')) {
+            $text = substr($message, strlen('delivery_date:'));
+
+            return failReturnValidation(['delivery_date' => [$text]], $text);
+        }
+
         if (str_starts_with($message, 'unpriced_items:')) {
             return failReturnValidation(
                 ['items' => [__('Some pieces are not available for this service.')]],
@@ -570,6 +579,14 @@ class OrderController extends Controller
 
         $capacity = app(SlotCapacity::class);
 
+        // For a delivery being rebooked: the earliest the service lets it come
+        // back, so a window too soon after the pickup is marked, not offered and
+        // then refused.
+        $turnaround = app(Turnaround::class);
+        $earliest = ! $collection && $order->service
+            ? $turnaround->earliestDelivery($order->service, $order->pickup_date, $order->pickupSlot)
+            : null;
+
         return successReturnData([
             'needs_new_time' => true,
             'leg' => $collection ? 'pickup' : 'delivery',
@@ -584,7 +601,7 @@ class OrderController extends Controller
             // so the app built the label itself and could not tell a full day
             // from an unknown one — `remaining` is null for an uncapped window
             // and 0 for a full one, and those are different answers.
-            'slots' => $slots->map(function (TimeSlot $slot) use ($capacity, $date) {
+            'slots' => $slots->map(function (TimeSlot $slot) use ($capacity, $date, $earliest, $turnaround) {
                 $remaining = $capacity->remaining($slot, $date);
 
                 return [
@@ -596,7 +613,15 @@ class OrderController extends Controller
                     'capacity' => $slot->capacity,
                     'remaining' => $remaining,
                     'is_full' => $remaining !== null && $remaining < 1,
-                ];
+                ] + $turnaround->windowFlags(
+                    // Before the service's turnaround is up; null for a pickup.
+                    // Never «too late»: a rebooking is not bounded by the
+                    // booking window, which is measured from a pickup long past.
+                    $earliest,
+                    null,
+                    $date,
+                    $slot,
+                );
             })->values(),
         ]);
     }
@@ -629,10 +654,14 @@ class OrderController extends Controller
             TaskType::DeliverToLaundry,
         ], true);
 
+        $deliveryBefore = [$order->delivery_date?->toDateString(), $order->delivery_slot_id];
+
         try {
             $order = $service->reschedule($order, $request->user(), $validated);
         } catch (RuntimeException $e) {
             return match ($e->getMessage()) {
+                'delivery_too_early' => failReturnMsg($this->deliveryProblemMessage($order, Turnaround::TOO_EARLY)),
+                'no_delivery_after_pickup' => failReturnMsg(__('There is no delivery window free after this pickup in the coming weeks. Please choose an earlier pickup.')),
                 'nothing_to_reschedule' => failReturnMsg(__('This order is not waiting for a new time.')),
                 'slot_not_available' => failReturnMsg(__('That time is not available.')),
                 'slot_full' => failReturnMsg(__('This window is fully booked. Please choose another one.')),
@@ -643,6 +672,7 @@ class OrderController extends Controller
         }
 
         $slot = $collection ? $order->pickupSlot : $order->deliverySlot;
+        $moved = $collection && [$order->delivery_date?->toDateString(), $order->delivery_slot_id] !== $deliveryBefore;
 
         // **The same order, the same code.** It is a re-booking, not a new
         // order, and the response says so in the fields rather than leaving the
@@ -665,6 +695,34 @@ class OrderController extends Controller
             'needs_new_time' => $service->isAwaitingNewSlot($order),
             'status' => $order->status->value,
             'status_label' => __($order->status->label()),
-        ], __('Your new time is set. We will collect it then.'));
+            // Set when the pickup moved far enough to push the delivery with
+            // it — the service needs its time — so the app can say so. Null
+            // when the delivery stayed where it was.
+            'delivery_moved' => $moved ? [
+                'date' => $order->delivery_date?->toDateString(),
+                'time_slot' => $order->deliverySlot ? [
+                    'id' => $order->deliverySlot->id,
+                    'from' => $order->deliverySlot->start_time,
+                    'to' => $order->deliverySlot->end_time,
+                    'label' => $order->deliverySlot->label(),
+                ] : null,
+            ] : null,
+        ], $moved
+            ? __('Your new time is set. Your delivery moved to :date, :window, to leave the service its time.', [
+                'date' => $order->delivery_date?->toDateString(),
+                'window' => $order->deliverySlot?->label(),
+            ])
+            : __('Your new time is set. We will collect it then.'));
+    }
+
+    /**
+     * «الخدمة دي محتاجة 3 أيام — أبكر تسليم الخميس» / «التسليم ممكن يتحجز لحد …»
+     * for a delivery rebooked outside what the service allows.
+     */
+    private function deliveryProblemMessage(Order $order, string $problem): string
+    {
+        return $order->service
+            ? app(Turnaround::class)->message($order->service, $problem, $order->pickup_date, $order->pickupSlot)
+            : __('That time is not available.');
     }
 }

@@ -59,6 +59,12 @@ class WalletService
     /**
      * Take money, if there is enough.
      *
+     * `$allowOverdraft` is for one caller: the platform funding a discount at
+     * settlement. The laundry is owed its share whatever the platform's balance
+     * happens to be, so that debit must not fail on it. Every other debit — a
+     * customer paying, a withdrawal — keeps the check, which is the whole point
+     * of the lock below.
+     *
      * @throws RuntimeException
      */
     public function debit(
@@ -68,8 +74,9 @@ class WalletService
         ?Model $source = null,
         ?string $note = null,
         ?User $actor = null,
+        bool $allowOverdraft = false,
     ): WalletTransaction {
-        return $this->move($user, $amount, WalletTransaction::DEBIT, $reason, $source, $note, $actor);
+        return $this->move($user, $amount, WalletTransaction::DEBIT, $reason, $source, $note, $actor, $allowOverdraft);
     }
 
     /**
@@ -141,6 +148,7 @@ class WalletService
         ?Model $source,
         ?string $note,
         ?User $actor,
+        bool $allowOverdraft = false,
     ): WalletTransaction {
         if ($amount <= 0) {
             // A credit of zero explains nothing and a negative one is a debit
@@ -150,7 +158,7 @@ class WalletService
 
         $wallet = $this->forUser($user);
 
-        return DB::transaction(function () use ($wallet, $amount, $direction, $reason, $source, $note, $actor) {
+        return DB::transaction(function () use ($wallet, $amount, $direction, $reason, $source, $note, $actor, $allowOverdraft) {
             // The lock is the whole point: two debits racing would each read the
             // same balance and both pass a check only one should.
             $locked = Wallet::where('id', $wallet->id)->lockForUpdate()->firstOrFail();
@@ -159,7 +167,7 @@ class WalletService
                 throw new RuntimeException('wallet_frozen');
             }
 
-            if ($direction === WalletTransaction::DEBIT && ! $locked->hasAtLeast($amount)) {
+            if ($direction === WalletTransaction::DEBIT && ! $allowOverdraft && ! $locked->hasAtLeast($amount)) {
                 throw new RuntimeException('insufficient_balance');
             }
 

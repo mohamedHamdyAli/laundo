@@ -1,7 +1,7 @@
 {{--
     The language row's actions.
 
-    The standard trio, plus a dropdown for the four file editors.
+    The standard trio, plus a dropdown for the file editors.
 
     Those editors had routes and screens and **nothing linked to them**:
     `x-action-button-lang` was built to carry them and is rendered by nobody
@@ -29,6 +29,11 @@
             <li>
                 <a class="dropdown-item fw-semibold" href="{{ route('admin.language.landing', $row->id) }}">
                     <i class="fa fa-pen-nib me-2"></i>{{ __('Edit Landing Page Content') }}
+                </a>
+            </li>
+            <li>
+                <a class="dropdown-item fw-semibold" href="{{ route('admin.language.validation', $row->id) }}">
+                    <i class="fa fa-exclamation-triangle me-2"></i>{{ __('Edit Validation Messages') }}
                 </a>
             </li>
 

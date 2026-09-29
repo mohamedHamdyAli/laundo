@@ -40,7 +40,9 @@
             <div class="col-md-12">
                 <div class="card">
                     <div class="card-body">
-                        <div class="d-flex justify-content-end mb-3">
+                        <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
+                            {{-- Excel: the export holds what the search shows. --}}
+                            <x-spreadsheet-actions sheet="laundry" search="#laundrySearchInput" />
                             <div class="input-group" style="max-width: 350px;">
                                 <input type="text" id="laundrySearchInput" name="laundrySearch"
                                     value="{{ request('laundrySearch') }}" class="form-control"
@@ -60,7 +62,7 @@
                             <span>{{ __('Name') }}</span>
                             <span>{{ __('Phone') }}</span>
                             <span>{{ __('City') }}</span>
-                            <span>{{ __('Commission') }}</span>
+                            <span>{{ __('Laundry share') }}</span>
                             <span>{{ __('Status') }}</span>
                             <span class="text-end">{{ __('Action') }}</span>
                         </div>
@@ -81,7 +83,7 @@
     </section>
 
     @if (canDo('setting.update'))
-        {{-- «العمولة» — set what one laundry pays.
+        {{-- «نسبة المغسلة» — set what one laundry receives.
 
              A plain form, deliberately without `needs-validation`: that class is
              what form-validation.js binds its background submit to, and there is
@@ -100,14 +102,25 @@
                         <div class="modal-body">
                             <p class="text-muted small mb-3" id="commissionLaundryName"></p>
 
-                            <label class="form-label">{{ __('Charges that apply') }}</label>
+                            <label class="form-label">{{ __('Laundry share') }}</label>
 
                             @php $attachable = \App\Modules\Payment\Controllers\CommissionRuleController::attachableRules(); @endphp
 
+                            {{-- Radios, not checkboxes: a laundry is on one share at
+                                 a time. The first choice is «none», which is a real
+                                 answer — it hands the laundry to the general share. --}}
+                            <div class="form-check">
+                                <input class="form-check-input js-commission-rule" type="radio"
+                                    name="commission_rule_id" value="" id="commission-rule-none">
+                                <label class="form-check-label" for="commission-rule-none">
+                                    {{ __('General laundry share (Settings)') }}
+                                </label>
+                            </div>
+
                             @forelse ($attachable as $rule)
                                 <div class="form-check">
-                                    <input class="form-check-input js-commission-rule" type="checkbox"
-                                        name="commission_rule_ids[]" value="{{ $rule->id }}"
+                                    <input class="form-check-input js-commission-rule" type="radio"
+                                        name="commission_rule_id" value="{{ $rule->id }}"
                                         id="commission-rule-{{ $rule->id }}">
                                     <label class="form-check-label" for="commission-rule-{{ $rule->id }}">
                                         {{ getLocalizedValueDashboard($rule, 'name') }}
@@ -116,15 +129,14 @@
                                 </div>
                             @empty
                                 <p class="text-muted small mb-0">
-                                    {{ __('No charges exist yet.') }}
+                                    {{ __('No shares exist yet.') }}
                                     <a href="{{ route('admin.commission_rule.index') }}">{{ __('Commissions') }}</a>
                                 </p>
                             @endforelse
 
                             <div class="form-text mt-2">
-                                {{ __('Ticked charges add together and are credited to the super admin wallet; the rest goes to this laundry.') }}
-                                <strong>{{ __('Tick nothing and this laundry is charged nothing.') }}</strong>
-                                {{ __('There is no general rate behind it — attaching a charge of 0 says the same thing on the record, which is worth doing so nobody later reads the blank as an oversight.') }}
+                                {{ __('The percentage is what this laundry receives from the washing; the rest is credited to the super admin wallet.') }}
+                                <strong>{{ __('With no share here and no general share in Settings, settlements for this laundry wait and nothing is paid.') }}</strong>
                             </div>
                         </div>
                         <div class="modal-footer">
@@ -169,16 +181,16 @@
                 $('#commissionForm').attr('action', $btn.data('action'));
                 $('#commissionLaundryName').text($btn.data('name'));
 
-                // Exactly what this laundry already carries, and nothing
-                // pre-ticked otherwise: opening the dialog and pressing Save
-                // would then pin a laundry that follows the general rate onto
-                // today's value of it.
+                // Exactly what this laundry is on, and «general» otherwise:
+                // opening the dialog and pressing Save must leave it as it was.
                 const attached = String($btn.attr('data-rules') || '')
                     .split(',')
                     .filter(Boolean);
 
                 $('.js-commission-rule').each(function () {
-                    $(this).prop('checked', attached.includes($(this).val()));
+                    const value = $(this).val();
+
+                    $(this).prop('checked', value === '' ? attached.length === 0 : attached.includes(value));
                 });
 
                 bootstrap.Modal.getOrCreateInstance(document.getElementById('commissionModal')).show();

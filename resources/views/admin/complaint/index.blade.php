@@ -62,28 +62,33 @@
 
         <div class="card mb-3">
             <div class="card-body">
-                <div class="d-flex justify-content-end mb-3 gap-2">
-                    {{-- Who filed it, beside what state it is in. The two
-                         narrow different things and an operator usually wants
-                         one of them, not both. --}}
-                    <select id="complaintAudienceFilter" class="form-select" style="max-width: 200px;">
-                        <option value="all" @selected(($audience ?? 'all') === 'all')>{{ __('Everyone') }}</option>
-                        <option value="customer" @selected(($audience ?? '') === 'customer')>{{ __('From customers') }}</option>
-                        <option value="driver" @selected(($audience ?? '') === 'driver')>{{ __('From drivers') }}</option>
-                    </select>
+                <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
+                    {{-- Excel: the export holds what the filters and the search show. --}}
+                    <x-spreadsheet-actions sheet="complaint" search="#complaintSearchInput"
+                        :filters="['status' => '#complaintStatusFilter', 'audience' => '#complaintAudienceFilter']" />
+                    <div class="d-flex flex-wrap gap-2 ms-auto">
+                        {{-- Who filed it, beside what state it is in. The two
+                             narrow different things and an operator usually wants
+                             one of them, not both. --}}
+                        <select id="complaintAudienceFilter" class="form-select" style="max-width: 200px;">
+                            <option value="all" @selected(($audience ?? 'all') === 'all')>{{ __('Everyone') }}</option>
+                            <option value="customer" @selected(($audience ?? '') === 'customer')>{{ __('From customers') }}</option>
+                            <option value="driver" @selected(($audience ?? '') === 'driver')>{{ __('From drivers') }}</option>
+                        </select>
 
-                    <select id="complaintStatusFilter" class="form-select" style="max-width: 240px;">
-                        <option value="open" @selected($status === 'open')>{{ __('Open') }}</option>
-                        @foreach ($statuses as $case)
-                            <option value="{{ $case->value }}" @selected($status === $case->value)>
-                                {{ __($case->label()) }}
-                            </option>
-                        @endforeach
-                        <option value="all" @selected($status === 'all')>{{ __('All') }}</option>
-                    </select>
-                    <div class="input-group" style="max-width: 340px;">
-                        <input type="text" id="complaintSearchInput" class="form-control"
-                            placeholder="{{ __('Search by reference, order, customer or text...') }}">
+                        <select id="complaintStatusFilter" class="form-select" style="max-width: 240px;">
+                            <option value="open" @selected($status === 'open')>{{ __('Open') }}</option>
+                            @foreach ($statuses as $case)
+                                <option value="{{ $case->value }}" @selected($status === $case->value)>
+                                    {{ __($case->label()) }}
+                                </option>
+                            @endforeach
+                            <option value="all" @selected($status === 'all')>{{ __('All') }}</option>
+                        </select>
+                        <div class="input-group" style="max-width: 340px;">
+                            <input type="text" id="complaintSearchInput" class="form-control"
+                                placeholder="{{ __('Search by reference, order, customer or text...') }}">
+                        </div>
                     </div>
                 </div>
 

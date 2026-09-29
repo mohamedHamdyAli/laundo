@@ -7,6 +7,7 @@ use App\Modules\Driver\Models\DriverApplication;
 use App\Modules\Driver\Models\DriverBonusAward;
 use App\Modules\Driver\Models\DriverRecordSubmission;
 use App\Modules\Laundry\Models\Laundry;
+use App\Modules\LaundryService\Models\LaundryServiceRequest;
 use App\Modules\Order\Enums\OrderStatus;
 use App\Modules\Order\Models\Order;
 use App\Modules\Order\Models\OrderPriceQuery;
@@ -68,9 +69,12 @@ class MenuBadges
             // Nothing times these out. They wait until a person acts:
             // an order with no laundry can go nowhere at all, and one the
             // customer has not confirmed a price on is holding machine time.
+            // A piece count a driver disagreed on waits for somebody to look —
+            // counted in orders, the rows the filter behind it lists.
             'order' => Order::unassigned()->active()->count()
                 + Order::where('status', OrderStatus::Reviewed->value)->count()
-                + OrderPriceQuery::open()->whereIn('order_id', Order::query()->select('id'))->count(),
+                + OrderPriceQuery::open()->whereIn('order_id', Order::query()->select('id'))->count()
+                + Order::withOpenPieceCheck()->count(),
 
             // Journeys with nobody on them: unplaced, and ones that failed
             // their way back out of the pool.
@@ -98,6 +102,11 @@ class MenuBadges
             // somebody does, so this is a driver waiting on a person — and a
             // queue nobody is reminded of is a record that quietly goes stale.
             'driver_record_submission' => DriverRecordSubmission::pending()->count(),
+
+            // A laundry waiting to open or close a service. Nothing changes for
+            // it until somebody answers, and a laundry asking to close one keeps
+            // being handed orders in it meanwhile.
+            'laundry_service_request' => LaundryServiceRequest::pending()->count(),
 
             // Months worked out and waiting on somebody to approve. Only the
             // ones that would actually pay: a driver who missed every target

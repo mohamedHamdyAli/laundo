@@ -3,6 +3,7 @@
 namespace App\Modules\Order\Models;
 
 use App\Modules\Driver\Models\Driver;
+use App\Modules\Order\Enums\PieceCountSource;
 use App\Modules\Order\Enums\TaskFailureReason;
 use App\Modules\Order\Enums\TaskStatus;
 use App\Modules\Order\Enums\TaskType;
@@ -10,6 +11,7 @@ use App\Trait\DashboardModel;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Carbon;
 
 /**
@@ -31,6 +33,8 @@ use Illuminate\Support\Carbon;
  * @property Carbon|null $started_at
  * @property Carbon|null $completed_at
  * @property int|null $piece_count
+ * @property int|null $expected_piece_count
+ * @property PieceCountSource|null $expected_piece_source
  * @property string|null $receiver_name
  * @property string|null $signature_path
  * @property string|null $collected_amount
@@ -74,6 +78,7 @@ class OrderTask extends Model
         'order_id', 'type', 'sequence', 'status', 'driver_id', 'assigned_at', 'due_at',
         'started_at', 'completed_at', 'piece_count', 'receiver_name', 'signature_path',
         'collected_amount', 'failure_reason', 'failure_note', 'attempts', 'note',
+        'expected_piece_count', 'expected_piece_source',
     ];
 
     protected function casts(): array
@@ -82,6 +87,7 @@ class OrderTask extends Model
             'type' => TaskType::class,
             'status' => TaskStatus::class,
             'failure_reason' => TaskFailureReason::class,
+            'expected_piece_source' => PieceCountSource::class,
             'assigned_at' => 'datetime',
             'due_at' => 'datetime',
             'started_at' => 'datetime',
@@ -104,6 +110,30 @@ class OrderTask extends Model
     public function driver(): BelongsTo
     {
         return $this->belongsTo(Driver::class, 'driver_id');
+    }
+
+    /**
+     * The disagreement this leg's count raised, if it raised one — a leg
+     * completes once, so there is at most one.
+     *
+     * @return HasOne<PieceDiscrepancy, $this>
+     */
+    public function discrepancy(): HasOne
+    {
+        return $this->hasOne(PieceDiscrepancy::class, 'order_task_id');
+    }
+
+    /**
+     * The number that stands for this leg: what the platform found it really
+     * was, if its disagreement was reviewed, and otherwise what the driver
+     * counted. The next handover is measured against this, so a typo corrected
+     * at review is not raised a second time downstream.
+     */
+    public function countedPieces(): ?int
+    {
+        $count = $this->discrepancy->confirmed_count ?? $this->piece_count;
+
+        return $count === null ? null : (int) $count;
     }
 
     /**

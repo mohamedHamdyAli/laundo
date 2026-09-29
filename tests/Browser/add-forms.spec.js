@@ -21,7 +21,7 @@ import { ACCOUNTS, login } from './helpers.js';
  *   - fixing it and submitting again actually saves
  *
  * Every test cleans up after itself: this drives the development database, and
- * a commission charge left behind is a real invoice next month.
+ * a laundry share left behind is a real payout next month.
  */
 
 const stamp = () => Math.floor(Math.random() * 1000000);
@@ -102,26 +102,16 @@ test.describe('Add Commission', () => {
     await expect(group.locator('.js-field-error')).toContainText(/at least one language/i);
   });
 
-  test('the value box is reported on the box the basis actually asks for', async ({ page }) => {
+  test('a missing share is reported beside the share box', async ({ page }) => {
     await page.goto('/admin/commission-rule/create');
     await settled(page);
 
-    // A name, so the only thing left to fail is the value.
+    // A name, so the only thing left to fail is the share. There is one box
+    // now — the fixed amount went when the share moved to the laundry's side.
     await page.locator('#commission-name').fill('PW ' + stamp());
-
-    await page.selectOption('#commission-basis', 'percent');
     await submitAndSettle(page);
 
     await expect(page.locator('#commission-rate')).toHaveClass(/is-invalid/);
-    await expect(page.locator('#commission-amount')).not.toHaveClass(/is-invalid/);
-
-    await page.selectOption('#commission-basis', 'fixed');
-    await submitAndSettle(page);
-
-    // The basis decides which of the two boxes is being asked about, and the
-    // message has to follow it.
-    await expect(page.locator('#commission-amount')).toHaveClass(/is-invalid/);
-    await expect(page.locator('#commission-rate')).not.toHaveClass(/is-invalid/);
   });
 
   test('what you typed survives a refused save', async ({ page }) => {
@@ -131,19 +121,14 @@ test.describe('Add Commission', () => {
     const name = 'PW Kept ' + stamp();
 
     await page.locator('#commission-name').fill(name);
-    await page.selectOption('#commission-basis', 'fixed');
     await page.selectOption('#commission-status', 'inactive');
-    // Amount deliberately left empty, so the save is refused.
+    // Share deliberately left empty, so the save is refused.
 
     await submitAndSettle(page);
 
     // Everything `old()` cannot carry, still on screen.
     await expect(page.locator('#commission-name')).toHaveValue(name);
-    await expect(page.locator('#commission-basis')).toHaveValue('fixed');
     await expect(page.locator('#commission-status')).toHaveValue('inactive');
-    // And the box the basis asks for is still the one showing.
-    await expect(page.locator('#commission-amount-field')).toBeVisible();
-    await expect(page.locator('#commission-rate-field')).toBeHidden();
   });
 
   test('fixing the error and saving again lands the record in the list', async ({ page }) => {
@@ -185,7 +170,7 @@ test.describe('Add Commission', () => {
     await expect(page.locator('.js-field-error')).toHaveCount(first);
   });
 
-  test('a charge can be added with an Arabic name alone', async ({ page }) => {
+  test('a share can be added with an Arabic name alone', async ({ page }) => {
     // The panel's own rule: at least one language, not all of them. On an
     // English-default install the single box IS the default language, so this
     // proves the Arabic round-trips rather than that the rule is relaxed.
@@ -196,8 +181,7 @@ test.describe('Add Commission', () => {
       await settled(page);
 
       await page.locator('#commission-name').fill(name);
-      await page.selectOption('#commission-basis', 'fixed');
-      await page.locator('#commission-amount').fill('7.5');
+      await page.locator('#commission-rate').fill('7.5');
       await submitAndSettle(page);
 
       await expect(page).toHaveURL(/\/admin\/commission-rule$/);
@@ -220,8 +204,11 @@ test.describe('Add Commission', () => {
       await settled(page);
 
       await page.locator('#commission-name').fill(name);
-      await page.selectOption('#commission-basis', 'percent');
       await page.locator('#commission-rate').fill('8');
+      // Switched off: a laundry is on one active share at a time, and the dev
+      // laundries already have theirs. An inactive share can still be attached,
+      // and it pays nobody — so the real laundry's terms are never touched.
+      await page.selectOption('#commission-status', 'inactive');
 
       const boxes = page.locator('input[name="laundry_ids[]"]');
       await expect(await boxes.count()).toBeGreaterThan(0);
@@ -231,8 +218,8 @@ test.describe('Add Commission', () => {
 
       await expect(page).toHaveURL(/\/admin\/commission-rule$/);
 
-      // The count on the row is the figure that says this charge now bills
-      // somebody — an added-but-unattached charge is inert.
+      // The count on the row is the figure that says how many laundries this
+      // share is attached to.
       const row = page.locator('#commission-table-body .stack-row', { hasText: name });
       await expect(row).toContainText('1');
     } finally {
