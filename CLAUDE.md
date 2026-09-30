@@ -26,7 +26,8 @@ Single test: `php artisan test --filter=TestName` · one file: `php artisan test
 The full PHPUnit suite takes **four to eleven minutes** — measured runs on the
 same machine came in at 251s, 317s, 477s, (at 1,570 tests, 2026-09-27) 341s
 and 521s, (at 1,662 tests, 2026-09-28) 575s, and (at 1,814 tests, 2026-09-29,
-with another agent busy on the machine) 643s, so budget for the longest.
+with another agent busy on the machine) 643s, and (at 1,861 tests, 2026-09-30)
+317s, so budget for the longest.
 When MySQL is down, `php artisan test` cannot boot at all (see the Second Brain
 note below) — run `vendor/bin/phpunit` directly, which reads `phpunit.xml`'s
 SQLite and needs no database server. Use
@@ -1182,7 +1183,7 @@ Two overlapping caches exist:
 
 ## Testing
 
-Around eighteen hundred PHPUnit tests (1,814 on 2026-09-29, data providers
+Around eighteen hundred PHPUnit tests (1,861 on 2026-09-30, data providers
 included), currently green. Real coverage exists — treat a failure as a
 regression, not as a flaky stub.
 
@@ -1294,7 +1295,8 @@ works. How to reach it is not written here.
    each run. Hand-edited assets referenced through `assetVersion()` bust
    themselves; anything else needs a hard refresh.
 6. Verify with `php artisan route:list --name=…`, a `tinker --execute` on real
-   rows, and `storage/logs/laravel.log` (`LOG_STACK` is `single` there).
+   rows, and `storage/logs/laravel-YYYY-MM-DD.log` (`LOG_STACK` is `daily`
+   there — `laravel.log` stopped on 2026-09-15; grep the dated file).
    `git rev-parse HEAD` alone proves nothing about the caches.
 
 ## Known rough edges
