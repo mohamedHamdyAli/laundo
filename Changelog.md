@@ -20,6 +20,12 @@
 ### Fix
 
 - **The zone map showed «A zone can have at most 500 corners» all the time**, even with nothing drawn. Bootstrap's `d-block` is `display: block !important` and overrode the warning's `hidden` attribute. It now has its own class (Blade / CSS).
+- **The place search found nothing for «مدينه نصر الحي العاشر»** («بكتب مدينه نصر الحي العاشر مش بيجيب اي حاجه»).
+  - The cause: Nominatim matches ه and ة as different letters, and Egyptians type ه where the map writes ة. The ه spelling found nothing, or a different place written that way («مصر الجديده» landed on a street in الزيتون).
+  - A word ending in ه is now asked with ة first, then as typed (for names that really end in ه, like «طه»), one second apart as Nominatim's usage policy requires, and the answers are merged.
+  - Closing the list cancels a spelling still on its way, so it cannot reopen the list.
+  - Tested against the live service: «مدينه نصر الحي العاشر» finds the tenth district's water tower, and «مصر الجديده» finds Heliopolis first.
+  - Nasr City's districts themselves are not mapped in OpenStreetMap. The owner chose to stay with it rather than enable Google's paid search (Blade / JS).
 
 ## 2026-09-29
 

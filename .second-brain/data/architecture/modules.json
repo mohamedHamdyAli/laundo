@@ -3596,7 +3596,7 @@
             "mail": 2
         },
         "files": 186,
-        "lines": 19368,
+        "lines": 19425,
         "classes": [
             {
                 "fqcn": "App\\Http\\Controllers\\Controller",
@@ -4990,7 +4990,7 @@
             "browser-test": 25
         },
         "files": 150,
-        "lines": 47925,
+        "lines": 47985,
         "classes": [
             {
                 "fqcn": "Tests\\Feature\\Api\\AddressTest",

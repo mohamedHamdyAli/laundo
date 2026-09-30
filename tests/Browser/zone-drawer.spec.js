@@ -72,6 +72,66 @@ test.describe('zone drawer — place search', () => {
     expect(await corners(page)).toBe(0);
   });
 
+  test('a word typed ending in ه is asked with ة first, then as typed, and both answers are listed', async ({ page }) => {
+    // Nominatim matches letters as typed: «مدينه» (as Egyptians type it) is
+    // not «مدينة» (as the map writes it). Answered here per spelling.
+    const asked = [];
+    await page.route(NOMINATIM, (route) => {
+      const q = new URL(route.request().url()).searchParams.get('q');
+      asked.push(q);
+      const rows = {
+        'مدينة نصر': [{ place_id: 1, lat: '30.039', lon: '31.367', display_name: 'مدينة نصر, القاهرة, مصر' }],
+        'مدينه نصر': [
+          { place_id: 1, lat: '30.039', lon: '31.367', display_name: 'مدينة نصر, القاهرة, مصر' },
+          { place_id: 2, lat: '30.10', lon: '31.40', display_name: 'شارع زهراء مدينه نصر, مدينة نصر, القاهرة, مصر' },
+        ],
+      }[q] || [];
+      return route.fulfill({ contentType: 'application/json', body: JSON.stringify(rows) });
+    });
+
+    await openForm(page);
+    await page.fill('[data-map-search]', 'مدينه نصر');
+    await page.press('[data-map-search]', 'Enter');
+
+    // The second spelling a second after the first, and the place both found
+    // listed once.
+    await expect(page.locator('.map-picker-result')).toHaveCount(2, { timeout: 5000 });
+    expect(asked).toEqual(['مدينة نصر', 'مدينه نصر']);
+    await expect(page.locator('.map-picker-result .place').first()).toHaveText('مدينة نصر');
+  });
+
+  test('a place picked before the second spelling answers stays picked', async ({ page }) => {
+    await page.route(NOMINATIM, (route) => route.fulfill({
+      contentType: 'application/json',
+      body: JSON.stringify([{ place_id: 1, lat: '30.039', lon: '31.367', display_name: 'مدينة نصر, القاهرة, مصر' }]),
+    }));
+
+    await openForm(page);
+    await page.fill('[data-map-search]', 'مدينه نصر');
+    await page.press('[data-map-search]', 'Enter');
+    await page.locator('.map-picker-result').first().click();
+
+    // The second spelling would have answered by now; the list stays shut.
+    await page.waitForTimeout(1800);
+    await expect(page.locator('[data-map-results]')).toBeHidden();
+  });
+
+  test('a query with nothing to respell is asked once', async ({ page }) => {
+    const asked = [];
+    await page.route(NOMINATIM, (route) => {
+      asked.push(new URL(route.request().url()).searchParams.get('q'));
+      return route.fulfill({ contentType: 'application/json', body: '[]' });
+    });
+
+    await openForm(page);
+    await page.fill('[data-map-search]', 'Nasr City');
+    await page.press('[data-map-search]', 'Enter');
+
+    await expect(page.locator('.map-picker-empty')).toBeVisible();
+    await page.waitForTimeout(1500);
+    expect(asked).toEqual(['Nasr City']);
+  });
+
   test('a search that fails says so, in the zone map\'s own words', async ({ page }) => {
     await page.route(NOMINATIM, (route) => route.abort());
 

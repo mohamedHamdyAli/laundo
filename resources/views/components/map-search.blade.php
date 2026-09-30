@@ -107,6 +107,10 @@
                 if (!input || !results) return;
 
                 function closeResults() {
+                    // Closed — by a pick, Escape or a click elsewhere — is
+                    // finished: a second spelling still on its way must not
+                    // open the list again a second later.
+                    searchNumber++;
                     results.hidden = true;
                     results.innerHTML = '';
                 }
@@ -129,6 +133,72 @@
                     return L.latLngBounds([[s, w], [n, e]]);
                 }
 
+                /**
+                 * The spellings to ask for, best first.
+                 *
+                 * Egyptian typing ends a word in ه where the map's own names
+                 * use ة — «مدينه نصر» for «مدينة نصر» — and Nominatim matches
+                 * the letters as typed: the ه spelling finds nothing, or worse,
+                 * a different place that happens to be written that way
+                 * («مصر الجديده» → a street in الزيتون). So a word ending in ه
+                 * is asked with ة first, then as typed, because some names
+                 * really do end in ه («طه»). ي/ى and the alef forms Nominatim
+                 * already treats as one.
+                 */
+                function spellings(query) {
+                    var tied = query.replace(/([ء-ي]{2,})ه(?=$|[\s،,.\-])/g, '$1ة');
+                    return tied === query ? [query] : [tied, query];
+                }
+
+                function urlFor(query) {
+                    // Bias to what is on screen without excluding anything else:
+                    // "Nasr City" typed while looking at Cairo should mean the
+                    // one in Cairo, but a different governorate must still be
+                    // reachable without panning there first.
+                    var b = map.getBounds();
+                    return 'https://nominatim.openstreetmap.org/search'
+                        + '?format=json&limit=6&addressdetails=1'
+                        + '&accept-language=' + encodeURIComponent(box.dataset.locale || '')
+                        + '&viewbox=' + [b.getWest(), b.getNorth(), b.getEast(), b.getSouth()].join(',')
+                        + '&q=' + encodeURIComponent(query);
+                }
+
+                function choiceFor(row) {
+                    var name = row.display_name || '';
+                    var head = name.split(',')[0];
+                    var rest = name.slice(head.length + 1).trim();
+
+                    var choice = document.createElement('button');
+                    choice.type = 'button'; // never submits the form it sits in
+                    choice.className = 'map-picker-result';
+
+                    var strong = document.createElement('span');
+                    strong.className = 'place';
+                    strong.textContent = head;
+                    choice.appendChild(strong);
+
+                    if (rest) {
+                        var small = document.createElement('span');
+                        small.className = 'where';
+                        small.textContent = rest;
+                        choice.appendChild(small);
+                    }
+
+                    choice.addEventListener('click', function () {
+                        var lat = parseFloat(row.lat);
+                        var lng = parseFloat(row.lon);
+                        if (isNaN(lat) || isNaN(lng)) return;
+                        closeResults();
+                        onPick({ lat: lat, lng: lng, name: head, bounds: boundsOf(row) });
+                    });
+
+                    return choice;
+                }
+
+                // Each search's own number, so the answers of one typed over
+                // are dropped instead of landing under the new one.
+                var searchNumber = 0;
+
                 function runSearch() {
                     var query = input.value.trim();
                     if (query.length < 3) {
@@ -136,69 +206,56 @@
                         return;
                     }
 
+                    var mine = ++searchNumber;
+                    var asks = spellings(query);
+                    var seen = {};
+                    var shown = 0;
+                    var failed = false;
+
                     showMessage(box.dataset.searching);
 
-                    // Bias to what is on screen without excluding anything else:
-                    // "Nasr City" typed while looking at Cairo should mean the
-                    // one in Cairo, but a different governorate must still be
-                    // reachable without panning there first.
-                    var b = map.getBounds();
-                    var url = 'https://nominatim.openstreetmap.org/search'
-                        + '?format=json&limit=6&addressdetails=1'
-                        + '&accept-language=' + encodeURIComponent(box.dataset.locale || '')
-                        + '&viewbox=' + [b.getWest(), b.getNorth(), b.getEast(), b.getSouth()].join(',')
-                        + '&q=' + encodeURIComponent(query);
+                    function settle() {
+                        if (shown) return;
+                        // Nominatim rate-limits and can simply be unreachable.
+                        // Saying so beats an empty box that looks like "no such
+                        // place".
+                        showMessage(failed ? box.dataset.failed : box.dataset.noResults);
+                    }
 
-                    fetch(url, { headers: { 'Accept': 'application/json' } })
-                        .then(function (r) {
-                            if (!r.ok) throw new Error('HTTP ' + r.status);
-                            return r.json();
-                        })
-                        .then(function (rows) {
-                            if (!rows || !rows.length) {
-                                showMessage(box.dataset.noResults);
-                                return;
-                            }
-                            results.innerHTML = '';
-                            rows.forEach(function (row) {
-                                var name = row.display_name || '';
-                                var head = name.split(',')[0];
-                                var rest = name.slice(head.length + 1).trim();
-
-                                var choice = document.createElement('button');
-                                choice.type = 'button'; // never submits the form it sits in
-                                choice.className = 'map-picker-result';
-
-                                var strong = document.createElement('span');
-                                strong.className = 'place';
-                                strong.textContent = head;
-                                choice.appendChild(strong);
-
-                                if (rest) {
-                                    var small = document.createElement('span');
-                                    small.className = 'where';
-                                    small.textContent = rest;
-                                    choice.appendChild(small);
-                                }
-
-                                choice.addEventListener('click', function () {
-                                    var lat = parseFloat(row.lat);
-                                    var lng = parseFloat(row.lon);
-                                    if (isNaN(lat) || isNaN(lng)) return;
-                                    closeResults();
-                                    onPick({ lat: lat, lng: lng, name: head, bounds: boundsOf(row) });
+                    function ask(i) {
+                        fetch(urlFor(asks[i]), { headers: { 'Accept': 'application/json' } })
+                            .then(function (r) {
+                                if (!r.ok) throw new Error('HTTP ' + r.status);
+                                return r.json();
+                            })
+                            .then(function (rows) {
+                                if (mine !== searchNumber) return;
+                                (rows || []).forEach(function (row) {
+                                    var key = row.place_id || (row.lat + ',' + row.lon);
+                                    if (seen[key] || shown >= 6) return;
+                                    seen[key] = true;
+                                    if (!shown) results.innerHTML = '';
+                                    results.appendChild(choiceFor(row));
+                                    shown++;
                                 });
-
-                                results.appendChild(choice);
+                                if (shown) results.hidden = false;
+                            })
+                            .catch(function () {
+                                failed = true;
+                            })
+                            .then(function () {
+                                if (mine !== searchNumber) return;
+                                // The next spelling a second later: Nominatim's
+                                // usage policy is one request a second.
+                                if (i + 1 < asks.length) {
+                                    setTimeout(function () { if (mine === searchNumber) ask(i + 1); }, 1100);
+                                } else {
+                                    settle();
+                                }
                             });
-                            results.hidden = false;
-                        })
-                        .catch(function () {
-                            // Nominatim rate-limits and can simply be unreachable.
-                            // Saying so beats an empty box that looks like "no
-                            // such place".
-                            showMessage(box.dataset.failed);
-                        });
+                    }
+
+                    ask(0);
                 }
 
                 input.addEventListener('keydown', function (e) {

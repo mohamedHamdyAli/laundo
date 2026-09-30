@@ -272,7 +272,16 @@ component, `<x-map-search>`**, shared with `<x-map-picker>`: Nominatim on Enter
 or the button only (its usage policy forbids autocomplete), results written as
 text, and each map decides what a chosen place means — the picker drops its pin
 there, the zone drawer only looks there. Its failure message is a prop, because
-«set the pin by hand» means nothing on a map with no pin.
+«set the pin by hand» means nothing on a map with no pin. **Nominatim reads ه
+and ة as different letters** — «مدينه نصر», as it is typed, finds nothing or the
+wrong place — so a word ending in ه is asked with ة first and then as typed,
+one second apart (the usage policy), results merged (`spellings()`). ي/ى and
+the alef forms it already folds. It is OpenStreetMap by the owner's choice
+(2026-09-30): Google's Places/Geocoding would find Nasr City's districts, which
+OSM does not map, but neither API is enabled on the key's project and it is
+billed — do not switch it without asking. **Testing Arabic from the Windows
+shell lies**: the command line mangles Arabic arguments before `curl` sees them
+and every query comes back empty — send them from a UTF-8 file.
 `Zone/Services/ZoneLocator` decides an address's zone from its pin, in
 `AddressController` on create and edit: **inside a drawn, active zone → that
 zone and its city, whatever `zone_id` the app sent**; a zone **not drawn yet**
