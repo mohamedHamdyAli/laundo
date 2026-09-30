@@ -6,6 +6,7 @@ use App\Modules\Service\Models\Service;
 use App\Modules\TimeSlot\Models\TimeSlot;
 use App\Modules\TimeSlot\Repositories\TimeSlotRepository;
 use App\Modules\TimeSlot\Services\SlotCapacity;
+use App\Modules\TimeSlot\Services\SlotClock;
 use Generator;
 use Illuminate\Support\Carbon;
 
@@ -47,9 +48,13 @@ class Turnaround
 
     public const TOO_LATE = 'too_late';
 
+    /** Today's window that has ended or ends too soon to send anybody (SlotClock). */
+    public const CLOSED = 'closed';
+
     public function __construct(
         private readonly SlotCapacity $capacity,
         private readonly TimeSlotRepository $slots,
+        private readonly SlotClock $clock,
     ) {}
 
     /**
@@ -199,6 +204,10 @@ class Turnaround
      */
     public function message(Service $service, string $problem, mixed $pickupDate, ?TimeSlot $pickupSlot): string
     {
+        if ($problem === self::CLOSED) {
+            return __('This delivery window has ended or is about to. Please choose a later one.');
+        }
+
         if ($problem === self::TOO_LATE) {
             $latest = $this->latestDelivery($service, $pickupDate, $pickupSlot);
 
@@ -232,6 +241,15 @@ class Turnaround
         $problem = $deliveryDate !== null
             ? $this->problem($service, $pickupDate, $pickupSlot, $deliveryDate, $deliverySlot)
             : null;
+
+        // Today's delivery window that has ended or is about to: the order is
+        // refused for it (`WindowStillOpen`), so «valid» here would send the
+        // customer on to a 422 the sheet exists to prevent.
+        if ($problem === null && $deliveryDate !== null && $deliverySlot !== null
+            && $this->clock->isClosed($deliveryDate, $deliverySlot)) {
+            $problem = self::CLOSED;
+        }
+
         $suggestion = $this->firstDelivery($service, $pickupDate, $pickupSlot);
 
         // The day the window list is about: the one the customer is looking at
@@ -270,14 +288,17 @@ class Turnaround
                     $flags = $this->windowFlags($earliest, $latest, $windowsDate, $slot);
                     $remaining = $this->capacity->remaining($slot, $windowsDate);
                     $full = $remaining !== null && $remaining < 1;
+                    $closed = $this->clock->isClosed($windowsDate, $slot);
 
                     return $this->presentSlot($slot) + [
                         'remaining' => $remaining,
                         'is_full' => $full,
                         'too_early' => (bool) $flags['too_early'],
                         'too_late' => (bool) $flags['too_late'],
+                        // Today's window, ended or ending too soon to book.
+                        'closed' => $closed,
                         // The one flag to draw from: can the customer pick it.
-                        'available' => ! $flags['too_early'] && ! $flags['too_late'] && ! $full,
+                        'available' => ! $flags['too_early'] && ! $flags['too_late'] && ! $full && ! $closed,
                     ];
                 })
                 ->values()
@@ -347,6 +368,12 @@ class Turnaround
         for ($day = $from->copy(); $day->lte($to); $day->addDay()) {
             foreach ($slots as $slot) {
                 if ($this->windowStart($day, $slot)->lt($earliest)) {
+                    continue;
+                }
+
+                // Today's window that has ended, or ends too soon to send
+                // anybody, is no suggestion.
+                if ($this->clock->isClosed($day, $slot)) {
                     continue;
                 }
 

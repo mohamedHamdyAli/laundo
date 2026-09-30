@@ -165,6 +165,9 @@ return [
             'title' => 'Money',
             'icon' => 'bi bi-cash-stack',
             'items' => [
+                // The money the home page no longer shows, first in the group
+                // that holds the money. Its own permission, `finance.view`.
+                'finance' => 0,
                 'payment' => 1,
                 'refund' => 2,
                 'wallet' => 3,
@@ -295,6 +298,7 @@ return [
         'order_recurrence' => 'bi bi-arrow-repeat',
         'time_slot' => 'bi bi-clock-history',
 
+        'finance' => 'bi bi-graph-up',
         'payment' => 'bi bi-credit-card',
         'refund' => 'bi bi-arrow-counterclockwise',
         'wallet' => 'bi bi-wallet2',
@@ -354,6 +358,7 @@ return [
         'order_recurrence' => 'Repeat Schedules',
         'time_slot' => 'Time Slots',
 
+        'finance' => 'Finance overview',
         'payment' => 'Payments',
         'refund' => 'Refunds',
         'wallet' => 'Wallets',
@@ -413,6 +418,7 @@ return [
         'order_recurrence' => 'admin.recurrence.index',
         'time_slot' => 'admin.time_slot.index',
 
+        'finance' => 'admin.finance.index',
         'payment' => 'admin.payment.index',
         'refund' => 'admin.refund.index',
         'wallet' => 'admin.wallet.index',

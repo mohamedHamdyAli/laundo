@@ -69,6 +69,26 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | The business's own clock
+    |--------------------------------------------------------------------------
+    |
+    | Timestamps stay UTC (`timezone` above). This is the clock the business
+    | runs on: what `humanDate()` renders in, and what a time window's
+    | «08:00–10:00» means when it is turned into an instant — a leg's
+    | deadline, whether today's window has closed. Read by `displayTimezone()`.
+    |
+    | It had no entry here until 2026-09-30, so `displayTimezone()` always fell
+    | back to UTC: every window was read three hours off Cairo's clock, an
+    | order could be booked into a window that had already ended, and its
+    | driver was «late» the moment it was placed. Cairo by the owner's choice.
+    | `phpunit.xml` pins UTC so the suite reads as it was written.
+    |
+    */
+
+    'display_timezone' => env('APP_DISPLAY_TIMEZONE', 'Africa/Cairo'),
+
+    /*
+    |--------------------------------------------------------------------------
     | Application Locale Configuration
     |--------------------------------------------------------------------------
     |

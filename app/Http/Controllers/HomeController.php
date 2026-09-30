@@ -48,6 +48,12 @@ class HomeController extends Controller
             'today' => $summary->today(),
             'month' => $isLaundry ? $summary->laundryScore() : $summary->thisMonth(),
             'inFlight' => $summary->inFlight(),
+            // The charts — counts, scoped by the models like the rest, so a
+            // laundry's are its own. No money on this page: that is
+            // «ملخص الماليات», behind `finance.view`.
+            'byDay' => $summary->ordersByDay(),
+            'byService' => $summary->ordersByService(),
+            'ratings' => $summary->ratingSpread(),
         ];
 
         if ($isLaundry) {

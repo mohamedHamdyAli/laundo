@@ -531,6 +531,61 @@ Rules that are easy to break by accident:
   figure rounded and the platform's part is taken by subtraction, so the halves
   always reconcile.
 
+### The home page counts; «ملخص الماليات» has the money
+
+**No money on the home page** (the owner, 2026-09-30). The home page has no
+permission of its own, so every panel account opens it: moderators, a driver
+supervisor, a laundry's staff. A figure in pounds there was a figure all of them
+read. `DashboardSummary` counts. `Report/Services/FinanceSummary` holds the money, on
+`admin.finance.index` («ملخص الماليات», first in the Money group) behind
+**`finance.view`**. That permission comes from `Report/Models/Finance`, a
+permission carrier like `Report` and `LaundryRevenue`. Nobody holds it until
+somebody grants it; the super admin bypasses as always. It is deliberately not
+`report.view`, which every laundry owner holds.
+
+- **Every revenue figure is `RevenueReport`'s** (`summary()`, `daily()`,
+  `byMethod()`, `byService()`, `byLaundry()`, `receivables()`), dated by
+  `paid_at`, so the finance page, the revenue report and the old home tiles all
+  agree.
+- **The comparison is like for like.** `compared()` measures the month so far
+  against the same days of last month (`subMonthNoOverflow()`), never a whole
+  month against part of one. With nothing to compare against, the change is
+  null, not a percentage.
+- **«Who keeps what» is this month's *settled* settlements.** It shows
+  `laundry_amount` against `commission_amount` as the two halves of the washing.
+  The delivery fees, the customer platform fee and the tax are listed beside it,
+  never inside it (see `basisFor()`). The platform's part can be negative, and it
+  is shown that way.
+- **Tenant rules.** A laundry granted the page reads its own money through the
+  scoped models. It is not shown the drivers' pending bonuses (`owed()['drivers']`
+  is null: earnings carry no `laundry_id`) or the laundry ranking.
+
+**The charts are `admin/partials/_viz`**: ApexCharts, which is already on every
+panel page, plus a few HTML bars.
+
+- **Colours are validated roles, set as CSS variables per theme.** `--viz-s1..8`
+  is categorical in a fixed order; `--viz-o1..5` is ordinal (one blue, walked
+  the other way in dark mode); `--viz-other` is the grey for everything else.
+  They were checked with the data-viz validator against the card surfaces
+  `#ffffff` and `#172033`. Text uses `--text-strong` / `--text-muted`, never a
+  series colour.
+- **Colour follows the thing, not its rank.** A service keeps the slot of its
+  place among all services by id. Cash is the first payment method.
+- **Charts redraw only when `body.theme-dark` actually changes**, so a modal
+  opening doesn't trigger a redraw.
+- **Tooltips are built by the partial and every string goes through `esc()`.**
+  ApexCharts' own tooltip writes names with innerHTML, and a series name here is
+  an operator-editable translation or a service name.
+- **Data reaches the page as `<script type="application/json">@json(…)</script>`.**
+  `@json` escapes `<`, so a name cannot close the tag; `HomeTest` guards this.
+- **Every chart has its numbers in text.** A donut's legend is its table. A line
+  or column chart has a `<details>` table under it. A donut is drawn only from
+  three slices, and an all-zero series becomes a sentence.
+- **Days use `date()` in SQL**, the convention of `RevenueReport::daily()`.
+  Delivered, cancelled and picked-up counts come from `order_status_logs`
+  (reached through the scoped Order, since the log has no `laundry_id`), not
+  from `updated_at`.
+
 ### Tenant scoping (laundry owners share the panel)
 
 Two cooperating pieces, no middleware and no repository filtering:
@@ -590,6 +645,17 @@ event delivers on **both** channels — `NotificationEvent::channels()` returns
 - **Only `push` is mutable** (`MUTABLE_CHANNELS`). `database` is a record, not a
   delivery: muting it emptied the in-app list *and* froze the rate-limit counter
   at zero, which handed the muted user unlimited push. Absent preference = on.
+- **One account, one list** (`User::notifications()`, 2026-09-30). `Driver`,
+  `Moderator` and `LaundryStaff` are the same `users` row through a narrower
+  class, and Laravel files a notification under the class it was sent through —
+  while the driver app's Sanctum token belongs to a `Driver`. So a broadcast
+  sent through `User` never reached the driver's list. The override files and
+  reads under `User` whatever subclass it is called on; do not send around it
+  with `DatabaseNotification::create()`.
+- **A driver who registered no handset is pushed nothing**, and until
+  2026-09-30 none had: every `task_assigned` push was a «no registered device»
+  skip. `notification_logs` is where to read that off — the `failure_reason`
+  says which of «no device», «rejected permanently» or «send failed» it was.
 - Rate limit `config('push.rate_limit_per_hour', 3)` per subject, counted off the
   `database` rows; `isTransactional()` events bypass both the cap and the mute.
 - **A notification's `url` is a path, never `route()`.** It is stored now and
@@ -1075,6 +1141,27 @@ five Playwright specs** — leave it alone.
   is not rendering, so `humanDate()` cannot do it — and a `whereDate` on the raw
   column files every hour either side of midnight under the wrong date, which
   looks right in every test written in UTC. Do not simplify it back.
+  **And a third, `TimeSlot/Services/SlotClock`** (2026-09-30).
+  - It is the one place a window's «08:00–10:00 on Thursday» becomes an
+    instant, in `displayTimezone()`. Every leg's `due_at` (`TaskGenerator`) and
+    the customer's arrival estimate (`OrderEta`) go through it, as does every
+    «can today's window still be booked».
+  - Before this, `TaskGenerator` read the windows as UTC, so `due_at` sat three
+    hours after the moment it meant. Also, nothing refused a window that had
+    already ended: an order was taken at 14:11 for that morning's 08:00–10:00,
+    and its driver was «late» on the spot.
+  - **A window of today closes `Slot_Booking_Cutoff_Minutes` before its end**
+    (Operations tab; blank = 60, 0 = until it ends).
+  - Where the closed state shows up: `GET /time-slots` carries `closed` and
+    `closes_at`; `GET /delivery-window` and the reschedule options carry
+    `closed`, and it is folded into `available`.
+  - Who refuses it: `POST /orders` (`Concerns/WindowStillOpen`, 422 on the
+    slot field, with `OrderService::place()` as the backstop), and a reschedule
+    (`slot_closed`).
+  - `Turnaround` needs none of this: it only compares windows with each other,
+    both on the same wall clock.
+  - The open legs were re-dated by
+    `2026_09_30_120000_recompute_open_leg_deadlines_on_the_business_clock`.
 
 ### Helpers (`app/Helpers/`, auto-loaded via composer `files`)
 
@@ -1122,7 +1209,7 @@ regression, not as a flaky stub.
 
 `docs/` is maintained by hand and drifts if you don't:
 
-- `docs/postman/Laundo API v1.postman_collection.json` — 106 requests in 6 caller-grouped folders, one per endpoint, with substantive per-request descriptions. An endpoint diff will not catch a **stale request body**; check the bodies when you add a field.
+- `docs/postman/Laundo API v1.postman_collection.json` — 114 requests in 6 caller-grouped folders, one per endpoint except the eight notification/device endpoints, which both apps call and so sit in both 5.2 and 6.4, with substantive per-request descriptions. An endpoint diff will not catch a **stale request body**; check the bodies when you add a field.
 - `docs/postman/generate-reference.py` → `docs/api-reference.html`. **The endpoint list is hand-written Python inside that script**, not derived from the collection or from `route:list`. Run it from the repo root (it writes a relative path).
 - `docs/laundo-screen-actions.html` + `.pdf` — every Figma screen against the route its button calls and the panel page staff act from. The HTML is the source; the PDF is rendered from it with headless Chrome `--print-to-pdf`.
 - `docs/laundo-qa-guide.html` + `.pdf` — the QA guide, in Arabic: every panel screen, what must exist before it works, what it feeds in the apps, its permission, and the traps a tester would otherwise file as bugs. Ordered by build order, the same order `config/menu.php` uses. Same HTML-is-the-source rule as above; regenerate the PDF with:
@@ -1164,8 +1251,10 @@ regression, not as a flaky stub.
   previous day's**: driver edits are now staged for approval, and the save
   response deliberately returns the old values), joined by
   `mobile-2026-09-28-driver-piece-count` (`expected_pieces` is `null` until a
-  counted leg is confirmed) and `mobile-2026-09-30-driver-order-details` (the
-  order screen, and `order_id` on every task row). For the customer app: `mobile-2026-09-28-coupon-scope`,
+  counted leg is confirmed), `mobile-2026-09-30-driver-order-details` (the
+  order screen, and `order_id` on every task row) and
+  `mobile-2026-09-30-driver-notifications` (register the handset — push never
+  reached a driver before it). For the customer app: `mobile-2026-09-28-coupon-scope`,
   `mobile-2026-09-28-turnaround` and `mobile-2026-09-29-zones`. Each note's
   **الحالة** line says whether it is live yet — update it when it deploys.
 - **`docs/qc-{date}-release.html` + `.pdf` is the note for QC**, one per deploy,
@@ -1275,13 +1364,22 @@ Don't "fix" these blind, but know they're there:
   is `LogSmsDriver`), so `OtpService` issues one static value and logs a loud
   `[OTP:STATIC-CODE — NOT RANDOM]` warning each time. Set `OTP_STATIC_CODE=` in
   the env to restore random codes once an SMS provider exists.
-- **`app.display_timezone` is unset on the deployed box**, so `displayTimezone()`
-  falls back to `UTC` and every `humanDate()` in the panel — and the driver app's
-  day filter — renders and matches a UTC day while the business runs on Cairo
-  time. Consistent, but three hours out at the edges of each day. It is one env
-  line to change and it moves rendering everywhere at once, so it is the owner's
-  call rather than a tidy-up. Worth knowing before reading a timestamp on
-  production and concluding something is wrong.
+- **The business clock is Cairo, and it is set in two places.**
+  - `config('app.display_timezone')` is `env('APP_DISPLAY_TIMEZONE',
+    'Africa/Cairo')`. It had no entry in `config/app.php` until 2026-09-30, so
+    what this file used to call «one env line» could not have worked.
+  - The **`SetTimezone` middleware** sets it on every HTTP request from the
+    `Country_Id` country's `timezone`, which on live is `Africa/Cairo`. So web
+    requests already rendered in Cairo, while the console, the queue and tinker
+    fell back to UTC. That is why an earlier check from tinker concluded it was
+    «unset».
+  - The config default now covers the processes without middleware.
+  - `phpunit.xml` pins `APP_DISPLAY_TIMEZONE=UTC`, but a feature test that
+    sends a request picks up the seeded country's Cairo through the middleware.
+    Assert instants against `displayTimezone()`, not against a UTC wall time.
+  - «Today» in the home page and the reports is still a UTC day
+    (`now()->startOfDay()`, SQL `date()`). That is three hours out at the day's
+    edges, and not changed yet.
 - `public/storage` must be the **symlink**, not a real directory. If it is a directory, every uploaded file 404s and signed routes 403; fix with `rmdir` then `php artisan storage:link`.
 
 ## Frontend

@@ -4,6 +4,7 @@ namespace App\Http\Requests\Api\V1;
 
 use App\Http\Requests\Api\V1\Concerns\DeliveryAfterTurnaround;
 use App\Http\Requests\Api\V1\Concerns\OneDiscountPerOrder;
+use App\Http\Requests\Api\V1\Concerns\WindowStillOpen;
 use App\Modules\Payment\Enums\PaymentMethod;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -21,6 +22,7 @@ class OrderRequest extends FormRequest
 {
     use DeliveryAfterTurnaround;
     use OneDiscountPerOrder;
+    use WindowStillOpen;
 
     public function authorize(): bool
     {
@@ -127,6 +129,7 @@ class OrderRequest extends FormRequest
     public function withValidator(Validator $validator): void
     {
         $this->refuseASecondDiscount($validator);
+        $this->refuseAClosedWindow($validator);
         $this->refuseAnEarlyDelivery($validator);
     }
 }

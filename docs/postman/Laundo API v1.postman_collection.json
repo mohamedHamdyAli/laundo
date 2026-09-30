@@ -4296,7 +4296,7 @@
         },
         {
           "name": "5.2 · Notifications & devices",
-          "description": "The in-app list, the device registry, and the design's «الإشعارات» toggle.\n\nMuting a channel **cannot** silence a transactional message: an order waiting on a customer who was never told is an order that simply stops.",
+          "description": "The in-app list, the device registry, and the design's «الإشعارات» toggle.\n\nMuting a channel **cannot** silence a transactional message: an order waiting on a customer who was never told is an order that simply stops.\n\nThe driver app calls the same endpoints — see **6.4**, the same requests with the driver's token.",
           "item": [
             {
               "name": "List notifications",
@@ -6157,6 +6157,521 @@
                 "body": {
                   "mode": "raw",
                   "raw": "{\n    \"lat\": 30.0444,\n    \"lng\": 31.2357\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{driver_token}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "6.4 · Notifications & devices",
+          "description": "The same eight endpoints as **5.2**, with the driver's token. They serve both apps: the list, the bell count and the device registry answer for whoever holds the token.\n\n**Push only works once the handset is registered** (`POST /devices` with `app: driver`) — FCM has been live on the server since late September, which overtakes the 2026-09-20 answer that it was not.",
+          "item": [
+            {
+              "name": "List notifications",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Responds with the API envelope', function () {",
+                      "    const body = pm.response.json();",
+                      "    pm.expect(body).to.have.property('key');",
+                      "    pm.expect(body).to.have.property('code', pm.response.code);",
+                      "});",
+                      "",
+                      "const body = pm.response.json();",
+                      "const first = Array.isArray(body?.data) ? body.data[0] : null;",
+                      "",
+                      "if (first?.id) {",
+                      "    pm.collectionVariables.set('notification_id', first.id);",
+                      "}"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "lang",
+                    "value": "{{lang}}",
+                    "description": "ar | en — read by the ApiLocale middleware. Optional; falls back to the default language."
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/v1/notifications",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "notifications"
+                  ],
+                  "query": [
+                    {
+                      "key": "unread",
+                      "value": "true",
+                      "description": "Only unread.",
+                      "disabled": true
+                    },
+                    {
+                      "key": "per_page",
+                      "value": "20",
+                      "description": "Default 20, capped at 50.",
+                      "disabled": true
+                    },
+                    {
+                      "key": "page",
+                      "value": "1",
+                      "disabled": true
+                    }
+                  ]
+                },
+                "description": "The driver's own list, newest first — the same endpoint the customer app reads, answered for whoever holds the token.\n\nWhat reaches a driver, by `event`: `task_assigned` (`meta.task_id`) — a leg handed to them, by the dispatcher or by an operator; `manual_message` (`meta.audience`) — a message an operator wrote from the panel; `complaint_closed` (`meta.complaint_id`, `meta.reference`) — a complaint they filed was closed; `driver_record_rejected` (`meta.driver_record_submission_id`) — a vehicle/licence/document change was refused, with the reason in `body`.\n\nUntil 2026-09-30 an operator's broadcast to drivers never showed here: it was filed under the account while the driver app's token reads as a driver. One list now.",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{driver_token}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Unread count",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Responds with the API envelope', function () {",
+                      "    const body = pm.response.json();",
+                      "    pm.expect(body).to.have.property('key');",
+                      "    pm.expect(body).to.have.property('code', pm.response.code);",
+                      "});"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "lang",
+                    "value": "{{lang}}",
+                    "description": "ar | en — read by the ApiLocale middleware. Optional; falls back to the default language."
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/v1/notifications/unread-count",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "notifications",
+                    "unread-count"
+                  ]
+                },
+                "description": "The badge.",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{driver_token}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Mark one read",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Responds with the API envelope', function () {",
+                      "    const body = pm.response.json();",
+                      "    pm.expect(body).to.have.property('key');",
+                      "    pm.expect(body).to.have.property('code', pm.response.code);",
+                      "});"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "lang",
+                    "value": "{{lang}}",
+                    "description": "ar | en — read by the ApiLocale middleware. Optional; falls back to the default language."
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/v1/notifications/{{notification_id}}/read",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "notifications",
+                    "{{notification_id}}",
+                    "read"
+                  ]
+                },
+                "description": "404 when the id is not this user's.",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{driver_token}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Mark all read",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Responds with the API envelope', function () {",
+                      "    const body = pm.response.json();",
+                      "    pm.expect(body).to.have.property('key');",
+                      "    pm.expect(body).to.have.property('code', pm.response.code);",
+                      "});"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "lang",
+                    "value": "{{lang}}",
+                    "description": "ar | en — read by the ApiLocale middleware. Optional; falls back to the default language."
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/v1/notifications/read-all",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "notifications",
+                    "read-all"
+                  ]
+                },
+                "description": "Clears the badge in one call — marks every unread notification for the signed-in user as read. Empty body.\n\nReturns a message, not a count: the number that mattered was the one on the badge before the call, and `GET /notifications/unread-count` answers that. Safe to repeat; a second call has nothing left to mark.",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{driver_token}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Register device",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Responds with the API envelope', function () {",
+                      "    const body = pm.response.json();",
+                      "    pm.expect(body).to.have.property('key');",
+                      "    pm.expect(body).to.have.property('code', pm.response.code);",
+                      "});"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "lang",
+                    "value": "{{lang}}",
+                    "description": "ar | en — read by the ApiLocale middleware. Optional; falls back to the default language."
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/v1/devices",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "devices"
+                  ]
+                },
+                "description": "**Call this after every sign-in and whenever FCM hands the app a new token** (`onTokenRefresh`). Without it the driver is never pushed anything: on 2026-09-30 no driver had ever registered a handset, and every «task assigned» push since the start was skipped as «no registered device».\n\nSend `\"app\": \"driver\"`. The FCM token must come from the Firebase project **`laundo-28c96`** — the one the server sends through; a token from another project is refused by Google and deleted on the first send.\n\nKeyed on the token, not the user: a handset that changes hands follows its new owner.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"token\": \"fcm-device-token\",\n    \"platform\": \"android\",\n    \"app\": \"driver\",\n    \"locale\": \"ar\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{driver_token}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Forget device",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Responds with the API envelope', function () {",
+                      "    const body = pm.response.json();",
+                      "    pm.expect(body).to.have.property('key');",
+                      "    pm.expect(body).to.have.property('code', pm.response.code);",
+                      "});"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "DELETE",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "lang",
+                    "value": "{{lang}}",
+                    "description": "ar | en — read by the ApiLocale middleware. Optional; falls back to the default language."
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/v1/devices",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "devices"
+                  ]
+                },
+                "description": "Call it on sign-out, before the token is dropped — otherwise the next person to hold the handset is not the one being told about this driver's legs until they sign in and register it again.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"token\": \"fcm-device-token\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{driver_token}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Notification preferences",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Responds with the API envelope', function () {",
+                      "    const body = pm.response.json();",
+                      "    pm.expect(body).to.have.property('key');",
+                      "    pm.expect(body).to.have.property('code', pm.response.code);",
+                      "});"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "lang",
+                    "value": "{{lang}}",
+                    "description": "ar | en — read by the ApiLocale middleware. Optional; falls back to the default language."
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/v1/notification-preferences",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "notification-preferences"
+                  ]
+                },
+                "description": "One row per channel a person may silence, which today is `push` and nothing else. Absent means **on**: only exceptions are stored.\n\n`database` is deliberately not listed. The in-app list is the **record** of what somebody was told, not a way of telling them — muting it made nothing quieter and only left the push arriving on the handset and the list the customer opened from it empty.",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{driver_token}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Update preference",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Responds with the API envelope', function () {",
+                      "    const body = pm.response.json();",
+                      "    pm.expect(body).to.have.property('key');",
+                      "    pm.expect(body).to.have.property('code', pm.response.code);",
+                      "});"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "lang",
+                    "value": "{{lang}}",
+                    "description": "ar | en — read by the ApiLocale middleware. Optional; falls back to the default language."
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/v1/notification-preferences",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "notification-preferences"
+                  ]
+                },
+                "description": "One channel at a time. `channel` must be one the account screen actually offers — `push` — and anything else is refused with **422**.\n\n`channel: \"database\"` used to be accepted and is the reason this note exists: it silenced the in-app list while push kept arriving, so a customer tapped a notification, opened the list it pointed at, and found nothing there.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"channel\": \"push\",\n    \"enabled\": false\n}",
                   "options": {
                     "raw": {
                       "language": "json"

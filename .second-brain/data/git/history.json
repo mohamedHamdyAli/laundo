@@ -1,8 +1,20 @@
 {
     "available": true,
-    "head": "f9a0c540e4d93df0c44d7cc3b1afe6af9beada33",
-    "commits_scanned": 115,
+    "head": "cee193ba686b085c1e635b79ec4ddb0e03f8b458",
+    "commits_scanned": 117,
     "recent": [
+        {
+            "sha": "cee193ba",
+            "date": "2026-09-30",
+            "subject": "feat: the driver's order screen, GET /api/v1/driver/orders/{id}",
+            "files": 6
+        },
+        {
+            "sha": "3942838e",
+            "date": "2026-09-30",
+            "subject": "fix: the place search finds «مدينه نصر», typed with ه",
+            "files": 2
+        },
         {
             "sha": "f9a0c540",
             "date": "2026-09-30",
@@ -80,24 +92,12 @@
             "date": "2026-09-23",
             "subject": "fix: name the figure under each price, and translate what shipped in English",
             "files": 1
-        },
-        {
-            "sha": "197cdc3c",
-            "date": "2026-09-23",
-            "subject": "feat: show the customer price under the price somebody is setting",
-            "files": 3
-        },
-        {
-            "sha": "84cd5671",
-            "date": "2026-09-23",
-            "subject": "feat: a fee the customer pays, and driver work kept with the platform",
-            "files": 39
         }
     ],
     "hottest_files": {
         "routes/web.php": 24,
+        "docs/postman/Laundo API v1.postman_collection.json": 18,
         "app/Helpers/Helpers.php": 18,
-        "docs/postman/Laundo API v1.postman_collection.json": 17,
         "resources/views/admin/setting/generalSetting/forms/formInput.blade.php": 15,
         "config/menu.php": 14,
         "resources/views/layouts/footer_script.blade.php": 14,
@@ -106,25 +106,26 @@
         "app/Http/Controllers/Api/V1/OrderController.php": 11,
         "app/Services/languages/LanguageService.php": 11,
         "config/dashboard.php": 11,
+        "docs/mobile-api-changes.md": 10,
         "database/seeders/SettingsSeeder.php": 10,
         "app/Modules/Order/Services/OrderService.php": 9,
         "app/Modules/Order/Services/orderCrudService.php": 9,
-        "docs/mobile-api-changes.md": 9,
         "resources/views/admin/order/show.blade.php": 9,
         "app/Modules/Driver/Services/DriverCard.php": 9,
         "resources/views/layouts/topbar.blade.php": 9,
         "resources/views/layouts/sidebar.blade.php": 9,
+        "routes/api.php": 8,
         "resources/views/admin/order/index.blade.php": 8,
         "app/Modules/User/Models/User.php": 8,
         "resources/views/admin/banner/forms/formInput.blade.php": 8,
         "app/Services/CachingService.php": 8,
+        "tests/Feature/Api/DriverTaskTest.php": 7,
         "app/Modules/City/Models/City.php": 7,
         "app/Modules/Order/Models/Order.php": 7,
         "app/Modules/Pricing/Services/pricingService.php": 7,
         "app/Providers/AppServiceProvider.php": 7,
         "resources/views/admin/laundry/index.blade.php": 7,
         "resources/views/admin/pricing/index.blade.php": 7,
-        "routes/api.php": 7,
         "app/Http/Controllers/Api/V1/DriverController.php": 7,
         "resources/views/admin/home.blade.php": 7,
         "resources/views/admin/roles/index.blade.php": 7,
@@ -133,7 +134,6 @@
         "resources/views/auth/login.blade.php": 7,
         "app/Modules/Category/Models/Category.php": 7,
         "app/Modules/Country/Requests/CountryRequest.php": 6,
-        "app/Modules/Laundry/Models/Laundry.php": 6,
-        "app/Modules/Order/Models/OrderTask.php": 6
+        "app/Modules/Laundry/Models/Laundry.php": 6
     }
 }

@@ -364,3 +364,49 @@ windows, the order's own status and the driver's other legs on it were nowhere.
 - /security-review: nothing at or above the bar.
 - The full suite ran in a clean worktree (HEAD plus this change only), because
   another session's finance work was half-written in the main tree.
+
+## 2026-09-30 — the home page without money, and a finance page of its own
+
+The owner: «العميل مش محتاج يوضح ف الصفحة تفاصيل كتير عن الماليات… صفحة خاصة بالماليات… والصفحة دي احصائيات بس… رسم بياني دايره».
+Decisions: a **new permission** for the finance page (super admin only until granted); the laundry's home loses its money too; four charts — stages now, orders per day, orders by service, ratings.
+
+- [x] `Report/Models/Finance` — permission carrier (`finance.*`), like `Report` / `LaundryRevenue`; `config/dashboard.php`; PermissionSeeder
+- [x] `Report/Services/FinanceSummary` — today's money taken, the month's net / owed / paid orders, money per day (from `RevenueReport::summary()` / `daily()`, one definition)
+- [x] `admin.finance.index` (`permission:finance.view`), `Report/Controllers/FinanceController`, `admin/finance/index`, Money group's first item
+- [x] `DashboardSummary`: no money anywhere (today, month, laundry score); + picked up today, completed this month, `ordersByDay()`, `ordersByService()`, `ratingSpread()` — all through the scoped Order
+- [x] Home view: stages donut (replaces the tiles, legend keeps icons + counts), orders per day (lines + table view), by service (donut, ≤5 + «other»), ratings (HTML bars)
+- [x] Charts: ApexCharts (already on every panel page); palettes validated (categorical 1–3, 1–5 ring, ordinal blue both modes); panel tokens for ink/grid; redraw on `body.theme-dark`; custom tooltips with escaped text (translations are operator-editable)
+- [x] Tests: HomeTest (no money on either home, chart series, tenant), FinanceTest (gate, figures, menu), translations
+- [x] Browser: light + dark, laundry owner, phone width; full suite; /code-review, /security-review
+- [x] Docs: CLAUDE.md, Changelog, QA guide, QC note
+
+### Review
+
+- Done as planned, plus more on the finance page at the owner's «زود احصائيات»: deltas against the same days last month, «who keeps what», payment methods, top services and laundries.
+- Security review: nothing exploitable. The two `@json([...])` array literals (which Blade splits on commas, dropping the escaping flags) go through a variable now.
+
+## 2026-09-30 — today's windows on the business clock
+
+The owner: «لما بطلب بميعاد ساعه فاتت بيوصل للمندوب انه متاخر…». Decisions: Cairo; today's window closes an hour before it ends, as a setting.
+
+- [x] `TimeSlot/Services/SlotClock` — the one place a window becomes an instant; `TaskGenerator`, `OrderEta`, `Turnaround`, `GeoController`, reschedule
+- [x] `WindowStillOpen` on `OrderRequest`; backstops in `place()` (pickup and delivery) and `RescheduleService`
+- [x] `Slot_Booking_Cutoff_Minutes` (Operations tab); `app.display_timezone` defaults to Cairo; phpunit pins UTC
+- [x] Data migration re-dating open legs (run `config:clear` **before** `migrate` on deploy)
+- [x] Tests, mobile note, QA guide, QC note
+
+### Review
+
+- Code review found `delivery-window` calling a closed chosen delivery valid → `Turnaround::CLOSED`. Security review: clean.
+- The full suite caught `TrackPayloadTest` booking yesterday through `place()`; it books ahead and travels now.
+
+## 2026-09-30 — «مفيش اشعارات بتوصل للدرايفر»
+
+- [x] Live: FCM works (111 customer pushes); **0 of 6 drivers ever registered a handset** → 206 `task_assigned` pushes skipped. App work → `docs/mobile-2026-09-30-driver-notifications.md`, Postman 6.4, the 2026-09-20 answer marked overtaken
+- [x] The list API already served drivers. But a row was filed under the sending class, so what went through `User` (broadcasts, closed complaints) never reached a driver's list → `User::notifications()` + migration `2026_09_30_130000`
+- [x] Tests prove the fix (they fail without it)
+
+### Review
+
+- The backend could not have fixed the push: without a device token there is nobody to send to. What it could fix was the list, and the note that told the app team FCM was off.
+

@@ -13,6 +13,7 @@ use App\Modules\Order\Services\TaskService;
 use App\Modules\TimeSlot\Models\TimeSlot;
 use App\Modules\User\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
@@ -443,7 +444,10 @@ class RescheduleTest extends TestCase
     #[Test]
     public function today_is_allowed(): void
     {
-        // Postponed at nine in the morning, wants the afternoon.
+        // Postponed at nine in the morning (Cairo), wants today's 10:00–12:00 —
+        // still open: it closes an hour before it ends. The clock is pinned
+        // because the window really does close later in the day.
+        $this->travelTo(Carbon::parse(now()->toDateString().' 06:00:00', 'UTC'));
         $order = $this->order();
         $this->postpone($order);
 

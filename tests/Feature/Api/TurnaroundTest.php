@@ -448,7 +448,9 @@ class TurnaroundTest extends TestCase
 
         // And the leg that brings the pieces back is due by the new window.
         $back = OrderTask::where('order_id', $order->id)->where('type', TaskType::DeliverToCustomer->value)->firstOrFail();
-        $this->assertSame($this->day(3).' 12:00', $back->due_at->format('Y-m-d H:i'));
+        // Read on the business's clock: the window's «12:00» is Cairo's (the
+        // country the request ran in), and `due_at` is stored UTC.
+        $this->assertSame($this->day(3).' 12:00', $back->due_at->timezone(displayTimezone())->format('Y-m-d H:i'));
     }
 
     #[Test]
@@ -517,7 +519,9 @@ class TurnaroundTest extends TestCase
             'date' => $this->day(1),
         ], $this->apiHeaders())->assertOk();
 
-        $due = fn (TaskType $type) => OrderTask::where('order_id', $order->id)->where('type', $type->value)->firstOrFail()->due_at->format('Y-m-d H:i');
+        // On the business's clock, as the windows are.
+        $due = fn (TaskType $type) => OrderTask::where('order_id', $order->id)->where('type', $type->value)->firstOrFail()
+            ->due_at->timezone(displayTimezone())->format('Y-m-d H:i');
 
         // The pickup at the end of its new window, the hand-over two hours on.
         $this->assertSame($this->day(1).' 21:00', $due(TaskType::PickupFromCustomer));

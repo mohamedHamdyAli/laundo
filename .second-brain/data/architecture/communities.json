@@ -147,7 +147,7 @@
             "admin.service.update"
         ],
         "node_count": 262,
-        "cohesion": 0.522,
+        "cohesion": 0.52,
         "screens": [
             {
                 "key": "service",
@@ -421,8 +421,8 @@
             "admin.driver_bonus_rule.toggleStatus",
             "admin.driver_bonus_rule.update"
         ],
-        "node_count": 1066,
-        "cohesion": 0.461,
+        "node_count": 1067,
+        "cohesion": 0.452,
         "screens": [
             {
                 "key": "order_task",
@@ -518,8 +518,8 @@
             "admin.user.toggleStatus",
             "admin.user.update"
         ],
-        "node_count": 78,
-        "cohesion": 0.218,
+        "node_count": 79,
+        "cohesion": 0.216,
         "screens": [
             {
                 "key": "user",
@@ -766,8 +766,8 @@
             "admin.refund.index",
             "admin.refund.reject"
         ],
-        "node_count": 762,
-        "cohesion": 0.415,
+        "node_count": 763,
+        "cohesion": 0.405,
         "screens": [
             {
                 "key": "order",
@@ -872,8 +872,8 @@
             "admin.time_slot.toggleStatus",
             "admin.time_slot.update"
         ],
-        "node_count": 566,
-        "cohesion": 0.378,
+        "node_count": 575,
+        "cohesion": 0.376,
         "screens": [
             {
                 "key": "complaint",
@@ -922,6 +922,7 @@
         "evidence": "config/menu.php → groups.money",
         "order": 9,
         "modules": [
+            "Report",
             "Payment",
             "Wallet"
         ],
@@ -934,6 +935,8 @@
             "App\\Modules\\Payment\\Models\\OrderSettlementLine",
             "App\\Modules\\Payment\\Models\\Payment",
             "App\\Modules\\Payment\\Models\\Refund",
+            "App\\Modules\\Report\\Models\\Finance",
+            "App\\Modules\\Report\\Models\\Report",
             "App\\Modules\\Wallet\\Models\\Wallet",
             "App\\Modules\\Wallet\\Models\\WalletTransaction"
         ],
@@ -946,10 +949,12 @@
             "order_settlement_lines",
             "payments",
             "refunds",
+            "finances_do_not_exist",
+            "reports_do_not_exist",
             "wallets",
             "wallet_transactions"
         ],
-        "route_count": 33,
+        "route_count": 40,
         "routes": [
             "admin.commission_rule.create",
             "admin.commission_rule.delete",
@@ -962,6 +967,7 @@
             "admin.commission_rule.update",
             "admin.earning.index",
             "admin.earning.search",
+            "admin.finance.index",
             "admin.laundry_revenue.deduct",
             "admin.laundry_revenue.export",
             "admin.laundry_revenue.index",
@@ -975,6 +981,12 @@
             "admin.refund.reject",
             "admin.refund.search",
             "admin.refund.settle",
+            "admin.report.drivers",
+            "admin.report.export",
+            "admin.report.laundries",
+            "admin.report.operations",
+            "admin.report.orders",
+            "admin.report.revenue",
             "admin.settlement.index",
             "admin.settlement.search",
             "admin.settlement.settle",
@@ -985,9 +997,17 @@
             "admin.wallet.search",
             "admin.wallet.show"
         ],
-        "node_count": 389,
-        "cohesion": 0.491,
+        "node_count": 518,
+        "cohesion": 0.505,
         "screens": [
+            {
+                "key": "finance",
+                "title": "Finance overview",
+                "route": "admin.finance.index",
+                "modules": [
+                    "Report"
+                ]
+            },
             {
                 "key": "payment",
                 "title": "Payments",
@@ -1038,6 +1058,7 @@
             }
         ],
         "menu_keys": [
+            "finance",
             "payment",
             "refund",
             "wallet",
@@ -1056,13 +1077,16 @@
             "Report"
         ],
         "models": [
+            "App\\Modules\\Report\\Models\\Finance",
             "App\\Modules\\Report\\Models\\Report"
         ],
         "tables": [
+            "finances_do_not_exist",
             "reports_do_not_exist"
         ],
-        "route_count": 6,
+        "route_count": 7,
         "routes": [
+            "admin.finance.index",
             "admin.report.drivers",
             "admin.report.export",
             "admin.report.laundries",
@@ -1070,8 +1094,8 @@
             "admin.report.orders",
             "admin.report.revenue"
         ],
-        "node_count": 99,
-        "cohesion": 0.486,
+        "node_count": 129,
+        "cohesion": 0.498,
         "screens": [
             {
                 "key": "report",
@@ -1097,7 +1121,7 @@
         ],
         "models": [],
         "tables": [],
-        "route_count": 105,
+        "route_count": 106,
         "routes": [
             "api.v1.addresses.default",
             "api.v1.addresses.destroy",
@@ -1131,17 +1155,17 @@
             "api.v1.driver.location",
             "api.v1.driver.login",
             "api.v1.driver.logout",
+            "api.v1.driver.orders.show",
             "api.v1.driver.password",
             "api.v1.driver.profile",
             "api.v1.driver.profile.update",
             "api.v1.driver.reset-password",
             "api.v1.driver.summary",
             "api.v1.driver.tasks.complete",
-            "api.v1.driver.tasks.fail",
-            "api.v1.driver.tasks.failure-reasons"
+            "api.v1.driver.tasks.fail"
         ],
-        "node_count": 269,
-        "cohesion": 0.392
+        "node_count": 271,
+        "cohesion": 0.386
     },
     {
         "slug": "authentication",
@@ -1182,8 +1206,8 @@
         "tables": [],
         "route_count": 0,
         "routes": [],
-        "node_count": 215,
-        "cohesion": 0.448
+        "node_count": 217,
+        "cohesion": 0.442
     },
     {
         "slug": "public_site",
@@ -1215,8 +1239,8 @@
         "tables": [],
         "route_count": 0,
         "routes": [],
-        "node_count": 1610,
-        "cohesion": 0.364
+        "node_count": 1653,
+        "cohesion": 0.361
     },
     {
         "slug": "routing_and_distance",
@@ -1232,7 +1256,7 @@
         "route_count": 0,
         "routes": [],
         "node_count": 36,
-        "cohesion": 0.248
+        "cohesion": 0.246
     },
     {
         "slug": "system",
@@ -1314,8 +1338,8 @@
             "admin.myNotifications.unread",
             "admin.notification.compose"
         ],
-        "node_count": 1105,
-        "cohesion": 0.444,
+        "node_count": 1107,
+        "cohesion": 0.44,
         "screens": [
             {
                 "key": "moderator",

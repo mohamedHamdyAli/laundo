@@ -30,6 +30,8 @@
              asserts is arithmetic rather than whatever Google answered today.
              The Google driver is exercised on its own with Http::fake(). -->
         <env name="ROUTING_DRIVER" value="haversine"/>
+        <!-- The suite was written in UTC; a test about the business clock sets it. -->
+        <env name="APP_DISPLAY_TIMEZONE" value="UTC"/>
         <env name="SESSION_DRIVER" value="array"/>
         <env name="PULSE_ENABLED" value="false"/>
         <env name="TELESCOPE_ENABLED" value="false"/>

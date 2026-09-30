@@ -11,12 +11,12 @@
     "surfaces": {
         "panel": {
             "prefix": "/admin",
-            "routes": 316,
+            "routes": 317,
             "note": "Blade admin panel; laundry owners share it and are confined by the tenant scope"
         },
         "api": {
             "prefix": "/api/v1",
-            "routes": 105,
+            "routes": 106,
             "note": "stateless JSON for the customer app and the driver app"
         },
         "landing": {
@@ -61,50 +61,50 @@
     "scale": {
         "communities": 17,
         "modules": 42,
-        "features": 441,
-        "routes": 446,
+        "features": 445,
+        "routes": 448,
         "tables": 71,
         "nodes_by_type": {
-            "class": 535,
+            "class": 541,
             "command": 10,
             "enum": 21,
-            "feature": 441,
-            "file": 1033,
+            "feature": 445,
+            "file": 1047,
             "integration": 5,
             "interface": 4,
-            "method": 3202,
+            "method": 3259,
             "module": 42,
-            "permission": 226,
-            "route": 446,
+            "permission": 231,
+            "route": 448,
             "table": 71,
-            "test": 150,
-            "trait": 5,
-            "view": 290
+            "test": 152,
+            "trait": 6,
+            "view": 292
         },
         "edges_by_type": {
-            "contains": 5268,
-            "implemented_by": 4027,
-            "tested_by": 3009,
-            "imports": 2392,
-            "references": 2331,
-            "entry_point": 1336,
-            "depends_on": 1078,
-            "route_to": 861,
-            "calls": 837,
-            "touches": 550,
-            "guarded_by": 405,
-            "includes": 365,
-            "extends": 233,
-            "renders": 173,
+            "contains": 5350,
+            "implemented_by": 4101,
+            "tested_by": 3067,
+            "imports": 2454,
+            "references": 2386,
+            "entry_point": 1362,
+            "depends_on": 1106,
+            "calls": 866,
+            "route_to": 865,
+            "touches": 573,
+            "guarded_by": 407,
+            "includes": 368,
+            "extends": 236,
+            "renders": 174,
             "writes_table": 153,
-            "co_changes": 99,
+            "co_changes": 109,
             "foreign_key": 98,
-            "uses_trait": 89,
+            "uses_trait": 91,
             "belongs_to": 83,
             "validates": 66,
             "defined_by": 62,
             "maps_to": 62,
-            "integrates": 56,
+            "integrates": 57,
             "has_many": 27,
             "implements": 6,
             "belongs_to_many": 4,
@@ -135,7 +135,7 @@
                 "Pricing"
             ],
             "routes": 31,
-            "cohesion": 0.522
+            "cohesion": 0.52
         },
         {
             "slug": "laundries",
@@ -160,7 +160,7 @@
                 "Payment"
             ],
             "routes": 79,
-            "cohesion": 0.461
+            "cohesion": 0.452
         },
         {
             "slug": "user",
@@ -170,7 +170,7 @@
                 "User"
             ],
             "routes": 9,
-            "cohesion": 0.218
+            "cohesion": 0.216
         },
         {
             "slug": "marketing",
@@ -199,7 +199,7 @@
                 "Recurrence"
             ],
             "routes": 45,
-            "cohesion": 0.415
+            "cohesion": 0.405
         },
         {
             "slug": "operations",
@@ -211,18 +211,19 @@
                 "TimeSlot"
             ],
             "routes": 31,
-            "cohesion": 0.378
+            "cohesion": 0.376
         },
         {
             "slug": "money",
             "title": "Money",
             "source": "menu",
             "modules": [
+                "Report",
                 "Payment",
                 "Wallet"
             ],
-            "routes": 33,
-            "cohesion": 0.491
+            "routes": 40,
+            "cohesion": 0.505
         },
         {
             "slug": "report",
@@ -231,8 +232,8 @@
             "modules": [
                 "Report"
             ],
-            "routes": 6,
-            "cohesion": 0.486
+            "routes": 7,
+            "cohesion": 0.498
         },
         {
             "slug": "api",
@@ -241,8 +242,8 @@
             "modules": [
                 "Api"
             ],
-            "routes": 105,
-            "cohesion": 0.392
+            "routes": 106,
+            "cohesion": 0.386
         },
         {
             "slug": "authentication",
@@ -262,7 +263,7 @@
                 "Database"
             ],
             "routes": 0,
-            "cohesion": 0.448
+            "cohesion": 0.442
         },
         {
             "slug": "public_site",
@@ -283,7 +284,7 @@
                 "Docs"
             ],
             "routes": 0,
-            "cohesion": 0.364
+            "cohesion": 0.361
         },
         {
             "slug": "routing_and_distance",
@@ -293,7 +294,7 @@
                 "Routing"
             ],
             "routes": 0,
-            "cohesion": 0.248
+            "cohesion": 0.246
         },
         {
             "slug": "system",
@@ -309,7 +310,7 @@
                 "Roles"
             ],
             "routes": 67,
-            "cohesion": 0.444
+            "cohesion": 0.44
         }
     ],
     "runtime": {
@@ -374,6 +375,9 @@
         "docs/mobile-2026-09-28-driver-piece-count.md",
         "docs/mobile-2026-09-28-turnaround.md",
         "docs/mobile-2026-09-29-zones.md",
+        "docs/mobile-2026-09-30-booking-windows.md",
+        "docs/mobile-2026-09-30-driver-notifications.md",
+        "docs/mobile-2026-09-30-driver-order-details.md",
         "docs/mobile-api-changes.md",
         "docs/order-cycle-explained.md",
         "docs/order-lifecycle.md",

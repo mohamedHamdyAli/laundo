@@ -40,7 +40,7 @@
             "Order": 10,
             "Tests": 8,
             "Zone": 4,
-            "Api": 3,
+            "Api": 4,
             "User": 1,
             "Platform": 1,
             "Database": 1
@@ -159,7 +159,7 @@
             "api-controller": 22
         },
         "files": 22,
-        "lines": 4932,
+        "lines": 5154,
         "classes": [
             {
                 "fqcn": "App\\Http\\Controllers\\Api\\V1\\AddressController",
@@ -306,6 +306,7 @@
             "intros",
             "journey_steps",
             "offers",
+            "orders",
             "order_tasks",
             "driver_earnings",
             "cities",
@@ -325,7 +326,6 @@
             "settings",
             "driver_profiles",
             "driver_record_submissions",
-            "orders",
             "order_ratings"
         ],
         "routes": [
@@ -361,6 +361,7 @@
             "api.v1.driver.location",
             "api.v1.driver.login",
             "api.v1.driver.logout",
+            "api.v1.driver.orders.show",
             "api.v1.driver.password",
             "api.v1.driver.profile",
             "api.v1.driver.profile.update",
@@ -440,10 +441,10 @@
         "summary": "A customer's saved addresses.",
         "depends_on": {
             "Platform": 69,
-            "Order": 51,
+            "Order": 52,
             "Payment": 17,
+            "TimeSlot": 12,
             "Driver": 10,
-            "TimeSlot": 9,
             "Auth": 8,
             "Coupon": 8,
             "Wallet": 7,
@@ -451,7 +452,7 @@
             "Complaint": 6,
             "Notification": 6,
             "User": 4,
-            "Address": 3,
+            "Address": 4,
             "Zone": 2,
             "Pricing": 2,
             "Banner": 2,
@@ -1072,11 +1073,11 @@
         "community": "database",
         "path": null,
         "layers": {
-            "migration": 109,
+            "migration": 111,
             "seeder": 11
         },
-        "files": 120,
-        "lines": 7308,
+        "files": 122,
+        "lines": 7403,
         "classes": [
             {
                 "fqcn": "Database\\Seeders\\AdminUserSeeder",
@@ -1162,6 +1163,7 @@
             "settings",
             "time_slots",
             "commission_rules",
+            "order_tasks",
             "addresses",
             "laundry_services",
             "laundry_zones",
@@ -1174,9 +1176,9 @@
         "summary": "",
         "depends_on": {
             "Platform": 14,
-            "User": 4,
+            "Order": 7,
+            "User": 5,
             "Setting": 4,
-            "Order": 4,
             "Pricing": 3,
             "Service": 3,
             "Laundry": 3,
@@ -1188,6 +1190,9 @@
             "TimeSlot": 2,
             "Payment": 2,
             "Notification": 1,
+            "Driver": 1,
+            "LaundryStaff": 1,
+            "Moderator": 1,
             "Address": 1,
             "LaundryService": 1,
             "LaundryZone": 1
@@ -1201,10 +1206,10 @@
         "community": "quality",
         "path": null,
         "layers": {
-            "doc": 19
+            "doc": 22
         },
-        "files": 19,
-        "lines": 10400,
+        "files": 22,
+        "lines": 11332,
         "classes": [],
         "models": [],
         "owns_tables": [],
@@ -1491,13 +1496,14 @@
             "City": 2
         },
         "depended_on_by": {
-            "Tests": 58,
+            "Tests": 59,
             "Platform": 22,
             "Api": 10,
             "Order": 9,
             "Payment": 5,
             "Routing": 5,
-            "Notification": 4
+            "Notification": 4,
+            "Database": 1
         }
     },
     {
@@ -2345,6 +2351,7 @@
         },
         "depended_on_by": {
             "Platform": 3,
+            "Database": 1,
             "Routing": 1,
             "Tests": 1
         }
@@ -2497,6 +2504,7 @@
         },
         "depended_on_by": {
             "Platform": 3,
+            "Database": 1,
             "Routing": 1
         }
     },
@@ -2721,7 +2729,7 @@
             "Payment": 1
         },
         "depended_on_by": {
-            "Tests": 60,
+            "Tests": 64,
             "Order": 16,
             "Platform": 10,
             "Driver": 8,
@@ -2848,7 +2856,7 @@
             "request": 1
         },
         "files": 62,
-        "lines": 12483,
+        "lines": 12512,
         "classes": [
             {
                 "fqcn": "App\\Modules\\Order\\Controllers\\DispatchController",
@@ -3219,9 +3227,9 @@
         "summary": "«التعيين التلقائي» — whether the platform hands out work by itself.",
         "depends_on": {
             "Platform": 37,
+            "TimeSlot": 26,
             "User": 25,
             "Notification": 16,
-            "TimeSlot": 16,
             "Laundry": 14,
             "Pricing": 14,
             "Routing": 12,
@@ -3237,17 +3245,17 @@
             "Wallet": 1
         },
         "depended_on_by": {
-            "Tests": 378,
-            "Api": 51,
-            "Report": 39,
+            "Tests": 396,
+            "Api": 52,
+            "Report": 40,
             "Payment": 27,
             "Driver": 23,
             "Platform": 23,
             "Notification": 15,
             "Coupon": 7,
+            "Database": 7,
             "Recurrence": 5,
             "Routing": 5,
-            "Database": 4,
             "Laundry": 3,
             "TimeSlot": 3,
             "Complaint": 3,
@@ -3564,11 +3572,11 @@
             "Notification": 1
         },
         "depended_on_by": {
-            "Tests": 63,
+            "Tests": 69,
             "Platform": 30,
             "Api": 17,
+            "Report": 12,
             "Order": 11,
-            "Report": 6,
             "Routing": 6,
             "Laundry": 3,
             "Database": 2,
@@ -3583,7 +3591,7 @@
             "view": 63,
             "support": 44,
             "config": 20,
-            "request": 14,
+            "request": 15,
             "service": 9,
             "middleware": 8,
             "controller": 5,
@@ -3595,8 +3603,8 @@
             "view-component": 3,
             "mail": 2
         },
-        "files": 186,
-        "lines": 19425,
+        "files": 187,
+        "lines": 19695,
         "classes": [
             {
                 "fqcn": "App\\Http\\Controllers\\Controller",
@@ -3723,6 +3731,12 @@
                 "layer": "request",
                 "path": "app/Http/Requests/Api/V1/Concerns/OneDiscountPerOrder.php",
                 "summary": "One discount per order."
+            },
+            {
+                "fqcn": "App\\Http\\Requests\\Api\\V1\\Concerns\\WindowStillOpen",
+                "layer": "request",
+                "path": "app/Http/Requests/Api/V1/Concerns/WindowStillOpen.php",
+                "summary": "Today's window can be booked only while there is time to send somebody."
             },
             {
                 "fqcn": "App\\Http\\Requests\\Api\\V1\\LoginRequest",
@@ -4263,6 +4277,7 @@
             "laundry_zones",
             "laundry_slot_capacities",
             "laundry_revenues_do_not_exist",
+            "finances_do_not_exist",
             "reports_do_not_exist"
         ],
         "routes": [
@@ -4298,6 +4313,7 @@
             "City": 9,
             "User": 9,
             "Country": 8,
+            "TimeSlot": 8,
             "ItemCategory": 7,
             "Item": 7,
             "Wallet": 7,
@@ -4305,11 +4321,10 @@
             "Complaint": 6,
             "Coupon": 6,
             "Pricing": 6,
-            "TimeSlot": 6,
             "Zone": 6,
             "LaundryService": 5,
             "Offer": 5,
-            "Report": 3,
+            "Report": 4,
             "Faq": 3,
             "LaundryStaff": 3,
             "Moderator": 3,
@@ -4324,7 +4339,7 @@
             "LaundryZone": 1
         },
         "depended_on_by": {
-            "Tests": 93,
+            "Tests": 94,
             "Api": 69,
             "Payment": 42,
             "Order": 37,
@@ -4335,6 +4350,7 @@
             "Zone": 16,
             "Auth": 14,
             "LaundryStaff": 14,
+            "Report": 14,
             "Database": 14,
             "Notification": 11,
             "User": 11,
@@ -4350,7 +4366,6 @@
             "LaundryZone": 8,
             "Moderator": 8,
             "Offer": 8,
-            "Report": 8,
             "Service": 8,
             "Wallet": 8,
             "Complaint": 7,
@@ -4567,16 +4582,22 @@
         "community": "report",
         "path": "app/Modules/Report",
         "layers": {
-            "service": 7,
-            "view": 7,
+            "view": 9,
+            "service": 8,
+            "controller": 2,
+            "model": 2,
             "command": 1,
-            "controller": 1,
-            "data": 1,
-            "model": 1
+            "data": 1
         },
-        "files": 18,
-        "lines": 2859,
+        "files": 23,
+        "lines": 3938,
         "classes": [
+            {
+                "fqcn": "App\\Modules\\Report\\Controllers\\FinanceController",
+                "layer": "controller",
+                "path": "app/Modules/Report/Controllers/FinanceController.php",
+                "summary": "«ملخص الماليات» — the money the home page used to show, behind its own permission (`finance.view`, route middleware)."
+            },
             {
                 "fqcn": "App\\Modules\\Report\\Controllers\\ReportController",
                 "layer": "controller",
@@ -4594,6 +4615,12 @@
                 "layer": "service",
                 "path": "app/Modules/Report/Services/DriverReport.php",
                 "summary": "How the drivers are doing."
+            },
+            {
+                "fqcn": "App\\Modules\\Report\\Services\\FinanceSummary",
+                "layer": "service",
+                "path": "app/Modules/Report/Services/FinanceSummary.php",
+                "summary": "«ملخص الماليات» — the money that used to be on the home page."
             },
             {
                 "fqcn": "App\\Modules\\Report\\Services\\LaundryReport",
@@ -4626,6 +4653,12 @@
                 "summary": "The week, in the shape an email can carry."
             },
             {
+                "fqcn": "App\\Modules\\Report\\Models\\Finance",
+                "layer": "model",
+                "path": "app/Modules/Report/Models/Finance.php",
+                "summary": "Not a table — the permission subject behind «ملخص الماليات»."
+            },
+            {
                 "fqcn": "App\\Modules\\Report\\Models\\Report",
                 "layer": "model",
                 "path": "app/Modules/Report/Models/Report.php",
@@ -4645,9 +4678,11 @@
             }
         ],
         "models": [
+            "App\\Modules\\Report\\Models\\Finance",
             "App\\Modules\\Report\\Models\\Report"
         ],
         "owns_tables": [
+            "finances_do_not_exist",
             "reports_do_not_exist"
         ],
         "reads_tables": [
@@ -4656,8 +4691,10 @@
             "orders",
             "order_ratings",
             "order_tasks",
+            "services",
             "users",
             "driver_earnings",
+            "order_settlements",
             "notification_logs",
             "order_price_queries",
             "refunds",
@@ -4666,6 +4703,7 @@
             "order_status_logs"
         ],
         "routes": [
+            "admin.finance.index",
             "admin.report.drivers",
             "admin.report.export",
             "admin.report.laundries",
@@ -4674,25 +4712,27 @@
             "admin.report.revenue"
         ],
         "permissions": [
+            "finance.view",
             "report.update",
             "report.view"
         ],
         "tests": [],
         "summary": "The home page.",
         "depends_on": {
-            "Order": 39,
-            "Platform": 8,
-            "Payment": 6,
+            "Order": 40,
+            "Platform": 14,
+            "Payment": 12,
             "Laundry": 5,
             "User": 5,
             "Complaint": 2,
+            "Service": 2,
             "Notification": 2,
             "Wallet": 2
         },
         "depended_on_by": {
-            "Tests": 13,
-            "Platform": 3,
-            "Routing": 1
+            "Tests": 17,
+            "Platform": 4,
+            "Routing": 2
         }
     },
     {
@@ -4724,7 +4764,7 @@
             "routes": 3
         },
         "files": 9,
-        "lines": 2495,
+        "lines": 2511,
         "classes": [
             {
                 "fqcn": "App\\Services\\Routing\\Coordinate",
@@ -4780,6 +4820,7 @@
             "LaundryService": 2,
             "Laundry": 2,
             "Notification": 2,
+            "Report": 2,
             "Banner": 1,
             "City": 1,
             "Complaint": 1,
@@ -4797,7 +4838,6 @@
             "Pricing": 1,
             "Rating": 1,
             "Recurrence": 1,
-            "Report": 1,
             "Service": 1,
             "Setting": 1,
             "TimeSlot": 1,
@@ -4901,6 +4941,7 @@
             "Database": 3,
             "Banner": 2,
             "Offer": 2,
+            "Report": 2,
             "Landing": 1,
             "Routing": 1
         }
@@ -4918,7 +4959,7 @@
             "service": 1
         },
         "files": 11,
-        "lines": 1800,
+        "lines": 1821,
         "classes": [
             {
                 "fqcn": "App\\Modules\\Setting\\Controllers\\SettingController",
@@ -4973,7 +5014,7 @@
             "Platform": 6
         },
         "depended_on_by": {
-            "Tests": 34,
+            "Tests": 36,
             "Platform": 6,
             "Database": 4,
             "Api": 1,
@@ -4986,11 +5027,11 @@
         "community": "quality",
         "path": null,
         "layers": {
-            "test": 125,
+            "test": 127,
             "browser-test": 25
         },
-        "files": 150,
-        "lines": 47985,
+        "files": 152,
+        "lines": 49129,
         "classes": [
             {
                 "fqcn": "Tests\\Feature\\Api\\AddressTest",
@@ -5009,6 +5050,12 @@
                 "layer": "test",
                 "path": "tests/Feature/Api/AppTaxTest.php",
                 "summary": "«App Tax» — the state's tax on the order."
+            },
+            {
+                "fqcn": "Tests\\Feature\\Api\\BookingWindowTest",
+                "layer": "test",
+                "path": "tests/Feature/Api/BookingWindowTest.php",
+                "summary": "Today's windows on the business's clock (the owner, 2026-09-30)."
             },
             {
                 "fqcn": "Tests\\Feature\\Api\\CashSurchargeTest",
@@ -5309,6 +5356,12 @@
                 "layer": "test",
                 "path": "tests/Feature/Dashboard/FaqTranslationTest.php",
                 "summary": "FAQs are translatable like every other content module."
+            },
+            {
+                "fqcn": "Tests\\Feature\\Dashboard\\FinanceTest",
+                "layer": "test",
+                "path": "tests/Feature/Dashboard/FinanceTest.php",
+                "summary": "«ملخص الماليات» — the money that left the home page (the owner, 2026-09-30)."
             },
             {
                 "fqcn": "Tests\\Feature\\Dashboard\\GeneralSettingTabsTest",
@@ -5747,15 +5800,16 @@
         "owns_tables": [],
         "reads_tables": [
             "addresses",
+            "orders",
+            "settings",
+            "time_slots",
             "complaints",
             "order_tasks",
             "banners",
             "coupons",
             "intros",
             "offers",
-            "settings",
             "item_categories",
-            "orders",
             "coupon_redemptions",
             "users",
             "roles",
@@ -5787,7 +5841,6 @@
             "commission_rules",
             "cities",
             "driver_applications",
-            "time_slots",
             "laundry_deductions",
             "laundry_services",
             "laundry_service_requests",
@@ -5833,6 +5886,7 @@
             "tests/Feature/Api/AddressTest.php",
             "tests/Feature/Api/ApiContractTest.php",
             "tests/Feature/Api/AppTaxTest.php",
+            "tests/Feature/Api/BookingWindowTest.php",
             "tests/Feature/Api/CashSurchargeTest.php",
             "tests/Feature/Api/CatalogFiltersTest.php",
             "tests/Feature/Api/ComplaintTest.php",
@@ -5883,6 +5937,7 @@
             "tests/Feature/Dashboard/DriverRecordReviewTest.php",
             "tests/Feature/Dashboard/ErrorPageTest.php",
             "tests/Feature/Dashboard/FaqTranslationTest.php",
+            "tests/Feature/Dashboard/FinanceTest.php",
             "tests/Feature/Dashboard/GeneralSettingTabsTest.php",
             "tests/Feature/Dashboard/HomeTest.php",
             "tests/Feature/Dashboard/InvoiceDocumentTest.php",
@@ -5958,21 +6013,21 @@
         ],
         "summary": "",
         "depends_on": {
-            "Order": 378,
-            "Platform": 93,
-            "User": 86,
-            "Payment": 63,
-            "Notification": 60,
-            "Driver": 58,
+            "Order": 396,
+            "Platform": 94,
+            "User": 89,
+            "Payment": 69,
+            "Notification": 64,
+            "Driver": 59,
             "Wallet": 46,
-            "Setting": 34,
+            "Setting": 36,
             "Laundry": 30,
             "Pricing": 22,
+            "TimeSlot": 19,
             "Complaint": 19,
             "Coupon": 18,
-            "TimeSlot": 16,
+            "Report": 17,
             "Service": 15,
-            "Report": 13,
             "City": 13,
             "Zone": 12,
             "Database": 9,
@@ -6001,14 +6056,14 @@
         "path": "app/Modules/TimeSlot",
         "layers": {
             "view": 6,
-            "service": 2,
+            "service": 3,
             "controller": 1,
             "model": 1,
             "repository": 1,
             "request": 1
         },
-        "files": 12,
-        "lines": 759,
+        "files": 13,
+        "lines": 857,
         "classes": [
             {
                 "fqcn": "App\\Modules\\TimeSlot\\Controllers\\TimeSlotController",
@@ -6021,6 +6076,12 @@
                 "layer": "service",
                 "path": "app/Modules/TimeSlot/Services/SlotCapacity.php",
                 "summary": "How many visits a window can still take."
+            },
+            {
+                "fqcn": "App\\Modules\\TimeSlot\\Services\\SlotClock",
+                "layer": "service",
+                "path": "app/Modules/TimeSlot/Services/SlotClock.php",
+                "summary": "A time window as a moment in time — the one place that turns «08:00–10:00 on Thursday» into an instant that can be compared with the clock."
             },
             {
                 "fqcn": "App\\Modules\\TimeSlot\\Services\\timeSlotCrudService",
@@ -6080,10 +6141,10 @@
             "Order": 3
         },
         "depended_on_by": {
-            "Order": 16,
-            "Tests": 16,
-            "Api": 9,
-            "Platform": 6,
+            "Order": 26,
+            "Tests": 19,
+            "Api": 12,
+            "Platform": 8,
             "Laundry": 5,
             "Database": 2,
             "Landing": 1,
@@ -6103,7 +6164,7 @@
             "request": 1
         },
         "files": 13,
-        "lines": 947,
+        "lines": 971,
         "classes": [
             {
                 "fqcn": "App\\Modules\\User\\Controllers\\UserController",
@@ -6183,7 +6244,7 @@
             "Laundry": 1
         },
         "depended_on_by": {
-            "Tests": 86,
+            "Tests": 89,
             "Order": 25,
             "Notification": 21,
             "Driver": 11,
@@ -6195,10 +6256,10 @@
             "LaundryService": 5,
             "Laundry": 5,
             "Report": 5,
+            "Database": 5,
             "Api": 4,
             "Complaint": 4,
             "Moderator": 4,
-            "Database": 4,
             "Pricing": 3,
             "LaundryStaff": 2,
             "Address": 1,

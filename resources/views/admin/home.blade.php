@@ -71,35 +71,126 @@
             </div>
         </div>
 
-        {{-- Where every live order physically is. --}}
-        <div class="card mb-3">
-            <div class="card-header">
-                <h6 class="mb-0">{{ __('Right now') }}</h6>
-                <small class="text-muted">{{ __('Every order that has not finished') }}</small>
-            </div>
-            <div class="card-body">
-                <div class="row g-3">
-                    @foreach ([
-                        'awaiting_pickup' => [__('Booked, not collected'), 'bi-clock'],
-                        'with_driver' => [__('With a driver'), 'bi-truck'],
-                        'at_laundry' => [__('At a laundry'), 'bi-droplet'],
-                        'ready_to_go' => [__('Ready to go out'), 'bi-box-seam'],
-                        'delivered_unpaid' => [__('Delivered, unpaid'), 'bi-cash-coin'],
-                    ] as $key => [$label, $icon])
-                        <div class="col-6 col-md">
-                            {{-- Icon and figure share a line, label sits under
-                                 them: the tile is read as «this many, here»,
-                                 and a stacked icon only pushed the number down
-                                 the tile away from its own label. --}}
-                            <div class="home-flight">
-                                <div class="home-flight-head">
-                                    <i class="bi {{ $icon }}"></i>
-                                    <span class="home-flight-num">{{ $inFlight[$key] }}</span>
+        @include('admin.partials._viz')
+
+        @php
+            // The stages of a live order, in the order they happen — so they
+            // take one blue from light to dark (`--viz-o1..5`), not five hues.
+            $stages = [
+                'awaiting_pickup' => [__('Booked, not collected'), 'bi-clock', '--viz-o1'],
+                'with_driver' => [__('With a driver'), 'bi-truck', '--viz-o2'],
+                'at_laundry' => [__('At a laundry'), 'bi-droplet', '--viz-o3'],
+                'ready_to_go' => [__('Ready to go out'), 'bi-box-seam', '--viz-o4'],
+                'delivered_unpaid' => [__('Delivered, unpaid'), 'bi-cash-coin', '--viz-o5'],
+            ];
+            $liveTotal = array_sum($inFlight);
+            $liveSlices = collect($stages)
+                ->map(fn ($stage, $key) => ['label' => $stage[0], 'value' => (int) $inFlight[$key], 'color' => $stage[2]])
+                ->filter(fn ($slice) => $slice['value'] > 0)
+                ->values();
+
+            $serviceSlices = collect($byService['items'])
+                ->map(fn ($item) => ['label' => $item['label'], 'value' => $item['count'], 'color' => '--viz-s'.$item['slot']]);
+            if ($byService['other'] > 0) {
+                $serviceSlices->push(['label' => __('Other services'), 'value' => $byService['other'], 'color' => '--viz-other']);
+            }
+
+            $dayLabels = collect($byDay)->map(fn ($day) => \Illuminate\Support\Carbon::parse($day['date'])->format('j/n'))->all();
+            $daySeries = [
+                ['name' => __('Orders placed'), 'values' => array_column($byDay, 'placed'), 'color' => '--viz-s1'],
+                ['name' => __('Delivered'), 'values' => array_column($byDay, 'delivered'), 'color' => '--viz-s2'],
+                ['name' => __('Cancelled'), 'values' => array_column($byDay, 'cancelled'), 'color' => '--viz-s3'],
+            ];
+            $dayTotal = array_sum(array_map(fn ($day) => $day['placed'] + $day['delivered'] + $day['cancelled'], $byDay));
+            $ratingsTotal = array_sum($ratings);
+            $ratingsTop = max($ratings ?: [0]);
+        @endphp
+
+        <div class="row">
+            {{-- Where every live order physically is. A ring of parts, and
+                 beside it the legend — which is also the table: every stage
+                 with its count and its icon, so nothing hangs on the colour. --}}
+            <div class="col-lg-5 mb-3">
+                <div class="card h-100">
+                    <div class="card-header">
+                        <h6 class="mb-0">{{ __('Right now') }}</h6>
+                        <small class="text-muted">{{ __('Every order that has not finished') }}</small>
+                    </div>
+                    <div class="card-body">
+                        @if ($liveTotal === 0)
+                            <p class="viz-empty">{{ __('No order is under way.') }}</p>
+                        @else
+                            <div class="row g-3 align-items-center">
+                                {{-- A ring of one or two slices says less than
+                                     the numbers do, so it is drawn from three. --}}
+                                @if ($liveSlices->count() >= 3)
+                                    <div class="col-sm-6">
+                                        <div id="viz-stages" class="viz-canvas" dir="ltr"></div>
+                                    </div>
+                                @endif
+                                <div class="{{ $liveSlices->count() >= 3 ? 'col-sm-6' : 'col-12' }}">
+                                    <ul class="viz-legend">
+                                        @foreach ($stages as $key => [$label, $icon, $color])
+                                            <li>
+                                                <span class="viz-swatch" style="background: var({{ $color }})"></span>
+                                                <span><i class="bi {{ $icon }} me-1"></i>{{ $label }}</span>
+                                                <span class="viz-value">{{ $inFlight[$key] }}</span>
+                                            </li>
+                                        @endforeach
+                                    </ul>
                                 </div>
-                                <span class="home-flight-label">{{ $label }}</span>
                             </div>
-                        </div>
-                    @endforeach
+                        @endif
+                    </div>
+                </div>
+            </div>
+
+            {{-- Orders per day. Lines, one crosshair; the legend names them
+                 and the table under it holds every number. --}}
+            <div class="col-lg-7 mb-3">
+                <div class="card h-100">
+                    <div class="card-header">
+                        <h6 class="mb-0">{{ __('Orders per day') }}</h6>
+                        <small class="text-muted">{{ __('The last 14 days') }}</small>
+                    </div>
+                    <div class="card-body">
+                        @if ($dayTotal === 0)
+                            {{-- A flat line along zero says less than this does. --}}
+                            <p class="viz-empty">{{ __('Nothing in the last 14 days.') }}</p>
+                        @else
+                        <ul class="viz-legend-row">
+                            @foreach ($daySeries as $series)
+                                <li><span class="viz-key" style="background: var({{ $series['color'] }})"></span>{{ $series['name'] }}</li>
+                            @endforeach
+                        </ul>
+                        <div id="viz-days" class="viz-canvas" dir="ltr"></div>
+                        <details class="viz-table">
+                            <summary>{{ __('Show the numbers') }}</summary>
+                            <div class="table-responsive">
+                                <table class="table table-sm mb-0">
+                                    <thead>
+                                        <tr>
+                                            <th>{{ __('Date') }}</th>
+                                            @foreach ($daySeries as $series)
+                                                <th class="text-end">{{ $series['name'] }}</th>
+                                            @endforeach
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach ($byDay as $day)
+                                            <tr>
+                                                <td>{{ $day['date'] }}</td>
+                                                <td class="text-end">{{ $day['placed'] }}</td>
+                                                <td class="text-end">{{ $day['delivered'] }}</td>
+                                                <td class="text-end">{{ $day['cancelled'] }}</td>
+                                            </tr>
+                                        @endforeach
+                                    </tbody>
+                                </table>
+                            </div>
+                        </details>
+                        @endif
+                    </div>
                 </div>
             </div>
         </div>
@@ -123,10 +214,13 @@
                                     <span class="home-stat-label">{{ __('Orders placed') }}</span>
                                 </div>
                             </div>
+                            {{-- Counts, never money: the money is on
+                                 «ملخص الماليات», which has a permission of its
+                                 own. This page has none. --}}
                             <div class="col-6">
                                 <div class="home-stat">
-                                    <span class="home-stat-num">{{ moneyFormat($today['money_taken']) }}</span>
-                                    <span class="home-stat-label">{{ __('Money taken') }}</span>
+                                    <span class="home-stat-num">{{ $today['picked_up'] }}</span>
+                                    <span class="home-stat-label">{{ __('Picked up from customers') }}</span>
                                 </div>
                             </div>
                             <div class="col-6">
@@ -161,8 +255,8 @@
                             <h6 class="mb-0">{{ __('This month so far') }}</h6>
                             <small class="text-muted">{{ __('From the 1st to today') }}</small>
                         </div>
-                        @if (!$isLaundry && Route::has('admin.report.revenue') && canDo('report.view'))
-                            <a href="{{ route('admin.report.revenue') }}" class="small">{{ __('Reports') }}</a>
+                        @if (!$isLaundry && Route::has('admin.report.orders') && canDo('report.view'))
+                            <a href="{{ route('admin.report.orders') }}" class="small">{{ __('Reports') }}</a>
                         @endif
                     </div>
                     <div class="card-body">
@@ -176,8 +270,8 @@
                                 </div>
                                 <div class="col-6">
                                     <div class="home-stat">
-                                        <span class="home-stat-num">{{ moneyFormat($month['revenue']) }}</span>
-                                        <span class="home-stat-label">{{ __('Paid to date') }}</span>
+                                        <span class="home-stat-num">{{ $month['completed'] }}</span>
+                                        <span class="home-stat-label">{{ __('Completed') }}</span>
                                     </div>
                                 </div>
                                 <div class="col-6">
@@ -191,17 +285,14 @@
                             @else
                                 <div class="col-6">
                                     <div class="home-stat">
-                                        <span class="home-stat-num">{{ moneyFormat($month['net_revenue']) }}</span>
-                                        <span class="home-stat-label">{{ __('Net revenue') }}</span>
+                                        <span class="home-stat-num">{{ $month['placed'] }}</span>
+                                        <span class="home-stat-label">{{ __('Orders placed') }}</span>
                                     </div>
                                 </div>
                                 <div class="col-6">
                                     <div class="home-stat">
-                                        <span class="home-stat-num {{ $month['receivables'] > 0 ? 'text-attention' : '' }}">
-                                            {{ moneyFormat($month['receivables']) }}
-                                        </span>
-                                        {{-- Owed, not earned. Never inside revenue. --}}
-                                        <span class="home-stat-label">{{ __('Owed to us') }}</span>
+                                        <span class="home-stat-num">{{ $month['completed'] }}</span>
+                                        <span class="home-stat-label">{{ __('Completed') }}</span>
                                     </div>
                                 </div>
                                 <div class="col-6">
@@ -236,6 +327,73 @@
                                 </div>
                             </div>
                         </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            {{-- This month by service: the five busiest, the rest as one grey
+                 slice. Each service keeps its colour whatever its rank. --}}
+            <div class="col-lg-6 mb-3">
+                <div class="card h-100">
+                    <div class="card-header">
+                        <h6 class="mb-0">{{ __('By service') }}</h6>
+                        <small class="text-muted">{{ __('Orders this month') }}</small>
+                    </div>
+                    <div class="card-body">
+                        @if ($byService['total'] === 0)
+                            <p class="viz-empty">{{ __('No orders yet this month.') }}</p>
+                        @else
+                            <div class="row g-3 align-items-center">
+                                @if ($serviceSlices->count() >= 3)
+                                    <div class="col-sm-6">
+                                        <div id="viz-services" class="viz-canvas" dir="ltr"></div>
+                                    </div>
+                                @endif
+                                <div class="{{ $serviceSlices->count() >= 3 ? 'col-sm-6' : 'col-12' }}">
+                                    <ul class="viz-legend">
+                                        @foreach ($serviceSlices as $slice)
+                                            <li>
+                                                <span class="viz-swatch" style="background: var({{ $slice['color'] }})"></span>
+                                                <span>{{ $slice['label'] }}</span>
+                                                <span class="viz-value">
+                                                    {{ $slice['value'] }}<span class="viz-share">{{ round($slice['value'] / $byService['total'] * 100) }}%</span>
+                                                </span>
+                                            </li>
+                                        @endforeach
+                                    </ul>
+                                </div>
+                            </div>
+                        @endif
+                    </div>
+                </div>
+            </div>
+
+            {{-- The spread an average hides: how many at each score. --}}
+            <div class="col-lg-6 mb-3">
+                <div class="card h-100">
+                    <div class="card-header">
+                        <h6 class="mb-0">{{ __('Ratings') }}</h6>
+                        <small class="text-muted">{{ __('From the 1st to today') }}</small>
+                    </div>
+                    <div class="card-body">
+                        @if ($ratingsTotal === 0)
+                            <p class="viz-empty">{{ __('No ratings yet this month.') }}</p>
+                        @else
+                            <div class="viz-bars" role="list">
+                                @foreach ($ratings as $score => $count)
+                                    <div class="viz-bar-row" role="listitem">
+                                        <span class="viz-bar-label" dir="ltr">{{ $score }} ★</span>
+                                        <span class="viz-bar-track">
+                                            <span class="viz-bar-fill d-block"
+                                                style="width: {{ $ratingsTop > 0 ? round($count / $ratingsTop * 100, 1) : 0 }}%"></span>
+                                        </span>
+                                        <span class="viz-bar-value">{{ $count }}</span>
+                                    </div>
+                                @endforeach
+                            </div>
+                        @endif
                     </div>
                 </div>
             </div>
@@ -329,4 +487,29 @@
             </div>
         @endif
     </section>
+
+    {{-- The charts' data, as JSON the page cannot be broken out of (`@json`
+         escapes <, >, & and quotes), read back by `laundoCharts.data()`.
+         One variable each: `@json([...])` with an array literal is split on
+         its commas by Blade and loses those flags. --}}
+    @php($dayData = ['labels' => $dayLabels, 'series' => $daySeries])
+    <script type="application/json" id="viz-data-stages">@json($liveSlices)</script>
+    <script type="application/json" id="viz-data-services">@json($serviceSlices)</script>
+    <script type="application/json" id="viz-data-days">@json($dayData)</script>
 @endsection
+
+@push('scripts')
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            var charts = window.laundoCharts;
+            if (!charts) return;
+
+            var total = @json(__('Total'));
+            charts.donut(document.getElementById('viz-stages'), charts.data('viz-data-stages'), total);
+            charts.donut(document.getElementById('viz-services'), charts.data('viz-data-services'), total);
+
+            var days = charts.data('viz-data-days');
+            charts.lines(document.getElementById('viz-days'), days.labels, days.series);
+        });
+    </script>
+@endpush

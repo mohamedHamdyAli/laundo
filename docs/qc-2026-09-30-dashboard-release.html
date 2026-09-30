@@ -1,0 +1,331 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>تعديلات إصدار 30 سبتمبر (التاني) — للاختبار</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&family=Readex+Pro:wght@500;600&display=swap">
+<style>
+/* نفس ألوان وخطوط «دليل اختبار لوحة Laundo» عشان الملفين يتقروا كعيلة واحدة. */
+:root {
+  --ground: #F4F6F9; --surface: #FFFFFF; --surface-2: #EDF1F6;
+  --ink: #101A26; --ink-2: #35455A; --muted: #667A93;
+  --line: #DBE3ED; --line-strong: #C2CFDE;
+  --brand: #0E4C75; --brand-soft: #E4EEF6; --brand-ink: #0A3855;
+  --good: #146B47; --good-soft: #E1F1E9;
+  --warn: #8A5A00; --warn-soft: #FAEEDA;
+  --crit: #A32218; --crit-soft: #FBE6E4;
+  --radius: 10px;
+  --f-body: "IBM Plex Sans Arabic", "Segoe UI", Tahoma, sans-serif;
+  --f-disp: "Readex Pro", "IBM Plex Sans Arabic", "Segoe UI", sans-serif;
+  --f-mono: "IBM Plex Mono", ui-monospace, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --ground: #0B121B; --surface: #121C28; --surface-2: #182533;
+    --ink: #E8EEF5; --ink-2: #BCCBDB; --muted: #8699AF;
+    --line: #243447; --line-strong: #2E4257;
+    --brand: #6FB3DE; --brand-soft: #16293A; --brand-ink: #A8D2ED;
+    --good: #63C296; --good-soft: #12261D;
+    --warn: #DFAE5E; --warn-soft: #2A2113;
+    --crit: #F08279; --crit-soft: #2B1614;
+  }
+}
+:root[data-theme="dark"] {
+  --ground: #0B121B; --surface: #121C28; --surface-2: #182533;
+  --ink: #E8EEF5; --ink-2: #BCCBDB; --muted: #8699AF;
+  --line: #243447; --line-strong: #2E4257;
+  --brand: #6FB3DE; --brand-soft: #16293A; --brand-ink: #A8D2ED;
+  --good: #63C296; --good-soft: #12261D;
+  --warn: #DFAE5E; --warn-soft: #2A2113;
+  --crit: #F08279; --crit-soft: #2B1614;
+}
+
+* { box-sizing: border-box; }
+html { direction: rtl; }
+body {
+  margin: 0; direction: rtl;
+  background: var(--ground); color: var(--ink);
+  font-family: var(--f-body); font-size: 15px; line-height: 1.75;
+  -webkit-font-smoothing: antialiased;
+}
+.page { max-width: 980px; margin: 0 auto; padding: 0 16px 80px; }
+
+/* الترويسة */
+.masthead { background: var(--surface); border-bottom: 1px solid var(--line-strong); margin-bottom: 36px; }
+.masthead .in { max-width: 980px; margin: 0 auto; padding: 36px 16px 28px; }
+.eyebrow { font-family: var(--f-mono); font-size: 11.5px; letter-spacing: .14em; color: var(--brand); margin: 0 0 10px; direction: ltr; text-align: right; }
+h1 { font-family: var(--f-disp); font-weight: 600; font-size: clamp(28px, 4.4vw, 40px); line-height: 1.3; margin: 0 0 12px; text-wrap: balance; }
+.lede { font-size: 16.5px; color: var(--ink-2); max-width: 64ch; margin: 0; }
+.stamp { margin-top: 22px; display: flex; flex-wrap: wrap; gap: 6px 26px; font-size: 13px; color: var(--muted); }
+.stamp b { color: var(--ink-2); font-weight: 600; }
+
+/* الفهرس */
+.toc { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 18px 22px; margin-bottom: 44px; columns: 2; column-gap: 36px; }
+.toc h2 { column-span: all; font-size: 13px; color: var(--muted); font-weight: 500; margin: 0 0 8px; }
+.toc ol { list-style: none; margin: 0; padding: 0; }
+.toc li { break-inside: avoid; margin: 0 0 2px; }
+.toc a { color: var(--ink-2); text-decoration: none; font-size: 14px; }
+.toc a:hover { color: var(--brand); text-decoration: underline; }
+.toc .part { font-weight: 600; color: var(--ink); margin-top: 10px; display: block; font-size: 13px; }
+.toc .n { font-family: var(--f-mono); color: var(--brand); font-size: 12px; margin-inline-end: 6px; }
+@media (max-width: 700px) { .toc { columns: 1; } }
+
+/* الأقسام */
+.part-title { font-family: var(--f-disp); font-weight: 600; font-size: 14px; color: var(--brand); letter-spacing: .02em; margin: 56px 0 6px; padding-bottom: 6px; border-bottom: 1px solid var(--line-strong); }
+section { margin-bottom: 44px; scroll-margin-top: 16px; }
+h2 { font-family: var(--f-disp); font-weight: 600; font-size: 23px; line-height: 1.4; margin: 18px 0 8px; text-wrap: balance; }
+h2 .n { font-family: var(--f-mono); font-size: 14px; color: var(--brand); margin-inline-end: 8px; vertical-align: 2px; }
+h3 { font-size: 15.5px; font-weight: 600; margin: 20px 0 8px; }
+p { margin: 0 0 12px; max-width: 74ch; }
+ul { margin: 0 0 12px; padding-right: 20px; }
+li { margin-bottom: 5px; }
+strong { font-weight: 600; }
+a { color: var(--brand); }
+td small { color: var(--muted); }
+.names { list-style: none; padding: 0; margin: 0; }
+.names li { margin: 0; }
+code { font-family: var(--f-mono); font-size: .86em; direction: ltr; unicode-bidi: isolate; background: var(--surface-2); border: 1px solid var(--line); border-radius: 4px; padding: 0 5px; white-space: nowrap; }
+
+/* فين / الصلاحية / التطبيق */
+.meta { display: grid; grid-template-columns: max-content 1fr; gap: 6px 16px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 12px 16px; margin: 0 0 14px; font-size: 14px; }
+.meta dt { color: var(--muted); font-weight: 500; }
+.meta dd { margin: 0; color: var(--ink-2); }
+@media (max-width: 560px) { .meta { grid-template-columns: 1fr; } .meta dd { margin-bottom: 6px; } }
+
+/* جداول */
+.tbl { overflow-x: auto; margin: 0 0 14px; }
+table { width: 100%; border-collapse: collapse; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); font-size: 14px; }
+th, td { text-align: right; vertical-align: top; padding: 9px 12px; border-bottom: 1px solid var(--line); }
+th { background: var(--surface-2); font-weight: 600; color: var(--ink-2); font-size: 13px; }
+tr:last-child td { border-bottom: 0; }
+td.num { font-family: var(--f-mono); color: var(--brand); width: 34px; text-align: center; }
+td.chk, th.chk { width: 46px; text-align: center; }
+td.chk::before { content: ""; display: inline-block; width: 16px; height: 16px; border: 1.5px solid var(--line-strong); border-radius: 4px; vertical-align: -3px; }
+table.steps td:nth-child(2) { width: 44%; }
+
+/* صناديق */
+.box { border-radius: var(--radius); padding: 12px 16px; margin: 0 0 14px; font-size: 14.5px; border: 1px solid; }
+.box > :last-child { margin-bottom: 0; }
+.box h3 { margin: 0 0 6px; font-size: 14.5px; }
+.box.crit { background: var(--crit-soft); border-color: color-mix(in srgb, var(--crit) 35%, transparent); }
+.box.crit h3 { color: var(--crit); }
+.box.warn { background: var(--warn-soft); border-color: color-mix(in srgb, var(--warn) 35%, transparent); }
+.box.warn h3 { color: var(--warn); }
+.box.traps { background: var(--surface); border-color: var(--line); border-inline-start: 4px solid var(--good); }
+.box.traps h3 { color: var(--good); }
+.box.info { background: var(--brand-soft); border-color: color-mix(in srgb, var(--brand) 25%, transparent); }
+.box.info h3 { color: var(--brand-ink); }
+
+.foot { margin-top: 56px; padding-top: 14px; border-top: 1px solid var(--line-strong); color: var(--muted); font-size: 13px; }
+
+/* الطباعة: فاتح دايماً، والجداول ماتتقطعش من نص السطر */
+@page { size: A4; margin: 14mm 12mm 16mm; }
+@media print {
+  :root, :root:not([data-theme="light"]), :root[data-theme="dark"] {
+    --ground: #FFFFFF; --surface: #FFFFFF; --surface-2: #EDF1F6;
+    --ink: #101A26; --ink-2: #35455A; --muted: #667A93;
+    --line: #DBE3ED; --line-strong: #C2CFDE;
+    --brand: #0E4C75; --brand-soft: #E4EEF6; --brand-ink: #0A3855;
+    --good: #146B47; --good-soft: #E1F1E9;
+    --warn: #8A5A00; --warn-soft: #FAEEDA;
+    --crit: #A32218; --crit-soft: #FBE6E4;
+  }
+  * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  body { font-size: 13px; }
+  .masthead .in { padding-top: 8px; }
+  .page { padding-bottom: 0; }
+  tr, .box, .meta { break-inside: avoid; }
+  h2, h3, .part-title { break-after: avoid; }
+  .toc a { color: var(--ink-2); }
+}
+</style>
+</head>
+<body>
+
+<header class="masthead">
+  <div class="in">
+    <p class="eyebrow">LAUNDO · RELEASE 2026-09-30 (2) · FOR QC</p>
+    <h1>الرئيسية من غير فلوس، ملخص الماليات، مواعيد النهارده، وإشعارات المندوب — للاختبار</h1>
+    <p class="lede">التاني اللي نزل يوم 30 سبتمبر 2026 على <b>laundo.nahrdev.net</b>. الرئيسية بقت رسوم بيانية من غير أي فلوس، والفلوس اتنقلت لصفحة لوحدها بصلاحية لوحدها. ميعاد النهارده اللي خلص أو قرب يخلص مبقاش بيتحجز، والمواعيد بقت بتوقيت القاهرة. ورسايل الإدارة للمناديب بقت بتظهر في قايمتهم.</p>
+    <div class="stamp">
+      <span>تاريخ النشر <b>30/9/2026</b></span>
+      <span><b>4</b> تعديلات</span>
+      <span>اللي قبله: <b>خريطة المناطق: سيرش وأشكال جاهزة</b> (نفس اليوم)</span>
+    </div>
+  </div>
+</header>
+
+<main class="page">
+
+<nav class="toc" aria-label="الفهرس">
+  <h2>المحتوى</h2>
+  <ol>
+    <li><a href="#before"><span class="n">!</span>قبل ما تبدأ — مهم</a></li>
+    <li><a href="#home"><span class="n">1</span>الرئيسية: رسوم بيانية من غير فلوس</a></li>
+    <li><a href="#finance"><span class="n">2</span>ملخص الماليات</a></li>
+    <li><a href="#windows"><span class="n">3</span>مواعيد النهارده وتوقيت القاهرة</a></li>
+    <li><a href="#driver"><span class="n">4</span>إشعارات المندوب</a></li>
+    <li><a href="#apps"><span class="n">+</span>التطبيقات قبل ما تتحدّث</a></li>
+  </ol>
+</nav>
+
+<section id="before">
+  <h2><span class="n">!</span>قبل ما تبدأ — مهم</h2>
+  <div class="box crit">
+    <h3>متعملش طلبات على عملاء حقيقيين</h3>
+    <p>جزء المواعيد محتاج تعمل طلبات. اعملها من حساب عميل تجريبي، والغيها لما تخلص. ولو هتبعت إشعار لمندوب، ابعته لمندوب تجريبي مش لكل المناديب.</p>
+  </div>
+  <p>هتحتاج <strong>تلات حسابات</strong>:</p>
+  <ul>
+    <li><strong>سوبر أدمن</strong>: بيشوف كل حاجة.</li>
+    <li><strong>مشرف من غير صلاحية المالية</strong>: عشان تتأكد إن الفلوس مش باينة له.</li>
+    <li><strong>صاحب مغسلة</strong>: عشان تتأكد إنه بيشوف أرقام مغسلته بس.</li>
+  </ul>
+  <p><strong>كل المواعيد بتوقيت القاهرة.</strong> ساعة الموبايل أو الكمبيوتر مش مهمة، المهم الساعة في القاهرة.</p>
+</section>
+
+<section id="home">
+  <h2><span class="n">1</span>الرئيسية: رسوم بيانية من غير فلوس</h2>
+  <p>الرئيسية مالهاش صلاحية، فكل حساب في اللوحة كان بيشوف فلوس المنصة عليها: المشرف، ومشرف المناديب، وموظفين المغسلة. دلوقتي الرئيسية أعداد ورسوم بس، <strong>ومفيش عليها ولا رقم فلوس لأي حد</strong>، حتى السوبر أدمن.</p>
+  <dl class="meta">
+    <dt>فين</dt><dd>الرئيسية <code>/admin/home</code></dd>
+    <dt>الصلاحية</dt><dd>مفيش. أي حساب داخل اللوحة</dd>
+  </dl>
+  <div class="tbl"><table class="steps">
+    <thead><tr><th>#</th><th>جرّب</th><th>المفروض يحصل</th><th class="chk">✓</th></tr></thead>
+    <tbody>
+      <tr><td class="num">1</td><td>افتح الرئيسية بالسوبر أدمن ودوّر على أي رقم بالجنيه</td><td>مفيش ولا رقم فلوس في الصفحة كلها.</td><td class="chk"></td></tr>
+      <tr><td class="num">2</td><td>«الوضع الآن»</td><td>دايرة فيها الطلبات اللي لسه ماخلصتش حسب مرحلتها: محجوز ولم يُستلم، مع مندوب، في المغسلة، جاهز للخروج، تم التسليم بدون دفع. الرقم في النص هو المجموع، وجنبها قايمة بكل مرحلة وعددها.</td><td class="chk"></td></tr>
+      <tr><td class="num">3</td><td>عدّي بالماوس على جزء من الدايرة</td><td>بيظهر اسم المرحلة وعددها ونسبتها.</td><td class="chk"></td></tr>
+      <tr><td class="num">4</td><td>«الطلبات اليومية»</td><td>خطوط لآخر 14 يوم: طلبات جديدة، وتم التوصيل، وملغي. عدّي بالماوس على يوم، يظهر اليوم بأرقامه التلاتة.</td><td class="chk"></td></tr>
+      <tr><td class="num">5</td><td>دوس «اعرض الأرقام» تحت الرسم</td><td>جدول بنفس الأرقام يوم بيوم.</td><td class="chk"></td></tr>
+      <tr><td class="num">6</td><td>«من منتصف الليل»</td><td>أربع أرقام: طلبات جديدة، واتستلمت من العملاء، وتم التوصيل، وملغي. كلهم من 12 بالليل بتوقيت القاهرة، مش آخر 24 ساعة.</td><td class="chk"></td></tr>
+      <tr><td class="num">7</td><td>«هذا الشهر حتى الآن»</td><td>طلبات مستلمة، ومكتمل، ونسبة الإلغاء، والتقييم. كلهم أعداد.</td><td class="chk"></td></tr>
+      <tr><td class="num">8</td><td>«حسب الخدمة»</td><td>دايرة بطلبات الشهر لأكتر 5 خدمات، والباقي متجمّع في «خدمات تانية».</td><td class="chk"></td></tr>
+      <tr><td class="num">9</td><td>«التقييمات»</td><td>خمس أعمدة من 5 نجوم لنجمة، وكل واحد بعدده.</td><td class="chk"></td></tr>
+      <tr><td class="num">10</td><td>غيّر اللوحة للوضع الغامق</td><td>الرسوم بتترسم تاني بألوان تناسب الغامق، والكلام مقروء.</td><td class="chk"></td></tr>
+      <tr><td class="num">11</td><td>ادخل بصاحب مغسلة</td><td>نفس الرسوم، بأرقام طلبات مغسلته بس. ومفيش جزء المناديب.</td><td class="chk"></td></tr>
+      <tr><td class="num">12</td><td>افتح الرئيسية على الموبايل</td><td>الرسوم بتصغر وتترص تحت بعض، ومفيش سحب يمين وشمال.</td><td class="chk"></td></tr>
+    </tbody>
+  </table></div>
+  <div class="box traps">
+    <h3>مش باج — مقصود</h3>
+    <ul>
+      <li>لو فيه أقل من 3 أجزاء، الدايرة بتظهر بردو، بس القايمة اللي جنبها هي اللي بتتقري.</li>
+      <li>«اتستلمت من العملاء» بيعد الطلب مرة واحدة حتى لو رجع للمرحلة دي مرتين.</li>
+      <li>يوم مفيهوش طلبات بيظهر صفر في الرسم، مش بيختفي.</li>
+    </ul>
+  </div>
+</section>
+
+<section id="finance">
+  <h2><span class="n">2</span>ملخص الماليات</h2>
+  <p>صفحة جديدة لكل أرقام الفلوس اللي كانت على الرئيسية، وأكتر منها. <strong>ليها صلاحية جديدة، ومحدش واخدها غير السوبر أدمن</strong>. أي دور تاني لازم تديله الصلاحية بإيدك من شاشة الأدوار.</p>
+  <dl class="meta">
+    <dt>فين</dt><dd>المالية ← ملخص الماليات <code>/admin/finance</code></dd>
+    <dt>الصلاحية</dt><dd><code>finance.view</code></dd>
+  </dl>
+  <div class="tbl"><table class="steps">
+    <thead><tr><th>#</th><th>جرّب</th><th>المفروض يحصل</th><th class="chk">✓</th></tr></thead>
+    <tbody>
+      <tr><td class="num">1</td><td>ادخل بمشرف مالوش الصلاحية</td><td>«ملخص الماليات» مش في القايمة الجانبية. ولو كتبت الرابط بإيدك: رفض (403).</td><td class="chk"></td></tr>
+      <tr><td class="num">2</td><td>من الأدوار، ادّي دور المشرف «عرض» على «ملخص الماليات»، وادخل تاني</td><td>الصفحة بتظهر في القايمة وبتفتح.</td><td class="chk"></td></tr>
+      <tr><td class="num">3</td><td>أول صف</td><td>المُحصَّل، وصافي الإيراد، والطلبات المدفوعة، ومتوسط الطلب، للشهر ده لحد النهارده. وتحت كل رقم نسبة الفرق عن نفس الأيام من الشهر اللي فات، بسهم لفوق أو لتحت.</td><td class="chk"></td></tr>
+      <tr><td class="num">4</td><td>«من منتصف الليل»</td><td>المُحصَّل النهارده وعدد الطلبات المدفوعة.</td><td class="chk"></td></tr>
+      <tr><td class="num">5</td><td>«فلوس لسه ماوصلتش مكانها»</td><td>مستحق لنا، ونصيب المغاسل اللي لسه متسوّاش، وبونص المناديب اللي لسه متصرفش، والمسترد الشهر ده.</td><td class="chk"></td></tr>
+      <tr><td class="num">6</td><td>«المُحصَّل كل يوم»</td><td>عمود لكل يوم من آخر 14 يوم. عدّي بالماوس يظهر المبلغ بالجنيه، و«اعرض الأرقام» بيطلّع الجدول.</td><td class="chk"></td></tr>
+      <tr><td class="num">7</td><td>«مين بياخد إيه»</td><td>شريط مقسوم بين المغاسل والمنصة من الطلبات اللي اتسوّت الشهر ده، وتحته رسوم التوصيل، ورسوم المنصة على العميل، والخصومات، والضريبة.</td><td class="chk"></td></tr>
+      <tr><td class="num">8</td><td>«حسب طريقة الدفع»</td><td>دايرة بالمبالغ، والكاش الأول.</td><td class="chk"></td></tr>
+      <tr><td class="num">9</td><td>«حسب الخدمة» و«أكتر المغاسل»</td><td>أعمدة بأكتر 5 بالمبلغ، والباقي في سطر «والباقي».</td><td class="chk"></td></tr>
+      <tr><td class="num">10</td><td>ادّي دور صاحب المغسلة الصلاحية وادخل بيه</td><td>أرقام مغسلته بس. ومفيش «أكتر المغاسل» ولا «بونص المناديب».</td><td class="chk"></td></tr>
+      <tr><td class="num">11</td><td>قارن «المُحصَّل» هنا بشاشة التقارير لنفس المدة</td><td>نفس الرقم.</td><td class="chk"></td></tr>
+    </tbody>
+  </table></div>
+  <div class="box traps">
+    <h3>مش باج — مقصود</h3>
+    <ul>
+      <li>لو الشهر اللي فات كان صفر، مكان النسبة مكتوب «مفيش حاجة الشهر اللي فات نقارن بيها»، لأن مفيش نسبة من صفر.</li>
+      <li>نصيب المنصة ممكن يطلع <strong>بالسالب</strong>، ومكتوب جنبه «خصومات المنصة كلّفت أكتر من نصيبها». ده بيحصل لو المنصة شايلة كوبونات أكتر من اللي كسبته من الغسيل.</li>
+      <li>«مين بياخد إيه» بيعد الطلبات اللي اتسوّت بس (اكتملت). الطلب اللي لسه شغال مش فيه.</li>
+    </ul>
+  </div>
+</section>
+
+<section id="windows">
+  <h2><span class="n">3</span>مواعيد النهارده وتوقيت القاهرة</h2>
+  <p>العميل كان بيقدر يحجز ميعاد النهارده خلص خلاص (الساعة 2 الضهر يحجز 8–10 الصبح)، والمندوب يلاقي نفسه «متأخر» أول ما الطلب يتعمل. وكمان المواعيد كلها كانت بتتحسب بتوقيت جرينتش، يعني متأخرة 3 ساعات عن القاهرة. فمعاد كل رحلة في اللوحة، و«متأخر»، كانوا غلط.</p>
+  <p>دلوقتي <strong>ميعاد النهارده بيتقفل قبل ما يخلص بساعة</strong>، والمدة دي إعداد.</p>
+  <dl class="meta">
+    <dt>الإعداد</dt><dd>الإعدادات ← العمليات ← «آخر حجز قبل ما الميعاد يخلص» (بالدقايق. فاضي = 60، و 0 = مفتوح لحد ما يخلص)</dd>
+    <dt>الصلاحية</dt><dd><code>setting.update</code></dd>
+  </dl>
+  <div class="tbl"><table class="steps">
+    <thead><tr><th>#</th><th>جرّب</th><th>المفروض يحصل</th><th class="chk">✓</th></tr></thead>
+    <tbody>
+      <tr><td class="num">1</td><td>من التطبيق، اعمل طلب استلامه النهارده في ميعاد خلص (مثلاً 8–10 والساعة 11)</td><td>بيترفض برسالة «ميعاد الاستلام ده خلص أو قرب يخلص. اختار ميعاد بعده.»</td><td class="chk"></td></tr>
+      <tr><td class="num">2</td><td>نفس الكلام في ميعاد فاضل عليه أقل من ساعة (مثلاً 10–12 والساعة 11:15)</td><td>بيترفض بنفس الرسالة.</td><td class="chk"></td></tr>
+      <tr><td class="num">3</td><td>ميعاد فاضل عليه أكتر من ساعة</td><td>الطلب بيتعمل عادي.</td><td class="chk"></td></tr>
+      <tr><td class="num">4</td><td>غيّر الإعداد لـ 0 واحفظ، وجرّب الخطوة 2 تاني</td><td>بيتقبل، لأن الميعاد لسه ماخلصش.</td><td class="chk"></td></tr>
+      <tr><td class="num">5</td><td>غيّر الإعداد لـ 120</td><td>الميعاد اللي فاضل عليه أقل من ساعتين بيترفض. <strong>رجّعه فاضي بعدها</strong>.</td><td class="chk"></td></tr>
+      <tr><td class="num">6</td><td>اكتب في الإعداد رقم بالسالب أو أكتر من 720</td><td>بيترفض ورسالة جنب الخانة.</td><td class="chk"></td></tr>
+      <tr><td class="num">7</td><td>افتح الطلب اللي اتعمل في الخطوة 3 في اللوحة</td><td>معاد رحلة الاستلام هو <strong>نهاية الميعاد بتوقيت القاهرة</strong> (ميعاد 12–3 بيبان 3 العصر)، والرحلة مش «متأخرة».</td><td class="chk"></td></tr>
+      <tr><td class="num">8</td><td>لوحة التوزيع ورحلات النهارده</td><td>«متأخر» بيظهر بس على اللي عدّى ميعاده فعلاً بتوقيت القاهرة.</td><td class="chk"></td></tr>
+      <tr><td class="num">9</td><td>تطبيق المندوب، على الطلب ده</td><td>مش مكتوب إنه متأخر.</td><td class="chk"></td></tr>
+      <tr><td class="num">10</td><td>العميل يأجّل الاستلام لميعاد النهارده خلص</td><td>بيترفض برسالة «الميعاد ده خلص أو قرب يخلص. اختار ميعاد بعده.»</td><td class="chk"></td></tr>
+    </tbody>
+  </table></div>
+  <div class="box traps">
+    <h3>مش باج — مقصود</h3>
+    <ul>
+      <li>بكرة وبعده مفيش حاجة بتتقفل. القفل ده لمواعيد النهارده بس.</li>
+      <li>الرحلات اللي كانت مفتوحة وقت الرفع مواعيدها اتصلّحت لوحدها (اتقدّمت 3 ساعات). الرحلات اللي خلصت فضلت زي ما هي.</li>
+      <li>تواريخ الطلبات القديمة في اللوحة ممكن تبان اتغيرت 3 ساعات. ده التوقيت الصح.</li>
+    </ul>
+  </div>
+</section>
+
+<section id="driver">
+  <h2><span class="n">4</span>إشعارات المندوب</h2>
+  <p>بلاغ «مفيش إشعارات بتوصل للمندوب» كان سببه حاجتين:</p>
+  <ul>
+    <li><strong>الـ push:</strong> ولا مندوب سجّل موبايله للإشعارات، لأن تطبيق المندوب لسه مبيسجّلوش. ده شغل التطبيق، واتبعت لفريقه. لحد ما يتعمل، <strong>مفيش push هيوصل لأي مندوب</strong>.</li>
+    <li><strong>القايمة جوه التطبيق:</strong> الرسايل اللي الإدارة بتبعتها للمناديب، والشكاوى اللي اتقفلت، كانت بتتسجل في مكان والتطبيق بيقرا من مكان تاني، فمكانتش بتظهر. <strong>ده اللي اتصلّح في الإصدار ده</strong>، والقديم منهم ظهر كمان.</li>
+  </ul>
+  <dl class="meta">
+    <dt>فين</dt><dd>النظام ← سجل الإشعارات، وفيها زرار «إرسال إشعار»</dd>
+    <dt>الصلاحية</dt><dd><code>notification_log.view</code> للسجل، و<code>notification_log.create</code> للإرسال</dd>
+  </dl>
+  <div class="tbl"><table class="steps">
+    <thead><tr><th>#</th><th>جرّب</th><th>المفروض يحصل</th><th class="chk">✓</th></tr></thead>
+    <tbody>
+      <tr><td class="num">1</td><td>ابعت إشعار لمندوب واحد (المندوب التجريبي)</td><td>رسالة إن الإشعار اتبعت.</td><td class="chk"></td></tr>
+      <tr><td class="num">2</td><td>سجل الإشعارات، دوّر على المندوب ده</td><td>سطرين: واحد «اللي اتبعت» على القايمة، وواحد «تم التخطي» على الـ push وتحته «no registered device». الـ push هيفضل كده لحد ما تطبيق المندوب يتحدّث.</td><td class="chk"></td></tr>
+      <tr><td class="num">3</td><td>افتح شاشة الإشعارات في تطبيق المندوب (أو من Postman: فولدر 6.4، <code>GET /notifications</code> بتوكن المندوب)</td><td>الرسالة ظاهرة. قبل الإصلاح مكانتش بتظهر.</td><td class="chk"></td></tr>
+      <tr><td class="num">4</td><td>اسند رحلة للمندوب ده من لوحة التوزيع</td><td>«اتسندت لك مهمة» ظاهرة في نفس القايمة.</td><td class="chk"></td></tr>
+      <tr><td class="num">5</td><td>العدّاد (<code>unread-count</code>) و«علّم الكل مقروء»</td><td>العدّاد بيعد الاتنين، وبعد «علّم الكل مقروء» بيبقى صفر.</td><td class="chk"></td></tr>
+      <tr><td class="num">6</td><td>ادخل بحساب عميل وافتح إشعاراته</td><td>إشعاراته هو بس، ومفيش حاجة من بتاعة المندوب.</td><td class="chk"></td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section id="apps">
+  <h2><span class="n">+</span>التطبيقات قبل ما تتحدّث</h2>
+  <p>اتبعت ملفين لفريقين الموبايل. لحد ما يتنفذوا، ده اللي هتشوفه:</p>
+  <div class="tbl"><table>
+    <thead><tr><th>التطبيق</th><th>اللي هتشوفه دلوقتي</th><th>بعد التحديث</th></tr></thead>
+    <tbody>
+      <tr><td>العميل</td><td>ميعاد النهارده اللي خلص <strong>لسه بيظهر</strong> في الاختيار. لو اختاره، الطلب بيترفض بالرسالة.</td><td>الميعاد المقفول بيظهر رمادي وماينفعش يتختار.</td></tr>
+      <tr><td>المندوب</td><td>مفيش push خالص. الإشعارات بتظهر في القايمة بس، لو التطبيق فيه شاشة ليها.</td><td>الـ push بيوصل: «اتسندت لك مهمة» ورسايل الإدارة.</td></tr>
+    </tbody>
+  </table></div>
+  <p><small>الملفين: <code>mobile-2026-09-30-booking-windows.md</code> لتطبيق العميل، و<code>mobile-2026-09-30-driver-notifications.md</code> لتطبيق المندوب.</small></p>
+</section>
+
+<p class="foot">تفاصيل الرئيسية وملخص الماليات والمواعيد في «دليل اختبار لوحة Laundo». وأي باج بلّغ عنه ومعاه اسم الشاشة، والحساب اللي كنت داخل بيه، والساعة كام بالظبط لو في المواعيد.</p>
+
+</main>
+</body>
+</html>

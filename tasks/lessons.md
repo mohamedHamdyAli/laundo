@@ -2505,3 +2505,14 @@ reachable from there, the owner cannot fix a typo in them. And when a screen
 makes a class of text editable, grep for every place that text is *printed*
 before shipping it: the validation editor turned `showErrorToast("{!! $error !!}")`
 from a latent sink into stored XSS the day it went in.
+
+## 2026-09-30 — never `git checkout --` a file to drop a few lines
+
+To take temporary debug lines out of `TaskGenerator.php` I ran `git checkout -- <file>`, which threw away the uncommitted change in the same file (the whole `SlotClock` wiring) along with the debug. I rebuilt it from memory; the tests caught nothing because they ran after.
+- **Rule:** remove temporary lines with an edit, never with `checkout`/`restore`, on any file that has uncommitted work. Before any command that discards changes, `git diff --stat <file>` and read it.
+- **Rule:** debug by a throw-away test file or `fwrite(STDERR)` in a *new* file where possible, so the file under change is never the one to clean.
+
+## 2026-09-30 — «the display timezone is unset» was checked from tinker
+
+CLAUDE.md said `app.display_timezone` was unset on live. It was checked with tinker, where no middleware runs; the web requests had it from `SetTimezone` (the country's timezone) all along. The config key itself did not exist.
+- **Rule:** a runtime value that a middleware sets cannot be verified from the console. Check it through a request, or read where it is set before trusting a console reading.

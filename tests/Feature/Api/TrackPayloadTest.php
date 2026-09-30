@@ -231,10 +231,13 @@ class TrackPayloadTest extends TestCase
     {
         $slot = $this->slot();
 
+        // Booked ahead, and the window has since come and gone — a past window
+        // cannot be booked at all any more (`SlotClock`).
         $order = $this->order([
             'pickup_slot_id' => $slot->id,
-            'pickup_date' => now()->subDay()->toDateString(),
+            'pickup_date' => now()->addDay()->toDateString(),
         ]);
+        $this->travel(2)->days();
 
         $this->leg($order, TaskType::PickupFromCustomer, TaskStatus::Assigned);
 

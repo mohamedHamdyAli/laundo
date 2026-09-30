@@ -20,6 +20,7 @@ use App\Modules\Order\Services\RescheduleService;
 use App\Modules\Order\Services\Turnaround;
 use App\Modules\TimeSlot\Models\TimeSlot;
 use App\Modules\TimeSlot\Services\SlotCapacity;
+use App\Modules\TimeSlot\Services\SlotClock;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -390,10 +391,13 @@ class OrderController extends Controller
 
         // The turnaround backstop in OrderService::place() — the request refuses
         // it first, with the same words, so this is for a caller that skipped it.
-        if (str_starts_with($message, 'delivery_date:')) {
-            $text = substr($message, strlen('delivery_date:'));
+        // The same for today's window that has closed (`SlotClock`).
+        foreach (['delivery_date', 'pickup_slot_id', 'delivery_slot_id'] as $field) {
+            if (str_starts_with($message, $field.':')) {
+                $text = substr($message, strlen($field.':'));
 
-            return failReturnValidation(['delivery_date' => [$text]], $text);
+                return failReturnValidation([$field => [$text]], $text);
+            }
         }
 
         if (str_starts_with($message, 'unpriced_items:')) {
@@ -578,6 +582,7 @@ class OrderController extends Controller
             ->get();
 
         $capacity = app(SlotCapacity::class);
+        $clock = app(SlotClock::class);
 
         // For a delivery being rebooked: the earliest the service lets it come
         // back, so a window too soon after the pickup is marked, not offered and
@@ -601,7 +606,7 @@ class OrderController extends Controller
             // so the app built the label itself and could not tell a full day
             // from an unknown one — `remaining` is null for an uncapped window
             // and 0 for a full one, and those are different answers.
-            'slots' => $slots->map(function (TimeSlot $slot) use ($capacity, $date, $earliest, $turnaround) {
+            'slots' => $slots->map(function (TimeSlot $slot) use ($capacity, $date, $earliest, $turnaround, $clock) {
                 $remaining = $capacity->remaining($slot, $date);
 
                 return [
@@ -613,6 +618,8 @@ class OrderController extends Controller
                     'capacity' => $slot->capacity,
                     'remaining' => $remaining,
                     'is_full' => $remaining !== null && $remaining < 1,
+                    // Today's window, ended or ending too soon: refused on rebook.
+                    'closed' => $clock->isClosed($date, $slot),
                 ] + $turnaround->windowFlags(
                     // Before the service's turnaround is up; null for a pickup.
                     // Never «too late»: a rebooking is not bounded by the
@@ -666,6 +673,7 @@ class OrderController extends Controller
                 'slot_not_available' => failReturnMsg(__('That time is not available.')),
                 'slot_full' => failReturnMsg(__('This window is fully booked. Please choose another one.')),
                 'date_in_the_past' => failReturnMsg(__('Choose a date from today onwards.')),
+                'slot_closed' => failReturnMsg(__('This window has ended or is about to. Please choose a later one.')),
                 'not_your_order' => failReturnNotFound(__('Order not found.')),
                 default => failReturnMsg(__('Could not set a new time.')),
             };

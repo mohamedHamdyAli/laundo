@@ -16,6 +16,7 @@ use App\Modules\Order\Models\OrderItem;
 use App\Modules\Service\Models\Service;
 use App\Modules\TimeSlot\Models\TimeSlot;
 use App\Modules\TimeSlot\Services\SlotCapacity;
+use App\Modules\TimeSlot\Services\SlotClock;
 use App\Modules\User\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -45,6 +46,7 @@ class OrderService
         private readonly AssignmentNotifier $assignments,
         private readonly DriverDispatcher $dispatcher,
         private readonly Turnaround $turnaround,
+        private readonly SlotClock $clock,
     ) {}
 
     /**
@@ -156,16 +158,28 @@ class OrderService
         // window. OrderRequest refuses it first, with the same words; this is
         // the backstop for any caller that places an order without it.
         $pickupSlot = isset($data['pickup_slot_id']) ? TimeSlot::find($data['pickup_slot_id']) : null;
+        $deliverySlot = isset($data['delivery_slot_id']) ? TimeSlot::find($data['delivery_slot_id']) : null;
         $problem = $this->turnaround->problem(
             $service,
             $data['pickup_date'] ?? null,
             $pickupSlot,
             $data['delivery_date'] ?? null,
-            isset($data['delivery_slot_id']) ? TimeSlot::find($data['delivery_slot_id']) : null,
+            $deliverySlot,
         );
 
         if ($problem !== null) {
             throw new RuntimeException('delivery_date:'.$this->turnaround->message($service, $problem, $data['pickup_date'] ?? null, $pickupSlot));
+        }
+
+        // Today's window that has ended, or ends too soon to send anybody.
+        // OrderRequest refuses it first (`WindowStillOpen`); this is the
+        // backstop — a leg booked into it is «late» the moment it exists.
+        if ($pickupSlot && ! empty($data['pickup_date']) && $this->clock->isClosed($data['pickup_date'], $pickupSlot)) {
+            throw new RuntimeException('pickup_slot_id:'.__('This pickup window has ended or is about to. Please choose a later one.'));
+        }
+
+        if ($deliverySlot && ! empty($data['delivery_date']) && $this->clock->isClosed($data['delivery_date'], $deliverySlot)) {
+            throw new RuntimeException('delivery_slot_id:'.__('This delivery window has ended or is about to. Please choose a later one.'));
         }
 
         // A basket containing a piece this service is not priced for would

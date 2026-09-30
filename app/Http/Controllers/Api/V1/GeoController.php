@@ -14,6 +14,7 @@ use App\Modules\Service\Repositories\ServiceRepository;
 use App\Modules\TimeSlot\Models\TimeSlot;
 use App\Modules\TimeSlot\Repositories\TimeSlotRepository;
 use App\Modules\TimeSlot\Services\SlotCapacity;
+use App\Modules\TimeSlot\Services\SlotClock;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -32,6 +33,7 @@ class GeoController extends Controller
         private readonly LaundryLoad $load,
         private readonly Turnaround $turnaround,
         private readonly ServiceRepository $services,
+        private readonly SlotClock $clock,
     ) {}
 
     /**
@@ -197,6 +199,11 @@ class GeoController extends Controller
                 'remaining' => $remaining,
                 'is_full' => $platformFull || ($hideWhenFull && $laundriesFull),
                 'laundries_full' => $covering === [] || ! $slot->appliesTo('pickup') ? null : $laundriesFull,
+                // Today's window that has ended, or ends within
+                // `Slot_Booking_Cutoff_Minutes` — too late to send anybody.
+                // The order is refused for it, so the app must not offer it.
+                'closed' => $this->clock->isClosed($date, $slot),
+                'closes_at' => isoDate($this->clock->closesAt($date, $slot)),
             ] + ($slot->appliesTo('delivery')
                 // Before the service's turnaround is up, or past the booking
                 // window (`Delivery_Window_Days` after the earliest day). Null

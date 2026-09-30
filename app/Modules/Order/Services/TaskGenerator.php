@@ -6,6 +6,7 @@ use App\Modules\Order\Enums\TaskStatus;
 use App\Modules\Order\Enums\TaskType;
 use App\Modules\Order\Models\Order;
 use App\Modules\Order\Models\OrderTask;
+use App\Modules\TimeSlot\Services\SlotClock;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
@@ -23,7 +24,10 @@ use Illuminate\Support\Facades\DB;
  */
 class TaskGenerator
 {
-    public function __construct(private readonly DriverDispatcher $dispatcher) {}
+    public function __construct(
+        private readonly DriverDispatcher $dispatcher,
+        private readonly SlotClock $clock,
+    ) {}
 
     /**
      * Create the chain, once.
@@ -112,8 +116,10 @@ class TaskGenerator
 
     private function dueAt(Order $order, TaskType $type): ?Carbon
     {
-        $pickup = $this->windowEnd($order->pickup_date, $order->pickupSlot?->end_time);
-        $delivery = $this->windowEnd($order->delivery_date, $order->deliverySlot?->end_time);
+        // The end of each window on the business's clock, as an instant — so
+        // «late» is measured against the real time, not three hours off it.
+        $pickup = $this->clock->end($order->pickup_date, $order->pickupSlot);
+        $delivery = $this->clock->end($order->delivery_date, $order->deliverySlot);
 
         return match ($type) {
             TaskType::PickupFromCustomer => $pickup,
@@ -121,22 +127,5 @@ class TaskGenerator
             TaskType::CollectFromLaundry => $delivery?->copy()->subHours(2),
             TaskType::DeliverToCustomer => $delivery,
         };
-    }
-
-    private function windowEnd($date, ?string $endTime): ?Carbon
-    {
-        if (! $date) {
-            return null;
-        }
-
-        $day = Carbon::parse($date);
-
-        if (! $endTime) {
-            return $day->endOfDay();
-        }
-
-        [$h, $m] = array_pad(explode(':', $endTime), 2, '00');
-
-        return $day->copy()->setTime((int) $h, (int) $m);
     }
 }

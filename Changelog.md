@@ -2,7 +2,52 @@
 
 ## 2026-09-30
 
+### Fix
+
+- **An order could be booked into a window that had already ended, and its driver was «late» the moment it was placed** («لما بطلب بميعاد ساعه فاتت بيوصل للمندوب انه متاخر… وبردو ميخترش توقيت ساعه قرب ينتهي… التوقيت فيها غلط»).
+  - What happened on live: order #48 was taken at 14:11 Cairo for that morning's 08:00–10:00.
+  - First cause: nothing compared a window's end with the clock.
+  - Second cause: every window was read as UTC while it means Cairo, so each leg's deadline (and the panel's «late») sat three hours off.
+  - Fix: `TimeSlot/Services/SlotClock` turns a window into an instant on the business clock, and `TaskGenerator` (the legs' `due_at`) and `OrderEta` go through it.
+  - A window of today now closes **an hour before it ends** (`Slot_Booking_Cutoff_Minutes`, Operations tab; 0 = until it ends). `GET /time-slots` marks it `closed` with `closes_at`; `GET /delivery-window` and the reschedule options mark it `closed`, not `available`.
+  - `POST /orders` refuses it (422 on the slot field), and so does a reschedule.
+  - The customer's arrival window no longer opens at its own end: `window.from` was the leg's due time (Service / Request / API / Blade).
+- **The business clock is Cairo everywhere.** `config/app.php` gains `display_timezone` (`APP_DISPLAY_TIMEZONE`, default `Africa/Cairo`). It never existed, so outside a web request (console, queue, tinker) everything fell back to UTC, while the `SetTimezone` middleware already set Cairo for web requests. `phpunit.xml` pins UTC (Config).
+- **No notification reached a driver** («مفيش اشعارات بتوصل للدرايفر»). Two causes:
+  - Push (the main one): on live, **none of the six drivers had ever registered a handset**, so every `task_assigned` push (206 since the start of the month) was logged «no registered device». FCM itself works: customers received 111. The driver app was told on 2026-09-20 that FCM was not on and never called `POST /devices`, and Postman's driver folder had no notification requests. That is app work; `docs/mobile-2026-09-30-driver-notifications.md` says what to call and when, and the Firebase project the token must come from (Docs).
+  - The list: a notification was filed under the class it was sent through. The driver app's token belongs to a `Driver`, so anything sent through `User` never showed in it: an operator's broadcast to drivers (`ManualNotifier`), a closed complaint. `User::notifications()` now files and reads under the account, whatever subclass it is called on (Model).
+- A closed **delivery** window is refused by `OrderService::place()` too (the backstop only checked the pickup), and `GET /delivery-window` no longer calls a closed chosen delivery valid (`reason: closed`) (Service / API).
+
+### Migration
+
+- `2026_09_30_120000_recompute_open_leg_deadlines_on_the_business_clock` (data only): re-dates every open leg's `due_at` on the business clock, through the models (in the activity log). Completed legs keep theirs.
+- `2026_09_30_130000_file_notifications_under_the_account` (data only): moves every `notifications` row filed under `Driver`, `Moderator` or `LaundryStaff` to `User`, so what a driver was already told appears in their list.
+
 ### Feature
+
+- **The home page has no money on it, and «ملخص الماليات» does** («العميل مش محتاج يوضح ف الصفحة تفاصيل كتير عن الماليات… صفحة خاصة بالماليات… احصائيات بس… رسم بياني دايره»).
+  - Why: the home page has no permission, so every panel account read its money figures, including moderators, a driver supervisor and a laundry's staff.
+  - Removed from both homes (platform and laundry): money taken today, net revenue, owed to us, and the laundry's paid to date.
+  - The new page `admin/finance` sits first in the Money group, behind a new permission, **`finance.view`** (`Report/Models/Finance`). Only the super admin sees it until somebody grants it; it is not `report.view`, which every laundry owner holds (Service / Controller / Blade / Config / Route).
+- **The finance page's statistics**, all from `RevenueReport`'s own definitions:
+  - money taken, net revenue, paid orders and average order, each against the same days last month;
+  - today's money;
+  - money not yet where it is going: owed to us, laundries' shares not settled yet, driver bonuses not released yet, refunds;
+  - money taken per day over 14 days (columns with a table under them);
+  - «who keeps what» on this month's settled orders: laundries against the platform, with delivery fees, the customer platform fee, discounts and tax beside the split;
+  - money by payment method (donut) and by service, and the top laundries.
+  - A laundry granted the page sees only its own money, and no drivers or ranking (Service / Blade).
+- **Charts on the home page**, counts only:
+  - live orders by stage (a donut that replaces the five tiles; its legend keeps the icons and counts);
+  - orders per day over 14 days (placed, delivered, cancelled, with a table);
+  - this month's orders by service (donut, five services plus «other»);
+  - this month's ratings (bars, 5 stars down to 1).
+  - «Since midnight» gains «picked up from customers», and the month gains «completed». Everything is tenant-scoped, and a laundry's charts are its own (Service / Blade).
+- **`admin/partials/_viz`**, the panel's chart layer:
+  - ApexCharts (already loaded on every panel page) plus HTML bars;
+  - palettes validated for colour blindness against both card surfaces;
+  - redraws when the theme changes;
+  - its own escaped tooltips, and data passed as `@json` script blocks (Blade / JS).
 
 - **A place search on the zone map** («يكون ف سيرش اقدر ادور علي المكان معين جوا الماب»), on the zone form and on the zones list's overview. A found place moves the map there, fitting a district's extent, and is marked with a labelled dot. It never adds a corner, and a click on the dot does, if a corner is wanted exactly there (Blade / JS).
 - **Shape tools for drawing a zone** («اقدر اعمل مثلثات او دايره او كذا شكل»): «نقط» (click by click, as before), «مستطيل», «دايرة», «مثلث» and «رسم حر».

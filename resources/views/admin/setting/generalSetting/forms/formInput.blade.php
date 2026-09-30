@@ -1144,6 +1144,25 @@
             </div>
         </div>
     </div>
+
+    {{-- «آخر حجز لميعاد النهارده» — SlotClock. A window of today closes this
+         long before it ends: 08:00–10:00 can be booked until 09:00 with the
+         default hour. Read on the business's clock (Cairo). --}}
+    <div class="col-md-6">
+        <div class="form-group">
+            <label for="setting-slot-cutoff" class="form-label">{{ __('Last booking before a window ends') }}</label>
+            <div class="input-group">
+                <input type="number" step="1" min="0" max="720" name="Slot_Booking_Cutoff_Minutes"
+                    id="setting-slot-cutoff" class="form-control"
+                    placeholder="{{ \App\Modules\TimeSlot\Services\SlotClock::DEFAULT_CUTOFF_MINUTES }}"
+                    value="{{ getSettingValue('Slot_Booking_Cutoff_Minutes') }}">
+                <span class="input-group-text">{{ __('minutes') }}</span>
+            </div>
+            <div class="form-text">
+                {{ __('A window of today stops being offered this long before it ends, so nobody books a time a driver cannot reach. Blank is 60; 0 keeps it open until it ends.') }}
+            </div>
+        </div>
+    </div>
 </div>
 
 </div>

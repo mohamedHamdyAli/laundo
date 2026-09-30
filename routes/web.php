@@ -48,6 +48,7 @@ use App\Modules\Payment\Controllers\SettlementController;
 use App\Modules\Pricing\Controllers\PricingController;
 use App\Modules\Rating\Controllers\RatingController;
 use App\Modules\Recurrence\Controllers\RecurrenceController;
+use App\Modules\Report\Controllers\FinanceController;
 use App\Modules\Report\Controllers\ReportController;
 use App\Modules\Service\Controllers\ServiceController;
 use App\Modules\Setting\Controllers\SettingController;
@@ -821,6 +822,14 @@ Route::middleware(['auth', 'dashboard.only'])->prefix('/admin')->group(function 
         Route::get('/report/export/{report}', 'export')
             ->middleware('permission:report.view')->name('admin.report.export');
     });
+
+    /*
+    | «ملخص الماليات» — the money kept off the home page, which every panel
+    | account opens. Its own permission rather than `report.view`, which every
+    | laundry owner holds: nobody sees this until somebody grants it.
+    */
+    Route::get('/finance', [FinanceController::class, 'index'])
+        ->middleware('permission:finance.view')->name('admin.finance.index');
 
     /*
     |--------------------------------------------------------------------------

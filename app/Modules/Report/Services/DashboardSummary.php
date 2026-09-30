@@ -7,13 +7,15 @@ use App\Modules\Laundry\Models\Laundry;
 use App\Modules\Order\Enums\OrderStatus;
 use App\Modules\Order\Models\Order;
 use App\Modules\Order\Models\OrderRating;
+use App\Modules\Order\Models\OrderStatusLog;
 use App\Modules\Order\Models\OrderTask;
 use App\Modules\Order\Repositories\OrderRepository;
 use App\Modules\Report\Data\DateRange;
+use App\Modules\Service\Models\Service;
 use App\Modules\User\Models\User;
 use App\Support\LaundryContext;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
-use Illuminate\Support\Facades\DB;
 
 /**
  * The home page.
@@ -35,12 +37,16 @@ use Illuminate\Support\Facades\DB;
  * Everything respects `BelongsToLaundry` through the models, so a laundry owner
  * calling the same methods sees only their own work. The two roles differ in
  * *which* methods they are shown, not in whether the numbers are filtered.
+ *
+ * **No money here** (the owner, 2026-09-30). The home page has no permission of
+ * its own — every panel account opens it — so a figure in pounds on it was a
+ * figure every moderator, driver supervisor and laundry's staff read. The money
+ * lives on «ملخص الماليات» (`FinanceSummary`, `finance.view`); this page counts.
  */
 class DashboardSummary
 {
     public function __construct(
         private readonly OperationsReport $operations,
-        private readonly RevenueReport $revenue,
     ) {}
 
     /**
@@ -59,11 +65,12 @@ class DashboardSummary
         return [
             'orders_placed' => Order::whereBetween('created_at', [$from, $to])->count(),
 
-            // Dated by `paid_at`, the same rule the revenue report uses — so the
-            // home page and the report never show different money for the same day.
-            'money_taken' => (float) Order::whereNotNull('paid_at')
-                ->whereBetween('paid_at', [$from, $to])
-                ->sum(DB::raw('coalesce(final_total, estimated_total)')),
+            // Collected from the customer today — the moment the order log says
+            // it happened, not the order's last update.
+            'picked_up' => $this->reachedStatus(OrderStatus::PickedUp)
+                ->whereBetween('created_at', [$from, $to])
+                ->distinct()
+                ->count('order_id'),
 
             'delivered' => Order::where('status', OrderStatus::Delivered->value)
                 ->whereBetween('updated_at', [$from, $to])
@@ -323,8 +330,6 @@ class DashboardSummary
     {
         $range = new DateRange(now()->startOfMonth(), now()->endOfDay());
 
-        $summary = $this->revenue->summary($range);
-
         $placed = Order::whereBetween('created_at', [$range->from, $range->to])->count();
         $cancelled = Order::where('status', OrderStatus::Cancelled->value)
             ->whereBetween('created_at', [$range->from, $range->to])
@@ -333,10 +338,10 @@ class DashboardSummary
         $ratings = OrderRating::whereBetween('created_at', [$range->from, $range->to]);
 
         return [
-            'net_revenue' => $summary['net'],
-            'receivables' => $summary['receivables'],
-            'paid_orders' => $summary['orders'],
             'placed' => $placed,
+            'completed' => Order::where('status', OrderStatus::Completed->value)
+                ->whereBetween('created_at', [$range->from, $range->to])
+                ->count(),
             // A rate, not a count: five cancellations out of six is a crisis and
             // five out of five hundred is a Tuesday.
             'cancellation_rate' => $placed > 0 ? round($cancelled / $placed * 100, 1) : 0.0,
@@ -459,9 +464,6 @@ class DashboardSummary
             'completed' => $orders->clone()->where('status', OrderStatus::Completed->value)->count(),
             // More than one review round means the customer questioned the count.
             'disputed' => $orders->clone()->where('review_round', '>', 1)->count(),
-            'revenue' => (float) $orders->clone()
-                ->whereNotNull('paid_at')
-                ->sum(DB::raw('coalesce(final_total, estimated_total)')),
             'average_rating' => $rated > 0 ? round((float) $ratings->clone()->avg('overall'), 1) : null,
             'ratings' => $rated,
             'unhappy' => $ratings->clone()->poor()->count(),
@@ -491,6 +493,129 @@ class DashboardSummary
             ->orderBy('created_at')
             ->limit($limit)
             ->get();
+    }
+
+    // ------------------------------------------------------------- the charts
+    //
+    // Counts only, like the rest of the page. They are the one place it looks
+    // back rather than at now — trends the owner asked for — and each is read
+    // through the scoped Order, so a laundry's charts are its own.
+
+    /**
+     * Orders per day: placed, delivered and cancelled, quiet days included as
+     * zero — a line that skips a quiet Tuesday draws straight over it.
+     *
+     * Days by `date()` in SQL, the convention `RevenueReport::daily()` uses, so
+     * this chart and the reports cannot disagree about which day something
+     * belonged to. Delivered and cancelled are dated by the order log — when it
+     * happened — not by the order's last update.
+     *
+     * @return array<int, array{date: string, placed: int, delivered: int, cancelled: int}>
+     */
+    public function ordersByDay(int $days = 14): array
+    {
+        $range = new DateRange(now()->startOfDay()->subDays($days - 1), now()->endOfDay());
+        $window = [$range->from, $range->to];
+
+        $placed = Order::whereBetween('created_at', $window)
+            ->selectRaw('date(created_at) d, count(*) c')
+            ->groupBy('d')
+            ->pluck('c', 'd');
+
+        $reached = fn (OrderStatus $status) => $this->reachedStatus($status)
+            ->whereBetween('created_at', $window)
+            ->selectRaw('date(created_at) d, count(distinct order_id) c')
+            ->groupBy('d')
+            ->pluck('c', 'd');
+
+        $delivered = $reached(OrderStatus::Delivered);
+        $cancelled = $reached(OrderStatus::Cancelled);
+
+        return array_map(fn (string $day) => [
+            'date' => $day,
+            'placed' => (int) ($placed[$day] ?? 0),
+            'delivered' => (int) ($delivered[$day] ?? 0),
+            'cancelled' => (int) ($cancelled[$day] ?? 0),
+        ], $range->eachDay());
+    }
+
+    /**
+     * This month's orders by service: the five busiest and the rest together.
+     *
+     * A donut past six slices stops being read as parts of a whole. Each service
+     * keeps one colour slot for good — its place among all services by id — so
+     * a busy month does not repaint a quiet service in another's colour.
+     *
+     * @return array{items: array<int, array{label: string, count: int, slot: int}>, other: int, total: int}
+     */
+    public function ordersByService(int $shown = 5): array
+    {
+        $counts = Order::whereBetween('created_at', [now()->startOfMonth(), now()->endOfDay()])
+            ->selectRaw('service_id, count(*) c')
+            ->groupBy('service_id')
+            ->pluck('c', 'service_id')
+            ->map(fn ($c) => (int) $c)
+            ->sortDesc();
+
+        $services = Service::query()->orderBy('id')->get(['id', 'name']);
+        $slotOf = $services->pluck('id')->flip();
+
+        $items = [];
+        $other = 0;
+
+        foreach ($counts as $serviceId => $count) {
+            $service = $services->firstWhere('id', $serviceId);
+            $slot = $slotOf[$serviceId] ?? null;
+
+            // Eight colours, never a ninth: a service past the eighth, or one
+            // no longer in the catalogue, is counted with the rest.
+            if ($service && $slot !== null && $slot < 8 && count($items) < $shown) {
+                $items[] = [
+                    'label' => (string) getLocalizedValueDashboard($service, 'name'),
+                    'count' => $count,
+                    'slot' => $slot + 1,
+                ];
+            } else {
+                $other += $count;
+            }
+        }
+
+        return ['items' => $items, 'other' => $other, 'total' => $counts->sum()];
+    }
+
+    /**
+     * This month's ratings, how many at each score — the spread an average hides.
+     *
+     * @return array<int, int> score (5 down to 1) => ratings
+     */
+    public function ratingSpread(): array
+    {
+        $counts = OrderRating::whereBetween('created_at', [now()->startOfMonth(), now()->endOfDay()])
+            ->selectRaw('overall s, count(*) c')
+            ->groupBy('s')
+            ->pluck('c', 's');
+
+        $spread = [];
+        foreach ([5, 4, 3, 2, 1] as $score) {
+            $spread[$score] = (int) ($counts[$score] ?? 0);
+        }
+
+        return $spread;
+    }
+
+    /**
+     * The log rows of the viewer's own orders reaching one status.
+     *
+     * The log carries no laundry_id, so it is reached through the scoped Order:
+     * a laundry counts its own handovers and nobody else's.
+     *
+     * @return Builder<OrderStatusLog>
+     */
+    private function reachedStatus(OrderStatus $status): Builder
+    {
+        return OrderStatusLog::query()
+            ->where('to_status', $status->value)
+            ->whereIn('order_id', Order::query()->select('orders.id'));
     }
 
     /**

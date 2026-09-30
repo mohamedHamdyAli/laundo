@@ -38,6 +38,7 @@ use App\Modules\Payment\Models\OrderSettlement;
 use App\Modules\Payment\Models\Payment;
 use App\Modules\Payment\Models\Refund;
 use App\Modules\Pricing\Models\ItemPrice;
+use App\Modules\Report\Models\Finance;
 use App\Modules\Report\Models\Report;
 use App\Modules\Service\Models\Service;
 use App\Modules\Setting\Models\Setting;
@@ -100,5 +101,8 @@ return [
         // Not a table — the permission subject behind «إيرادات المغاسل». Same
         // device Report::class uses for the five report screens.
         LaundryRevenue::class,
+        // Not a table either — «ملخص الماليات», the money kept off the home
+        // page. Its own permission, so nobody sees it until somebody grants it.
+        Finance::class,
     ],
 ];

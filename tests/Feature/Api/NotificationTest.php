@@ -3,10 +3,12 @@
 namespace Tests\Feature\Api;
 
 use App\Modules\Driver\Models\Driver;
+use App\Modules\Notification\Data\NotificationMessage;
 use App\Modules\Notification\Enums\NotificationEvent;
 use App\Modules\Notification\Models\DeviceToken;
 use App\Modules\Notification\Models\NotificationLog;
 use App\Modules\Notification\Models\NotificationPreference;
+use App\Modules\Notification\Services\NotificationDispatcher;
 use App\Modules\Order\Enums\OrderStatus;
 use App\Modules\Order\Models\Order;
 use App\Modules\Order\Models\OrderTask;
@@ -16,9 +18,11 @@ use App\Modules\Order\Services\OrderService;
 use App\Modules\Order\Services\OrderStateMachine;
 use App\Modules\Order\Services\RecurrenceService;
 use App\Modules\User\Models\User;
+use App\Notifications\AdminNotification;
 use App\Services\Push\PushSender;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Notifications\DatabaseNotification;
+use Illuminate\Support\Str;
 use Laravel\Sanctum\Sanctum;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
@@ -235,6 +239,106 @@ class NotificationTest extends TestCase
 
         $this->assertGreaterThan(0, NotificationLog::where('user_id', $driver->id)
             ->where('event', NotificationEvent::TaskAssigned->value)->count());
+    }
+
+    // ---------------------------------------------------------- the driver app
+
+    /**
+     * «مفيش اشعارات بتوصل للدرايفر». The driver app's token belongs to a
+     * `Driver`, and a notification was filed under whichever class sent it — so
+     * a broadcast to every driver, sent through `User`, never reached the list
+     * the app reads.
+     */
+    #[Test]
+    public function a_driver_reads_everything_they_were_told_whichever_class_sent_it(): void
+    {
+        $driver = $this->driverUser('+201044440001', zoneIds: [$this->geo['zones'][0]->id]);
+        $this->placedOrder(); // task_assigned, through a Driver
+
+        app(NotificationDispatcher::class)->send(
+            User::findOrFail($driver->id), // as ManualNotifier addresses drivers
+            new NotificationMessage(
+                event: NotificationEvent::ManualMessage,
+                title: 'اجتماع الساعة ٥',
+                body: 'كل المندوبين',
+            ),
+        );
+
+        // Signed in the way the driver app is: the token's owner is a Driver.
+        Sanctum::actingAs(Driver::findOrFail($driver->id));
+
+        $events = collect($this->getJson('/api/v1/notifications', $this->apiHeaders())->assertOk()->json('data'))
+            ->pluck('event');
+        $this->assertContains(NotificationEvent::TaskAssigned->value, $events);
+        $this->assertContains(NotificationEvent::ManualMessage->value, $events);
+
+        $this->getJson('/api/v1/notifications/unread-count', $this->apiHeaders())
+            ->assertOk()->assertJsonPath('data.unread', $events->count());
+
+        $this->postJson('/api/v1/notifications/read-all', [], $this->apiHeaders())->assertOk();
+        $this->getJson('/api/v1/notifications/unread-count', $this->apiHeaders())
+            ->assertOk()->assertJsonPath('data.unread', 0);
+
+        // One account, one filing.
+        $this->assertSame(0, DatabaseNotification::where('notifiable_type', '!=', User::class)->count());
+    }
+
+    #[Test]
+    public function a_driver_who_registers_the_handset_is_pushed_the_leg(): void
+    {
+        $sent = new \ArrayObject;
+        $this->app->bind(PushSender::class, fn () => new class($sent) implements PushSender
+        {
+            public function __construct(private \ArrayObject $sent) {}
+
+            public function send(string $token, string $title, string $body, array $data = []): bool
+            {
+                $this->sent[] = [$token, $data['event'] ?? null];
+
+                return true;
+            }
+
+            public function lastFailureWasPermanent(): bool
+            {
+                return false;
+            }
+        });
+
+        $driver = $this->driverUser('+201044440001', zoneIds: [$this->geo['zones'][0]->id]);
+
+        Sanctum::actingAs(Driver::findOrFail($driver->id));
+        $this->postJson('/api/v1/devices',
+            ['token' => 'driver-handset', 'platform' => 'android', 'app' => 'driver'],
+            $this->apiHeaders())->assertOk();
+
+        $this->placedOrder();
+
+        $this->assertContains(['driver-handset', NotificationEvent::TaskAssigned->value], $sent->getArrayCopy());
+        $this->assertDatabaseHas('notification_logs', [
+            'user_id' => $driver->id,
+            'event' => NotificationEvent::TaskAssigned->value,
+            'channel' => 'push',
+            'status' => NotificationLog::SENT,
+        ]);
+    }
+
+    #[Test]
+    public function the_rows_written_before_are_filed_under_the_account(): void
+    {
+        $driver = $this->driverUser('+201044440001');
+        DatabaseNotification::create([
+            'id' => (string) Str::uuid(),
+            'type' => AdminNotification::class,
+            'notifiable_type' => Driver::class,
+            'notifiable_id' => $driver->id,
+            'data' => ['title' => 'x', 'body' => 'y', 'event' => NotificationEvent::TaskAssigned->value],
+        ]);
+
+        (require database_path('migrations/2026_09_30_130000_file_notifications_under_the_account.php'))->up();
+
+        $this->assertSame(User::class, DatabaseNotification::firstOrFail()->notifiable_type);
+        $this->assertSame(1, User::findOrFail($driver->id)->notifications()->count());
+        $this->assertSame(1, Driver::findOrFail($driver->id)->notifications()->count());
     }
 
     // ------------------------------------------------------ the three claims

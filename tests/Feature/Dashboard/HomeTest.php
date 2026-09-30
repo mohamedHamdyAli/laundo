@@ -7,6 +7,7 @@ use App\Modules\Order\Enums\OrderStatus;
 use App\Modules\Order\Models\Order;
 use App\Modules\Order\Models\OrderPriceQuery;
 use App\Modules\Order\Models\OrderRating;
+use App\Modules\Order\Models\OrderStatusLog;
 use App\Modules\Order\Models\OrderTask;
 use App\Modules\Order\Repositories\OrderRepository;
 use App\Modules\Order\Services\OrderService;
@@ -374,17 +375,190 @@ class HomeTest extends TestCase
         $this->assertSame(20.0, $this->summary()->thisMonth()['cancellation_rate']);
     }
 
+    // ------------------------------------------------------------- no money
+
     #[Test]
-    public function money_taken_today_is_dated_by_payment_not_by_order(): void
+    public function neither_home_page_shows_money(): void
     {
-        $old = $this->orderAt(OrderStatus::Completed);
-        $old->forceFill(['created_at' => now()->subMonths(2), 'paid_at' => now()])->save();
+        // The home page has no permission — every panel account opens it — so
+        // the money moved to «ملخص الماليات» (the owner, 2026-09-30).
+        $paid = $this->orderAt(OrderStatus::Completed);
+        $paid->forceFill(['paid_at' => now(), 'final_total' => 123.45])->save();
+
+        foreach ([$this->superAdmin(), $this->tenant['owner']] as $viewer) {
+            $page = $this->actingAs($viewer)->get('/admin/home')->assertOk();
+
+            $page->assertDontSee(moneyFormat(123.45), false)
+                ->assertDontSee(__('Money taken'))
+                ->assertDontSee(__('Net revenue'))
+                ->assertDontSee(__('Owed to us'))
+                ->assertDontSee(__('Paid to date'));
+        }
+
+        $this->actingAs($this->superAdmin());
+        $this->assertArrayNotHasKey('money_taken', $this->summary()->today());
+        $this->assertArrayNotHasKey('net_revenue', $this->summary()->thisMonth());
+        $this->assertArrayNotHasKey('receivables', $this->summary()->thisMonth());
+        $this->assertArrayNotHasKey('revenue', $this->summary()->laundryScore());
+    }
+
+    private function logStatus(Order $order, OrderStatus $to, \DateTimeInterface $at): void
+    {
+        $log = OrderStatusLog::create(['order_id' => $order->id, 'to_status' => $to->value]);
+        $log->forceFill(['created_at' => $at, 'updated_at' => $at])->save();
+    }
+
+    #[Test]
+    public function picked_up_today_is_read_off_the_order_log(): void
+    {
+        $today = $this->orderAt(OrderStatus::PickedUp);
+        $this->logStatus($today, OrderStatus::PickedUp, now());
+
+        $earlier = $this->orderAt(OrderStatus::PickedUp);
+        $this->logStatus($earlier, OrderStatus::PickedUp, now()->subDay());
 
         $this->actingAs($this->superAdmin());
 
-        // Paid today for an order placed two months ago still counts today — the
-        // same rule the revenue report uses, so the two cannot disagree.
-        $this->assertGreaterThan(0, $this->summary()->today()['money_taken']);
+        // When it happened, not when the order last changed.
+        $this->assertSame(1, $this->summary()->today()['picked_up']);
+    }
+
+    // ------------------------------------------------------------- the charts
+
+    #[Test]
+    public function orders_per_day_counts_each_kind_on_its_own_day_and_fills_quiet_days(): void
+    {
+        $placedToday = $this->orderAt(OrderStatus::AwaitingPickup);
+
+        $delivered = $this->orderAt(OrderStatus::Delivered);
+        $delivered->forceFill(['created_at' => now()->subDays(3)])->save();
+        $this->logStatus($delivered, OrderStatus::Delivered, now()->subDay());
+
+        $cancelled = $this->orderAt(OrderStatus::Cancelled);
+        $cancelled->forceFill(['created_at' => now()->subDays(20)])->save();
+        $this->logStatus($cancelled, OrderStatus::Cancelled, now());
+
+        $this->actingAs($this->superAdmin());
+        $days = collect($this->summary()->ordersByDay())->keyBy('date');
+
+        $this->assertCount(14, $days);
+        $today = now()->toDateString();
+        $yesterday = now()->subDay()->toDateString();
+        $threeAgo = now()->subDays(3)->toDateString();
+
+        $this->assertSame(1, $days[$today]['placed']);
+        $this->assertSame(1, $days[$today]['cancelled']);
+        $this->assertSame(1, $days[$yesterday]['delivered']);
+        $this->assertSame(1, $days[$threeAgo]['placed']);
+        // Placed twenty days ago: outside the window, so not counted anywhere.
+        $this->assertSame(2, $days->sum('placed'));
+        $this->assertSame(0, $days[now()->subDays(5)->toDateString()]['placed']);
+        $this->assertNotNull($placedToday);
+    }
+
+    #[Test]
+    public function a_laundry_charts_only_its_own_orders(): void
+    {
+        $other = $this->laundryWithOwner('B', '+201011110003', '+201011110004');
+
+        $mine = $this->orderAt(OrderStatus::Delivered);
+        $this->logStatus($mine, OrderStatus::Delivered, now());
+        $theirs = $this->orderAt(OrderStatus::Delivered, $other['laundry']->id);
+        $this->logStatus($theirs, OrderStatus::Delivered, now());
+        $this->orderAt(OrderStatus::Cleaning, $other['laundry']->id);
+
+        OrderRating::withoutGlobalScopes()->create([
+            'order_id' => $theirs->id, 'user_id' => $this->customer->id,
+            'laundry_id' => $other['laundry']->id, 'overall' => 2,
+        ]);
+
+        $this->actingAs($this->tenant['owner']);
+
+        $today = collect($this->summary()->ordersByDay())->firstWhere('date', now()->toDateString());
+        $this->assertSame(1, $today['placed']);
+        // The order log carries no laundry_id: reached through the scoped Order.
+        $this->assertSame(1, $today['delivered']);
+        $this->assertSame(1, $this->summary()->ordersByService()['total']);
+        $this->assertSame(0, array_sum($this->summary()->ratingSpread()));
+
+        $this->actingAs($this->superAdmin());
+        $this->assertSame(3, $this->summary()->ordersByService()['total']);
+        $this->assertSame(1, $this->summary()->ratingSpread()[2]);
+    }
+
+    #[Test]
+    public function orders_by_service_keeps_the_busiest_and_folds_the_rest(): void
+    {
+        foreach (range(1, 3) as $ignored) {
+            $this->orderAt(OrderStatus::AwaitingPickup);
+        }
+        $quoted = $this->orderAt(OrderStatus::AwaitingPickup);
+        $quoted->forceFill(['service_id' => $this->catalog['quoted']->id])->save();
+
+        $this->actingAs($this->superAdmin());
+
+        $one = $this->summary()->ordersByService(1);
+        $this->assertCount(1, $one['items']);
+        $this->assertSame(3, $one['items'][0]['count']);
+        $this->assertSame(1, $one['other']);
+        $this->assertSame(4, $one['total']);
+
+        // A service keeps the colour of its place among all services, not of
+        // its rank this month: the quieter service is still slot 2.
+        $both = collect($this->summary()->ordersByService()['items'])->keyBy('count');
+        $this->assertSame(1, $both[3]['slot']);
+        $this->assertSame(2, $both[1]['slot']);
+    }
+
+    #[Test]
+    public function the_rating_spread_counts_each_score(): void
+    {
+        foreach ([5, 5, 4, 1] as $score) {
+            OrderRating::withoutGlobalScopes()->create([
+                'order_id' => $this->orderAt(OrderStatus::Completed)->id,
+                'user_id' => $this->customer->id,
+                'laundry_id' => $this->tenant['laundry']->id,
+                'overall' => $score,
+            ]);
+        }
+
+        $this->actingAs($this->superAdmin());
+
+        $this->assertSame([5 => 2, 4 => 1, 3 => 0, 2 => 0, 1 => 1], $this->summary()->ratingSpread());
+    }
+
+    #[Test]
+    public function the_page_draws_its_charts_from_json_it_cannot_break_out_of(): void
+    {
+        $order = $this->orderAt(OrderStatus::AwaitingPickup);
+        $this->orderAt(OrderStatus::Cleaning);
+        $this->orderAt(OrderStatus::ReadyForDelivery);
+        $this->logStatus($order, OrderStatus::PickedUp, now());
+
+        $page = $this->actingAs($this->superAdmin())->get('/admin/home')->assertOk();
+
+        $page->assertSee('id="viz-data-days"', false)
+            ->assertSee('id="viz-data-stages"', false)
+            ->assertSee('window.laundoCharts', false)
+            // Three stages with orders: the ring is drawn.
+            ->assertSee('id="viz-stages"', false);
+
+    }
+
+    #[Test]
+    public function a_name_in_a_chart_cannot_close_the_script_it_is_carried_in(): void
+    {
+        // Service names and translations are typed by people, and they reach
+        // the page inside <script type="application/json">.
+        $this->catalog['service']->update([
+            'name' => json_encode(['en' => '</script><b id="x">Wash</b>', 'ar' => '</script><b id="x">غسيل</b>'], JSON_UNESCAPED_UNICODE),
+        ]);
+        $this->orderAt(OrderStatus::AwaitingPickup);
+
+        $page = $this->actingAs($this->superAdmin())->get('/admin/home')->assertOk();
+
+        $page->assertSee('id="viz-data-services"', false)
+            ->assertDontSee('</script><b id="x">', false);
     }
 
     #[Test]

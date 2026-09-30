@@ -9,6 +9,7 @@ use App\Modules\Order\Models\Order;
 use App\Modules\Order\Models\OrderTask;
 use App\Modules\TimeSlot\Models\TimeSlot;
 use App\Modules\TimeSlot\Services\SlotCapacity;
+use App\Modules\TimeSlot\Services\SlotClock;
 use App\Modules\User\Models\User;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -41,6 +42,7 @@ class RescheduleService
         private readonly Turnaround $turnaround,
         private readonly TaskGenerator $tasks,
         private readonly OrderStateMachine $machine,
+        private readonly SlotClock $clock,
     ) {}
 
     /**
@@ -106,6 +108,13 @@ class RescheduleService
             // A date in the past is not a reschedule; it is a value dispatch would
             // silently never act on.
             throw new RuntimeException('date_in_the_past');
+        }
+
+        // Today's window that has ended, or ends too soon to send anybody: the
+        // same rule as at checkout, or a rebooking would reach what an order
+        // cannot — and the leg would be «late» the moment it was rescheduled.
+        if ($this->clock->isClosed($date, $slot)) {
+            throw new RuntimeException('slot_closed');
         }
 
         // A delivery rebooked for sooner than the service can turn the pieces

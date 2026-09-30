@@ -152,6 +152,8 @@ class GeneralSettingRequest extends FormRequest
                 // Days after the earliest delivery a delivery may still be booked
                 // (Turnaround). Blank is the default, 14.
                 'Delivery_Window_Days' => 'nullable|integer|min:1|max:365',
+                // SlotClock: minutes before a window's end it stops being bookable.
+                'Slot_Booking_Cutoff_Minutes' => 'nullable|integer|min:0|max:720',
             ];
         } elseif (Route::is('admin.generalSetting.updatePrivacyAndTerms')) {
             $rules = [

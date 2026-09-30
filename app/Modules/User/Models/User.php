@@ -15,6 +15,7 @@ use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\DatabaseNotification;
@@ -235,6 +236,29 @@ class User extends Authenticatable
     public function laundry(): BelongsTo
     {
         return $this->belongsTo(Laundry::class, 'laundry_id');
+    }
+
+    /**
+     * One account, one list — whichever class the notification went through.
+     *
+     * `Driver`, `Moderator` and `LaundryStaff` are this same row read through a
+     * narrower class, and Laravel files a notification under the class it was
+     * sent through (`notifiable_type`) and reads it back the same way. So a leg
+     * assigned through a `Driver` landed in one list, and a broadcast to every
+     * driver — sent through `User` — in another, which the driver app, whose
+     * token belongs to a `Driver`, never read. Both are the account's now,
+     * written and read alike; `2026_09_30_130000_file_notifications_under_the_account`
+     * moved the rows written before.
+     *
+     * @return MorphMany<DatabaseNotification, self>
+     */
+    public function notifications(): MorphMany
+    {
+        $account = static::class === self::class
+            ? $this
+            : (new self)->newFromBuilder($this->getAttributes());
+
+        return $account->morphMany(DatabaseNotification::class, 'notifiable')->latest();
     }
 
     /**

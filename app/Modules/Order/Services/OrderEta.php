@@ -6,7 +6,7 @@ use App\Modules\Order\Enums\TaskStatus;
 use App\Modules\Order\Enums\TaskType;
 use App\Modules\Order\Models\Order;
 use App\Modules\Order\Models\OrderTask;
-use Illuminate\Support\Carbon;
+use App\Modules\TimeSlot\Services\SlotClock;
 
 /**
  * «هيوصل امتى؟» — the question the tracking screen exists to answer.
@@ -30,6 +30,8 @@ use Illuminate\Support\Carbon;
  */
 class OrderEta
 {
+    public function __construct(private readonly SlotClock $clock) {}
+
     /**
      * When the customer should expect the visit they are waiting on.
      *
@@ -58,13 +60,17 @@ class OrderEta
         // `due_at` is what dispatch sorts on and is set from the slot when the
         // leg is scheduled. Preferred over rebuilding the instant here, so the
         // customer is told the same time the driver is working to.
-        $start = $task->due_at ?? $this->at($date, $slot?->start_time);
+        $start = $task->due_at ?? $this->clock->start($date, $slot);
 
         if ($start === null) {
             return null;
         }
 
-        $end = $this->at($date, $slot?->end_time);
+        // The booked window itself, on the business's clock. `from` was
+        // `$start` — the leg's due time, which is the window's *end* — so the
+        // app was told a window that opened and closed at the same moment.
+        $opens = $this->clock->start($date, $slot);
+        $end = $this->clock->end($date, $slot);
 
         return [
             'iso' => isoDate($start),
@@ -73,7 +79,7 @@ class OrderEta
             'minutes' => max(0, (int) ceil(now()->diffInMinutes($start, false))),
             'label' => humanDate($start),
             'window' => $slot === null ? null : [
-                'from' => isoDate($start),
+                'from' => isoDate($opens),
                 'to' => isoDate($end),
                 'label' => $slot->label(),
             ],
@@ -106,21 +112,5 @@ class OrderEta
                 TaskStatus::Assigned,
                 TaskStatus::Started,
             ], true));
-    }
-
-    /**
-     * A date plus a `time` column, as one instant.
-     *
-     * `time_slots.start_time` carries no date, so it means nothing on its own —
-     * and the date is stored UTC like every other timestamp here. Rendering is
-     * `humanDate()`'s and `isoDate()`'s job, not this one's.
-     */
-    private function at(?Carbon $date, ?string $time): ?Carbon
-    {
-        if ($date === null || ! $time) {
-            return null;
-        }
-
-        return $date->copy()->setTimeFromTimeString($time);
     }
 }
