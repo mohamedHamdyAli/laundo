@@ -175,6 +175,75 @@ class ZoneBoundaryTest extends TestCase
             ->assertSee(__('Not drawn yet'));
     }
 
+    #[Test]
+    public function both_zone_maps_carry_a_place_search_that_only_moves_the_view(): void
+    {
+        // The form (drawing) and the list's overview (read-only): the question
+        // «where is this street» is asked on both. The overview is drawn only
+        // once a zone is.
+        $this->draw($this->maadi, self::MAADI);
+
+        foreach ([route('admin.zone.edit', $this->nasr->id), route('admin.zone.index')] as $url) {
+            $this->actingAs($this->superAdmin())
+                ->get($url)
+                ->assertOk()
+                ->assertSee('class="map-picker-search" data-map-search-box', false)
+                ->assertSee('window.attachPlaceSearch', false)
+                ->assertSee(__('Search for a place, street or landmark'))
+                // Its own answer when the search is down — there is no pin here
+                // to «set by hand», which is the picker's wording.
+                ->assertSee(__('The place search is unavailable right now. Move the map to the place yourself.'))
+                ->assertDontSee(__('The place search is unavailable right now. Set the pin on the map instead.'));
+        }
+    }
+
+    #[Test]
+    public function the_form_offers_the_shape_tools_and_the_overview_does_not(): void
+    {
+        $this->draw($this->maadi, self::MAADI);
+
+        $form = $this->actingAs($this->superAdmin())
+            ->get(route('admin.zone.edit', $this->nasr->id))
+            ->assertOk();
+
+        foreach (['points', 'rectangle', 'circle', 'triangle', 'freehand'] as $mode) {
+            $form->assertSee('data-zone-mode="'.$mode.'"', false);
+        }
+        $form->assertSee(__('Freehand'))
+            ->assertSee(__('A shape replaces the drawing — Undo brings it back — and its corners can then be moved like any other.'));
+
+        // The overview draws nothing, so it offers nothing to draw with.
+        $this->actingAs($this->superAdmin())
+            ->get(route('admin.zone.index'))
+            ->assertOk()
+            ->assertDontSee('data-zone-mode="rectangle"', false);
+    }
+
+    #[Test]
+    public function a_circle_as_the_drawer_makes_it_is_a_zone_the_server_accepts(): void
+    {
+        // The drawer's own arithmetic, done here: 32 corners walked round a
+        // centre on the sphere. The server knows nothing of shapes — it has to
+        // take this ring as it takes any other.
+        [$lat, $lng, $radius] = [30.055, 31.33, 1500.0];
+        $dLat = ($radius / 6371000) * (180 / M_PI); // L.CRS.Earth.R
+        $dLng = $dLat / cos(deg2rad($lat));
+        $ring = [];
+        for ($i = 0; $i < 32; $i++) {
+            $angle = 2 * M_PI * $i / 32;
+            $ring[] = [round($lat + $dLat * cos($angle), 7), round($lng + $dLng * sin($angle), 7)];
+        }
+
+        $this->actingAs($this->superAdmin())
+            ->put(route('admin.zone.update', $this->nasr->id), ['boundary' => json_encode($ring)])
+            ->assertSessionHasNoErrors();
+
+        $this->assertCount(32, $this->nasr->fresh()->boundary);
+        $this->assertSame($this->nasr->id, app(ZoneLocator::class)->zoneAt($lat, $lng)?->id);
+        // Just outside the circle's edge, due east: not in it.
+        $this->assertNull(app(ZoneLocator::class)->zoneAt($lat, $lng + $dLng * 1.05));
+    }
+
     // ------------------------------------------------------------ addresses
 
     #[Test]

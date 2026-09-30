@@ -3580,7 +3580,7 @@
         "community": "system",
         "path": null,
         "layers": {
-            "view": 62,
+            "view": 63,
             "support": 44,
             "config": 20,
             "request": 14,
@@ -3595,8 +3595,8 @@
             "view-component": 3,
             "mail": 2
         },
-        "files": 185,
-        "lines": 19011,
+        "files": 186,
+        "lines": 19368,
         "classes": [
             {
                 "fqcn": "App\\Http\\Controllers\\Controller",
@@ -4987,10 +4987,10 @@
         "path": null,
         "layers": {
             "test": 125,
-            "browser-test": 24
+            "browser-test": 25
         },
-        "files": 149,
-        "lines": 47655,
+        "files": 150,
+        "lines": 47925,
         "classes": [
             {
                 "fqcn": "Tests\\Feature\\Api\\AddressTest",
@@ -5829,6 +5829,7 @@
             "tests/Browser/select2-change.spec.js",
             "tests/Browser/tenancy.spec.js",
             "tests/Browser/touch-targets.spec.js",
+            "tests/Browser/zone-drawer.spec.js",
             "tests/Feature/Api/AddressTest.php",
             "tests/Feature/Api/ApiContractTest.php",
             "tests/Feature/Api/AppTaxTest.php",

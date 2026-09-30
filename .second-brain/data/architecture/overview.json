@@ -69,24 +69,24 @@
             "command": 10,
             "enum": 21,
             "feature": 441,
-            "file": 1031,
+            "file": 1033,
             "integration": 5,
             "interface": 4,
-            "method": 3197,
+            "method": 3202,
             "module": 42,
             "permission": 226,
             "route": 446,
             "table": 71,
-            "test": 149,
+            "test": 150,
             "trait": 5,
-            "view": 289
+            "view": 290
         },
         "edges_by_type": {
-            "contains": 5259,
+            "contains": 5268,
             "implemented_by": 4027,
-            "tested_by": 3007,
+            "tested_by": 3009,
             "imports": 2392,
-            "references": 2330,
+            "references": 2331,
             "entry_point": 1336,
             "depends_on": 1078,
             "route_to": 861,
@@ -104,7 +104,7 @@
             "validates": 66,
             "defined_by": 62,
             "maps_to": 62,
-            "integrates": 55,
+            "integrates": 56,
             "has_many": 27,
             "implements": 6,
             "belongs_to_many": 4,
@@ -122,7 +122,7 @@
                 "Zone"
             ],
             "routes": 27,
-            "cohesion": 0.572
+            "cohesion": 0.571
         },
         {
             "slug": "catalog",
@@ -283,7 +283,7 @@
                 "Docs"
             ],
             "routes": 0,
-            "cohesion": 0.363
+            "cohesion": 0.364
         },
         {
             "slug": "routing_and_distance",

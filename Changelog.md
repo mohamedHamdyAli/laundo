@@ -1,5 +1,26 @@
 # Changelog
 
+## 2026-09-30
+
+### Feature
+
+- **A place search on the zone map** («يكون ف سيرش اقدر ادور علي المكان معين جوا الماب»), on the zone form and on the zones list's overview. A found place moves the map there, fitting a district's extent, and is marked with a labelled dot. It never adds a corner, and a click on the dot does, if a corner is wanted exactly there (Blade / JS).
+- **Shape tools for drawing a zone** («اقدر اعمل مثلثات او دايره او كذا شكل»): «نقط» (click by click, as before), «مستطيل», «دايرة», «مثلث» and «رسم حر».
+  - Each tool is a drag that turns into ordinary corners, snapped onto a neighbouring zone like a click. The server checks the ring as it checks any other.
+  - A circle is 32 corners, and a freehand trace is simplified to at most 100.
+  - A shape replaces the drawing, and «تراجع» brings the old one back. A tap is not a shape.
+  - After drawing, the tool goes back to «نقط» so the corners can be moved at once. While a tool is on, the corners take no clicks, so a drag that starts on one still draws the shape (Blade / JS).
+
+### Refactor
+
+- The place search is one component, `<x-map-search>`, used by both `<x-map-picker>` (laundry, city and laundry-registration maps) and `<x-zone-drawer>`.
+  - Each map decides what a chosen place does: the picker drops its pin there, the zone drawer only looks there.
+  - Each map passes its own failure message. The picker's behaviour and wording are unchanged (Blade / JS).
+
+### Fix
+
+- **The zone map showed «A zone can have at most 500 corners» all the time**, even with nothing drawn. Bootstrap's `d-block` is `display: block !important` and overrode the warning's `hidden` attribute. It now has its own class (Blade / CSS).
+
 ## 2026-09-29
 
 ### Feature

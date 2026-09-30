@@ -1,0 +1,275 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>تعديلات إصدار 30 سبتمبر — للاختبار</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&family=Readex+Pro:wght@500;600&display=swap">
+<style>
+/* نفس ألوان وخطوط «دليل اختبار لوحة Laundo» عشان الملفين يتقروا كعيلة واحدة. */
+:root {
+  --ground: #F4F6F9; --surface: #FFFFFF; --surface-2: #EDF1F6;
+  --ink: #101A26; --ink-2: #35455A; --muted: #667A93;
+  --line: #DBE3ED; --line-strong: #C2CFDE;
+  --brand: #0E4C75; --brand-soft: #E4EEF6; --brand-ink: #0A3855;
+  --good: #146B47; --good-soft: #E1F1E9;
+  --warn: #8A5A00; --warn-soft: #FAEEDA;
+  --crit: #A32218; --crit-soft: #FBE6E4;
+  --radius: 10px;
+  --f-body: "IBM Plex Sans Arabic", "Segoe UI", Tahoma, sans-serif;
+  --f-disp: "Readex Pro", "IBM Plex Sans Arabic", "Segoe UI", sans-serif;
+  --f-mono: "IBM Plex Mono", ui-monospace, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --ground: #0B121B; --surface: #121C28; --surface-2: #182533;
+    --ink: #E8EEF5; --ink-2: #BCCBDB; --muted: #8699AF;
+    --line: #243447; --line-strong: #2E4257;
+    --brand: #6FB3DE; --brand-soft: #16293A; --brand-ink: #A8D2ED;
+    --good: #63C296; --good-soft: #12261D;
+    --warn: #DFAE5E; --warn-soft: #2A2113;
+    --crit: #F08279; --crit-soft: #2B1614;
+  }
+}
+:root[data-theme="dark"] {
+  --ground: #0B121B; --surface: #121C28; --surface-2: #182533;
+  --ink: #E8EEF5; --ink-2: #BCCBDB; --muted: #8699AF;
+  --line: #243447; --line-strong: #2E4257;
+  --brand: #6FB3DE; --brand-soft: #16293A; --brand-ink: #A8D2ED;
+  --good: #63C296; --good-soft: #12261D;
+  --warn: #DFAE5E; --warn-soft: #2A2113;
+  --crit: #F08279; --crit-soft: #2B1614;
+}
+
+* { box-sizing: border-box; }
+html { direction: rtl; }
+body {
+  margin: 0; direction: rtl;
+  background: var(--ground); color: var(--ink);
+  font-family: var(--f-body); font-size: 15px; line-height: 1.75;
+  -webkit-font-smoothing: antialiased;
+}
+.page { max-width: 980px; margin: 0 auto; padding: 0 16px 80px; }
+
+/* الترويسة */
+.masthead { background: var(--surface); border-bottom: 1px solid var(--line-strong); margin-bottom: 36px; }
+.masthead .in { max-width: 980px; margin: 0 auto; padding: 36px 16px 28px; }
+.eyebrow { font-family: var(--f-mono); font-size: 11.5px; letter-spacing: .14em; color: var(--brand); margin: 0 0 10px; direction: ltr; text-align: right; }
+h1 { font-family: var(--f-disp); font-weight: 600; font-size: clamp(28px, 4.4vw, 40px); line-height: 1.3; margin: 0 0 12px; text-wrap: balance; }
+.lede { font-size: 16.5px; color: var(--ink-2); max-width: 64ch; margin: 0; }
+.stamp { margin-top: 22px; display: flex; flex-wrap: wrap; gap: 6px 26px; font-size: 13px; color: var(--muted); }
+.stamp b { color: var(--ink-2); font-weight: 600; }
+
+/* الفهرس */
+.toc { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 18px 22px; margin-bottom: 44px; columns: 2; column-gap: 36px; }
+.toc h2 { column-span: all; font-size: 13px; color: var(--muted); font-weight: 500; margin: 0 0 8px; }
+.toc ol { list-style: none; margin: 0; padding: 0; }
+.toc li { break-inside: avoid; margin: 0 0 2px; }
+.toc a { color: var(--ink-2); text-decoration: none; font-size: 14px; }
+.toc a:hover { color: var(--brand); text-decoration: underline; }
+.toc .part { font-weight: 600; color: var(--ink); margin-top: 10px; display: block; font-size: 13px; }
+.toc .n { font-family: var(--f-mono); color: var(--brand); font-size: 12px; margin-inline-end: 6px; }
+@media (max-width: 700px) { .toc { columns: 1; } }
+
+/* الأقسام */
+.part-title { font-family: var(--f-disp); font-weight: 600; font-size: 14px; color: var(--brand); letter-spacing: .02em; margin: 56px 0 6px; padding-bottom: 6px; border-bottom: 1px solid var(--line-strong); }
+section { margin-bottom: 44px; scroll-margin-top: 16px; }
+h2 { font-family: var(--f-disp); font-weight: 600; font-size: 23px; line-height: 1.4; margin: 18px 0 8px; text-wrap: balance; }
+h2 .n { font-family: var(--f-mono); font-size: 14px; color: var(--brand); margin-inline-end: 8px; vertical-align: 2px; }
+h3 { font-size: 15.5px; font-weight: 600; margin: 20px 0 8px; }
+p { margin: 0 0 12px; max-width: 74ch; }
+ul { margin: 0 0 12px; padding-right: 20px; }
+li { margin-bottom: 5px; }
+strong { font-weight: 600; }
+a { color: var(--brand); }
+td small { color: var(--muted); }
+.names { list-style: none; padding: 0; margin: 0; }
+.names li { margin: 0; }
+code { font-family: var(--f-mono); font-size: .86em; direction: ltr; unicode-bidi: isolate; background: var(--surface-2); border: 1px solid var(--line); border-radius: 4px; padding: 0 5px; white-space: nowrap; }
+
+/* فين / الصلاحية / التطبيق */
+.meta { display: grid; grid-template-columns: max-content 1fr; gap: 6px 16px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 12px 16px; margin: 0 0 14px; font-size: 14px; }
+.meta dt { color: var(--muted); font-weight: 500; }
+.meta dd { margin: 0; color: var(--ink-2); }
+@media (max-width: 560px) { .meta { grid-template-columns: 1fr; } .meta dd { margin-bottom: 6px; } }
+
+/* جداول */
+.tbl { overflow-x: auto; margin: 0 0 14px; }
+table { width: 100%; border-collapse: collapse; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); font-size: 14px; }
+th, td { text-align: right; vertical-align: top; padding: 9px 12px; border-bottom: 1px solid var(--line); }
+th { background: var(--surface-2); font-weight: 600; color: var(--ink-2); font-size: 13px; }
+tr:last-child td { border-bottom: 0; }
+td.num { font-family: var(--f-mono); color: var(--brand); width: 34px; text-align: center; }
+td.chk, th.chk { width: 46px; text-align: center; }
+td.chk::before { content: ""; display: inline-block; width: 16px; height: 16px; border: 1.5px solid var(--line-strong); border-radius: 4px; vertical-align: -3px; }
+table.steps td:nth-child(2) { width: 44%; }
+
+/* صناديق */
+.box { border-radius: var(--radius); padding: 12px 16px; margin: 0 0 14px; font-size: 14.5px; border: 1px solid; }
+.box > :last-child { margin-bottom: 0; }
+.box h3 { margin: 0 0 6px; font-size: 14.5px; }
+.box.crit { background: var(--crit-soft); border-color: color-mix(in srgb, var(--crit) 35%, transparent); }
+.box.crit h3 { color: var(--crit); }
+.box.warn { background: var(--warn-soft); border-color: color-mix(in srgb, var(--warn) 35%, transparent); }
+.box.warn h3 { color: var(--warn); }
+.box.traps { background: var(--surface); border-color: var(--line); border-inline-start: 4px solid var(--good); }
+.box.traps h3 { color: var(--good); }
+.box.info { background: var(--brand-soft); border-color: color-mix(in srgb, var(--brand) 25%, transparent); }
+.box.info h3 { color: var(--brand-ink); }
+
+.foot { margin-top: 56px; padding-top: 14px; border-top: 1px solid var(--line-strong); color: var(--muted); font-size: 13px; }
+
+/* الطباعة: فاتح دايماً، والجداول ماتتقطعش من نص السطر */
+@page { size: A4; margin: 14mm 12mm 16mm; }
+@media print {
+  :root, :root:not([data-theme="light"]), :root[data-theme="dark"] {
+    --ground: #FFFFFF; --surface: #FFFFFF; --surface-2: #EDF1F6;
+    --ink: #101A26; --ink-2: #35455A; --muted: #667A93;
+    --line: #DBE3ED; --line-strong: #C2CFDE;
+    --brand: #0E4C75; --brand-soft: #E4EEF6; --brand-ink: #0A3855;
+    --good: #146B47; --good-soft: #E1F1E9;
+    --warn: #8A5A00; --warn-soft: #FAEEDA;
+    --crit: #A32218; --crit-soft: #FBE6E4;
+  }
+  * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  body { font-size: 13px; }
+  .masthead .in { padding-top: 8px; }
+  .page { padding-bottom: 0; }
+  tr, .box, .meta { break-inside: avoid; }
+  h2, h3, .part-title { break-after: avoid; }
+  .toc a { color: var(--ink-2); }
+}
+</style>
+</head>
+<body>
+
+<header class="masthead">
+  <div class="in">
+    <p class="eyebrow">LAUNDO · RELEASE 2026-09-30 · FOR QC</p>
+    <h1>خريطة المناطق: سيرش وأشكال جاهزة — للاختبار</h1>
+    <p class="lede">اللي اتغيّر في النسخة اللي نزلت لايف يوم 30 سبتمبر 2026 على <b>laundo.nahrdev.net</b>: سيرش على خريطة المناطق، وأدوات ترسم بيها المنطقة بشكل جاهز، وإصلاح تحذير كان ظاهر على طول.</p>
+    <div class="stamp">
+      <span>تاريخ النشر <b>30/9/2026</b></span>
+      <span><b>3</b> تعديلات + تأكيد على خريطتين</span>
+      <span>اللي قبله: <b>تعديلات إصدار 29 سبتمبر</b></span>
+    </div>
+  </div>
+</header>
+
+<main class="page">
+
+<nav class="toc" aria-label="الفهرس">
+  <h2>المحتوى</h2>
+  <ol>
+    <li><a href="#before"><span class="n">!</span>قبل ما تبدأ — مهم</a></li>
+    <li><a href="#search"><span class="n">1</span>سيرش على خريطة المناطق</a></li>
+    <li><a href="#shapes"><span class="n">2</span>أشكال جاهزة لرسم المنطقة</a></li>
+    <li><a href="#limit"><span class="n">3</span>تحذير الـ 500 نقطة</a></li>
+    <li><a href="#others"><span class="n">+</span>خريطة المغسلة والمدينة</a></li>
+  </ol>
+</nav>
+
+<section id="before">
+  <h2><span class="n">!</span>قبل ما تبدأ — مهم</h2>
+  <div class="box crit">
+    <h3>متحفظش رسمة على منطقة حقيقية</h3>
+    <p>حفظ رسمة على منطقة من المناطق الحقيقية بينقل عناوين العملاء اللي جواها. جرّب على منطقة جديدة اسمها «QC — تجربة» في مكان مفيهوش عملاء، وامسحها لما تخلص. ولو بتجرّب الأدوات بس من غير حفظ، تقدر تفتح أي منطقة وتخرج من غير ما تدوس «حفظ».</p>
+  </div>
+  <p>مفيش حاجة في الإصدار ده بتغيّر التطبيقات أو الـ API. التعديلات كلها في اللوحة.</p>
+</section>
+
+<section id="search">
+  <h2><span class="n">1</span>سيرش على خريطة المناطق</h2>
+  <p>فوق خريطة المنطقة بقى فيه نفس السيرش اللي في خريطة المغسلة: «دوّر على مكان أو شارع أو علامة مميزة». الفرق إن هنا المكان اللي بتلاقيه <strong>بيودّي الخريطة ليه بس</strong>، ومبيزوّدش نقطة في الرسمة.</p>
+  <dl class="meta">
+    <dt>فين</dt><dd>المواقع ← المناطق ← إضافة أو تعديل منطقة · وكمان خريطة المناطق فوق القايمة (بتظهر لو فيه منطقة مرسومة واحدة على الأقل)</dd>
+    <dt>الصلاحية</dt><dd><code>zone.create</code> / <code>zone.update</code> للفورم، و<code>zone.view</code> للقايمة</dd>
+  </dl>
+  <div class="tbl"><table class="steps">
+    <thead><tr><th>#</th><th>جرّب</th><th>المفروض يحصل</th><th class="chk">✓</th></tr></thead>
+    <tbody>
+      <tr><td class="num">1</td><td>اكتب «مدينة نصر» ودوس Enter</td><td>تظهر قايمة نتايج تحت الخانة، والفورم <strong>مبيتحفظش</strong>.</td><td class="chk"></td></tr>
+      <tr><td class="num">2</td><td>اختار نتيجة</td><td>الخريطة بتروح للمكان، وعليه نقطة حمرا مكتوب جنبها اسمه. عدد نقط الرسمة زي ما هو.</td><td class="chk"></td></tr>
+      <tr><td class="num">3</td><td>دوس على النقطة الحمرا نفسها</td><td>بتتضاف نقطة للرسمة في المكان ده بالظبط.</td><td class="chk"></td></tr>
+      <tr><td class="num">4</td><td>اكتب حرفين بس ودوس «بحث»</td><td>«اكتب ٣ حروف على الأقل».</td><td class="chk"></td></tr>
+      <tr><td class="num">5</td><td>اكتب اسم مش موجود</td><td>«مفيش مكان بالاسم ده».</td><td class="chk"></td></tr>
+      <tr><td class="num">6</td><td>جرّب السيرش في خريطة المناطق اللي فوق القايمة</td><td>نفس الشكل: الخريطة بتروح للمكان وبتعلّمه.</td><td class="chk"></td></tr>
+      <tr><td class="num">7</td><td>دوس Esc أو برا القايمة</td><td>قايمة النتايج بتتقفل.</td><td class="chk"></td></tr>
+    </tbody>
+  </table></div>
+  <div class="box traps">
+    <h3>مش باج — مقصود</h3>
+    <ul>
+      <li>السيرش بيدوّر لما تدوس Enter أو «بحث» بس، مش وانت بتكتب. ده شرط من OpenStreetMap.</li>
+      <li>لو السيرش مش متاح، الرسالة بتقول «البحث عن الأماكن مش متاح دلوقتي. حرّك الخريطة للمكان بنفسك»، مش «مفيش مكان».</li>
+      <li>النتايج بتفضّل الأماكن اللي في الجزء الظاهر من الخريطة، بس المحافظات التانية بتطلع برضه.</li>
+    </ul>
+  </div>
+</section>
+
+<section id="shapes">
+  <h2><span class="n">2</span>أشكال جاهزة لرسم المنطقة</h2>
+  <p>فوق الخريطة بقى فيه «ارسم بـ» وفيه خمس أدوات: «نقط» (الرسم القديم نقطة نقطة)، و«مستطيل»، و«دايرة»، و«مثلث»، و«رسم حر». أي شكل بيتحول لنقط عادية تقدر تحرّكها بعد كده.</p>
+  <dl class="meta">
+    <dt>فين</dt><dd>المواقع ← المناطق ← إضافة أو تعديل منطقة</dd>
+    <dt>الصلاحية</dt><dd><code>zone.create</code> / <code>zone.update</code>. خريطة القايمة للعرض بس، ومفيهاش أدوات</dd>
+  </dl>
+  <div class="tbl"><table class="steps">
+    <thead><tr><th>#</th><th>جرّب</th><th>المفروض يحصل</th><th class="chk">✓</th></tr></thead>
+    <tbody>
+      <tr><td class="num">1</td><td>دوس «مستطيل»</td><td>الزرار بيتعلّم، وتحته سطر بيقول تعمل إيه، ومؤشر الماوس على الخريطة بيبقى علامة +.</td><td class="chk"></td></tr>
+      <tr><td class="num">2</td><td>اسحب على الخريطة من ركن للركن اللي قصاده</td><td>مستطيل بـ 4 نقط، والأداة بترجع «نقط» لوحدها.</td><td class="chk"></td></tr>
+      <tr><td class="num">3</td><td>«دايرة»: دوس على المركز واسحب لحد الحدود</td><td>دايرة بـ 32 نقطة بدل المستطيل.</td><td class="chk"></td></tr>
+      <tr><td class="num">4</td><td>«مثلث»: اسحب</td><td>مثلث بـ 3 نقط جوه المساحة اللي سحبتها.</td><td class="chk"></td></tr>
+      <tr><td class="num">5</td><td>«رسم حر»: دوس بالماوس وامشي على الحدود وسيب</td><td>شكل بعدد نقط معقول (مش نقطة لكل حركة، ومش أكتر من 100).</td><td class="chk"></td></tr>
+      <tr><td class="num">6</td><td>دوس «تراجع» بعد أي شكل</td><td>الرسمة اللي كانت قبله بترجع.</td><td class="chk"></td></tr>
+      <tr><td class="num">7</td><td>بعد الشكل، وانت على «نقط»، اسحب نقطة منه</td><td>بتتحرك زي أي نقطة، ودوسة مرتين بتشيلها.</td><td class="chk"></td></tr>
+      <tr><td class="num">8</td><td>اختار «مستطيل» ودوس على الخريطة من غير ما تسحب</td><td>مفيش حاجة بتترسم، والرسمة اللي موجودة زي ما هي، والأداة فاضلة مختارة.</td><td class="chk"></td></tr>
+      <tr><td class="num">9</td><td>ارسم مستطيل جنب منطقة رمادي وخلي ركنه قريب من حدّها</td><td>الركن بيلزق على حدّ المنطقة التانية زي النقطة العادية.</td><td class="chk"></td></tr>
+      <tr><td class="num">10</td><td>ارسم دايرة فوق منطقة تانية واحفظ</td><td>بيترفض والرسالة فيها اسم المنطقة التانية، زي أي رسمة.</td><td class="chk"></td></tr>
+      <tr><td class="num">11</td><td>ارسم دايرة في مكان فاضي واحفظ (على منطقة التجربة)</td><td>بتتحفظ، وفي القايمة مكتوب «مرسومة».</td><td class="chk"></td></tr>
+    </tbody>
+  </table></div>
+  <div class="box traps">
+    <h3>مش باج — مقصود</h3>
+    <ul>
+      <li>الشكل الجديد بيحل محل الرسمة كلها، مش بيتضاف جنبها. المنطقة شكل واحد.</li>
+      <li>وانت على أداة شكل، النقط القديمة مبتتحركش، والسحب بيرسم الشكل حتى لو بدأ من فوق نقطة. ارجع «نقط» عشان تحرّكها.</li>
+      <li>الخريطة مبتتحركش بالسحب وانت على أداة شكل، لأن السحب بيرسم. ارجع «نقط» أو استخدم + و − عشان تتحرك.</li>
+    </ul>
+  </div>
+</section>
+
+<section id="limit">
+  <h2><span class="n">3</span>تحذير الـ 500 نقطة</h2>
+  <p>التحذير الأحمر «المنطقة ممكن يكون فيها 500 نقطة بالكتير» كان ظاهر تحت الخريطة على طول، حتى من غير ولا نقطة. دلوقتي مبيظهرش غير لما توصل للحد.</p>
+  <div class="tbl"><table class="steps">
+    <thead><tr><th>#</th><th>جرّب</th><th>المفروض يحصل</th><th class="chk">✓</th></tr></thead>
+    <tbody>
+      <tr><td class="num">1</td><td>افتح إضافة منطقة</td><td>مفيش تحذير أحمر تحت الخريطة.</td><td class="chk"></td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section id="others">
+  <h2><span class="n">+</span>خريطة المغسلة والمدينة</h2>
+  <p>السيرش بقى مكوّن واحد مشترك بين كل الخرايط، فلازم نتأكد إن الخرايط اللي كان فيها سيرش فاضلة زي ما هي بالظبط.</p>
+  <div class="tbl"><table class="steps">
+    <thead><tr><th>#</th><th>جرّب</th><th>المفروض يحصل</th><th class="chk">✓</th></tr></thead>
+    <tbody>
+      <tr><td class="num">1</td><td>إضافة مغسلة: دوّر على مكان واختاره</td><td>الدبوس بيتحط على المكان، وخانات الإحداثيات بتتملي.</td><td class="chk"></td></tr>
+      <tr><td class="num">2</td><td>إضافة مدينة: دوّر واختار، وبعدين دوس على مكان تاني في الخريطة</td><td>الدبوس بيتحط، وبعدين بيتنقل للمكان اللي دوست عليه، والإحداثيات بتتغير.</td><td class="chk"></td></tr>
+      <tr><td class="num">3</td><td>تعديل مدينة موجودة</td><td>الخريطة بتفتح على دبوس المدينة المحفوظ، والسيرش موجود.</td><td class="chk"></td></tr>
+      <tr><td class="num">4</td><td>صفحة التسجيل للمغاسل <code>/laundry/register</code></td><td>الخريطة والسيرش شغالين زي الأول.</td><td class="chk"></td></tr>
+      <tr><td class="num">5</td><td>صفحة عرض مغسلة</td><td>الخريطة للعرض بس ومن غير سيرش، زي الأول.</td><td class="chk"></td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<p class="foot">تفاصيل شاشة المناطق كلها في «دليل اختبار لوحة Laundo». وأي باج بلّغ عنه ومعاه اسم الشاشة، والحساب اللي كنت داخل بيه، وصورة للخريطة لو ممكن.</p>
+
+</main>
+</body>
+</html>

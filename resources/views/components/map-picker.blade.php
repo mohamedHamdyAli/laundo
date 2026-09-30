@@ -53,20 +53,7 @@
     @endif
 
     @if ($showSearch)
-        {{-- Not a <form>: this sits inside the module's own form, and a nested
-             one is invalid markup that submits the wrong thing on Enter. --}}
-        <div class="map-picker-search">
-            <div class="input-group">
-                <span class="input-group-text"><i class="bi bi-search"></i></span>
-                <input type="text" class="form-control" data-map-search
-                    placeholder="{{ __('Search for a place, street or landmark') }}"
-                    autocomplete="off">
-                <button class="btn btn-outline-secondary" type="button" data-map-search-go>
-                    {{ __('Search') }}
-                </button>
-            </div>
-            <div class="map-picker-results" data-map-results hidden></div>
-        </div>
+        <x-map-search />
     @endif
 
     <div id="{{ $mapId }}" class="map-picker-canvas" style="height: {{ $height }}"></div>
@@ -99,54 +86,7 @@
                 z-index: 0; /* under select2 and modals, which the vendor theme puts at 1050+ */
             }
 
-            .map-picker-search {
-                position: relative;
-                margin-bottom: .5rem;
-            }
-
-            /* The result list overlays the map rather than pushing it down — a
-               map that jumps every time you type is unusable. */
-            .map-picker-results {
-                position: absolute;
-                z-index: 500; /* over the canvas (0), under select2 */
-                inset-inline: 0;
-                top: calc(100% + 2px);
-                max-height: 260px;
-                overflow-y: auto;
-                background: var(--bs-body-bg, #fff);
-                border: 1px solid var(--bs-border-color, #dee2e6);
-                border-radius: 8px;
-                box-shadow: 0 6px 18px rgba(0, 0, 0, .12);
-            }
-
-            .map-picker-result {
-                display: block;
-                width: 100%;
-                text-align: start;
-                padding: .5rem .75rem;
-                border: 0;
-                background: none;
-                font-size: .875rem;
-                line-height: 1.45;
-                color: inherit;
-                border-bottom: 1px solid var(--bs-border-color-translucent, #e9ecef);
-            }
-            .map-picker-result:last-child { border-bottom: 0; }
-            .map-picker-result:hover,
-            .map-picker-result:focus { background: var(--bs-secondary-bg, #f1f3f5); }
-
-            .map-picker-result .place { font-weight: 500; }
-            .map-picker-result .where {
-                display: block;
-                font-size: .8125rem;
-                color: var(--bs-secondary-color, #6c757d);
-            }
-
-            .map-picker-empty {
-                padding: .625rem .75rem;
-                font-size: .8125rem;
-                color: var(--bs-secondary-color, #6c757d);
-            }
+            /* The search box's own styles live with it, in `x-map-search`. */
 
             .map-picker-foot {
                 display: flex;
@@ -402,119 +342,14 @@
                     if (!initial) centreOnCity(false);
                 }
 
-                // --- place search (OpenStreetMap Nominatim)
-                var searchInput = root ? root.querySelector('[data-map-search]') : null;
-                var searchButton = root ? root.querySelector('[data-map-search-go]') : null;
-                var results = root ? root.querySelector('[data-map-results]') : null;
-
-                function closeResults() {
-                    if (!results) return;
-                    results.hidden = true;
-                    results.innerHTML = '';
-                }
-
-                function showMessage(text) {
-                    if (!results) return;
-                    results.innerHTML = '';
-                    var p = document.createElement('div');
-                    p.className = 'map-picker-empty';
-                    p.textContent = text;
-                    results.appendChild(p);
-                    results.hidden = false;
-                }
-
-                function runSearch() {
-                    if (!searchInput || !results) return;
-                    var query = searchInput.value.trim();
-                    if (query.length < 3) {
-                        showMessage(options.i18n.tooShort);
-                        return;
-                    }
-
-                    showMessage(options.i18n.searching);
-
-                    // Bias to what is on screen without excluding anything else:
-                    // "Nasr City" typed while looking at Cairo should mean the
-                    // one in Cairo, but a different governorate must still be
-                    // reachable without panning there first.
-                    var b = map.getBounds();
-                    var url = 'https://nominatim.openstreetmap.org/search'
-                        + '?format=json&limit=6&addressdetails=1'
-                        + '&accept-language=' + encodeURIComponent(options.locale)
-                        + '&viewbox=' + [b.getWest(), b.getNorth(), b.getEast(), b.getSouth()].join(',')
-                        + '&q=' + encodeURIComponent(query);
-
-                    fetch(url, { headers: { 'Accept': 'application/json' } })
-                        .then(function (r) {
-                            if (!r.ok) throw new Error('HTTP ' + r.status);
-                            return r.json();
-                        })
-                        .then(function (rows) {
-                            if (!rows || !rows.length) {
-                                showMessage(options.i18n.noResults);
-                                return;
-                            }
-                            results.innerHTML = '';
-                            rows.forEach(function (row) {
-                                var name = row.display_name || '';
-                                var head = name.split(',')[0];
-                                var rest = name.slice(head.length + 1).trim();
-
-                                var button = document.createElement('button');
-                                button.type = 'button'; // never submits the form it sits in
-                                button.className = 'map-picker-result';
-
-                                var strong = document.createElement('span');
-                                strong.className = 'place';
-                                strong.textContent = head;
-                                button.appendChild(strong);
-
-                                if (rest) {
-                                    var small = document.createElement('span');
-                                    small.className = 'where';
-                                    small.textContent = rest;
-                                    button.appendChild(small);
-                                }
-
-                                button.addEventListener('click', function () {
-                                    var lat = parseFloat(row.lat);
-                                    var lng = parseFloat(row.lon);
-                                    if (isNaN(lat) || isNaN(lng)) return;
-                                    // A search result is a chosen location, so it
-                                    // sets the value — unlike the city, which only
-                                    // changes the view.
-                                    writeInputs({ lat: lat, lng: lng });
-                                    map.setView([lat, lng], options.pinZoom);
-                                    closeResults();
-                                });
-
-                                results.appendChild(button);
-                            });
-                            results.hidden = false;
-                        })
-                        .catch(function () {
-                            // Nominatim rate-limits and can simply be unreachable.
-                            // Saying so beats an empty box that looks like "no
-                            // such place".
-                            showMessage(options.i18n.searchFailed);
-                        });
-                }
-
-                if (searchInput) {
-                    searchInput.addEventListener('keydown', function (e) {
-                        if (e.key === 'Enter') {
-                            // Enter in this box means "search", not "save the
-                            // laundry" — the surrounding form must not submit.
-                            e.preventDefault();
-                            runSearch();
-                        }
-                        if (e.key === 'Escape') closeResults();
-                    });
-                    if (searchButton) {
-                        searchButton.addEventListener('click', runSearch);
-                    }
-                    document.addEventListener('click', function (e) {
-                        if (root && !root.contains(e.target)) closeResults();
+                // --- place search (`x-map-search`, OpenStreetMap Nominatim)
+                var searchBox = root ? root.querySelector('[data-map-search-box]') : null;
+                if (searchBox && window.attachPlaceSearch) {
+                    window.attachPlaceSearch(map, searchBox, function (place) {
+                        // A search result is a chosen location, so it sets the
+                        // value — unlike the city, which only changes the view.
+                        writeInputs({ lat: place.lat, lng: place.lng });
+                        map.setView([place.lat, place.lng], options.pinZoom);
                     });
                 }
 
@@ -545,14 +380,7 @@
                 cityZoom: {{ $cityZoom }},
                 pinZoom: {{ $pinZoom }},
                 readonly: {{ $readonly ? 'true' : 'false' }},
-                locale: @json(app()->getLocale()),
                 dragTitle: @json(__('Drag to move the location')),
-                i18n: {
-                    searching: @json(__('Searching…')),
-                    noResults: @json(__('No place found by that name.')),
-                    tooShort: @json(__('Type at least three letters.')),
-                    searchFailed: @json(__('The place search is unavailable right now. Set the pin on the map instead.')),
-                },
             });
         });
     </script>

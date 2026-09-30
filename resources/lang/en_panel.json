@@ -2242,5 +2242,17 @@
     "A zone can have at most :count corners. Draw it with fewer.": "A zone can have at most :count corners. Draw it with fewer.",
     ":count addresses moved to the zone their pin is in.": ":count addresses moved to the zone their pin is in.",
     ":count addresses kept their zone until their orders in progress are done.": ":count addresses kept their zone until their orders in progress are done.",
-    "Click the map to add a corner, drag a corner to move it, double-click a corner to remove it. Other zones are shown in grey — a corner put near one snaps onto its corner or edge, so the two share the border.": "Click the map to add a corner, drag a corner to move it, double-click a corner to remove it. Other zones are shown in grey — a corner put near one snaps onto its corner or edge, so the two share the border."
+    "Click the map to add a corner, drag a corner to move it, double-click a corner to remove it. Other zones are shown in grey — a corner put near one snaps onto its corner or edge, so the two share the border.": "Click the map to add a corner, drag a corner to move it, double-click a corner to remove it. Other zones are shown in grey — a corner put near one snaps onto its corner or edge, so the two share the border.",
+    "The place search is unavailable right now. Move the map to the place yourself.": "The place search is unavailable right now. Move the map to the place yourself.",
+    "Draw with": "Draw with",
+    "Corners": "Corners",
+    "Rectangle": "Rectangle",
+    "Circle": "Circle",
+    "Triangle": "Triangle",
+    "Freehand": "Freehand",
+    "Drag on the map from one corner of the zone to the opposite one.": "Drag on the map from one corner of the zone to the opposite one.",
+    "Press where the centre is and drag out to the edge.": "Press where the centre is and drag out to the edge.",
+    "Drag on the map and a triangle is drawn inside what you drag.": "Drag on the map and a triangle is drawn inside what you drag.",
+    "Hold the mouse down and trace the border; let go to finish.": "Hold the mouse down and trace the border; let go to finish.",
+    "A shape replaces the drawing — Undo brings it back — and its corners can then be moved like any other.": "A shape replaces the drawing — Undo brings it back — and its corners can then be moved like any other."
 }

@@ -101,6 +101,36 @@ class MapPickerTest extends TestCase
     }
 
     #[Test]
+    public function the_picker_keeps_its_place_search_after_it_moved_into_its_own_component(): void
+    {
+        $this->actingAs($this->superAdmin());
+
+        foreach ([route('admin.laundry.create'), route('admin.city.create')] as $url) {
+            $this->get($url)
+                ->assertOk()
+                ->assertSee('class="map-picker-search" data-map-search-box', false)
+                ->assertSee('window.attachPlaceSearch', false)
+                ->assertSee(__('Search for a place, street or landmark'))
+                ->assertSee(__('The place search is unavailable right now. Set the pin on the map instead.'));
+        }
+    }
+
+    #[Test]
+    public function a_read_only_picker_has_no_place_search(): void
+    {
+        ['laundry' => $laundry] = $this->laundryWithOwner('a', '+201000000101', '+201000000102');
+
+        $this->actingAs($this->superAdmin());
+
+        // The markup, not the selector: the picker's script names
+        // `[data-map-search-box]` whether or not a box was drawn.
+        $this->get(route('admin.laundry.show', $laundry->id))
+            ->assertOk()
+            ->assertSee('readonly: true', false)
+            ->assertDontSee('class="map-picker-search"', false);
+    }
+
+    #[Test]
     public function the_show_page_renders_the_map_read_only(): void
     {
         ['laundry' => $laundry] = $this->laundryWithOwner('a', '+201000000101', '+201000000102');

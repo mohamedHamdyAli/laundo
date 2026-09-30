@@ -326,3 +326,13 @@ models whose `$table` names a table no migration creates — both of which
 `doctor` reports every run.
 
 Full documentation in `.second-brain/README.md`.
+
+## 2026-09-30 — search and shape tools on the zone map
+
+- [x] Place search on the zone map (form and overview): one shared `<x-map-search>`, used by `<x-map-picker>` too; a found place moves the view and is marked, never a corner
+- [x] Shape tools: rectangle, circle (32 corners), triangle, freehand (≤100 corners) — a drag that becomes ordinary corners, snapped; replaces the drawing, Undo restores
+- [x] Fix: the «at most 500 corners» warning showed on every empty map (`d-block` beat `hidden`)
+- [x] City form map (pin + search) checked on add and edit — unchanged, as the owner asked
+- [x] Tests: `ZoneBoundaryTest` (+4), `MapPickerTest` (+2), new `tests/Browser/zone-drawer.spec.js` (5, Nominatim stubbed)
+- [x] Full suite 1,819 green; /code-review (no findings, one radius nit fixed) and /security-review (no findings)
+- [x] Docs: CLAUDE.md, Changelog, QA guide + PDF, `docs/qc-2026-09-30-release`

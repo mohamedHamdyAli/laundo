@@ -258,7 +258,21 @@ fails these is ever chosen, by any path, including the panel's picker.
 **A zone is drawn on the map** (2026-09-29). `zones.boundary` is the ring of
 `[lat, lng]` corners the owner drew on the zone form (`<x-zone-drawer>`, our
 own small tool on the Leaflet already on every panel page — no drawing plugin),
-with `min/max_lat/lng` beside it for an indexed SQL pre-filter.
+with `min/max_lat/lng` beside it for an indexed SQL pre-filter. **Shape tools**
+(2026-09-30) — rectangle, circle, triangle, freehand — turn a drag into
+ordinary corners, snapped like a click; the server knows nothing of shapes and
+checks the ring as any other. A circle is 32 corners walked round on the sphere
+with `L.CRS.Earth.R` (the radius `map.distance()` measured the drag with);
+freehand is simplified to ≤100 corners. A shape replaces the drawing (Undo
+restores it), the tool drops back to «Corners» afterwards, and while a tool is
+on the corners take no pointer — so a drag that starts on an old corner draws
+the shape. The click the browser fires after a drag's release is ignored
+(`shapedAt`), or it would add a stray corner. **The place search is one
+component, `<x-map-search>`**, shared with `<x-map-picker>`: Nominatim on Enter
+or the button only (its usage policy forbids autocomplete), results written as
+text, and each map decides what a chosen place means — the picker drops its pin
+there, the zone drawer only looks there. Its failure message is a prop, because
+«set the pin by hand» means nothing on a map with no pin.
 `Zone/Services/ZoneLocator` decides an address's zone from its pin, in
 `AddressController` on create and edit: **inside a drawn, active zone → that
 zone and its city, whatever `zone_id` the app sent**; a zone **not drawn yet**
@@ -1261,6 +1275,12 @@ Don't "fix" these blind, but know they're there:
 Views are Blade under `resources/views/admin/{module}/` (with `partials/`, `forms/`, `shared/` subfolders), extending **`layouts.main`**.
 
 **Styling is a static vendor admin template, not a build pipeline.** CSS/JS come from `public/assets/**` via `asset()` calls in `layouts/include.blade.php` and `layouts/footer_script.blade.php` — Bootstrap 5, jQuery, Font Awesome, bootstrap-icons, select2, sweetalert2, toastify, filepond, bootstrap-table, leaflet. RTL swaps to `assets/css/main/rtl.css` based on the session language. Project overrides go in `public/assets/css/theme.css` and `custom.css`; the vendor `main/app.css` often out-specifies them, so **match its selector specificity instead of relying on load order** — and before changing a property, grep for *every* rule that sets it, in both override files and the vendor CSS. More than one "fix" here has been a no-op because a second `!important` rule was still winning.
+
+**Bootstrap's display utilities beat the `hidden` attribute.** `d-block`,
+`d-flex` and the rest are `display: … !important`, so an element carrying one
+and `hidden` is never hidden — the zone map's «at most 500 corners» warning was
+shown on every empty map that way. Give a toggled element its own class with a
+`[hidden] { display: none }` rule instead.
 
 **Hand-edited panel assets must be cache-busted by hand.** `theme.css` and
 `custom.js` have no build step and no content hash, and sit behind Cloudflare —

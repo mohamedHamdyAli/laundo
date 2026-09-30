@@ -2242,5 +2242,17 @@
     "A zone can have at most :count corners. Draw it with fewer.": "المنطقة ممكن يكون فيها :count نقطة بالكتير. ارسمها بنقط أقل.",
     ":count addresses moved to the zone their pin is in.": "اتنقل :count عنوان للمنطقة اللي الدبوس بتاعه جواها.",
     ":count addresses kept their zone until their orders in progress are done.": ":count عنوان فضلوا في منطقتهم لحد ما الطلبات الشغالة عليهم تخلص.",
-    "Click the map to add a corner, drag a corner to move it, double-click a corner to remove it. Other zones are shown in grey — a corner put near one snaps onto its corner or edge, so the two share the border.": "دوس على الخريطة عشان تزوّد نقطة، واسحب النقطة عشان تحرّكها، ودوس عليها مرتين عشان تشيلها. المناطق التانية ظاهرة بالرمادي — النقطة اللي تحطها جنب واحدة منهم بتلزق على ركنها أو حدّها، فالاتنين يبقى ليهم نفس الحدود."
+    "Click the map to add a corner, drag a corner to move it, double-click a corner to remove it. Other zones are shown in grey — a corner put near one snaps onto its corner or edge, so the two share the border.": "دوس على الخريطة عشان تزوّد نقطة، واسحب النقطة عشان تحرّكها، ودوس عليها مرتين عشان تشيلها. المناطق التانية ظاهرة بالرمادي — النقطة اللي تحطها جنب واحدة منهم بتلزق على ركنها أو حدّها، فالاتنين يبقى ليهم نفس الحدود.",
+    "The place search is unavailable right now. Move the map to the place yourself.": "البحث عن الأماكن مش متاح دلوقتي. حرّك الخريطة للمكان بنفسك.",
+    "Draw with": "ارسم بـ",
+    "Corners": "نقط",
+    "Rectangle": "مستطيل",
+    "Circle": "دايرة",
+    "Triangle": "مثلث",
+    "Freehand": "رسم حر",
+    "Drag on the map from one corner of the zone to the opposite one.": "اسحب على الخريطة من ركن المنطقة للركن اللي قصاده.",
+    "Press where the centre is and drag out to the edge.": "دوس على مكان المركز واسحب لحد الحدود.",
+    "Drag on the map and a triangle is drawn inside what you drag.": "اسحب على الخريطة ويترسم مثلث جوه المساحة اللي سحبتها.",
+    "Hold the mouse down and trace the border; let go to finish.": "دوس بالماوس وامشي على الحدود، وسيب لما تخلص.",
+    "A shape replaces the drawing — Undo brings it back — and its corners can then be moved like any other.": "الشكل بيحل محل الرسمة اللي موجودة — «تراجع» بيرجّعها — وبعدها تقدر تحرّك نقطه زي أي نقطة."
 }
