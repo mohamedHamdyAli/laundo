@@ -1129,3 +1129,18 @@ POST /complaints?audience=customer|driver
 - الدبوس برا كل المناطق المرسومة ← `zone: null`، والطلب بيتقبل والإدارة بتخصّصه.
 - `GET /cities`: كل منطقة فيها `boundary` (نقط الحدود) أو `null`.
 - اقروا `data.zone` من رد حفظ العنوان.
+
+---
+
+# ٣٠ سبتمبر ٢٠٢٦ — شاشة «تفاصيل الطلب» (تطبيق السواق)
+
+ملف مستقل بالتفصيل: `docs/mobile-2026-09-30-driver-order-details.md`. الملخص:
+
+- **مفيش حاجة كاسرة.** endpoint جديد `GET /driver/orders/{id}` بيرجّع الطلب كله
+  ورا المهمة: القطع، المواعيد، المغسلة، الدفع، الحالة، و`my_tasks`. وحقل جديد
+  `order_id` على كل صف مهمة.
+- بس للسواق اللي ماسك رجلة في الطلب — غير كده 404.
+- **القطع بأسمائها من غير عدد** (`qty` و`items_count` بـ`null`، `counts_visible: false`)
+  لحد ما الاستلام من المغسلة يخلص — نفس قاعدة `expected_pieces`.
+- `pickup.address` / `delivery.address` / `laundry.address` / `payment` بـ`null`
+  إلا لو السواق ماسك الرجلة اللي محتاجاهم — نفس اللي شاشة المهمة بتديه.

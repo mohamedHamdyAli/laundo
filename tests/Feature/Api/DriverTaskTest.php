@@ -971,6 +971,231 @@ class DriverTaskTest extends TestCase
         $this->assertEmpty(array_intersect($first, $page2));
     }
 
+    // ------------------------------------------------------ the order screen
+
+    #[Test]
+    public function the_order_screen_shows_the_order_behind_a_leg(): void
+    {
+        $driver = $this->eligibleDriver();
+        $order = $this->placedOrder();
+
+        Sanctum::actingAs($driver);
+
+        // Every task row names the order it opens, not only its code.
+        $rows = $this->getJson('/api/v1/driver/tasks', $this->apiHeaders())->assertOk()->json('data');
+        $this->assertSame([$order->id], array_values(array_unique(array_column($rows, 'order_id'))));
+
+        $data = $this->getJson("/api/v1/driver/orders/{$order->id}", $this->apiHeaders())
+            ->assertOk()
+            ->assertJsonPath('data.code', $order->code)
+            ->assertJsonPath('data.status', $order->status->value)
+            ->assertJsonPath('data.customer.name', $this->customer->name)
+            ->assertJsonPath('data.laundry.address.phone', $this->tenant['laundry']->phone)
+            ->assertJsonPath('data.items_phase', 'estimated')
+            ->json('data');
+
+        // JSON writes 54.0 as 54, so compared as the number it is.
+        $this->assertEquals($order->payableTotal(), $data['payment']['amount_due']);
+
+        // The pieces by name, from the customer's basket.
+        $this->assertSame([$this->catalog['items'][0]->id], array_column($data['items'], 'item_id'));
+        $this->assertNotNull($data['items'][0]['name']);
+
+        // Both doors, since this driver holds both customer legs — each with the
+        // number the task screen would have given them.
+        $this->assertSame($this->address->street, $data['pickup']['address']['street']);
+        $this->assertSame($this->customer->phone, $data['pickup']['address']['phone']);
+        $this->assertSame((float) $this->address->lat, $data['pickup']['address']['lat']);
+        $this->assertNotNull($data['delivery']['address']);
+
+        // All four of their legs, in the list's shape and in order.
+        $this->assertSame([1, 2, 3, 4], array_column($data['my_tasks'], 'sequence'));
+        $this->assertSame(
+            OrderTask::where('order_id', $order->id)->orderBy('sequence')->pluck('id')->all(),
+            array_column($data['my_tasks'], 'id')
+        );
+    }
+
+    #[Test]
+    public function the_order_screen_does_not_count_the_pieces_before_the_laundry_hands_them_back(): void
+    {
+        // The list with its quantities is the number `expected_pieces` withholds,
+        // so it waits on the same gate — and the two open together, checked on
+        // both at every step.
+        $driver = $this->eligibleDriver();
+        $order = $this->placedOrder();
+        $delivery = $this->leg($order, TaskType::DeliverToCustomer);
+
+        $screens = function () use ($driver, $order, $delivery): array {
+            $this->app['auth']->forgetGuards();
+            Sanctum::actingAs($driver);
+
+            return [
+                $this->getJson("/api/v1/driver/orders/{$order->id}", $this->apiHeaders())->assertOk()->json('data'),
+                $this->getJson("/api/v1/driver/tasks/{$delivery->id}", $this->apiHeaders())->assertOk()->json('data'),
+            ];
+        };
+
+        [$shirt, $trousers] = $this->catalog['items'];
+
+        $hidden = function () use ($screens, $shirt): void {
+            [$screen, $task] = $screens();
+
+            $this->assertFalse($screen['counts_visible']);
+            $this->assertNull($screen['items_count']);
+            $this->assertSame([null], array_column($screen['items'], 'qty'));
+            $this->assertNull($task['expected_pieces']);
+
+            // And the customer's list, never the laundry's: which lines the
+            // review added is a hint at the number the collection is held to.
+            $this->assertSame('estimated', $screen['items_phase']);
+            $this->assertSame([$shirt->id], array_column($screen['items'], 'item_id'));
+        };
+
+        $hidden();
+
+        $this->walk($order, TaskType::PickupFromCustomer, $driver, ['piece_count' => 2], signed: true);
+        $this->walk($order, TaskType::DeliverToLaundry, $driver, ['piece_count' => 2]);
+        $hidden();
+
+        // The laundry finds a pair of trousers nobody listed. Its count is
+        // exactly what the collection is held to.
+        $reviews = app(OrderReviewService::class);
+        $reviews->review(
+            $order->fresh(),
+            [['item_id' => $shirt->id, 'qty' => 2], ['item_id' => $trousers->id, 'qty' => 1]],
+            null,
+            $this->tenant['owner']
+        );
+        $reviews->confirm($order->fresh(), $this->customer);
+        $hidden();
+
+        $machine = app(OrderStateMachine::class);
+        $machine->transition($order->fresh(), OrderStatus::Cleaning, 'laundry');
+        $machine->transition($order->fresh(), OrderStatus::ReadyForDelivery, 'laundry');
+        $this->walk($order->fresh(), TaskType::CollectFromLaundry, $driver, ['piece_count' => 3]);
+
+        [$screen, $task] = $screens();
+
+        $this->assertTrue($screen['counts_visible']);
+        $this->assertSame('final', $screen['items_phase']);
+        $this->assertSame(3, $screen['items_count']);
+        $this->assertSame([$shirt->id, $trousers->id], array_column($screen['items'], 'item_id'));
+        $this->assertSame([2, 1], array_column($screen['items'], 'qty'));
+        $this->assertSame(3, $task['expected_pieces']);
+    }
+
+    #[Test]
+    public function the_door_comes_with_the_leg_that_goes_there(): void
+    {
+        $driver = $this->eligibleDriver();
+        $order = $this->placedOrder();
+
+        // A second driver who only runs the bag to the laundry and back.
+        $runner = $this->driverUser('+201044440002', zoneIds: [$this->geo['zones'][0]->id]);
+        OrderTask::where('order_id', $order->id)
+            ->whereIn('type', [TaskType::DeliverToLaundry->value, TaskType::CollectFromLaundry->value])
+            ->get()->each->update(['driver_id' => $runner->id]);
+
+        Sanctum::actingAs($runner);
+
+        $data = $this->getJson("/api/v1/driver/orders/{$order->id}", $this->apiHeaders())
+            ->assertOk()->json('data');
+
+        // No door and no number to call — neither task screen gives them one —
+        // and no total, which only the delivery leg shows.
+        $this->assertNull($data['pickup']['address']);
+        $this->assertNull($data['delivery']['address']);
+        $this->assertNull($data['payment']);
+        // The windows and the laundry they do go to are still there.
+        $this->assertArrayHasKey('slot', $data['pickup']);
+        $this->assertSame((float) $this->tenant['laundry']->fresh()->lat, $data['laundry']['address']['lat']);
+        $this->assertSame($this->tenant['laundry']->phone, $data['laundry']['address']['phone']);
+        // And only their own legs.
+        $this->assertSame([2, 3], array_column($data['my_tasks'], 'sequence'));
+
+        $this->app['auth']->forgetGuards();
+        Sanctum::actingAs($driver);
+
+        $data = $this->getJson("/api/v1/driver/orders/{$order->id}", $this->apiHeaders())
+            ->assertOk()->json('data');
+
+        // The other way round for the driver at the two doors.
+        $this->assertNotNull($data['pickup']['address']);
+        $this->assertNotNull($data['delivery']['address']);
+        $this->assertNotNull($data['payment']);
+        $this->assertNotNull($data['laundry']['name']);
+        $this->assertNull($data['laundry']['address']);
+        $this->assertSame([1, 4], array_column($data['my_tasks'], 'sequence'));
+    }
+
+    #[Test]
+    public function the_order_screen_is_only_for_a_driver_holding_a_leg_of_it(): void
+    {
+        $this->eligibleDriver();
+        $order = $this->placedOrder();
+        $url = "/api/v1/driver/orders/{$order->id}";
+
+        $this->getJson($url, $this->apiHeaders())->assertUnauthorized();
+
+        // A driver in the same zone who was handed none of it.
+        $stranger = $this->driverUser('+201044440002', zoneIds: [$this->geo['zones'][0]->id]);
+        Sanctum::actingAs($stranger);
+        $this->getJson($url, $this->apiHeaders())->assertNotFound();
+        $this->getJson('/api/v1/driver/orders/999999', $this->apiHeaders())->assertNotFound();
+
+        // The customer who placed it is not a driver, token or no token.
+        $this->app['auth']->forgetGuards();
+        Sanctum::actingAs($this->customer);
+        $this->getJson($url, $this->apiHeaders())->assertForbidden();
+    }
+
+    #[Test]
+    public function a_failed_leg_takes_the_order_screen_with_it(): void
+    {
+        // The leg goes back to the queue with `driver_id` nulled, so the order is
+        // no longer this driver's to read — unlike a cancelled leg, which stays.
+        $driver = $this->eligibleDriver();
+        $order = $this->placedOrder();
+
+        OrderTask::where('order_id', $order->id)->where('sequence', '>', 1)
+            ->get()->each->update(['driver_id' => null, 'status' => TaskStatus::Pending->value]);
+
+        $pickup = $this->started($order, TaskType::PickupFromCustomer, $driver);
+
+        Sanctum::actingAs($driver);
+        $this->getJson("/api/v1/driver/orders/{$order->id}", $this->apiHeaders())->assertOk();
+
+        // Off shift, or the dispatcher hands the leg straight back to them.
+        $driver->profile->update(['is_available' => false]);
+
+        $this->postJson("/api/v1/driver/tasks/{$pickup->id}/fail",
+            ['reason' => 'customer_unavailable'], $this->apiHeaders())->assertOk();
+
+        $this->getJson("/api/v1/driver/orders/{$order->id}", $this->apiHeaders())->assertNotFound();
+    }
+
+    #[Test]
+    public function the_order_screen_loads_its_parts_once(): void
+    {
+        $driver = $this->eligibleDriver();
+        $order = $this->placedOrder();
+
+        Sanctum::actingAs($driver);
+
+        DB::enableQueryLog();
+        $this->getJson("/api/v1/driver/orders/{$order->id}", $this->apiHeaders())->assertOk();
+        $log = collect(DB::getQueryLog())->pluck('query');
+        DB::disableQueryLog();
+
+        // Four legs each drawn through the list's presenter: read off the leg
+        // rather than off the order already loaded, every address, the laundry
+        // and the customer would be fetched again per row.
+        $this->assertLessThanOrEqual(2, $log->filter(fn ($q) => str_contains($q, 'from "addresses"'))->count());
+        $this->assertLessThanOrEqual(1, $log->filter(fn ($q) => str_contains($q, 'from "laundries"'))->count());
+        $this->assertLessThanOrEqual(1, $log->filter(fn ($q) => str_contains($q, 'from "order_items"'))->count());
+    }
+
     private function eligibleDriver(): Driver
     {
         return $this->driverUser('+201044440001', zoneIds: [$this->geo['zones'][0]->id]);

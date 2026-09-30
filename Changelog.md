@@ -10,6 +10,12 @@
   - A circle is 32 corners, and a freehand trace is simplified to at most 100.
   - A shape replaces the drawing, and «تراجع» brings the old one back. A tap is not a shape.
   - After drawing, the tool goes back to «نقط» so the corners can be moved at once. While a tool is on, the corners take no clicks, so a drag that starts on one still draws the shape (Blade / JS).
+- **The driver app has an order screen** («في السواق مفروض يشوف تفاصيل الطلب مش موجود ليها api»): `GET /api/v1/driver/orders/{id}` returns the order behind a leg — its pieces, both ends' windows, the laundry, the payment, its status, and the driver's own legs on it (`my_tasks`). Every task row now carries `order_id` beside `order_code`. App note: `docs/mobile-2026-09-30-driver-order-details.md` (API).
+  - Only an order the driver holds a leg on; anything else is a 404, like another driver's task. A failed leg goes back to the queue and the order screen goes with it.
+  - The pieces are named but not counted (`qty`, `items_count` null, `counts_visible: false`) until the collection from the laundry is complete. It is the same number `expected_pieces` holds back, and both now read one check, so they open together.
+  - Before then the list is the customer's, not the laundry's reviewed one: which lines the review added or dropped is a hint at the number.
+  - What a leg's task screen gives comes only with that leg: the customer's address and phone for each end, the laundry's address and phone, and the payment block (delivery leg only).
+  - The task screen and the order screen now build the door, its phone and the payment block from one helper each (API).
 
 ### Refactor
 

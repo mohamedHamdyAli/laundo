@@ -5749,6 +5749,63 @@
               "response": []
             },
             {
+              "name": "Order details",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Responds with the API envelope', function () {",
+                      "    const body = pm.response.json();",
+                      "    pm.expect(body).to.have.property('key');",
+                      "    pm.expect(body).to.have.property('code', pm.response.code);",
+                      "});"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "lang",
+                    "value": "{{lang}}",
+                    "description": "ar | en — read by the ApiLocale middleware. Optional; falls back to the default language."
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/v1/driver/orders/{{order_id}}",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "driver",
+                    "orders",
+                    "{{order_id}}"
+                  ]
+                },
+                "description": "«تفاصيل الطلب» — the whole order behind a leg: its pieces, both ends' windows, the laundry, the payment on the delivery leg, the order's own status, and `my_tasks` (this driver's legs on it, in the task list's shape, so each row opens its task screen). Take the id from `order_id`, which every task row now carries beside `order_code`.\n\nOnly an order this driver holds a leg on — anything else is **404**, the same as another driver's task. A failed leg goes back to the queue with `driver_id` nulled and takes the order screen with it; a cancelled leg stays in the driver's history, and so does its order.\n\n---\n\n**The pieces are named but not counted until the collection from the laundry is complete.** Before then `counts_visible` is `false`, `items_count` is `null` and every `items[].qty` is `null` — the list with its quantities is exactly the number `expected_pieces` withholds on the counted legs, and it opens at the same moment the delivery leg's `expected_pieces` does. Show the names and say the count comes later; `false` does not mean the order has no pieces.\n\n`items_phase` is `estimated` (the customer's basket) until the counts open, `final` (the laundry's list) after. Before then the list stays the customer's even if the laundry has reviewed — which lines the review added or dropped is a hint at the number the collection is held to.\n\n**Where each end is, and who to call there, come only with the leg that goes there** — the same ones that leg's task screen gives:\n\n- `pickup.address` / `delivery.address` (with `address.phone`, the number to call at that door) are `null` unless this driver holds the customer leg that goes there. `date` / `slot` / `method` are always there.\n- `laundry.address` (`street`, `lat`, `lng`, `phone`) is `null` unless this driver holds a laundry leg. `laundry.name` is always there.\n- `payment` (`amount_due`, `method`, `status`) is `null` unless this driver holds the delivery leg — the one task that shows it.\n\n`laundry` is `null` while the order has none. `payment.amount_due` is the figure that applies — the laundry's price once it has reviewed, the estimate before.",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{driver_token}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
               "name": "Start task",
               "event": [
                 {

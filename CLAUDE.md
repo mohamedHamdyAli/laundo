@@ -204,7 +204,11 @@ from the code) and **`docs/order-cycle-explained.md`**; the rules that bind code
   driver app is not shown `expected_pieces` on a counted leg until it is
   completed, nor on the delivery leg until the collection is** (the owner's
   call: shown first, a driver copies it — and one driver usually holds all four
-  legs, so the delivery's count would give the others away). «توجد مشكلة ← عدد القطع غير مطابق»
+  legs, so the delivery's count would give the others away). The driver's
+  order screen (`GET /driver/orders/{id}`) names the pieces without their
+  quantities until the same moment — one predicate for both,
+  `DriverTaskController::countsRevealed()`, so an items list cannot hand out
+  the number `expected_pieces` holds back. «توجد مشكلة ← عدد القطع غير مطابق»
   (`PieceCountMismatch`, halts the order) is the separate path for a driver who
   will not complete the handover at all.
 - `cleaning`, `ready_for_delivery`, `completed` and `returned` currently have
@@ -1118,7 +1122,7 @@ regression, not as a flaky stub.
 
 `docs/` is maintained by hand and drifts if you don't:
 
-- `docs/postman/Laundo API v1.postman_collection.json` — 105 requests in 6 caller-grouped folders, one per endpoint, with substantive per-request descriptions. An endpoint diff will not catch a **stale request body**; check the bodies when you add a field.
+- `docs/postman/Laundo API v1.postman_collection.json` — 106 requests in 6 caller-grouped folders, one per endpoint, with substantive per-request descriptions. An endpoint diff will not catch a **stale request body**; check the bodies when you add a field.
 - `docs/postman/generate-reference.py` → `docs/api-reference.html`. **The endpoint list is hand-written Python inside that script**, not derived from the collection or from `route:list`. Run it from the repo root (it writes a relative path).
 - `docs/laundo-screen-actions.html` + `.pdf` — every Figma screen against the route its button calls and the panel page staff act from. The HTML is the source; the PDF is rendered from it with headless Chrome `--print-to-pdf`.
 - `docs/laundo-qa-guide.html` + `.pdf` — the QA guide, in Arabic: every panel screen, what must exist before it works, what it feeds in the apps, its permission, and the traps a tester would otherwise file as bugs. Ordered by build order, the same order `config/menu.php` uses. Same HTML-is-the-source rule as above; regenerate the PDF with:
@@ -1160,7 +1164,8 @@ regression, not as a flaky stub.
   previous day's**: driver edits are now staged for approval, and the save
   response deliberately returns the old values), joined by
   `mobile-2026-09-28-driver-piece-count` (`expected_pieces` is `null` until a
-  counted leg is confirmed). For the customer app: `mobile-2026-09-28-coupon-scope`,
+  counted leg is confirmed) and `mobile-2026-09-30-driver-order-details` (the
+  order screen, and `order_id` on every task row). For the customer app: `mobile-2026-09-28-coupon-scope`,
   `mobile-2026-09-28-turnaround` and `mobile-2026-09-29-zones`. Each note's
   **الحالة** line says whether it is live yet — update it when it deploys.
 - **`docs/qc-{date}-release.html` + `.pdf` is the note for QC**, one per deploy,

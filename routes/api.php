@@ -431,5 +431,12 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/tasks/{id}/verify', [DriverTaskController::class, 'verify'])->name('tasks.verify');
         Route::post('/tasks/{id}/complete', [DriverTaskController::class, 'complete'])->name('tasks.complete');
         Route::post('/tasks/{id}/fail', [DriverTaskController::class, 'fail'])->name('tasks.fail');
+
+        /*
+        | «تفاصيل الطلب» — the whole order behind a leg: its pieces, both ends,
+        | its status and the driver's own legs on it. Only an order the driver
+        | holds a leg on; anything else is a 404, the same as a task.
+        */
+        Route::get('/orders/{id}', [DriverTaskController::class, 'order'])->name('orders.show');
     });
 });

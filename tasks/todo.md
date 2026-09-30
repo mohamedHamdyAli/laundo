@@ -336,3 +336,31 @@ Full documentation in `.second-brain/README.md`.
 - [x] Tests: `ZoneBoundaryTest` (+4), `MapPickerTest` (+2), new `tests/Browser/zone-drawer.spec.js` (5, Nominatim stubbed)
 - [x] Full suite 1,819 green; /code-review (no findings, one radius nit fixed) and /security-review (no findings)
 - [x] Docs: CLAUDE.md, Changelog, QA guide + PDF, `docs/qc-2026-09-30-release`
+
+## 2026-09-30 — the driver's order screen (`GET /driver/orders/{id}`)
+
+The driver app had a task screen and no order screen: the pieces, both ends'
+windows, the order's own status and the driver's other legs on it were nowhere.
+
+- [x] `GET /api/v1/driver/orders/{id}` — only an order the driver holds a leg on (404 otherwise, same as tasks)
+- [x] Pieces: names always; `qty` / `items_count` **null until the collection from the laundry is complete** — one predicate (`countsRevealed()`) shared with the delivery leg's `expected_pieces`; until then the list is the customer's, never the laundry's
+- [x] Each end's address and phone, the laundry's contact, and the payment block only with the leg whose task screen already shows them
+- [x] `my_tasks`: the driver's own legs on the order, in the list's shape; `order_id` added to every task row so the app can open the screen
+- [x] Tests in `DriverTaskTest` (+6: access, withholding, privacy, a failed leg, query count) — each checked to fail with its rule removed
+- [x] Postman + `generate-reference.py` + `docs/mobile-2026-09-30-driver-order-details.md` + `mobile-api-changes.md`
+- [x] Changelog, CLAUDE.md, brain update; /code-review + /security-review
+
+### Review
+
+- Driven on the dev database as two real drivers: an order not yet collected from
+  the laundry names its shirt with `qty: null`; a completed one shows `qty: 3`.
+- /code-review (8 findings): fixed the payment total and the laundry's contact
+  reaching drivers whose task screens never show them, the laundry's reviewed
+  list hinting at the count before it opens, a redundant query, and the door
+  block built twice. Left: the ≤3 `predecessorComplete()` queries (bounded by
+  four legs, in a shared model), a shared line presenter across controllers, and
+  moving the lookup into a repository — every driver lookup in this controller
+  queries directly.
+- /security-review: nothing at or above the bar.
+- The full suite ran in a clean worktree (HEAD plus this change only), because
+  another session's finance work was half-written in the main tree.

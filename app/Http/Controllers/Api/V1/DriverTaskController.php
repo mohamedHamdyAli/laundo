@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
+use App\Modules\Address\Models\Address;
 use App\Modules\Driver\Models\Driver;
 use App\Modules\Order\Enums\TaskFailureReason;
 use App\Modules\Order\Enums\TaskStatus;
@@ -103,6 +104,41 @@ class DriverTaskController extends Controller
         }
 
         return successReturnData($this->detail($task));
+    }
+
+    /**
+     * «تفاصيل الطلب» — the order behind a leg, as the driver holding it sees it.
+     *
+     * Reached only through the driver's own legs, so an order they hold nothing
+     * on is a 404 — the same rule as another driver's task. A failed leg hands
+     * its `driver_id` back to the queue and takes the order screen with it; a
+     * cancelled one keeps it, which is what leaves the order readable from the
+     * history.
+     *
+     * It shows what the task screens already show, gathered in one place, and
+     * never more: see presentOrder() for where each part comes from.
+     */
+    public function order(Request $request, $id): JsonResponse
+    {
+        $driver = $this->driver($request);
+
+        $order = Order::whereHas('tasks', fn ($q) => $q->where('driver_id', $driver->id))
+            ->with([
+                'customer:id,name,phone,customer_reference',
+                'laundry:id,name,address,phone,lat,lng',
+                // The address's own account, for callablePhone(): left to lazy
+                // loading it is a query per end.
+                'pickupAddress.user:id,phone', 'deliveryAddress.user:id,phone',
+                'pickupSlot', 'deliverySlot', 'service:id,name',
+                'items.item:id,name', 'tasks',
+            ])
+            ->find($id);
+
+        if (! $order) {
+            return failReturnNotFound(__('Order not found.'));
+        }
+
+        return successReturnData($this->presentOrder($order, $driver));
     }
 
     /**
@@ -477,6 +513,8 @@ class DriverTaskController extends Controller
             'status_label' => __($task->status->label()),
             'is_late' => $task->isLate(),
             'can_start' => $task->status->isStartable() && $task->predecessorComplete(),
+            // What `GET /driver/orders/{id}` takes — the code is for reading.
+            'order_id' => $task->order_id,
             'order_code' => $order?->code,
             'customer_name' => $order?->customer?->name,
             'destination' => $task->type->destinationFor($order ?? new Order),
@@ -503,9 +541,7 @@ class DriverTaskController extends Controller
      * app can say «the office has been told» when the two differ.
      *
      * The last leg counts nothing and keeps the order's count — but only once
-     * the collection from the laundry is done. One driver usually holds all
-     * four legs at once, and before then the delivery's count is exactly the
-     * number a leg still to be counted is held to.
+     * countsRevealed() says so, the same gate the order screen's pieces wait on.
      */
     private function expectedPieces(OrderTask $task): ?int
     {
@@ -515,13 +551,36 @@ class DriverTaskController extends Controller
                 : null;
         }
 
-        if (! $task->predecessorComplete()) {
+        $order = $task->order;
+
+        if (! $this->countsRevealed($order)) {
             return null;
         }
 
-        $order = $task->order;
-
         return (int) ($order->final_items_count ?? $order->estimated_items_count);
+    }
+
+    /**
+     * Whether an order's own piece counts may be shown to a driver at all.
+     *
+     * Once the collection from the laundry is done, and not before: it is the
+     * last leg that counts, and until then every number the order carries — the
+     * customer's, the laundry's — is exactly what a leg still to be counted is
+     * held to. Decided by the order, not by who holds which leg: one driver
+     * usually holds all four, and a number seen on one screen is seen.
+     *
+     * One predicate for the delivery leg's `expected_pieces` and the order
+     * screen's `items`, so the two cannot drift and give the count away through
+     * whichever was forgotten.
+     */
+    private function countsRevealed(Order $order): bool
+    {
+        // Read off the relation: the order screen has loaded it already, and
+        // for a task screen it is one query for four rows either way.
+        return $order->tasks->contains(
+            fn (OrderTask $leg) => $leg->type === TaskType::CollectFromLaundry
+                && $leg->status === TaskStatus::Completed
+        );
     }
 
     /**
@@ -548,16 +607,10 @@ class DriverTaskController extends Controller
 
             'service' => $order?->service ? getLocalizedValue($order->service, 'name') : null,
             'contact' => $atCustomer
-                ? ['name' => $order?->customer?->name, 'phone' => $address?->callablePhone() ?? $order?->customer?->phone]
+                ? ['name' => $order?->customer?->name, 'phone' => $this->doorPhone($order, $address)]
                 : ['name' => $order?->laundry ? getLocalizedValue($order->laundry, 'name') : null,
                     'phone' => $order?->laundry?->phone],
-            'address' => ($atCustomer ? [
-                'street' => $address?->street,
-                'building' => $address?->building,
-                'floor' => $address?->floor,
-                'apartment' => $address?->apartment,
-                'landmark' => $address?->landmark,
-            ] : [
+            'address' => ($atCustomer ? $this->doorLines($address) : [
                 'street' => $order?->laundry?->address,
             ]) + [
                 // Both branches through the same accessor. The laundry half used
@@ -582,10 +635,7 @@ class DriverTaskController extends Controller
             'piece_count' => $task->piece_count,
 
             // «تفاصيل الدفع» on the final leg.
-            'payment' => $type->collectsPayment() ? [
-                'amount_due' => $order ? $order->payableTotal() : null,
-                'method' => $order?->payment_method,
-                'status' => $order?->payment_status,
+            'payment' => $type->collectsPayment() ? $this->payment($order) + [
                 'collected' => $task->collected_amount !== null ? (float) $task->collected_amount : null,
             ] : null,
 
@@ -613,6 +663,163 @@ class DriverTaskController extends Controller
             'started_at_iso' => isoDate($task->started_at),
             'completed_at' => $task->completed_at ? humanDate($task->completed_at) : null,
             'completed_at_iso' => isoDate($task->completed_at),
+        ];
+    }
+
+    /**
+     * «تفاصيل الطلب».
+     *
+     * What the task screens already show, gathered in one place — never more:
+     *
+     * - **The pieces are named but not counted** until countsRevealed(): the
+     *   list with its quantities is the very number `expected_pieces` withholds.
+     *   Until then it is also the customer's list, never the laundry's — which
+     *   lines the review added or dropped is a hint at the number the collection
+     *   is held to.
+     * - **Where each end is and who to call there come with a leg that goes
+     *   there** — the customer's doors and the laundry alike, as `contact` and
+     *   `address` do on the task. A driver who only takes the bag to the laundry
+     *   and back has no business at the door.
+     * - **`payment` comes with the delivery leg**, the one task that shows it.
+     *   The laundry's total and the catalogue's prices give its count away.
+     *
+     * @return array<string, mixed>
+     */
+    private function presentOrder(Order $order, Driver $driver): array
+    {
+        $mine = $order->tasks->where('driver_id', $driver->id)->values();
+        $holds = fn (TaskType ...$types): bool => $mine->contains(fn (OrderTask $task) => in_array($task->type, $types, true));
+        $revealed = $this->countsRevealed($order);
+
+        // The laundry's lines replace its previous ones at every review, so once
+        // the count is open the latest phase present is the list as it stands.
+        $phase = $revealed && $order->items->contains('phase', 'final') ? 'final' : 'estimated';
+        $items = [];
+
+        foreach ($order->items->where('phase', $phase) as $line) {
+            $items[] = [
+                'item_id' => $line->item_id,
+                'name' => $line->item ? getLocalizedValue($line->item, 'name') : null,
+                'qty' => $revealed ? $line->qty : null,
+            ];
+        }
+
+        $tasks = [];
+
+        foreach ($mine as $task) {
+            // Already in hand — read through the leg, it is fetched again per row.
+            $task->setRelation('order', $order);
+            $tasks[] = $this->summary($task);
+        }
+
+        $laundryPin = TaskType::DeliverToLaundry->coordinatesFor($order);
+
+        return [
+            'id' => $order->id,
+            'code' => $order->code,
+            'status' => $order->status->value,
+            'status_label' => __($order->status->label()),
+            'service' => $order->service ? getLocalizedValue($order->service, 'name') : null,
+            // The name is on every task row already, the reference on every
+            // printed ticket. The number to call is with the door, below.
+            'customer' => [
+                'name' => $order->customer?->name,
+                'reference' => $order->customer?->customer_reference,
+            ],
+            // Null until an operator or the assigner has given the order one.
+            'laundry' => $order->laundry ? [
+                'name' => getLocalizedValue($order->laundry, 'name'),
+                'address' => $holds(TaskType::DeliverToLaundry, TaskType::CollectFromLaundry) ? [
+                    'street' => $order->laundry->address,
+                    'lat' => $laundryPin['lat'] ?? null,
+                    'lng' => $laundryPin['lng'] ?? null,
+                    'phone' => $order->laundry->phone,
+                ] : null,
+            ] : null,
+            'pickup' => $this->doorstep($order, TaskType::PickupFromCustomer, $holds(TaskType::PickupFromCustomer)),
+            'delivery' => $this->doorstep($order, TaskType::DeliverToCustomer, $holds(TaskType::DeliverToCustomer)),
+            'driver_note' => $order->driver_note,
+            'special_instructions' => $order->special_instructions,
+            'laundry_note' => $order->review_note,
+            // False means the app shows the names and says the count comes
+            // after the collection — not that the order has no pieces.
+            'counts_visible' => $revealed,
+            'items_count' => $revealed ? (int) ($order->final_items_count ?? $order->estimated_items_count) : null,
+            'items_phase' => $phase,
+            'items' => $items,
+            'payment' => $holds(TaskType::DeliverToCustomer) ? $this->payment($order) : null,
+            // This driver's legs on the order, in the task list's shape, so each
+            // row opens its own task screen. Other drivers' legs are not theirs.
+            'my_tasks' => $tasks,
+            'created_at' => humanDate($order->created_at),
+            'created_at_iso' => isoDate($order->created_at),
+        ];
+    }
+
+    /**
+     * One of the order's two doorsteps, described by the leg that goes there.
+     *
+     * The window is the order's and every leg holder sees it. The address and
+     * the number to call are only for the driver holding that leg — the same
+     * two things the leg's own task screen gives them.
+     *
+     * @return array<string, mixed>
+     */
+    private function doorstep(Order $order, TaskType $leg, bool $holdsLeg): array
+    {
+        $pickup = $leg === TaskType::PickupFromCustomer;
+        $address = $pickup ? $order->pickupAddress : $order->deliveryAddress;
+        $pin = $leg->coordinatesFor($order);
+
+        return [
+            'date' => ($pickup ? $order->pickup_date : $order->delivery_date)?->toDateString(),
+            'slot' => ($pickup ? $order->pickupSlot : $order->deliverySlot)?->label(),
+            // Raw `door`/`leave`, as the customer's order screen sends it.
+            'method' => $pickup ? $order->pickup_method : $order->delivery_method,
+            'address' => $holdsLeg && $address ? ['label' => $address->label] + $this->doorLines($address) + [
+                'lat' => $pin['lat'] ?? null,
+                'lng' => $pin['lng'] ?? null,
+                'phone' => $this->doorPhone($order, $address),
+            ] : null,
+        ];
+    }
+
+    /**
+     * A customer's door as the driver reads it — one copy for the task screen
+     * and the order screen, so the two cannot describe the same door apart.
+     *
+     * @return array<string, string|null>
+     */
+    private function doorLines(?Address $address): array
+    {
+        return [
+            'street' => $address?->street,
+            'building' => $address?->building,
+            'floor' => $address?->floor,
+            'apartment' => $address?->apartment,
+            'landmark' => $address?->landmark,
+        ];
+    }
+
+    /**
+     * The number to call at that door: the address's own, else the account's.
+     */
+    private function doorPhone(Order $order, ?Address $address): ?string
+    {
+        return $address?->callablePhone() ?? $order->customer?->phone;
+    }
+
+    /**
+     * «تفاصيل الدفع» — what the delivery leg collects.
+     *
+     * @return array<string, mixed>
+     */
+    private function payment(Order $order): array
+    {
+        return [
+            'amount_due' => $order->payableTotal(),
+            'method' => $order->payment_method,
+            'status' => $order->payment_status,
         ];
     }
 
