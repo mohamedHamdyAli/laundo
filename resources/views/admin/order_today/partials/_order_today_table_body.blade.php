@@ -57,6 +57,13 @@
                 @endif
             </span>
             <span class="row-sub">{{ $slot?->label() ?? __('No window') }}</span>
+            {{-- The booked date is never moved when a driver runs late, so a date
+                 already gone by says so rather than reading as today's work. --}}
+            @if ($row['late_days'])
+                <span class="status-pill tone-bad mt-1">
+                    {{ $row['late_days'] === 1 ? __('Late by a day') : __('Late by :days days', ['days' => $row['late_days']]) }}
+                </span>
+            @endif
         </div>
 
         <div class="stack-actions">
@@ -96,6 +103,12 @@
                     <dd>
                         {{ $order->pickup_date ? $order->pickup_date->format('Y-m-d') : '-' }}
                         <small class="text-muted d-block">{{ $order->pickupSlot?->label() }}</small>
+                        {{-- When it really happened: the date above is the booking. --}}
+                        @if ($row['collected_at'])
+                            <small class="text-success d-block">
+                                {{ __('Collected on :date', ['date' => humanDate($row['collected_at'], 'Y-m-d')]) }}
+                            </small>
+                        @endif
                         <small class="text-muted d-block">{{ $order->pickupAddress?->street }}</small>
                     </dd>
                 </div>

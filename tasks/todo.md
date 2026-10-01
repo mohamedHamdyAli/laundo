@@ -410,3 +410,16 @@ The owner: «لما بطلب بميعاد ساعه فاتت بيوصل للمن�
 
 - The backend could not have fixed the push: without a device token there is nobody to send to. What it could fix was the list, and the note that told the app team FCM was off.
 
+
+## 2026-10-01 — «طلبات اليوم»: dates that have gone by
+
+The owner: «اتأكد من الصفحة دي… التواريخ مش مظبوطة». Checked on live: the filters are right and the dates are what is stored, but they are the booking, never moved when a driver runs late (#10028 booked 15/9, collected 21/9, still at the laundry). The owner chose to mark it on the page, not to move bookings.
+
+- [x] `OrderTodayService::row()` — `late_days` for the date the row shows (its half undone, not cancelled/returned), `collected_at` from the pickup leg
+- [x] `todayBoard()` eager-loads the legs
+- [x] View: red «متأخر X يوم» pill; «اتستلم فعلاً» under the booked pickup
+- [x] Tests; checked in the browser (en, ar, 420px)
+
+### Review
+
+- Not done, offered and declined for now: a postponed half keeps its legs' old `due_at`, so they read «late» to the driver with no time booked (4 legs on live, #10034/#10036); and a pickup made after the booked delivery does not push the delivery.

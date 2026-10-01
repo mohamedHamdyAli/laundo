@@ -2856,7 +2856,7 @@
             "request": 1
         },
         "files": 62,
-        "lines": 12512,
+        "lines": 12579,
         "classes": [
             {
                 "fqcn": "App\\Modules\\Order\\Controllers\\DispatchController",
@@ -5031,7 +5031,7 @@
             "browser-test": 25
         },
         "files": 152,
-        "lines": 49129,
+        "lines": 49189,
         "classes": [
             {
                 "fqcn": "Tests\\Feature\\Api\\AddressTest",

@@ -1,8 +1,20 @@
 {
     "available": true,
-    "head": "cee193ba686b085c1e635b79ec4ddb0e03f8b458",
-    "commits_scanned": 117,
+    "head": "014b4fa7b303ed5b43bf2847de03a4fd704bcc2f",
+    "commits_scanned": 119,
     "recent": [
+        {
+            "sha": "014b4fa7",
+            "date": "2026-09-30",
+            "subject": "docs: the live log is daily, and the 2026-09-30 mobile notes are live",
+            "files": 2
+        },
+        {
+            "sha": "27c81007",
+            "date": "2026-09-30",
+            "subject": "feat: a finance page of its own, today's windows on Cairo's clock, and the driver's notifications",
+            "files": 39
+        },
         {
             "sha": "cee193ba",
             "date": "2026-09-30",
@@ -80,43 +92,32 @@
             "date": "2026-09-23",
             "subject": "fix: the price label is the platform fee alone, tax stays out",
             "files": 3
-        },
-        {
-            "sha": "f9c4dedf",
-            "date": "2026-09-23",
-            "subject": "fix: the price under each box is the price after tax, and now actually is",
-            "files": 3
-        },
-        {
-            "sha": "7a8990de",
-            "date": "2026-09-23",
-            "subject": "fix: name the figure under each price, and translate what shipped in English",
-            "files": 1
         }
     ],
     "hottest_files": {
-        "routes/web.php": 24,
-        "docs/postman/Laundo API v1.postman_collection.json": 18,
+        "routes/web.php": 25,
+        "docs/postman/Laundo API v1.postman_collection.json": 19,
         "app/Helpers/Helpers.php": 18,
-        "resources/views/admin/setting/generalSetting/forms/formInput.blade.php": 15,
-        "config/menu.php": 14,
+        "resources/views/admin/setting/generalSetting/forms/formInput.blade.php": 16,
+        "config/menu.php": 15,
+        "app/Modules/Setting/Requests/GeneralSettingRequest.php": 14,
         "resources/views/layouts/footer_script.blade.php": 14,
-        "app/Modules/Setting/Requests/GeneralSettingRequest.php": 13,
+        "app/Http/Controllers/Api/V1/OrderController.php": 12,
+        "config/dashboard.php": 12,
+        "docs/mobile-api-changes.md": 11,
         "app/Http/Controllers/Admin/LanguageController.php": 11,
-        "app/Http/Controllers/Api/V1/OrderController.php": 11,
         "app/Services/languages/LanguageService.php": 11,
-        "config/dashboard.php": 11,
-        "docs/mobile-api-changes.md": 10,
+        "app/Modules/Order/Services/OrderService.php": 10,
         "database/seeders/SettingsSeeder.php": 10,
-        "app/Modules/Order/Services/OrderService.php": 9,
+        "app/Modules/User/Models/User.php": 9,
         "app/Modules/Order/Services/orderCrudService.php": 9,
         "resources/views/admin/order/show.blade.php": 9,
         "app/Modules/Driver/Services/DriverCard.php": 9,
         "resources/views/layouts/topbar.blade.php": 9,
         "resources/views/layouts/sidebar.blade.php": 9,
+        "resources/views/admin/home.blade.php": 8,
         "routes/api.php": 8,
         "resources/views/admin/order/index.blade.php": 8,
-        "app/Modules/User/Models/User.php": 8,
         "resources/views/admin/banner/forms/formInput.blade.php": 8,
         "app/Services/CachingService.php": 8,
         "tests/Feature/Api/DriverTaskTest.php": 7,
@@ -127,13 +128,12 @@
         "resources/views/admin/laundry/index.blade.php": 7,
         "resources/views/admin/pricing/index.blade.php": 7,
         "app/Http/Controllers/Api/V1/DriverController.php": 7,
-        "resources/views/admin/home.blade.php": 7,
         "resources/views/admin/roles/index.blade.php": 7,
         "resources/views/layouts/include.blade.php": 7,
         "resources/views/layouts/main.blade.php": 7,
         "resources/views/auth/login.blade.php": 7,
         "app/Modules/Category/Models/Category.php": 7,
-        "app/Modules/Country/Requests/CountryRequest.php": 6,
-        "app/Modules/Laundry/Models/Laundry.php": 6
+        "app/Modules/Report/Services/DashboardSummary.php": 6,
+        "tests/Feature/Api/NotificationTest.php": 6
     }
 }

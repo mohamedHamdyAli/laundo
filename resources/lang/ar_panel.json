@@ -2291,5 +2291,8 @@
     "A window of today stops being offered this long before it ends, so nobody books a time a driver cannot reach. Blank is 60; 0 keeps it open until it ends.": "ميعاد النهارده بيبطل يتعرض قبل ما يخلص بالمدة دي، عشان محدش يحجز وقت المندوب مايلحقهوش. لو فاضي يبقى 60، و0 معناه يفضل مفتوح لحد ما يخلص.",
     "This pickup window has ended or is about to. Please choose a later one.": "ميعاد الاستلام ده خلص أو قرب يخلص. اختار ميعاد بعده.",
     "This delivery window has ended or is about to. Please choose a later one.": "ميعاد التسليم ده خلص أو قرب يخلص. اختار ميعاد بعده.",
-    "This window has ended or is about to. Please choose a later one.": "الميعاد ده خلص أو قرب يخلص. اختار ميعاد بعده."
+    "This window has ended or is about to. Please choose a later one.": "الميعاد ده خلص أو قرب يخلص. اختار ميعاد بعده.",
+    "Late by a day": "متأخر يوم",
+    "Late by :days days": "متأخر :days يوم",
+    "Collected on :date": "اتستلم فعلاً :date"
 }

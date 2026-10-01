@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026-10-01
+
+### Fix
+
+- **«طلبات اليوم» showed dates that had gone by as if they were today's work** («التواريخ مش مظبوطة»).
+  - On live: #10028 was booked to be collected and delivered on 15 Sep, was collected on 21 Sep, and was still at the laundry on 1 Oct, reading «Delivery 2026-09-15». #10034 and #10036 were booked for 22 Sep and collected on 27 Sep. The dates were right: they are the booking, and nothing moves them when a driver is late.
+  - A row whose date has passed while that half is undone (the pickup not collected, the delivery not handed over) now says «متأخر X يوم» in red. A cancelled or returned order is never late.
+  - The details show «اتستلم فعلاً» with the date the pickup leg was really completed, beside the booked one (Service / Blade).
+  - The board eager-loads the legs, so this adds one query, not one per order (Repository).
+
 ## 2026-09-30
 
 ### Fix
@@ -14,6 +24,7 @@
   - The customer's arrival window no longer opens at its own end: `window.from` was the leg's due time (Service / Request / API / Blade).
 - **The business clock is Cairo everywhere.** `config/app.php` gains `display_timezone` (`APP_DISPLAY_TIMEZONE`, default `Africa/Cairo`). It never existed, so outside a web request (console, queue, tinker) everything fell back to UTC, while the `SetTimezone` middleware already set Cairo for web requests. `phpunit.xml` pins UTC (Config).
 - Docs: live writes a **daily** log (`laravel-YYYY-MM-DD.log`), not the `laravel.log` CLAUDE.md named; the two 2026-09-30 mobile notes are marked live (Docs).
+- Docs: CLAUDE.md said `$request->user()` is always a plain `User` in the API. A driver's token is minted on `Driver`, so there it is a `Driver`, which is what split the notifications (Docs).
 - **No notification reached a driver** («مفيش اشعارات بتوصل للدرايفر»). Two causes:
   - Push (the main one): on live, **none of the six drivers had ever registered a handset**, so every `task_assigned` push (206 since the start of the month) was logged «no registered device». FCM itself works: customers received 111. The driver app was told on 2026-09-20 that FCM was not on and never called `POST /devices`, and Postman's driver folder had no notification requests. That is app work; `docs/mobile-2026-09-30-driver-notifications.md` says what to call and when, and the Firebase project the token must come from (Docs).
   - The list: a notification was filed under the class it was sent through. The driver app's token belongs to a `Driver`, so anything sent through `User` never showed in it: an operator's broadcast to drivers (`ManualNotifier`), a closed complaint. `User::notifications()` now files and reads under the account, whatever subclass it is called on (Model).

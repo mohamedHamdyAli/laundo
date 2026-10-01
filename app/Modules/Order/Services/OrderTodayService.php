@@ -4,7 +4,10 @@ namespace App\Modules\Order\Services;
 
 use App\Modules\Laundry\Models\Laundry;
 use App\Modules\Order\Enums\OrderStatus;
+use App\Modules\Order\Enums\TaskStatus;
+use App\Modules\Order\Enums\TaskType;
 use App\Modules\Order\Models\Order;
+use App\Modules\Order\Models\OrderTask;
 use App\Modules\Order\Repositories\OrderRepository;
 use App\Modules\Service\Models\Service;
 use App\Support\LaundryContext;
@@ -25,7 +28,7 @@ use Illuminate\Support\Collection;
  * all there is, and the screen says so beside it rather than presenting a guess
  * as a count.
  *
- * @phpstan-type Row array{order: Order, counted: bool, pieces: Collection<int, array{item_id: int, item: string, qty: int}>, total: int}
+ * @phpstan-type Row array{order: Order, counted: bool, pieces: Collection<int, array{item_id: int, item: string, qty: int}>, total: int, late_days: ?int, collected_at: ?Carbon}
  */
 class OrderTodayService
 {
@@ -43,8 +46,9 @@ class OrderTodayService
     {
         $filters = $this->filters($input);
         $orders = $this->orders->todayBoard($filters);
+        $today = Carbon::now(displayTimezone())->toDateString();
 
-        $rows = $orders->map(fn (Order $order) => $this->row($order));
+        $rows = $orders->map(fn (Order $order) => $this->row($order, $filters['scope'], $today));
 
         return [
             'rows' => $rows,
@@ -109,9 +113,15 @@ class OrderTodayService
     /**
      * One order, with its pieces counted the way the screen shows them.
      *
+     * The dates on an order are the ones the customer booked, and nothing moves
+     * them when a driver is late (the owner, 2026-10-01: «التواريخ مش مظبوطة»).
+     * An order booked for the 15th and collected on the 21st still says the 15th.
+     * So the row says how late the date it shows is, and when the pieces were
+     * actually collected. It never rewrites the booking.
+     *
      * @return Row
      */
-    private function row(Order $order): array
+    private function row(Order $order, string $scope, string $today): array
     {
         $counted = $order->hasFinalPrice();
         $phase = $counted ? 'final' : 'estimated';
@@ -127,12 +137,54 @@ class OrderTodayService
             ->sortByDesc('qty')
             ->values();
 
+        $collection = $this->leg($order, TaskType::PickupFromCustomer);
+
         return [
             'order' => $order,
             'counted' => $counted,
             'pieces' => $pieces,
             'total' => (int) $pieces->sum('qty'),
+            'late_days' => $this->lateDays($order, $scope === 'pickup_today', $today),
+            'collected_at' => $collection?->status === TaskStatus::Completed ? $collection->completed_at : null,
         ];
+    }
+
+    /**
+     * How many days the date this row shows has gone by with its half undone.
+     *
+     * Null when the date is today or later, when there is no date, when that
+     * half is done (the pickup collected, the delivery handed over), and on an
+     * order that stopped: a cancelled order is not late, it is not happening.
+     */
+    private function lateDays(Order $order, bool $pickup, string $today): ?int
+    {
+        $date = $pickup ? $order->pickup_date : $order->delivery_date;
+
+        if ($date === null || in_array($order->status, [OrderStatus::Cancelled, OrderStatus::Returned], true)) {
+            return null;
+        }
+
+        $leg = $this->leg($order, $pickup ? TaskType::PickupFromCustomer : TaskType::DeliverToCustomer);
+        // An order with no legs (made before they existed) goes by its status.
+        $done = $leg !== null
+            ? $leg->status === TaskStatus::Completed
+            : ($pickup
+                ? ! in_array($order->status, [OrderStatus::AwaitingPickup, OrderStatus::DriverOnWay], true)
+                : in_array($order->status, [OrderStatus::Delivered, OrderStatus::Completed], true));
+
+        if ($done) {
+            return null;
+        }
+
+        // Both plain dates in the business's calendar, so whole days apart.
+        $days = (int) Carbon::parse($date->toDateString())->diffInDays(Carbon::parse($today), false);
+
+        return $days > 0 ? $days : null;
+    }
+
+    private function leg(Order $order, TaskType $type): ?OrderTask
+    {
+        return $order->tasks->first(fn (OrderTask $task) => $task->type === $type);
     }
 
     /**

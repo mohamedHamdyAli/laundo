@@ -155,6 +155,8 @@ class OrderRepository
             ->with([
                 'customer:id,name,phone', 'laundry:id,name', 'service:id,name,pricing_mode',
                 'pickupAddress', 'deliveryAddress', 'pickupSlot', 'deliverySlot', 'items.item:id,name',
+                // Whether each half is done, and when the pieces were collected.
+                'tasks:id,order_id,type,status,completed_at',
             ])
             ->when($filters['scope'] === 'in_laundry', fn (Builder $q) => $q
                 ->whereIn("{$orders}.id", OrderTask::where('type', TaskType::DeliverToLaundry->value)

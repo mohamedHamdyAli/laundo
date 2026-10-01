@@ -2291,5 +2291,8 @@
     "A window of today stops being offered this long before it ends, so nobody books a time a driver cannot reach. Blank is 60; 0 keeps it open until it ends.": "A window of today stops being offered this long before it ends, so nobody books a time a driver cannot reach. Blank is 60; 0 keeps it open until it ends.",
     "This pickup window has ended or is about to. Please choose a later one.": "This pickup window has ended or is about to. Please choose a later one.",
     "This delivery window has ended or is about to. Please choose a later one.": "This delivery window has ended or is about to. Please choose a later one.",
-    "This window has ended or is about to. Please choose a later one.": "This window has ended or is about to. Please choose a later one."
+    "This window has ended or is about to. Please choose a later one.": "This window has ended or is about to. Please choose a later one.",
+    "Late by a day": "Late by a day",
+    "Late by :days days": "Late by :days days",
+    "Collected on :date": "Collected on :date"
 }

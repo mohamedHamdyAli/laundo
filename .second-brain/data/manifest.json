@@ -1,13 +1,13 @@
 {
     "version": "1.0.0",
-    "built_at": "2026-09-30T13:08:02+00:00",
-    "built_in_seconds": 1.69,
+    "built_at": "2026-10-01T11:32:23+00:00",
+    "built_in_seconds": 2.57,
     "repository": "laundo",
     "files_scanned": 1047,
-    "files_parsed": 39,
-    "files_reused_from_cache": 1008,
-    "nodes": 6574,
-    "edges": 24137,
+    "files_parsed": 6,
+    "files_reused_from_cache": 1041,
+    "nodes": 6576,
+    "edges": 24145,
     "nodes_by_type": {
         "class": 541,
         "command": 10,
@@ -16,7 +16,7 @@
         "file": 1047,
         "integration": 5,
         "interface": 4,
-        "method": 3259,
+        "method": 3261,
         "module": 42,
         "permission": 231,
         "route": 448,
@@ -26,11 +26,11 @@
         "view": 292
     },
     "edges_by_type": {
-        "contains": 5350,
+        "contains": 5352,
         "implemented_by": 4101,
         "tested_by": 3067,
-        "imports": 2454,
-        "references": 2386,
+        "imports": 2457,
+        "references": 2389,
         "entry_point": 1362,
         "depends_on": 1106,
         "calls": 866,
@@ -63,10 +63,10 @@
     "tables": 71,
     "models": 65,
     "tests": 152,
-    "indexed_documents": 5685,
+    "indexed_documents": 5687,
     "git": {
         "available": true,
-        "head": "cee193ba686b085c1e635b79ec4ddb0e03f8b458",
-        "commits_scanned": 117
+        "head": "014b4fa7b303ed5b43bf2847de03a4fd704bcc2f",
+        "commits_scanned": 119
     }
 }

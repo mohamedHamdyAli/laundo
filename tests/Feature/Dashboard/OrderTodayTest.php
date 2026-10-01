@@ -196,6 +196,66 @@ class OrderTodayTest extends TestCase
         $this->assertSame([$notToday->id], $ids);
     }
 
+    /**
+     * «التواريخ مش مظبوطة» (the owner, 2026-10-01): an order booked for the
+     * 15th, collected on the 21st and still at the laundry on the 1st said
+     * «Delivery 2026-09-15» on today's board as if nothing were wrong. The
+     * booking stays as booked; the row says how late it is.
+     */
+    #[Test]
+    public function a_date_gone_by_says_how_late_it_is(): void
+    {
+        $this->travelTo(Carbon::parse('2026-10-01 11:00:00', 'UTC'));
+
+        $overdue = $this->atLaundry($this->place([[0, 1]], ['delivery_date' => '2026-09-15']));
+        $yesterday = $this->atLaundry($this->place([[0, 1]], ['delivery_date' => '2026-09-30']));
+        $today = $this->atLaundry($this->place([[0, 1]], ['delivery_date' => '2026-10-01']));
+        $undated = $this->atLaundry($this->place([[0, 1]]));
+
+        $late = $this->board()['rows']->pluck('late_days', 'order.id');
+
+        $this->assertSame(16, $late[$overdue->id]);
+        $this->assertSame(1, $late[$yesterday->id]);
+        $this->assertNull($late[$today->id]);
+        $this->assertNull($late[$undated->id]);
+
+        $this->actingAs($this->superAdmin())->get(route('admin.order_today.index'))
+            ->assertOk()
+            ->assertSee(__('Late by :days days', ['days' => 16]))
+            ->assertSee(__('Late by a day'));
+    }
+
+    #[Test]
+    public function a_half_that_is_done_or_stopped_is_not_late(): void
+    {
+        $this->travelTo(Carbon::parse('2026-10-01 11:00:00', 'UTC'));
+        $past = ['pickup_date' => '2026-09-28'];
+        $board = fn (array $extra = []) => $this->board(['scope' => 'pickup_today', 'date' => '2026-09-28'] + $extra);
+
+        $waiting = $this->place([[0, 1]], $past);
+        $collected = $this->place([[0, 1]], $past);
+        OrderTask::where('order_id', $collected->id)->where('type', TaskType::PickupFromCustomer->value)
+            ->update(['status' => TaskStatus::Completed->value, 'completed_at' => '2026-09-30 09:30:00']);
+        $cancelled = $this->place([[0, 1]], $past);
+        app(OrderStateMachine::class)->transition($cancelled, OrderStatus::Cancelled, 'customer');
+
+        $rows = $board()['rows']->keyBy('order.id');
+
+        // Nobody collected it: three days late.
+        $this->assertSame(3, $rows[$waiting->id]['late_days']);
+        // Collected, two days after the booking: not late, and it says when.
+        $this->assertNull($rows[$collected->id]['late_days']);
+        $this->assertSame('2026-09-30', $rows[$collected->id]['collected_at']->toDateString());
+        $this->assertNull($rows[$waiting->id]['collected_at']);
+        // A cancelled order is not late; it is not happening.
+        $this->assertNull($board(['status' => 'cancelled'])['rows']->first()['late_days']);
+
+        $this->actingAs($this->superAdmin())
+            ->get(route('admin.order_today.index', ['scope' => 'pickup_today', 'date' => '2026-09-28']))
+            ->assertOk()
+            ->assertSee(__('Collected on :date', ['date' => '2026-09-30']));
+    }
+
     #[Test]
     public function a_cancelled_order_is_not_work_unless_asked_for(): void
     {
