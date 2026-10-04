@@ -1109,8 +1109,11 @@ regression, not as a flaky stub.
 - **`docs/mobile-{date}-{topic}.md` is the send-as-it-is note**, one file per
   release an app team has to act on — the same content as the append to the
   running log, but standalone so it can be handed over beside the Postman
-  collection without a covering explanation. `mobile-2026-09-20-slots-and-capacity.md`
-  and `mobile-2026-09-20-driver-app.md` are the pattern.
+  collection without a covering explanation. **Written, handed over, then
+  removed** (the owner, 2026-10-04): once the owner says it has been sent, it
+  is deleted. The running log keeps its summary and git history its full text.
+  The fourteen notes of 2026-09-20 → 10-01 went that way; read any of them with
+  `git show b403985:docs/mobile-2026-09-20-driver-app.md` (and so on).
 - `docs/driver-app-backend-answers.md` — the driver app team's `BACKEND_GAPS.md`
   answered against the code. Worth reading before building anything an app team
   reports as missing: about half that report was already shipping and its own DTO
@@ -1119,21 +1122,20 @@ regression, not as a flaky stub.
   is marked rather than rewritten, and a doc that says «read only» about an
   endpoint that now writes is worse than no doc at all. Mark the next one the
   same way rather than editing the answer under it.
-- The `mobile-2026-09-21-*` notes are the current contract for the driver app:
-  `-driver-tracking` (the 120-second window and background location),
-  `-driver-records-and-audience` (the record screens, the six documents,
-  `?audience=`) and `-driver-record-review` (**the one that reverses the
-  previous day's**: driver edits are now staged for approval, and the save
-  response deliberately returns the old values), joined by
-  `mobile-2026-09-28-driver-piece-count` (`expected_pieces` is `null` until a
-  counted leg is confirmed), `mobile-2026-09-30-driver-order-details` (the
-  order screen, and `order_id` on every task row) and
-  `mobile-2026-09-30-driver-notifications` (register the handset — push never
-  reached a driver before it), and `mobile-2026-10-01-cash-on-delivery` (the
-  collection waits for the price; `collected_amount` required on an unpaid
-  delivery — the customer app's half is in it too). For the customer app: `mobile-2026-09-28-coupon-scope`,
-  `mobile-2026-09-28-turnaround` and `mobile-2026-09-29-zones`. Each note's
-  **الحالة** line says whether it is live yet — update it when it deploys.
+- **The apps' contract as of 2026-10-04** is what those fourteen notes said, all
+  of them live and sent. For the driver app:
+  - the 120-second tracking window and background location;
+  - the record screens, the six documents and `?audience=`;
+  - **driver edits staged for approval**, the save returning the old values;
+  - `expected_pieces` null until a counted leg is confirmed;
+  - the order screen, with `order_id` on every task row;
+  - registering the handset for push;
+  - the collection waiting for the price, and `collected_amount` required on an
+    unpaid delivery.
+
+  For the customer app: coupon scope, turnaround, drawn zones, today's closed
+  windows and sending `payment_method`. `docs/mobile-api-changes.md` has each
+  in a few lines.
 - **`docs/qc-{date}-release.html` + `.pdf` is the note for QC**, one per deploy,
   in Arabic: each change with where it is in the panel, its permission, a
   numbered «جرّب / المفروض يحصل / ✓» table and what is intended rather than a

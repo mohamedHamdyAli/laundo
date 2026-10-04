@@ -529,7 +529,9 @@ usually touches:
 
 - **`docs/mobile-{date}-{topic}.md`** — the send-as-it-is note for an app team,
   one per release they must act on, plus an append to `docs/mobile-api-changes.md`.
-  Each note's **الحالة** line says whether it is live — update it on deploy.
+  Keep its **الحالة** line current until it is sent; **once the owner says it
+  has been sent, delete it** — the running log keeps the summary and git history
+  the text (the notes of 2026-09-20 → 10-01 are at `b403985`).
   `docs/driver-app-backend-answers.md` is a dated record: mark an overtaken
   answer in its banner rather than editing it.
 - **`docs/qc-{date}-release.html` + `.pdf`** — the Arabic note for QC, one per
