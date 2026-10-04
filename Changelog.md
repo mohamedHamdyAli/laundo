@@ -11,7 +11,9 @@
   - **A card refund and the invoice's transaction number now come from the gateway's payment**, never from the driver's cash beside it.
   - **Only the laundry refusal answers 403** (`NotForALaundry`). A database error is no longer reported as «forbidden».
   - Released to live on 2026-10-04 (`6c37c5d`): 24 orders with no method filed as cash, no confirmed order needed releasing.
-  - `up_to` has an Arabic name in the validation messages. The activity log names `collected_by` / `received_by` and leaves out `order_task_id`. The custody migration's rollback drops the foreign key before its index (MariaDB 1553).
+  - `up_to` has an Arabic name in the validation messages.
+- Docs: CLAUDE.md's suite duration (now up to thirteen minutes: 596s, 747s, 785s) and test count (1,877) re-measured (Docs).
+- Docs: CLAUDE.md cut from 1,629 lines to ~720, the rules that bind code. The long accounts behind them — reasons, incidents, class and setting names — moved unchanged to `docs/architecture.md` under the same section names (every identifier checked present in one of the two). The general working sections are condensed into «How to work here», keeping the plan/lessons/§7 rules. The «SMOKE10» badge paragraph, said twice, is said once (Docs). The activity log names `collected_by` / `received_by` and leaves out `order_task_id`. The custody migration's rollback drops the foreign key before its index (MariaDB 1553).
 
 ### Migration
 
