@@ -1,0 +1,302 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>تعديلات إصدار 4 أكتوبر — للاختبار</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&family=Readex+Pro:wght@500;600&display=swap">
+<style>
+/* نفس ألوان وخطوط «دليل اختبار لوحة Laundo» عشان الملفين يتقروا كعيلة واحدة. */
+:root {
+  --ground: #F4F6F9; --surface: #FFFFFF; --surface-2: #EDF1F6;
+  --ink: #101A26; --ink-2: #35455A; --muted: #667A93;
+  --line: #DBE3ED; --line-strong: #C2CFDE;
+  --brand: #0E4C75; --brand-soft: #E4EEF6; --brand-ink: #0A3855;
+  --good: #146B47; --good-soft: #E1F1E9;
+  --warn: #8A5A00; --warn-soft: #FAEEDA;
+  --crit: #A32218; --crit-soft: #FBE6E4;
+  --radius: 10px;
+  --f-body: "IBM Plex Sans Arabic", "Segoe UI", Tahoma, sans-serif;
+  --f-disp: "Readex Pro", "IBM Plex Sans Arabic", "Segoe UI", sans-serif;
+  --f-mono: "IBM Plex Mono", ui-monospace, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --ground: #0B121B; --surface: #121C28; --surface-2: #182533;
+    --ink: #E8EEF5; --ink-2: #BCCBDB; --muted: #8699AF;
+    --line: #243447; --line-strong: #2E4257;
+    --brand: #6FB3DE; --brand-soft: #16293A; --brand-ink: #A8D2ED;
+    --good: #63C296; --good-soft: #12261D;
+    --warn: #DFAE5E; --warn-soft: #2A2113;
+    --crit: #F08279; --crit-soft: #2B1614;
+  }
+}
+:root[data-theme="dark"] {
+  --ground: #0B121B; --surface: #121C28; --surface-2: #182533;
+  --ink: #E8EEF5; --ink-2: #BCCBDB; --muted: #8699AF;
+  --line: #243447; --line-strong: #2E4257;
+  --brand: #6FB3DE; --brand-soft: #16293A; --brand-ink: #A8D2ED;
+  --good: #63C296; --good-soft: #12261D;
+  --warn: #DFAE5E; --warn-soft: #2A2113;
+  --crit: #F08279; --crit-soft: #2B1614;
+}
+
+* { box-sizing: border-box; }
+html { direction: rtl; }
+body {
+  margin: 0; direction: rtl;
+  background: var(--ground); color: var(--ink);
+  font-family: var(--f-body); font-size: 15px; line-height: 1.75;
+  -webkit-font-smoothing: antialiased;
+}
+.page { max-width: 980px; margin: 0 auto; padding: 0 16px 80px; }
+
+/* الترويسة */
+.masthead { background: var(--surface); border-bottom: 1px solid var(--line-strong); margin-bottom: 36px; }
+.masthead .in { max-width: 980px; margin: 0 auto; padding: 36px 16px 28px; }
+.eyebrow { font-family: var(--f-mono); font-size: 11.5px; letter-spacing: .14em; color: var(--brand); margin: 0 0 10px; direction: ltr; text-align: right; }
+h1 { font-family: var(--f-disp); font-weight: 600; font-size: clamp(28px, 4.4vw, 40px); line-height: 1.3; margin: 0 0 12px; text-wrap: balance; }
+.lede { font-size: 16.5px; color: var(--ink-2); max-width: 64ch; margin: 0; }
+.stamp { margin-top: 22px; display: flex; flex-wrap: wrap; gap: 6px 26px; font-size: 13px; color: var(--muted); }
+.stamp b { color: var(--ink-2); font-weight: 600; }
+
+/* الفهرس */
+.toc { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 18px 22px; margin-bottom: 44px; columns: 2; column-gap: 36px; }
+.toc h2 { column-span: all; font-size: 13px; color: var(--muted); font-weight: 500; margin: 0 0 8px; }
+.toc ol { list-style: none; margin: 0; padding: 0; }
+.toc li { break-inside: avoid; margin: 0 0 2px; }
+.toc a { color: var(--ink-2); text-decoration: none; font-size: 14px; }
+.toc a:hover { color: var(--brand); text-decoration: underline; }
+.toc .part { font-weight: 600; color: var(--ink); margin-top: 10px; display: block; font-size: 13px; }
+.toc .n { font-family: var(--f-mono); color: var(--brand); font-size: 12px; margin-inline-end: 6px; }
+@media (max-width: 700px) { .toc { columns: 1; } }
+
+/* الأقسام */
+.part-title { font-family: var(--f-disp); font-weight: 600; font-size: 14px; color: var(--brand); letter-spacing: .02em; margin: 56px 0 6px; padding-bottom: 6px; border-bottom: 1px solid var(--line-strong); }
+section { margin-bottom: 44px; scroll-margin-top: 16px; }
+h2 { font-family: var(--f-disp); font-weight: 600; font-size: 23px; line-height: 1.4; margin: 18px 0 8px; text-wrap: balance; }
+h2 .n { font-family: var(--f-mono); font-size: 14px; color: var(--brand); margin-inline-end: 8px; vertical-align: 2px; }
+h3 { font-size: 15.5px; font-weight: 600; margin: 20px 0 8px; }
+p { margin: 0 0 12px; max-width: 74ch; }
+ul { margin: 0 0 12px; padding-right: 20px; }
+li { margin-bottom: 5px; }
+strong { font-weight: 600; }
+a { color: var(--brand); }
+td small { color: var(--muted); }
+.names { list-style: none; padding: 0; margin: 0; }
+.names li { margin: 0; }
+code { font-family: var(--f-mono); font-size: .86em; direction: ltr; unicode-bidi: isolate; background: var(--surface-2); border: 1px solid var(--line); border-radius: 4px; padding: 0 5px; white-space: nowrap; }
+
+/* فين / الصلاحية / التطبيق */
+.meta { display: grid; grid-template-columns: max-content 1fr; gap: 6px 16px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 12px 16px; margin: 0 0 14px; font-size: 14px; }
+.meta dt { color: var(--muted); font-weight: 500; }
+.meta dd { margin: 0; color: var(--ink-2); }
+@media (max-width: 560px) { .meta { grid-template-columns: 1fr; } .meta dd { margin-bottom: 6px; } }
+
+/* جداول */
+.tbl { overflow-x: auto; margin: 0 0 14px; }
+table { width: 100%; border-collapse: collapse; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); font-size: 14px; }
+th, td { text-align: right; vertical-align: top; padding: 9px 12px; border-bottom: 1px solid var(--line); }
+th { background: var(--surface-2); font-weight: 600; color: var(--ink-2); font-size: 13px; }
+tr:last-child td { border-bottom: 0; }
+td.num { font-family: var(--f-mono); color: var(--brand); width: 34px; text-align: center; }
+td.chk, th.chk { width: 46px; text-align: center; }
+td.chk::before { content: ""; display: inline-block; width: 16px; height: 16px; border: 1.5px solid var(--line-strong); border-radius: 4px; vertical-align: -3px; }
+table.steps td:nth-child(2) { width: 44%; }
+
+/* صناديق */
+.box { border-radius: var(--radius); padding: 12px 16px; margin: 0 0 14px; font-size: 14.5px; border: 1px solid; }
+.box > :last-child { margin-bottom: 0; }
+.box h3 { margin: 0 0 6px; font-size: 14.5px; }
+.box.crit { background: var(--crit-soft); border-color: color-mix(in srgb, var(--crit) 35%, transparent); }
+.box.crit h3 { color: var(--crit); }
+.box.warn { background: var(--warn-soft); border-color: color-mix(in srgb, var(--warn) 35%, transparent); }
+.box.warn h3 { color: var(--warn); }
+.box.traps { background: var(--surface); border-color: var(--line); border-inline-start: 4px solid var(--good); }
+.box.traps h3 { color: var(--good); }
+.box.info { background: var(--brand-soft); border-color: color-mix(in srgb, var(--brand) 25%, transparent); }
+.box.info h3 { color: var(--brand-ink); }
+
+.foot { margin-top: 56px; padding-top: 14px; border-top: 1px solid var(--line-strong); color: var(--muted); font-size: 13px; }
+
+/* الطباعة: فاتح دايماً، والجداول ماتتقطعش من نص السطر */
+@page { size: A4; margin: 14mm 12mm 16mm; }
+@media print {
+  :root, :root:not([data-theme="light"]), :root[data-theme="dark"] {
+    --ground: #FFFFFF; --surface: #FFFFFF; --surface-2: #EDF1F6;
+    --ink: #101A26; --ink-2: #35455A; --muted: #667A93;
+    --line: #DBE3ED; --line-strong: #C2CFDE;
+    --brand: #0E4C75; --brand-soft: #E4EEF6; --brand-ink: #0A3855;
+    --good: #146B47; --good-soft: #E1F1E9;
+    --warn: #8A5A00; --warn-soft: #FAEEDA;
+    --crit: #A32218; --crit-soft: #FBE6E4;
+  }
+  * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  body { font-size: 13px; }
+  .masthead .in { padding-top: 8px; }
+  .page { padding-bottom: 0; }
+  tr, .box, .meta { break-inside: avoid; }
+  h2, h3, .part-title { break-after: avoid; }
+  .toc a { color: var(--ink-2); }
+}
+</style>
+</head>
+<body>
+
+<header class="masthead">
+  <div class="in">
+    <p class="eyebrow">LAUNDO · RELEASE 2026-10-04 · FOR QC</p>
+    <h1>الدفع عند الاستلام، والكاش مع المناديب، والتأخير في «طلبات اليوم» — للاختبار</h1>
+    <p class="lede">اللي نزل على <b>laundo.nahrdev.net</b> على دفعتين. يوم 1 أكتوبر: «طلبات اليوم» بقت بتقول لو التاريخ فات. ويوم 4 أكتوبر: المندوب مبقاش يقدر يرجّع الطلب للعميل قبل ما سعره يتوافق عليه، ولازم يكتب المبلغ اللي استلمه، وكل كاش بيتحصّل بقى بيتسجل باسمه لحد ما المكتب يستلمه.</p>
+    <div class="stamp">
+      <span>تاريخ النشر <b>1/10 و 4/10/2026</b></span>
+      <span><b>5</b> تعديلات</span>
+      <span>اللي قبله: <b>الرئيسية من غير فلوس وملخص الماليات</b> (30 سبتمبر)</span>
+    </div>
+  </div>
+</header>
+
+<main class="page">
+
+<nav class="toc" aria-label="الفهرس">
+  <h2>المحتوى</h2>
+  <ol>
+    <li><a href="#before"><span class="n">!</span>قبل ما تبدأ — مهم</a></li>
+    <li><a href="#today"><span class="n">1</span>«طلبات اليوم»: التأخير والاستلام الفعلي</a></li>
+    <li><a href="#collect"><span class="n">2</span>مفيش استلام من المغسلة قبل السعر</a></li>
+    <li><a href="#amount"><span class="n">3</span>المبلغ إجباري في التسليم</a></li>
+    <li><a href="#custody"><span class="n">4</span>الكاش مع المناديب</a></li>
+    <li><a href="#method"><span class="n">5</span>الطلب من غير طريقة دفع = كاش</a></li>
+    <li><a href="#apps"><span class="n">+</span>التطبيقات قبل ما تتحدّث</a></li>
+  </ol>
+</nav>
+
+<section id="before">
+  <h2><span class="n">!</span>قبل ما تبدأ — مهم</h2>
+  <div class="box crit">
+    <h3>اشتغل على طلب تجريبي من أوله لآخره</h3>
+    <p>أغلب اللي هنا محتاج طلب يمشي المراحل كلها: استلام، توصيل للمغسلة، مراجعة، موافقة العميل، استلام من المغسلة، تسليم. اعمله من حساب عميل تجريبي ومندوب تجريبي. ومتدوسش «استلمت الكاش» على مندوب حقيقي غير لو فعلاً استلمت منه الفلوس.</p>
+  </div>
+  <p>هتحتاج: <strong>سوبر أدمن</strong>، و<strong>حساب مندوب</strong> على التطبيق (أو Postman)، و<strong>حساب عميل</strong>. والطلبات التلاتة العالقة على اللايف (#10052، #10053، #10059) متسابة زي ما هي بقرار المالك، فمتعتبرهاش عطل جديد.</p>
+</section>
+
+<section id="today">
+  <h2><span class="n">1</span>«طلبات اليوم»: التأخير والاستلام الفعلي</h2>
+  <p>التواريخ في الصفحة هي <strong>تواريخ الحجز</strong>، ومبتتغيرش لو السواق اتأخر. فطلب محجوز يوم 15 واتستلم يوم 21 كان بيبان «التسليم 2026-09-15» كأنه شغل النهارده.</p>
+  <dl class="meta">
+    <dt>فين</dt><dd>الطلبات ← طلبات اليوم <code>/admin/order-today</code></dd>
+    <dt>الصلاحية</dt><dd><code>order.view</code></dd>
+  </dl>
+  <div class="tbl"><table class="steps">
+    <thead><tr><th>#</th><th>جرّب</th><th>المفروض يحصل</th><th class="chk">✓</th></tr></thead>
+    <tbody>
+      <tr><td class="num">1</td><td>«جوه المغسلة دلوقتي»، وابحث عن #10028</td><td>تحت «التسليم 2026-09-15» فيه «متأخر X يوم» بالأحمر.</td><td class="chk"></td></tr>
+      <tr><td class="num">2</td><td>افتح تفاصيله بالسهم</td><td>تحت «الاستلام» مكتوب «اتستلم فعلاً 2026-09-21».</td><td class="chk"></td></tr>
+      <tr><td class="num">3</td><td>«معاد استلامها يوم» واختار تاريخ عدّى، فيه طلب لسه ماتستلمش</td><td>«متأخر X يوم» تحت تاريخ الاستلام.</td><td class="chk"></td></tr>
+      <tr><td class="num">4</td><td>طلب تسليمه النهارده</td><td>مفيش «متأخر».</td><td class="chk"></td></tr>
+      <tr><td class="num">5</td><td>«الحالة: ملغي» على يوم عدّى</td><td>الطلب الملغي عمره ما بيبان متأخر.</td><td class="chk"></td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section id="collect">
+  <h2><span class="n">2</span>مفيش استلام من المغسلة قبل السعر</h2>
+  <p>كان المندوب يقدر ياخد الطلب من المغسلة ويسلّمه للعميل أول ما يسيبه هناك، حتى لو المغسلة لسه ماراجعتش القطع والعميل لسه ماوافقش على السعر. الطلب كان بيرجع من غير سعر، ومن غير ما حد يحصّل حاجة، ومبيتحركش تاني. دلوقتي رحلة «استلام من المغسلة» <strong>مستنية السعر</strong>.</p>
+  <p>وكمان: لما العميل يوافق على السعر والقطع في المغسلة أصلاً، الطلب بيروح «جاري التنظيف» لوحده. قبل كده كان بيفضل «تم تأكيد السعر» على طول.</p>
+  <dl class="meta">
+    <dt>فين</dt><dd>تطبيق المندوب (أو Postman: فولدر 6.3)، وصفحة الطلب في اللوحة</dd>
+  </dl>
+  <div class="tbl"><table class="steps">
+    <thead><tr><th>#</th><th>جرّب</th><th>المفروض يحصل</th><th class="chk">✓</th></tr></thead>
+    <tbody>
+      <tr><td class="num">1</td><td>المندوب يستلم الطلب ويسيبه في المغسلة، والمغسلة لسه ماراجعتش</td><td>الطلب «تم الاستلام». في قايمة مهام المندوب، «استلام من المغسلة» <code>can_start: false</code> وجنبه <code>blocked_reason</code>: «الطلب لسه مستني مراجعة المغسلة وموافقة العميل على السعر…».</td><td class="chk"></td></tr>
+      <tr><td class="num">2</td><td>المندوب يحاول يبدأها</td><td>بيترفض بنفس الرسالة.</td><td class="chk"></td></tr>
+      <tr><td class="num">3</td><td>المغسلة تراجع القطع، والعميل يوافق على السعر</td><td>الطلب بيروح «جاري التنظيف» على طول، وفي السجل «القطع كانت في المغسلة بالفعل».</td><td class="chk"></td></tr>
+      <tr><td class="num">4</td><td>المندوب يبدأ «استلام من المغسلة» ويقفلها</td><td>بتتقبل، والطلب «جاهز للتسليم».</td><td class="chk"></td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section id="amount">
+  <h2><span class="n">3</span>المبلغ إجباري في التسليم</h2>
+  <p>كان المندوب يقفل التسليم من غير ما يكتب استلم كام، فالطلب يفضل «مش مدفوع» على طول، ومبيكتملش، ونصيب المغسلة ومكافأة المندوب ميتصرفوش.</p>
+  <div class="tbl"><table class="steps">
+    <thead><tr><th>#</th><th>جرّب</th><th>المفروض يحصل</th><th class="chk">✓</th></tr></thead>
+    <tbody>
+      <tr><td class="num">1</td><td>افتح رحلة التسليم على طلب كاش مش مدفوع</td><td><code>payment.collect_required: true</code> و<code>to_collect</code> بالإجمالي.</td><td class="chk"></td></tr>
+      <tr><td class="num">2</td><td>«تأكيد» من غير <code>collected_amount</code></td><td><strong>422</strong>: «اكتب المبلغ اللي استلمته من العميل (اكتب 0 لو مدفعش).»</td><td class="chk"></td></tr>
+      <tr><td class="num">3</td><td>«تأكيد» بمبلغ أكبر من المطلوب</td><td><strong>422</strong>: «المبلغ أكبر من المطلوب من العميل.»</td><td class="chk"></td></tr>
+      <tr><td class="num">4</td><td>«تأكيد» بالمبلغ المطلوب بالظبط</td><td>الطلب «مكتمل» و«مدفوع»، وفي «المدفوعات» سطر كاش باسم المندوب عليه «مع المندوب».</td><td class="chk"></td></tr>
+      <tr><td class="num">5</td><td>طلب تاني: «تأكيد» بـ 0</td><td>بيتقبل، والطلب «تم التسليم» و«مش مدفوع»، ومفيش سطر كاش.</td><td class="chk"></td></tr>
+      <tr><td class="num">6</td><td>طلب مدفوع قبل كده (كارت)</td><td><code>collect_required: false</code> و<code>to_collect: 0</code>، و«تأكيد» من غير مبلغ بيتقبل.</td><td class="chk"></td></tr>
+    </tbody>
+  </table></div>
+  <div class="box traps">
+    <h3>مش باج — مقصود</h3>
+    <ul>
+      <li>مبلغ أقل من المطلوب بيتقبل، والطلب بيفضل «مش مدفوع» عشان حد يتابعه. والسطر في «المدفوعات» بالمبلغ اللي اتحصّل فعلاً.</li>
+      <li>الطلب المدفوع لو المندوب كتب مبلغ، المبلغ بيتجاهل ومبيتسجلش كاش.</li>
+    </ul>
+  </div>
+</section>
+
+<section id="custody">
+  <h2><span class="n">4</span>الكاش مع المناديب</h2>
+  <p>الكاش اللي المندوب بيحصّله بقى بيتسجل في «المدفوعات» باسمه، ويفضل «مع المندوب» لحد ما المكتب يسجّل إنه استلمه.</p>
+  <dl class="meta">
+    <dt>فين</dt><dd>المالية ← المدفوعات <code>/admin/payment</code>، الكارت اللي فوق القايمة</dd>
+    <dt>الصلاحية</dt><dd><code>payment.view</code> للشاشة، و<code>payment.update</code> لزرار «استلمت الكاش»</dd>
+  </dl>
+  <div class="tbl"><table class="steps">
+    <thead><tr><th>#</th><th>جرّب</th><th>المفروض يحصل</th><th class="chk">✓</th></tr></thead>
+    <tbody>
+      <tr><td class="num">1</td><td>بعد الخطوة 4 في القسم اللي فات، افتح المدفوعات</td><td>«الكاش مع المناديب» فيه المندوب، وعدد التحصيلات، والمبلغ، و«من» تاريخ أقدم تحصيل.</td><td class="chk"></td></tr>
+      <tr><td class="num">2</td><td>في القايمة تحت، سطر الكاش</td><td>«حصّلها: اسم المندوب» و«مع المندوب».</td><td class="chk"></td></tr>
+      <tr><td class="num">3</td><td>«استلمت الكاش» ← وافق</td><td>رسالة «اتسجّل استلام … من المندوب»، والمندوب بيختفي من الكارت، والسطر بيبقى «اتسلّمت للمكتب [التاريخ]».</td><td class="chk"></td></tr>
+      <tr><td class="num">4</td><td>مشرف عنده <code>payment.view</code> بس</td><td>بيشوف الكارت من غير زرار.</td><td class="chk"></td></tr>
+      <tr><td class="num">5</td><td>صاحب مغسلة، حتى لو اتدّاله الصلاحيتين</td><td>مفيش كارت، والزرار لو اتبعت بإيده بيترفض (403).</td><td class="chk"></td></tr>
+      <tr><td class="num">6</td><td>«تصدير Excel» من المدفوعات</td><td>فيه أعمدة <code>collected_by</code> و<code>handed_over_at</code> و<code>received_by</code>.</td><td class="chk"></td></tr>
+    </tbody>
+  </table></div>
+  <div class="box traps">
+    <h3>مش باج — مقصود</h3>
+    <ul>
+      <li>الكاش اللي اتحصّل قبل 4 أكتوبر مش في الشاشة دي، لأنه مكانش بيتسجل أصلاً.</li>
+      <li>«محصّل اليوم» فوق بقى بيعد الكاش كمان، فممكن يعلى عن الأول.</li>
+      <li>استرداد طلب اتدفع كاش بيروح للمحفظة بس، لأن مفيش كارت نرجّع عليه.</li>
+      <li>«استلمت الكاش» بيستلم اللي ظاهر في الصفحة بس. لو المندوب حصّل كاش جديد وانت فاتح الصفحة، بيفضل «مع المندوب» لحد ما تحدّث الصفحة وتستلمه.</li>
+    </ul>
+  </div>
+</section>
+
+<section id="method">
+  <h2><span class="n">5</span>الطلب من غير طريقة دفع = كاش</h2>
+  <p>التطبيق كان بيعمل الطلب من غير طريقة دفع (23 من 31 طلب). دلوقتي لو مفيش طريقة، السيرفر بيعتبره كاش، والطلبات القديمة اللي من غير طريقة اتسجلت كاش.</p>
+  <div class="tbl"><table class="steps">
+    <thead><tr><th>#</th><th>جرّب</th><th>المفروض يحصل</th><th class="chk">✓</th></tr></thead>
+    <tbody>
+      <tr><td class="num">1</td><td>اعمل طلب من التطبيق الحالي</td><td>في صفحة الطلب طريقة الدفع «الدفع نقداً عند الاستلام».</td><td class="chk"></td></tr>
+      <tr><td class="num">2</td><td>(اختياري) حط «رسوم الدفع النقدي» في الإعدادات (المالية)، واعمل طلب من التطبيق الحالي</td><td>الطلب بيتسجل كاش <strong>من غير</strong> الرسوم، لأن التطبيق مابعتش «كاش» والعميل مشافهاش. من Postman بـ <code>"payment_method": "cash"</code> الرسوم بتظهر سطر لوحدها. <strong>رجّع الإعداد فاضي بعدها.</strong></td><td class="chk"></td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section id="apps">
+  <h2><span class="n">+</span>التطبيقات قبل ما تتحدّث</h2>
+  <div class="tbl"><table>
+    <thead><tr><th>التطبيق</th><th>اللي هتشوفه دلوقتي</th><th>بعد التحديث</th></tr></thead>
+    <tbody>
+      <tr><td>المندوب</td><td>زرار «بدء» على «استلام من المغسلة» شغال، ولما يدوسه قبل السعر بيترفض بالرسالة. و«تأكيد» التسليم من غير مبلغ بيترفض برسالة (422). ممكن التطبيق ميعرضهاش كويس.</td><td>الزرار رمادي ومكتوب جنبه السبب، وخانة المبلغ إجبارية وفيها المطلوب جاهز.</td></tr>
+      <tr><td>العميل</td><td>مفيش فرق في الشكل، والطلب بيتسجل كاش.</td><td>بيبعت الطريقة اللي العميل اختارها.</td></tr>
+    </tbody>
+  </table></div>
+  <p><small>الملف: <code>mobile-2026-10-01-cash-on-delivery.md</code> للفريقين.</small></p>
+</section>
+
+<p class="foot">تفاصيل الشاشات في «دليل اختبار لوحة Laundo». وأي باج بلّغ عنه ومعاه رقم الطلب، وحساب المندوب أو العميل، والخطوة اللي كنت فيها.</p>
+
+</main>
+</body>
+</html>

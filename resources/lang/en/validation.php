@@ -257,6 +257,7 @@ return [
         'subtotal' => 'Subtotal',
         'delivery_fee' => 'Delivery fee',
         'collected_amount' => 'Amount collected',
+        'up_to' => 'last collection shown',
         'piece_count' => 'Piece count',
         'expected_piece_count' => 'Expected piece count',
         'expected_piece_source' => 'Expected from',

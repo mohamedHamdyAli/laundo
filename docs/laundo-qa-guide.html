@@ -1270,13 +1270,13 @@ a:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; border-r
     <article class="screen">
       <header><h4>المدفوعات</h4><span class="path">/admin/payment</span></header>
       <dl class="facts">
-        <dt>الغرض</dt><dd>سجل كل محاولة دفع. قراءة فقط.</dd>
+        <dt>الغرض</dt><dd>سجل كل محاولة دفع، ومن ٤ أكتوبر <strong>كل كاش المندوب حصّله على الباب</strong>، باسمه. فوق القايمة «الكاش مع المناديب»: كل مندوب معاه كام لسه ماسلّمهوش، وزرار «استلمت الكاش» يسجّل إن المكتب استلمه.</dd>
         <dt>الحالات</dt><dd><code>pending</code>، <code>authorised</code>، <code>captured</code>، <code>failed</code>، <code>refunded</code></dd>
         <dt>الطرق</dt><dd><code>card</code>، <code>wallet</code>، <code>instapay</code>، <code>cash</code></dd>
         <dt>يعتمد على</dt><dd><strong>طلب</strong> (<code>payments.order_id</code>).</dd>
         <dt>يغذّي</dt><dd><span class="tag t-mute">API</span> <code>POST /orders/{id}/pay</code>، <code>GET /orders/{id}/payments</code>، <code>GET /payment-methods</code>، و webhook عام <code>POST /payments/webhook/{provider}</code>.</dd>
-        <dt>الصلاحية</dt><dd><code>payment.view</code></dd>
-        <dt>فخاخ</dt><dd class="n-warn">حالة الدفع <strong>منفصلة تماماً</strong> عن حالة الطلب، عشان الدفع عند الاستلام: العميل بيدفع عند التسليم بعد الغسيل بوقت طويل. ما تتوقعش إن الاتنين يمشوا سوا.</dd>
+        <dt>الصلاحية</dt><dd><code>payment.view</code>، و<code>payment.update</code> لزرار «استلمت الكاش». صاحب المغسلة مبيشوفش الكاش مع المناديب ومبيقدرش يستلمه حتى لو اتدّاله الصلاحية.</dd>
+        <dt>فخاخ</dt><dd class="n-warn">حالة الدفع <strong>منفصلة تماماً</strong> عن حالة الطلب، عشان الدفع عند الاستلام: العميل بيدفع عند التسليم بعد الغسيل بوقت طويل. ما تتوقعش إن الاتنين يمشوا سوا. والمندوب <strong>لازم يكتب المبلغ اللي استلمه</strong> لما يقفل تسليم طلب مش مدفوع (0 لو مدفعش، ومش أكتر من المطلوب). الكاش اللي اتحصّل قبل ٤ أكتوبر مش في الشاشة دي، لأنه مكانش بيتسجل. والطلب اللي من غير طريقة دفع بيتحسب كاش. و«استلام من المغسلة» <strong>مبيبدأش قبل ما المغسلة تراجع والعميل يوافق على السعر</strong>، وده مقصود مش عطل.</dd>
       </dl>
     </article>
 

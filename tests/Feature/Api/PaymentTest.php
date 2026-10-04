@@ -11,6 +11,7 @@ use App\Modules\Order\Services\OrderReviewService;
 use App\Modules\Order\Services\OrderService;
 use App\Modules\Order\Services\OrderStateMachine;
 use App\Modules\Order\Services\TaskService;
+use App\Modules\Payment\Enums\PaymentMethod;
 use App\Modules\Payment\Enums\PaymentStatus;
 use App\Modules\Payment\Models\Payment;
 use App\Modules\Payment\Services\PaymentService;
@@ -368,7 +369,7 @@ class PaymentTest extends TestCase
     // ---------------------------------------------------- cash still works
 
     #[Test]
-    public function cash_at_the_door_still_settles_without_any_payment_row(): void
+    public function cash_at_the_door_settles_as_the_drivers_cash_payment(): void
     {
         $driver = $this->driverUser('+201044440001', zoneIds: [$this->geo['zones'][0]->id]);
         $order = $this->readyForDelivery($driver);
@@ -393,9 +394,17 @@ class PaymentTest extends TestCase
 
         $order->refresh();
 
-        // P8's rule holds untouched: paid at the door, and no gateway involved.
+        // Paid at the door, no gateway involved — and, since 2026-10-01, one
+        // captured cash payment in the driver's name, still in their pocket.
         $this->assertSame('paid', $order->payment_status);
-        $this->assertSame(0, Payment::count());
+        $cash = Payment::sole();
+        $this->assertSame(PaymentMethod::Cash, $cash->method);
+        $this->assertSame(PaymentStatus::Captured, $cash->status);
+        $this->assertSame($driver->id, $cash->collected_by);
+        $this->assertSame($task->id, $cash->order_task_id);
+        $this->assertNull($cash->handed_over_at);
+        $this->assertNull($cash->provider_reference);
+        $this->assertEquals($order->payableTotal(), (float) $cash->amount);
     }
 
     // ----------------------------------------------------------- isolation

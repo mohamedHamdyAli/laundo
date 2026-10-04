@@ -3,6 +3,7 @@
 namespace App\Modules\Order\Models;
 
 use App\Modules\Driver\Models\Driver;
+use App\Modules\Order\Enums\OrderStatus;
 use App\Modules\Order\Enums\PieceCountSource;
 use App\Modules\Order\Enums\TaskFailureReason;
 use App\Modules\Order\Enums\TaskStatus;
@@ -269,11 +270,30 @@ class OrderTask extends Model
     }
 
     /**
+     * Whether the order lets this leg go ahead yet.
+     *
+     * Only the collection from the laundry waits on the order: the pieces may
+     * leave once the laundry has priced them and the customer has agreed, which
+     * is `cleaning` (or later). It used to wait on nothing but the leg before
+     * it, so on live a driver collected and delivered orders still `picked_up`:
+     * back at the customer's door with no price, nothing to collect, and an
+     * order that could never move again (the owner, 2026-10-01).
+     */
+    public function orderAllows(): bool
+    {
+        if ($this->type !== TaskType::CollectFromLaundry) {
+            return true;
+        }
+
+        return in_array($this->order?->status, [OrderStatus::Cleaning, OrderStatus::ReadyForDelivery], true);
+    }
+
+    /**
      * Whether a driver may act on this now.
      */
     public function isActionable(): bool
     {
-        return $this->status->isOpen() && $this->predecessorComplete();
+        return $this->status->isOpen() && $this->predecessorComplete() && $this->orderAllows();
     }
 
     /**

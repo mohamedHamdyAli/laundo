@@ -6,9 +6,12 @@ use App\Modules\Coupon\Models\Coupon;
 use App\Modules\Notification\Services\OrderNotifier;
 use App\Modules\Notification\Services\PieceCountNotifier;
 use App\Modules\Order\Enums\OrderStatus;
+use App\Modules\Order\Enums\TaskStatus;
+use App\Modules\Order\Enums\TaskType;
 use App\Modules\Order\Models\Order;
 use App\Modules\Order\Models\OrderItem;
 use App\Modules\Order\Models\OrderPriceQuery;
+use App\Modules\Order\Models\OrderTask;
 use App\Modules\Pricing\Models\ItemPrice;
 use App\Modules\Pricing\Services\PlatformFee;
 use App\Modules\Pricing\Services\PriceIncrease;
@@ -205,6 +208,11 @@ class OrderReviewService
         }
 
         return DB::transaction(function () use ($order, $customer) {
+            // Locked against a handover completing at the same moment —
+            // `TaskService::advanceOrder()` takes the same lock — so one of the
+            // two always sees the other and the order reaches `cleaning`.
+            $order = Order::whereKey($order->id)->lockForUpdate()->first() ?? $order;
+
             $order->update(['confirmed_at' => now()]);
 
             $order = $this->machine->transition(
@@ -219,6 +227,29 @@ class OrderReviewService
             // pickup has to exist before anybody can collect — so this catches an
             // order placed before P8 existed. Idempotent either way.
             $this->tasks->generate($order);
+
+            // The work starts now if the pieces are already there. The laundry
+            // counts them at the laundry, so the handover that would have moved
+            // the order to `cleaning` has almost always happened before the
+            // price is agreed — and was refused then, from `picked_up`. Nothing
+            // else moved it, so a confirmed order sat at `confirmed` for good and
+            // its collection and delivery could never advance it (#10053 on
+            // live, 2026-10-01). A handover still to come moves it as before.
+            $atLaundry = OrderTask::where('order_id', $order->id)
+                ->where('type', TaskType::DeliverToLaundry->value)
+                ->where('status', TaskStatus::Completed->value)
+                ->lockForUpdate()
+                ->value('id') !== null;
+
+            if ($atLaundry) {
+                $order = $this->machine->transition(
+                    $order,
+                    OrderStatus::Cleaning,
+                    'system',
+                    null,
+                    __('The pieces were already at the laundry.')
+                );
+            }
 
             return $order;
         });

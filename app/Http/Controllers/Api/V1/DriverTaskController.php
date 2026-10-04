@@ -401,7 +401,7 @@ class DriverTaskController extends Controller
             // tasks would fire fifteen address queries and fifteen laundry ones
             // to draw a map pin — the N+1 the query-count tests exist to catch.
             ->with([
-                'order:id,code,user_id,laundry_id,service_id,pickup_address_id,delivery_address_id,payment_method,payment_status,estimated_total,final_total',
+                'order:id,code,status,user_id,laundry_id,service_id,pickup_address_id,delivery_address_id,payment_method,payment_status,estimated_total,final_total',
                 'order.pickupAddress:id,street,lat,lng',
                 'order.deliveryAddress:id,street,lat,lng',
                 'order.laundry:id,name,address,lat,lng',
@@ -512,7 +512,10 @@ class DriverTaskController extends Controller
             'status' => $task->status->value,
             'status_label' => __($task->status->label()),
             'is_late' => $task->isLate(),
-            'can_start' => $task->status->isStartable() && $task->predecessorComplete(),
+            'can_start' => $task->status->isStartable() && $task->predecessorComplete() && $task->orderAllows(),
+            // Why a collection from the laundry cannot start yet — the order is
+            // still waiting for its price. Null when nothing is in the way.
+            'blocked_reason' => $task->status->isOpen() && ! $task->orderAllows() ? $this->notReady() : null,
             // What `GET /driver/orders/{id}` takes — the code is for reading.
             'order_id' => $task->order_id,
             'order_code' => $order?->code,
@@ -816,11 +819,24 @@ class DriverTaskController extends Controller
      */
     private function payment(Order $order): array
     {
+        $paid = $order->payment_status === 'paid';
+
         return [
             'amount_due' => $order->payableTotal(),
             'method' => $order->payment_method,
             'status' => $order->payment_status,
+            // What changes hands at the door: nothing on an order already paid,
+            // the whole bill on one that is not. `amount_due` alone told the
+            // driver to collect a card-paid order again.
+            'to_collect' => $paid ? 0.0 : $order->payableTotal(),
+            // Whether «تأكيد» needs `collected_amount` (0 when nothing was paid).
+            'collect_required' => ! $paid,
         ];
+    }
+
+    private function notReady(): string
+    {
+        return __("This order is still waiting for the laundry's review and the customer's price confirmation.");
     }
 
     private function translate(RuntimeException $e): JsonResponse
@@ -839,6 +855,15 @@ class DriverTaskController extends Controller
                 __('Please enter the number of pieces.')
             ),
             'task_finished' => failReturnMsg(__('This task is already finished.')),
+            'order_not_ready' => failReturnMsg($this->notReady()),
+            'collected_amount_required' => failReturnValidation(
+                ['collected_amount' => [__('Enter the amount you collected from the customer (0 if nothing was paid).')]],
+                __('Enter the amount you collected from the customer (0 if nothing was paid).')
+            ),
+            'collected_amount_too_high' => failReturnValidation(
+                ['collected_amount' => [__('The amount is more than the customer owes.')]],
+                __('The amount is more than the customer owes.')
+            ),
             default => failReturnMsg(__('We could not complete that.')),
         };
     }

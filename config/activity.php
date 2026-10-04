@@ -108,6 +108,8 @@ return [
         // A zone's drawing is a list of corners — noise in a sentence. The row
         // still says the zone was edited; its box columns end in _lat/_lng.
         'boundary',
+        // A cash payment's leg: an id with nothing to read in a sentence.
+        'order_task_id',
     ],
     'hidden_suffixes' => ['_lat', '_lng', '_token'],
 
@@ -131,6 +133,9 @@ return [
         'address_id' => Address::class,
         'user_id' => User::class,
         'driver_id' => User::class,
+        // Cash taken at the door: the driver who took it, who received it.
+        'collected_by' => User::class,
+        'received_by' => User::class,
         'answered_by' => User::class,
         'applied_by' => User::class,
         'approved_by' => User::class,

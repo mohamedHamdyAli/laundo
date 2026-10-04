@@ -665,6 +665,24 @@
             "column": "resolved_by",
             "to": "users",
             "migration": "database/migrations/2026_09_28_120000_create_piece_discrepancies_table.php"
+        },
+        {
+            "from": "payments",
+            "column": "collected_by",
+            "to": "users",
+            "migration": "database/migrations/2026_10_01_100000_add_cash_custody_to_payments_table.php"
+        },
+        {
+            "from": "payments",
+            "column": "order_task_id",
+            "to": "order_tasks",
+            "migration": "database/migrations/2026_10_01_100000_add_cash_custody_to_payments_table.php"
+        },
+        {
+            "from": "payments",
+            "column": "received_by",
+            "to": "users",
+            "migration": "database/migrations/2026_10_01_100000_add_cash_custody_to_payments_table.php"
         }
     ],
     "eloquent": [
@@ -1552,6 +1570,15 @@
         },
         {
             "from": "App\\Modules\\Payment\\Models\\Payment",
+            "to": "App\\Modules\\Driver\\Models\\Driver",
+            "type": "belongs_to",
+            "method": "collector",
+            "foreign_key": null,
+            "from_table": "payments",
+            "to_table": "users"
+        },
+        {
+            "from": "App\\Modules\\Payment\\Models\\Payment",
             "to": "App\\Modules\\Order\\Models\\Order",
             "type": "belongs_to",
             "method": "order",
@@ -1563,8 +1590,8 @@
             "from": "App\\Modules\\Payment\\Models\\Payment",
             "to": "App\\Modules\\User\\Models\\User",
             "type": "belongs_to",
-            "method": "customer",
-            "foreign_key": "user_id",
+            "method": "receiver",
+            "foreign_key": null,
             "from_table": "payments",
             "to_table": "users"
         },

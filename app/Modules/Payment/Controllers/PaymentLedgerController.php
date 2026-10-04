@@ -6,6 +6,9 @@ use App\Http\Controllers\Controller;
 use App\Modules\Payment\Enums\PaymentStatus;
 use App\Modules\Payment\Models\DriverEarning;
 use App\Modules\Payment\Models\Payment;
+use App\Modules\Payment\Services\CashCustody;
+use App\Modules\Payment\Services\NotForALaundry;
+use App\Support\LaundryContext;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 
@@ -31,7 +34,7 @@ class PaymentLedgerController extends Controller
 {
     // ------------------------------------------------------------- payments
 
-    public function payments(Request $request)
+    public function payments(Request $request, CashCustody $custody)
     {
         $status = (string) $request->get('status', 'all');
 
@@ -40,6 +43,8 @@ class PaymentLedgerController extends Controller
             'status' => $status,
             'statuses' => PaymentStatus::cases(),
             'summary' => $this->paymentSummary(),
+            // The platform's to collect; never shown inside a laundry.
+            'cash' => LaundryContext::currentId() === null ? $custody->holdings() : null,
         ]);
 
         return $request->ajax() ? response($view) : $view;
@@ -71,11 +76,35 @@ class PaymentLedgerController extends Controller
     }
 
     /**
+     * «استلمت الكاش» — the office has this driver's cash.
+     */
+    public function receiveCash(Request $request, CashCustody $custody, int $driver)
+    {
+        // The newest collection the operator saw: what is in their hand.
+        $upTo = (int) $request->validate(['up_to' => ['required', 'integer', 'min:1']])['up_to'];
+
+        try {
+            $received = $custody->receive($driver, $request->user(), $upTo);
+        } catch (NotForALaundry) {
+            abort(403);
+        }
+
+        if ($received['count'] === 0) {
+            return back()->with('error', __('This driver has no cash to hand in.'));
+        }
+
+        return back()->with('success', __('Received :amount from the driver (:count collections).', [
+            'amount' => moneyFormat($received['amount']),
+            'count' => $received['count'],
+        ]));
+    }
+
+    /**
      * @return Builder<Payment>
      */
     private function paymentQuery(string $status): Builder
     {
-        return Payment::with(['order:id,code', 'customer:id,name,phone'])
+        return Payment::with(['order:id,code', 'customer:id,name,phone', 'collector:id,name', 'receiver:id,name'])
             ->when(
                 in_array($status, array_column(PaymentStatus::cases(), 'value'), true),
                 fn (Builder $q) => $q->where('status', $status)

@@ -378,7 +378,7 @@
             "payments",
             "refunds"
         ],
-        "route_count": 79,
+        "route_count": 80,
         "routes": [
             "admin.commission_rule.create",
             "admin.commission_rule.delete",
@@ -421,8 +421,8 @@
             "admin.driver_bonus_rule.toggleStatus",
             "admin.driver_bonus_rule.update"
         ],
-        "node_count": 1067,
-        "cohesion": 0.453,
+        "node_count": 1079,
+        "cohesion": 0.451,
         "screens": [
             {
                 "key": "order_task",
@@ -519,7 +519,7 @@
             "admin.user.update"
         ],
         "node_count": 79,
-        "cohesion": 0.216,
+        "cohesion": 0.213,
         "screens": [
             {
                 "key": "user",
@@ -723,7 +723,7 @@
             "payments",
             "refunds"
         ],
-        "route_count": 45,
+        "route_count": 46,
         "routes": [
             "admin.commission_rule.create",
             "admin.commission_rule.delete",
@@ -760,14 +760,14 @@
             "admin.order.tasks.release",
             "admin.order_today.index",
             "admin.order_today.search",
+            "admin.payment.cash.receive",
             "admin.payment.index",
             "admin.payment.search",
             "admin.refund.approve",
-            "admin.refund.index",
-            "admin.refund.reject"
+            "admin.refund.index"
         ],
-        "node_count": 763,
-        "cohesion": 0.406,
+        "node_count": 775,
+        "cohesion": 0.404,
         "screens": [
             {
                 "key": "order",
@@ -872,8 +872,8 @@
             "admin.time_slot.toggleStatus",
             "admin.time_slot.update"
         ],
-        "node_count": 575,
-        "cohesion": 0.377,
+        "node_count": 576,
+        "cohesion": 0.376,
         "screens": [
             {
                 "key": "complaint",
@@ -954,7 +954,7 @@
             "wallets",
             "wallet_transactions"
         ],
-        "route_count": 40,
+        "route_count": 41,
         "routes": [
             "admin.commission_rule.create",
             "admin.commission_rule.delete",
@@ -974,6 +974,7 @@
             "admin.laundry_revenue.reverse",
             "admin.laundry_revenue.search",
             "admin.order.invoice",
+            "admin.payment.cash.receive",
             "admin.payment.index",
             "admin.payment.search",
             "admin.refund.approve",
@@ -994,11 +995,10 @@
             "admin.wallet.freeze",
             "admin.wallet.index",
             "admin.wallet.mine",
-            "admin.wallet.search",
-            "admin.wallet.show"
+            "admin.wallet.search"
         ],
-        "node_count": 518,
-        "cohesion": 0.505,
+        "node_count": 529,
+        "cohesion": 0.498,
         "screens": [
             {
                 "key": "finance",
@@ -1206,8 +1206,8 @@
         "tables": [],
         "route_count": 0,
         "routes": [],
-        "node_count": 217,
-        "cohesion": 0.442
+        "node_count": 220,
+        "cohesion": 0.438
     },
     {
         "slug": "public_site",
@@ -1239,8 +1239,8 @@
         "tables": [],
         "route_count": 0,
         "routes": [],
-        "node_count": 1655,
-        "cohesion": 0.361
+        "node_count": 1668,
+        "cohesion": 0.358
     },
     {
         "slug": "routing_and_distance",
@@ -1339,7 +1339,7 @@
             "admin.notification.compose"
         ],
         "node_count": 1107,
-        "cohesion": 0.44,
+        "cohesion": 0.438,
         "screens": [
             {
                 "key": "moderator",

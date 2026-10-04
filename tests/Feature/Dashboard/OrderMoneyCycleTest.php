@@ -175,7 +175,10 @@ class OrderMoneyCycleTest extends TestCase
         $tasks->complete(
             $task->fresh(),
             $driver,
-            $type->countsPieces() ? ['piece_count' => 3] : [],
+            // The delivery on an unpaid order says what was collected: nothing
+            // here — these tests settle the money by hand.
+            ($type->countsPieces() ? ['piece_count' => 3] : [])
+                + ($type->collectsPayment() ? ['collected_amount' => 0] : []),
             [],
             $type->requiresSignature() ? UploadedFile::fake()->image('sig.png') : null,
         );

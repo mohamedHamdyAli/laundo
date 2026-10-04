@@ -165,6 +165,21 @@ from the code) and **`docs/order-cycle-explained.md`**; the rules that bind code
   the money and left every leg exactly where it was — the holder kept a task they
   could not finish, and an unassigned one sat on the dispatch board as work
   waiting for somebody who was never coming.
+- **Nothing leaves the laundry before its price is agreed** (2026-10-01).
+  `OrderTask::orderAllows()` holds `collect_from_laundry` until the order is
+  `cleaning` or `ready_for_delivery`, in `TaskService::start()` / `complete()`
+  (`order_not_ready`) and in the API's `can_start` / `blocked_reason`. A leg
+  used to wait only on the leg before it, and `advanceOrder()` lets a leg the
+  order cannot follow complete with a note. So on live, orders still
+  `picked_up` were collected and delivered, unpriced, with nothing collected
+  and no way to move again. **Confirming the price with the pieces already at
+  the laundry moves the order to `cleaning`** (`OrderReviewService::confirm()`).
+  The handover that should do it has almost always happened before the
+  review, from `picked_up`, and was refused then, which left every normal
+  order stuck at `confirmed`. Both sides lock the order row
+  (`TaskService::advanceOrder()` re-reads it under `lockForUpdate`), so a
+  confirmation and a handover at the same moment cannot miss each other, and
+  `2026_10_01_100200_…` released the orders the old way had stranded.
 - **Every count of an order's pieces is checked** (`Order/Services/PieceCheck`,
   2026-09-28/29). Legs 1–3 require `piece_count`, and the laundry counts at its
   review; each is measured against the last number somebody stood behind — the
@@ -496,6 +511,36 @@ corrected by hand since is left alone and counted.
 | `Driver/Services/MonthlyBonusService` | measures a month, applies gates, picks a tier |
 | `Driver/Models/DriverBonusAward` | one driver-month — `due\|approved\|rejected` |
 | `Support/PlatformAccount` | the platform's wallet = the **oldest super admin** |
+
+**Cash at the door is a payment** (2026-10-01).
+
+- **The delivery leg on an unpaid order requires `collected_amount`**
+  (`TaskService::paymentAtTheDoor()`). `0` is allowed; more than
+  `payableTotal()` is refused; on a paid order it is dropped. Before, a
+  delivery closed without it left the order unpaid for ever: never
+  `Completed`, never settled, the driver's bonus never released.
+- **Anything above 0 is a captured `cash` payment** carrying `collected_by`
+  and `order_task_id` (unique, so one per leg). It stays «with the driver»
+  until `Payment/Services/CashCustody::receive()` stamps `handed_over_at` and
+  `received_by`. That is `admin.payment.cash.receive`, on `payment.update`,
+  refused inside a laundry whatever it was granted (`NotForALaundry`, its own
+  class, so a lock timeout is not a 403). It receives **up to `up_to`**, the
+  newest collection the screen showed: cash taken while the page is open is
+  not in the operator's hand.
+- **The payments screen lists what each driver holds.** Cash collected
+  before the 2026-10-04 release was never recorded, so it is not there.
+- **A cash payment refunds to the wallet only.** A refund to «the original
+  method» needs a `provider_reference`, and a cash payment has none; a refund
+  and an invoice look for the payment *with* one, so a card payment beside
+  cash is still the one a card refund goes back to.
+- **Revenue is still read off the orders** (`RevenueReport`), so the cash
+  payments count nothing twice.
+- **No `payment_method` is filed as cash** (`OrderService::paymentMethod()`),
+  so the driver is shown cash. **The cash fee still follows what the customer
+  chose**: a quote with no method shows none (`CashSurchargeTest`), and the
+  total agreed is the total stored, so it is charged only when cash was sent.
+  The app sent none on 23 of 31 live orders, and `2026_10_01_100100_…` filed
+  those as cash.
 
 At `Confirmed` a `pending` settlement is written (visible, nothing moved). At
 `Completed`, `OrderStateMachine::settleMoney()` releases the driver's bonus and,
@@ -1256,7 +1301,9 @@ regression, not as a flaky stub.
   counted leg is confirmed), `mobile-2026-09-30-driver-order-details` (the
   order screen, and `order_id` on every task row) and
   `mobile-2026-09-30-driver-notifications` (register the handset — push never
-  reached a driver before it). For the customer app: `mobile-2026-09-28-coupon-scope`,
+  reached a driver before it), and `mobile-2026-10-01-cash-on-delivery` (the
+  collection waits for the price; `collected_amount` required on an unpaid
+  delivery — the customer app's half is in it too). For the customer app: `mobile-2026-09-28-coupon-scope`,
   `mobile-2026-09-28-turnaround` and `mobile-2026-09-29-zones`. Each note's
   **الحالة** line says whether it is live yet — update it when it deploys.
 - **`docs/qc-{date}-release.html` + `.pdf` is the note for QC**, one per deploy,

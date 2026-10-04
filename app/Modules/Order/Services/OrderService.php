@@ -13,6 +13,7 @@ use App\Modules\Order\Enums\OrderStatus;
 use App\Modules\Order\Enums\TaskStatus;
 use App\Modules\Order\Models\Order;
 use App\Modules\Order\Models\OrderItem;
+use App\Modules\Payment\Enums\PaymentMethod;
 use App\Modules\Service\Models\Service;
 use App\Modules\TimeSlot\Models\TimeSlot;
 use App\Modules\TimeSlot\Services\SlotCapacity;
@@ -112,6 +113,22 @@ class OrderService
     }
 
     /**
+     * The payment method the order is filed under: cash when none was sent.
+     *
+     * Cash is the one way to pay that works end to end — the page markets it
+     * alone and the only gateway is a fake — and the app sent no method at all
+     * on 23 of the 31 live orders (2026-10-01), so the driver was shown none.
+     * Filed only: the cash fee still follows what the customer chose, since a
+     * quote with no method shows none and the total agreed is the total stored.
+     *
+     * @param  array<string, mixed>  $data
+     */
+    private function paymentMethod(array $data): string
+    {
+        return $data['payment_method'] ?? PaymentMethod::Cash->value;
+    }
+
+    /**
      * Create the order.
      *
      * @param  array<string, mixed>  $data
@@ -151,6 +168,9 @@ class OrderService
             $delivery,
             $laundry,
             $discount,
+            // As chosen, not as filed: a fee is charged only to a customer who
+            // picked cash, because only they were shown it — the quote taken
+            // before a method is chosen carries none. Stored as cash below.
             $data['payment_method'] ?? null,
         );
 
@@ -277,7 +297,7 @@ class OrderService
                 // provenance makes «did that card ever sell anything» an
                 // unanswerable question.
                 'offer_id' => $data['offer_id'] ?? null,
-                'payment_method' => $data['payment_method'] ?? null,
+                'payment_method' => $this->paymentMethod($data),
                 'qr_token' => Order::generateQrToken(),
                 'recurrence_id' => $data['recurrence_id'] ?? null,
             ]);

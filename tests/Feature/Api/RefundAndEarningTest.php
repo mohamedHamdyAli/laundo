@@ -554,7 +554,10 @@ class RefundAndEarningTest extends TestCase
         app(TaskService::class)->complete(
             $task->fresh(),
             $driver,
-            $type->countsPieces() ? ['piece_count' => 2] : [],
+            // The delivery on an unpaid order says what was collected: nothing
+            // here — these tests settle the money by hand.
+            ($type->countsPieces() ? ['piece_count' => 2] : [])
+                + ($type->collectsPayment() ? ['collected_amount' => 0] : []),
             [],
             $signed ? UploadedFile::fake()->image('sig.png') : null,
         );

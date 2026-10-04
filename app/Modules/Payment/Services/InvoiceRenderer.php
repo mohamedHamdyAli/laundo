@@ -168,7 +168,7 @@ class InvoiceRenderer
             'total' => $order->payableTotal(),
             'paid' => $order->payment_status === 'paid',
             // «رقم المعاملة», when there is one.
-            'transaction_reference' => $order->payments()->captured()->value('provider_reference'),
+            'transaction_reference' => $order->payments()->captured()->whereNotNull('provider_reference')->value('provider_reference'),
         ];
     }
 }

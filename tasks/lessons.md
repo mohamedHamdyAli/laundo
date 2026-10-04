@@ -2516,3 +2516,11 @@ To take temporary debug lines out of `TaskGenerator.php` I ran `git checkout -- 
 
 CLAUDE.md said `app.display_timezone` was unset on live. It was checked with tinker, where no middleware runs; the web requests had it from `SetTimezone` (the country's timezone) all along. The config key itself did not exist.
 - **Rule:** a runtime value that a middleware sets cannot be verified from the console. Check it through a request, or read where it is set before trusting a console reading.
+
+## 2026-10-01 — inline `@php(...)` with parentheses inside a string
+
+`@php($cols = 'minmax(9rem,1fr) minmax(6rem,.8fr)')` compiled to a PHP file that
+ends mid-statement («syntax error, unexpected end of file»): Blade's inline
+directive reads to the matching parenthesis without knowing about quotes, so the
+`)` inside the string closes it. Use the `@php … @endphp` block for any value
+that contains a parenthesis — every `$stackCols` does.

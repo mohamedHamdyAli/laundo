@@ -14,6 +14,7 @@ use App\Modules\User\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 use PHPUnit\Framework\Attributes\Test;
+use RuntimeException;
 use Tests\TestCase;
 
 /**
@@ -191,7 +192,8 @@ class OrderLifecycleCompletionTest extends TestCase
         // laundry's share out of money nobody has collected.
         $order = $this->order('ready_for_delivery');
 
-        $this->finish($this->leg($order, TaskType::DeliverToCustomer, 4));
+        // Nothing changed hands, and the driver says so.
+        $this->finish($this->leg($order, TaskType::DeliverToCustomer, 4), ['collected_amount' => 0]);
 
         $this->assertSame(OrderStatus::Delivered, $order->fresh()->status);
     }
@@ -218,7 +220,7 @@ class OrderLifecycleCompletionTest extends TestCase
         // payment lands later. Either event may be last, so both ask.
         $order = $this->order('ready_for_delivery');
 
-        $this->finish($this->leg($order, TaskType::DeliverToCustomer, 4));
+        $this->finish($this->leg($order, TaskType::DeliverToCustomer, 4), ['collected_amount' => 0]);
         $this->assertSame(OrderStatus::Delivered, $order->fresh()->status);
 
         $order->fresh()->update(['payment_status' => 'paid', 'paid_at' => now()]);
@@ -299,16 +301,22 @@ class OrderLifecycleCompletionTest extends TestCase
     }
 
     #[Test]
-    public function a_leg_the_order_is_not_ready_for_still_leaves_a_note(): void
+    public function nothing_leaves_the_laundry_before_its_price_is_agreed(): void
     {
-        // The existing refusal path, which is what wrote `confirmed → confirmed`
-        // on the live orders. It stays: the leg genuinely happened and the log
-        // should say so.
+        // The refusal path used to let this leg complete with a note, which is
+        // how live orders still `picked_up` were collected and delivered with
+        // no price and nothing to collect (2026-10-01). The pieces stay put.
         $order = $this->order('picked_up');
+        $leg = $this->leg($order, TaskType::CollectFromLaundry, 3);
 
-        $this->finish($this->leg($order, TaskType::CollectFromLaundry, 3));
+        try {
+            $this->finish($leg);
+            $this->fail('A collection was completed before the price was agreed.');
+        } catch (RuntimeException $e) {
+            $this->assertSame('order_not_ready', $e->getMessage());
+        }
 
+        $this->assertNotSame(TaskStatus::Completed, $leg->fresh()->status);
         $this->assertSame(OrderStatus::PickedUp, $order->fresh()->status);
-        $this->assertSame(1, $order->statusLogs()->count());
     }
 }

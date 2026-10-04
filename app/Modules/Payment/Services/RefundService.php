@@ -67,7 +67,10 @@ class RefundService
         return Refund::create([
             'order_id' => $order->id,
             'user_id' => $customer->id,
-            'payment_id' => Payment::where('order_id', $order->id)->captured()->value('id'),
+            // The gateway's payment, never the driver's cash: only a payment
+            // with a provider reference can be sent back to where it came from.
+            'payment_id' => Payment::where('order_id', $order->id)->captured()
+                ->whereNotNull('provider_reference')->value('id'),
             'amount' => round($amount, 2),
             'reason' => $reason,
             'note' => $note,

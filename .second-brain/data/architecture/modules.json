@@ -159,7 +159,7 @@
             "api-controller": 22
         },
         "files": 22,
-        "lines": 5154,
+        "lines": 5179,
         "classes": [
             {
                 "fqcn": "App\\Http\\Controllers\\Api\\V1\\AddressController",
@@ -1073,11 +1073,11 @@
         "community": "database",
         "path": null,
         "layers": {
-            "migration": 111,
+            "migration": 114,
             "seeder": 11
         },
-        "files": 122,
-        "lines": 7403,
+        "files": 125,
+        "lines": 7531,
         "classes": [
             {
                 "fqcn": "Database\\Seeders\\AdminUserSeeder",
@@ -1164,10 +1164,10 @@
             "time_slots",
             "commission_rules",
             "order_tasks",
+            "orders",
             "addresses",
             "laundry_services",
             "laundry_zones",
-            "orders",
             "permissions"
         ],
         "routes": [],
@@ -1176,7 +1176,7 @@
         "summary": "",
         "depends_on": {
             "Platform": 14,
-            "Order": 7,
+            "Order": 13,
             "User": 5,
             "Setting": 4,
             "Pricing": 3,
@@ -1206,10 +1206,10 @@
         "community": "quality",
         "path": null,
         "layers": {
-            "doc": 22
+            "doc": 23
         },
-        "files": 22,
-        "lines": 11332,
+        "files": 23,
+        "lines": 11427,
         "classes": [],
         "models": [],
         "owns_tables": [],
@@ -1496,11 +1496,11 @@
             "City": 2
         },
         "depended_on_by": {
-            "Tests": 59,
+            "Tests": 61,
             "Platform": 22,
             "Api": 10,
             "Order": 9,
-            "Payment": 5,
+            "Payment": 8,
             "Routing": 5,
             "Notification": 4,
             "Database": 1
@@ -2856,7 +2856,7 @@
             "request": 1
         },
         "files": 62,
-        "lines": 12579,
+        "lines": 12733,
         "classes": [
             {
                 "fqcn": "App\\Modules\\Order\\Controllers\\DispatchController",
@@ -3230,11 +3230,11 @@
             "TimeSlot": 26,
             "User": 25,
             "Notification": 16,
+            "Payment": 15,
             "Laundry": 14,
             "Pricing": 14,
             "Routing": 12,
             "Service": 12,
-            "Payment": 11,
             "Address": 10,
             "Driver": 9,
             "Coupon": 7,
@@ -3245,15 +3245,15 @@
             "Wallet": 1
         },
         "depended_on_by": {
-            "Tests": 396,
+            "Tests": 405,
             "Api": 52,
             "Report": 40,
             "Payment": 27,
             "Driver": 23,
             "Platform": 23,
             "Notification": 15,
+            "Database": 13,
             "Coupon": 7,
-            "Database": 7,
             "Recurrence": 5,
             "Routing": 5,
             "Laundry": 3,
@@ -3272,8 +3272,8 @@
         "path": "app/Modules/Payment",
         "layers": {
             "view": 18,
+            "service": 9,
             "model": 8,
-            "service": 7,
             "controller": 6,
             "data": 4,
             "enum": 3,
@@ -3282,8 +3282,8 @@
             "contract": 1,
             "gateway": 1
         },
-        "files": 52,
-        "lines": 6460,
+        "files": 54,
+        "lines": 6700,
         "classes": [
             {
                 "fqcn": "App\\Modules\\Payment\\Controllers\\CommissionRuleController",
@@ -3322,6 +3322,12 @@
                 "summary": "«تسويات الطلبات» — how each order was divided."
             },
             {
+                "fqcn": "App\\Modules\\Payment\\Services\\CashCustody",
+                "layer": "service",
+                "path": "app/Modules/Payment/Services/CashCustody.php",
+                "summary": "«الكاش مع المناديب» — cash taken at the door and not yet handed in."
+            },
+            {
                 "fqcn": "App\\Modules\\Payment\\Services\\EarningService",
                 "layer": "service",
                 "path": "app/Modules/Payment/Services/EarningService.php",
@@ -3338,6 +3344,12 @@
                 "layer": "service",
                 "path": "app/Modules/Payment/Services/LaundryRevenueService.php",
                 "summary": "What each laundry brought in, what the platform took, and what is left."
+            },
+            {
+                "fqcn": "App\\Modules\\Payment\\Services\\NotForALaundry",
+                "layer": "service",
+                "path": "app/Modules/Payment/Services/NotForALaundry.php",
+                "summary": "Somebody inside a laundry asked to act on a driver's cash."
             },
             {
                 "fqcn": "App\\Modules\\Payment\\Services\\PaymentService",
@@ -3534,6 +3546,7 @@
             "admin.laundry_revenue.reverse",
             "admin.laundry_revenue.search",
             "admin.order.invoice",
+            "admin.payment.cash.receive",
             "admin.payment.index",
             "admin.payment.search",
             "admin.refund.approve",
@@ -3555,28 +3568,29 @@
             "setting.update",
             "laundry_revenue.view",
             "order.view",
+            "payment.update",
             "payment.view",
             "refund.update",
             "refund.view",
             "order_settlement.view"
         ],
         "tests": [],
-        "summary": "«تمت إضافة أرباحك إلى الرصيد المعلق» — the immediate half of a driver's bonus.",
+        "summary": "«الكاش مع المناديب» — cash taken at the door and not yet handed in.",
         "depends_on": {
-            "Platform": 42,
+            "Platform": 46,
             "Order": 27,
             "Wallet": 15,
+            "User": 13,
             "Laundry": 12,
-            "User": 11,
-            "Driver": 5,
+            "Driver": 8,
             "Notification": 1
         },
         "depended_on_by": {
-            "Tests": 69,
+            "Tests": 80,
             "Platform": 30,
             "Api": 17,
+            "Order": 15,
             "Report": 12,
-            "Order": 11,
             "Routing": 6,
             "Laundry": 3,
             "Database": 2,
@@ -3604,7 +3618,7 @@
             "mail": 2
         },
         "files": 187,
-        "lines": 19695,
+        "lines": 19704,
         "classes": [
             {
                 "fqcn": "App\\Http\\Controllers\\Controller",
@@ -4339,9 +4353,9 @@
             "LaundryZone": 1
         },
         "depended_on_by": {
-            "Tests": 94,
+            "Tests": 95,
             "Api": 69,
-            "Payment": 42,
+            "Payment": 46,
             "Order": 37,
             "AdminShell": 36,
             "Driver": 35,
@@ -4764,7 +4778,7 @@
             "routes": 3
         },
         "files": 9,
-        "lines": 2511,
+        "lines": 2516,
         "classes": [
             {
                 "fqcn": "App\\Services\\Routing\\Coordinate",
@@ -5014,7 +5028,7 @@
             "Platform": 6
         },
         "depended_on_by": {
-            "Tests": 36,
+            "Tests": 37,
             "Platform": 6,
             "Database": 4,
             "Api": 1,
@@ -5027,11 +5041,11 @@
         "community": "quality",
         "path": null,
         "layers": {
-            "test": 127,
+            "test": 129,
             "browser-test": 25
         },
-        "files": 152,
-        "lines": 49189,
+        "files": 154,
+        "lines": 49715,
         "classes": [
             {
                 "fqcn": "Tests\\Feature\\Api\\AddressTest",
@@ -5056,6 +5070,12 @@
                 "layer": "test",
                 "path": "tests/Feature/Api/BookingWindowTest.php",
                 "summary": "Today's windows on the business's clock (the owner, 2026-09-30)."
+            },
+            {
+                "fqcn": "Tests\\Feature\\Api\\CashOnDeliveryTest",
+                "layer": "test",
+                "path": "tests/Feature/Api/CashOnDeliveryTest.php",
+                "summary": "Cash on delivery, end to end (the owner, 2026-10-01: «حاسس فيه حاجة غلط»)."
             },
             {
                 "fqcn": "Tests\\Feature\\Api\\CashSurchargeTest",
@@ -5284,6 +5304,12 @@
                 "layer": "test",
                 "path": "tests/Feature/Dashboard/AutoAssignTest.php",
                 "summary": "«التعيين التلقائي» — the two switches that stop the platform handing out work by itself, and the bell that says the work is waiting."
+            },
+            {
+                "fqcn": "Tests\\Feature\\Dashboard\\CashCustodyTest",
+                "layer": "test",
+                "path": "tests/Feature/Dashboard/CashCustodyTest.php",
+                "summary": "«الكاش مع المناديب» (the owner, 2026-10-01): how much each driver is holding, and the office recording that it has it."
             },
             {
                 "fqcn": "Tests\\Feature\\Dashboard\\CatalogTest",
@@ -5838,6 +5864,7 @@
             "driver_profiles",
             "order_status_logs",
             "driver_earnings",
+            "payments",
             "commission_rules",
             "cities",
             "driver_applications",
@@ -5846,7 +5873,6 @@
             "laundry_service_requests",
             "laundry_slot_capacities",
             "countries",
-            "payments",
             "refunds",
             "piece_discrepancies",
             "services",
@@ -5887,6 +5913,7 @@
             "tests/Feature/Api/ApiContractTest.php",
             "tests/Feature/Api/AppTaxTest.php",
             "tests/Feature/Api/BookingWindowTest.php",
+            "tests/Feature/Api/CashOnDeliveryTest.php",
             "tests/Feature/Api/CashSurchargeTest.php",
             "tests/Feature/Api/CatalogFiltersTest.php",
             "tests/Feature/Api/ComplaintTest.php",
@@ -5925,6 +5952,7 @@
             "tests/Feature/Dashboard/ActivityLogTest.php",
             "tests/Feature/Dashboard/AssetCacheBustingTest.php",
             "tests/Feature/Dashboard/AutoAssignTest.php",
+            "tests/Feature/Dashboard/CashCustodyTest.php",
             "tests/Feature/Dashboard/CatalogTest.php",
             "tests/Feature/Dashboard/ClientFilterWiringTest.php",
             "tests/Feature/Dashboard/CommissionSettlementTest.php",
@@ -6013,14 +6041,14 @@
         ],
         "summary": "",
         "depends_on": {
-            "Order": 396,
-            "Platform": 94,
-            "User": 89,
-            "Payment": 69,
+            "Order": 405,
+            "Platform": 95,
+            "User": 91,
+            "Payment": 80,
             "Notification": 64,
-            "Driver": 59,
+            "Driver": 61,
             "Wallet": 46,
-            "Setting": 36,
+            "Setting": 37,
             "Laundry": 30,
             "Pricing": 22,
             "TimeSlot": 19,
@@ -6244,11 +6272,11 @@
             "Laundry": 1
         },
         "depended_on_by": {
-            "Tests": 89,
+            "Tests": 91,
             "Order": 25,
             "Notification": 21,
+            "Payment": 13,
             "Driver": 11,
-            "Payment": 11,
             "Auth": 9,
             "Platform": 9,
             "Wallet": 6,

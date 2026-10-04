@@ -29,7 +29,7 @@ class PaymentSheet extends Sheet
 
     public function query(): Builder
     {
-        return Payment::query()->with(['order:id,code', 'customer:id,name,phone']);
+        return Payment::query()->with(['order:id,code', 'customer:id,name,phone', 'collector:id,name', 'receiver:id,name']);
     }
 
     public function searchColumns(): array
@@ -72,6 +72,10 @@ class PaymentSheet extends Sheet
             Column::make('captured_at'),
             Column::make('failed_at'),
             Column::make('failure_reason'),
+            // Cash taken at the door: who took it, and when the office had it.
+            Column::readOnly('collected_by', fn (Payment $payment) => $payment->collector?->name),
+            Column::make('handed_over_at'),
+            Column::readOnly('received_by', fn (Payment $payment) => $payment->receiver?->name),
         ];
     }
 }

@@ -15,6 +15,9 @@ use App\Modules\Order\Models\Order;
 use App\Modules\Order\Models\OrderMedia;
 use App\Modules\Order\Models\OrderTask;
 use App\Modules\Order\Repositories\OrderRepository;
+use App\Modules\Payment\Enums\PaymentMethod;
+use App\Modules\Payment\Enums\PaymentStatus;
+use App\Modules\Payment\Models\Payment;
 use App\Modules\Payment\Services\EarningService;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
@@ -58,6 +61,11 @@ class TaskService
         if (! $task->predecessorComplete()) {
             // Nothing can be delivered that was never collected.
             throw new RuntimeException('previous_leg_incomplete');
+        }
+
+        if (! $task->orderAllows()) {
+            // Nothing leaves the laundry before its price is agreed.
+            throw new RuntimeException('order_not_ready');
         }
 
         $task->update(['status' => TaskStatus::Started, 'started_at' => now()]);
@@ -113,7 +121,17 @@ class TaskService
             throw new RuntimeException('previous_leg_incomplete');
         }
 
+        // Asked again here, not only at the start: a leg started before the
+        // rule existed must not be completed past it.
+        if (! $task->orderAllows()) {
+            throw new RuntimeException('order_not_ready');
+        }
+
         $type = $task->type;
+
+        if ($type->collectsPayment()) {
+            $data = $this->paymentAtTheDoor($task, $data);
+        }
 
         if ($type->requiresSignature() && ! $signature && ! $task->signature_path) {
             // The design marks every optional field «(اختياري)» and marks neither
@@ -332,7 +350,16 @@ class TaskService
             return;
         }
 
-        $order = $task->order;
+        // Read again, under a lock. The customer may be agreeing the price this
+        // very moment: a stale `reviewed` here refuses the move to `cleaning`,
+        // and the confirmation — which cannot see this uncommitted leg — would
+        // not make it either, leaving the order at `confirmed` for good.
+        // `OrderReviewService::confirm()` takes the same lock.
+        $order = $task->order()->lockForUpdate()->first();
+
+        if ($order) {
+            $task->setRelation('order', $order);
+        }
 
         if (! $order || ! $order->status->canTransitionTo($target)) {
             // The order is somewhere the state machine will not accept this from.
@@ -351,11 +378,52 @@ class TaskService
     }
 
     /**
+     * What the driver says changed hands at the door, held to the order.
+     *
+     * On an order not yet paid the amount is required — 0 when the customer
+     * paid nothing — because a delivery closed without it left the order unpaid
+     * for ever: never `Completed`, never settled, the driver's bonus never
+     * released (four on live, 2026-10-01). Never more than is due: 250 typed
+     * against 48 is a slip, not a tip. On an order already paid nothing changes
+     * hands, and a figure sent anyway is dropped rather than recorded as cash
+     * that never existed.
+     *
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     */
+    private function paymentAtTheDoor(OrderTask $task, array $data): array
+    {
+        $order = $task->order;
+
+        if ($order === null || $order->payment_status === 'paid') {
+            unset($data['collected_amount']);
+
+            return $data;
+        }
+
+        $collected = $data['collected_amount'] ?? null;
+
+        if ($collected === null || $collected === '') {
+            throw new RuntimeException('collected_amount_required');
+        }
+
+        if ((float) $collected - 0.001 > $order->payableTotal()) {
+            throw new RuntimeException('collected_amount_too_high');
+        }
+
+        return $data;
+    }
+
+    /**
      * Cash taken at the door.
      *
      * Marks the order paid only when the full amount arrived. Anything less is
      * recorded and left unpaid, so a short collection surfaces as an unpaid order
      * rather than disappearing into a rounding difference.
+     *
+     * Every pound collected is also a captured `cash` payment in the driver's
+     * name. Before, cash was a flag on the order and nothing else: the payments
+     * screen never saw it, and nobody could say how much each driver was holding.
      */
     private function settlePayment(OrderTask $task): void
     {
@@ -371,6 +439,21 @@ class TaskService
 
         $due = $order->payableTotal();
         $collected = (float) $task->collected_amount;
+
+        if ($collected > 0) {
+            Payment::create([
+                'order_id' => $order->id,
+                'user_id' => $order->user_id,
+                'provider' => 'cash',
+                'method' => PaymentMethod::Cash,
+                'amount' => $collected,
+                'currency' => appCurrency(),
+                'status' => PaymentStatus::Captured,
+                'captured_at' => now(),
+                'collected_by' => $task->driver_id,
+                'order_task_id' => $task->id,
+            ]);
+        }
 
         if ($collected + 0.001 >= $due) {
             $order->update(['payment_status' => 'paid', 'paid_at' => now()]);

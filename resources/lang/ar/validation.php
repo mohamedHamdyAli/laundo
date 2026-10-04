@@ -205,6 +205,7 @@ return [
         'subtotal' => 'المجموع الفرعي',
         'delivery_fee' => 'رسوم التوصيل',
         'collected_amount' => 'المبلغ المحصّل',
+        'up_to' => 'آخر تحصيل ظاهر',
         'piece_count' => 'عدد القطع',
         'expected_piece_count' => 'عدد القطع المتوقع',
         'expected_piece_source' => 'المتوقع حسب',

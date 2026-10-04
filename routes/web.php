@@ -850,6 +850,11 @@ Route::middleware(['auth', 'dashboard.only'])->prefix('/admin')->group(function 
             ->middleware('permission:payment.view')->name('admin.payment.index');
         Route::get('/payment/search', 'searchPayments')
             ->middleware('permission:payment.view')->name('admin.payment.search');
+        // The office has a driver's cash. Refused inside a laundry by the
+        // service as well: the permission alone is not the boundary.
+        Route::post('/payment/cash/{driver}/receive', 'receiveCash')
+            ->whereNumber('driver')
+            ->middleware('permission:payment.update')->name('admin.payment.cash.receive');
 
         Route::get('/earning', 'earnings')
             ->middleware('permission:driver_earning.view')->name('admin.earning.index');

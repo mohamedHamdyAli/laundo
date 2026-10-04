@@ -2294,5 +2294,21 @@
     "This window has ended or is about to. Please choose a later one.": "This window has ended or is about to. Please choose a later one.",
     "Late by a day": "Late by a day",
     "Late by :days days": "Late by :days days",
-    "Collected on :date": "Collected on :date"
+    "Collected on :date": "Collected on :date",
+    "This order is still waiting for the laundry's review and the customer's price confirmation.": "This order is still waiting for the laundry's review and the customer's price confirmation.",
+    "Enter the amount you collected from the customer (0 if nothing was paid).": "Enter the amount you collected from the customer (0 if nothing was paid).",
+    "The amount is more than the customer owes.": "The amount is more than the customer owes.",
+    "The pieces were already at the laundry.": "The pieces were already at the laundry.",
+    "This driver has no cash to hand in.": "This driver has no cash to hand in.",
+    "Received :amount from the driver (:count collections).": "Received :amount from the driver (:count collections).",
+    "Collected by :name": "Collected by :name",
+    "Handed in :date": "Handed in :date",
+    "With the driver": "With the driver",
+    "Cash with drivers": "Cash with drivers",
+    "Collected at the door and not handed in yet.": "Collected at the door and not handed in yet.",
+    "No driver is holding cash.": "No driver is holding cash.",
+    "Collections": "Collections",
+    "Since :date": "Since :date",
+    "Record :amount as received from :name?": "Record :amount as received from :name?",
+    "Cash received": "Cash received"
 }

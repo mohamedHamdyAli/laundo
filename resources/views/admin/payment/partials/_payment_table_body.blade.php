@@ -28,7 +28,20 @@
                  to PaymentMethod, and the label is already the customer-facing
                  wording. --}}
             <span class="row-main">{{ __($row->method->label()) }}</span>
-            <span class="row-sub">{{ $row->provider_reference ?? '—' }}</span>
+            @if ($row->collected_by)
+                {{-- Cash taken at the door: whose pocket it is in, until the
+                     office records receiving it. --}}
+                <span class="row-sub">{{ __('Collected by :name', ['name' => $row->collector?->name ?? '—']) }}</span>
+                @if ($row->handed_over_at)
+                    <span class="row-sub text-success">
+                        {{ __('Handed in :date', ['date' => humanDate($row->handed_over_at, 'Y-m-d')]) }}
+                    </span>
+                @else
+                    <span class="status-pill tone-warn mt-1">{{ __('With the driver') }}</span>
+                @endif
+            @else
+                <span class="row-sub">{{ $row->provider_reference ?? '—' }}</span>
+            @endif
         </div>
         <div>
             @if ($status === \App\Modules\Payment\Enums\PaymentStatus::Captured)

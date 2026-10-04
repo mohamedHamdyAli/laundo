@@ -423,3 +423,20 @@ The owner: «اتأكد من الصفحة دي… التواريخ مش مظبو
 ### Review
 
 - Not done, offered and declined for now: a postponed half keeps its legs' old `due_at`, so they read «late» to the driver with no time booked (4 legs on live, #10034/#10036); and a pickup made after the booked delivery does not push the delivery.
+
+## 2026-10-01 — cash on delivery
+
+The owner: «موضوع الدفع عند الاستلام… حاسس فيه حاجة غلط». On live: the collection/delivery legs ran on orders still `picked_up`/`confirmed` (#10052, #10053, #10059); four deliveries closed with no `collected_amount`; 23 of 31 orders have no `payment_method`; no cash in `payments`. The owner chose all four fixes; the three stuck orders are left as they are.
+
+- [x] Confirming the price with the pieces already at the laundry moves the order on to `cleaning` (the normal path stuck at `confirmed`)
+- [x] `collect_from_laundry` may not start or complete before the order is `cleaning`/`ready_for_delivery`; `can_start` and a `blocked_reason` say so to the app
+- [x] Delivery leg on an unpaid order: `collected_amount` required (0 allowed), never above the amount due; ignored on a paid order; `to_collect` in the payment block
+- [x] No `payment_method` = cash, at the quote and at placement; backfill the orders that have none
+- [x] Cash collected writes a captured `cash` payment with the driver (`collected_by`, `order_task_id`); «الكاش مع المناديب» on the payments screen with «استلمت الكاش» (`payment.update`, refused inside a laundry)
+- [x] Tests, mobile notes (driver + customer), Postman, QA guide, Changelog, reviews, deploy
+
+### Review
+
+- The suite caught `CashSurchargeTest`: a quote with no method shows no fee, a decision already made. So a missing method is *filed* as cash, but the fee is charged only when cash was sent — the total agreed stays the total stored.
+- Code/security review: no security finding; fixed before release — «استلمت الكاش» now receives only up to the newest collection shown (`up_to`); both confirmation and handover lock the order row; a card refund and the invoice bind to the gateway's payment, not the cash beside it; only `NotForALaundry` answers 403; activity references; the rollback order on MariaDB; and `2026_10_01_100200_…` releases any order the old confirmation stranded (none on live, #10053 left as decided).
+

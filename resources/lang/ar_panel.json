@@ -2294,5 +2294,21 @@
     "This window has ended or is about to. Please choose a later one.": "الميعاد ده خلص أو قرب يخلص. اختار ميعاد بعده.",
     "Late by a day": "متأخر يوم",
     "Late by :days days": "متأخر :days يوم",
-    "Collected on :date": "اتستلم فعلاً :date"
+    "Collected on :date": "اتستلم فعلاً :date",
+    "This order is still waiting for the laundry's review and the customer's price confirmation.": "الطلب لسه مستني مراجعة المغسلة وموافقة العميل على السعر، متستلمش من المغسلة دلوقتي.",
+    "Enter the amount you collected from the customer (0 if nothing was paid).": "اكتب المبلغ اللي استلمته من العميل (اكتب 0 لو مدفعش).",
+    "The amount is more than the customer owes.": "المبلغ أكبر من المطلوب من العميل.",
+    "The pieces were already at the laundry.": "القطع كانت في المغسلة بالفعل.",
+    "This driver has no cash to hand in.": "المندوب ده مفيش معاه كاش يسلّمه.",
+    "Received :amount from the driver (:count collections).": "اتسجّل استلام :amount من المندوب (:count تحصيل).",
+    "Collected by :name": "حصّلها: :name",
+    "Handed in :date": "اتسلّمت للمكتب :date",
+    "With the driver": "مع المندوب",
+    "Cash with drivers": "الكاش مع المناديب",
+    "Collected at the door and not handed in yet.": "اتحصّل من العملاء ولسه ماتسلّمش للمكتب.",
+    "No driver is holding cash.": "مفيش كاش مع أي مندوب.",
+    "Collections": "التحصيلات",
+    "Since :date": "من :date",
+    "Record :amount as received from :name?": "تسجّل إنك استلمت :amount من :name؟",
+    "Cash received": "استلمت الكاش"
 }

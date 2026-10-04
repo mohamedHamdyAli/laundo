@@ -64,6 +64,61 @@
             </div>
         </div>
 
+        @if ($cash !== null)
+            {{-- «الكاش مع المناديب»: every pound a driver collected at a door and
+                 has not handed in, by driver. Platform only — `$cash` is null
+                 inside a laundry. --}}
+            <div class="card">
+                <div class="card-body">
+                    <h6 class="mb-1">{{ __('Cash with drivers') }}</h6>
+                    <p class="text-muted small mb-3">{{ __('Collected at the door and not handed in yet.') }}</p>
+
+                    @if ($cash->isEmpty())
+                        <div class="stack-empty">{{ __('No driver is holding cash.') }}</div>
+                    @else
+                        @php
+                            $cashCols = 'minmax(9rem,1.4fr) minmax(6rem,.8fr) minmax(7rem,1fr) minmax(8rem,auto)';
+                        @endphp
+                        <div class="stack-head" style="--stack-cols: {{ $cashCols }}">
+                            <span>{{ __('Driver') }}</span>
+                            <span>{{ __('Collections') }}</span>
+                            <span class="text-end">{{ __('Amount') }}</span>
+                            <span></span>
+                        </div>
+                        <div class="data-stack" style="--stack-cols: {{ $cashCols }}">
+                            @foreach ($cash as $holding)
+                                <div class="stack-row">
+                                    <div>
+                                        <span class="row-main">{{ $holding['driver']?->name ?? '—' }}</span>
+                                        <span class="row-sub">{{ $holding['driver']?->phone }}</span>
+                                    </div>
+                                    <div>
+                                        <span class="row-main">{{ $holding['collections'] }}</span>
+                                        @if ($holding['since'])
+                                            <span class="row-sub">{{ __('Since :date', ['date' => humanDate($holding['since'], 'Y-m-d')]) }}</span>
+                                        @endif
+                                    </div>
+                                    <div class="row-amount">{{ moneyFormat($holding['amount']) }}</div>
+                                    <div class="stack-actions">
+                                        @if (canDo('payment.update'))
+                                            <form method="POST" action="{{ route('admin.payment.cash.receive', $holding['driver_id']) }}"
+                                                onsubmit="return confirm({{ \Illuminate\Support\Js::from(__('Record :amount as received from :name?', ['amount' => moneyFormat($holding['amount']), 'name' => $holding['driver']?->name ?? '—'])) }})">
+                                                @csrf
+                                                {{-- Only what is on this screen: cash taken at a door
+                                                     after it was drawn stays with the driver. --}}
+                                                <input type="hidden" name="up_to" value="{{ $holding['last_id'] }}">
+                                                <button type="submit" class="btn btn-sm btn-outline-primary">{{ __('Cash received') }}</button>
+                                            </form>
+                                        @endif
+                                    </div>
+                                </div>
+                            @endforeach
+                        </div>
+                    @endif
+                </div>
+            </div>
+        @endif
+
         <div class="card">
             <div class="card-body">
                 <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">

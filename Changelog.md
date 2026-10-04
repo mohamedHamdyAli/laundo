@@ -1,5 +1,21 @@
 # Changelog
 
+## 2026-10-04
+
+### Fix
+
+- Cash on delivery, from its review before release (Service / Controller / Blade):
+  - **The cash fee follows what the customer chose, not what the order is filed as.** An order with no method is still filed as cash, but is charged the fee only when cash was sent. A quote with no method shows none (`CashSurchargeTest`), and the total agreed is the total stored.
+  - **«استلمت الكاش» receives only what the screen showed** (`up_to`, the newest collection on it). Cash a driver takes while the page is open stays with them.
+  - **A confirmation and a handover at the same moment can no longer miss each other.** Both lock the order row (`TaskService::advanceOrder()`, `OrderReviewService::confirm()`).
+  - **A card refund and the invoice's transaction number now come from the gateway's payment**, never from the driver's cash beside it.
+  - **Only the laundry refusal answers 403** (`NotForALaundry`). A database error is no longer reported as «forbidden».
+  - `up_to` has an Arabic name in the validation messages. The activity log names `collected_by` / `received_by` and leaves out `order_task_id`. The custody migration's rollback drops the foreign key before its index (MariaDB 1553).
+
+### Migration
+
+- `2026_10_01_100200_start_the_work_on_confirmed_orders_already_at_the_laundry` (data only): moves an order still `confirmed` with its pieces at the laundry and its collection not yet made to `cleaning`, through the state machine. On live that is none today. #10053, whose legs ran ahead, is left as the owner decided.
+
 ## 2026-10-01
 
 ### Fix
@@ -9,6 +25,25 @@
   - A row whose date has passed while that half is undone (the pickup not collected, the delivery not handed over) now says «متأخر X يوم» in red. A cancelled or returned order is never late.
   - The details show «اتستلم فعلاً» with the date the pickup leg was really completed, beside the booked one (Service / Blade).
   - The board eager-loads the legs, so this adds one query, not one per order (Repository).
+
+- **Cash on delivery could not work end to end** («موضوع الدفع عند الاستلام… حاسس فيه حاجة غلط»). On live:
+  - #10052 and #10059 were still `picked_up` and #10053 `confirmed`, yet their collection and delivery legs were complete. The pieces went back unpriced and the orders could never move.
+  - Four deliveries were closed with no amount, so their orders were never paid or completed.
+  - 23 of 31 orders carried no payment method.
+  - No cash appeared anywhere but a flag on the order.
+- `collect_from_laundry` can no longer start or complete before the order is `cleaning` (`OrderTask::orderAllows()`, `order_not_ready`). The driver app gets `can_start: false` and a new `blocked_reason` (Model / Service / API).
+- Confirming the price with the pieces already at the laundry now moves the order to `cleaning`. The handover that should have done it came before the review and was refused, so every normal order stopped at `confirmed` (Service).
+- The delivery leg on an unpaid order requires `collected_amount`: 0 when nothing was paid, 422 when missing or above the amount due, ignored on a paid order. `payment` gains `to_collect` and `collect_required` (Service / API).
+- An order with no `payment_method` is cash, at the quote and at placement (Service).
+
+### Feature
+
+- **«الكاش مع المناديب»** — cash collected at the door is a captured `cash` payment in the driver's name. The payments screen shows what each driver holds, and «استلمت الكاش» records the office receiving it (`admin.payment.cash.receive`, `payment.update`, refused inside a laundry). The list and the Excel export show who collected each payment and when it was handed in (Service / Controller / Blade).
+
+### Migration
+
+- `2026_10_01_100000_add_cash_custody_to_payments_table`: `collected_by`, `order_task_id` (unique), `handed_over_at`, `received_by`.
+- `2026_10_01_100100_file_orders_without_a_payment_method_as_cash` (data only): orders with no method become `cash`. The cash fee is not added, since it is copied at placement.
 
 ## 2026-09-30
 
