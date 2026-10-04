@@ -10,6 +10,7 @@
   - **A confirmation and a handover at the same moment can no longer miss each other.** Both lock the order row (`TaskService::advanceOrder()`, `OrderReviewService::confirm()`).
   - **A card refund and the invoice's transaction number now come from the gateway's payment**, never from the driver's cash beside it.
   - **Only the laundry refusal answers 403** (`NotForALaundry`). A database error is no longer reported as «forbidden».
+  - Released to live on 2026-10-04 (`6c37c5d`): 24 orders with no method filed as cash, no confirmed order needed releasing.
   - `up_to` has an Arabic name in the validation messages. The activity log names `collected_by` / `received_by` and leaves out `order_task_id`. The custody migration's rollback drops the foreign key before its index (MariaDB 1553).
 
 ### Migration
