@@ -14,7 +14,7 @@
   - `up_to` has an Arabic name in the validation messages.
 - Docs: CLAUDE.md's suite duration (now up to thirteen minutes: 596s, 747s, 785s) and test count (1,877) re-measured (Docs).
 - Docs: CLAUDE.md cut from 1,629 lines to ~720, the rules that bind code. The long accounts behind them — reasons, incidents, class and setting names — moved unchanged to `docs/architecture.md` under the same section names (every identifier checked present in one of the two). The general working sections are condensed into «How to work here», keeping the plan/lessons/§7 rules. The «SMOKE10» badge paragraph, said twice, is said once (Docs).
-- Docs: the fourteen `docs/mobile-2026-*.md` notes (2026-09-20 → 10-01) were sent to the app teams and removed, as the owner asked. Their summary stays in `docs/mobile-api-changes.md` and their text in git history (`b403985`). From now on a note is deleted once the owner says it has been sent (CLAUDE.md, `docs/architecture.md`) (Docs). The activity log names `collected_by` / `received_by` and leaves out `order_task_id`. The custody migration's rollback drops the foreign key before its index (MariaDB 1553).
+- Docs: the fifteen `docs/mobile-2026-*.md` notes (2026-09-20 → 10-01) were sent to the app teams and removed, as the owner asked. Their summary stays in `docs/mobile-api-changes.md` and their text in git history (`b403985`). From now on a note is deleted once the owner says it has been sent (CLAUDE.md, `docs/architecture.md`) (Docs). The activity log names `collected_by` / `received_by` and leaves out `order_task_id`. The custody migration's rollback drops the foreign key before its index (MariaDB 1553).
 
 ### Migration
 

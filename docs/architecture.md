@@ -1112,7 +1112,7 @@ regression, not as a flaky stub.
   collection without a covering explanation. **Written, handed over, then
   removed** (the owner, 2026-10-04): once the owner says it has been sent, it
   is deleted. The running log keeps its summary and git history its full text.
-  The fourteen notes of 2026-09-20 → 10-01 went that way; read any of them with
+  The fifteen notes of 2026-09-20 → 10-01 went that way; read any of them with
   `git show b403985:docs/mobile-2026-09-20-driver-app.md` (and so on).
 - `docs/driver-app-backend-answers.md` — the driver app team's `BACKEND_GAPS.md`
   answered against the code. Worth reading before building anything an app team
@@ -1122,7 +1122,7 @@ regression, not as a flaky stub.
   is marked rather than rewritten, and a doc that says «read only» about an
   endpoint that now writes is worse than no doc at all. Mark the next one the
   same way rather than editing the answer under it.
-- **The apps' contract as of 2026-10-04** is what those fourteen notes said, all
+- **The apps' contract as of 2026-10-04** is what those fifteen notes said, all
   of them live and sent. For the driver app:
   - the 120-second tracking window and background location;
   - the record screens, the six documents and `?audience=`;
