@@ -508,7 +508,7 @@ only decides whether orders are taken (`Address::isCovered()`).
 - [x] `ZoneLocator::forAddress()` — the app's pick of a zone not drawn yet stands whatever its switch
 - [x] `AddressRequest` — a zone switched off is a valid `zone_id` (an edit re-sends it)
 - [x] Rewrite the three zone tests that pinned the old rule; tests for the edit, the city, and the smuggled pick
-- [ ] Docs (architecture.md, CLAUDE.md, QA guide), Changelog, suite, reviews, deploy
+- [x] Docs (architecture.md, CLAUDE.md, QA guide), Changelog, suite, reviews, deploy (`3dd9ede`)
 
 ### Review
 
