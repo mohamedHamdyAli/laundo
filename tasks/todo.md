@@ -490,7 +490,7 @@ addresses, so a customer already saved in it could still order. Agreed: the zone
 - [x] Docblocks and comments that say «covered = has a zone»
 - [x] The zones screen says what the switch now does
 - [x] Tests: refused while off, accepted when back on, a city switched off, «اتغطّى دلوقتي» follows the switch, no N+1 on `GET /addresses`
-- [ ] Docs, Changelog, suite, reviews, deploy
+- [x] Docs, Changelog, suite, reviews, deploy
 
 ### Review
 
