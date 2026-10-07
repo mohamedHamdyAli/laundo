@@ -440,3 +440,42 @@ The owner: «موضوع الدفع عند الاستلام… حاسس فيه ح
 - The suite caught `CashSurchargeTest`: a quote with no method shows no fee, a decision already made. So a missing method is *filed* as cash, but the fee is charged only when cash was sent — the total agreed stays the total stored.
 - Code/security review: no security finding; fixed before release — «استلمت الكاش» now receives only up to the newest collection shown (`up_to`); both confirmation and handover lock the order row; a card refund and the invoice bind to the gateway's payment, not the cash beside it; only `NotForALaundry` answers 403; activity references; the rollback order on MariaDB; and `2026_10_01_100200_…` releases any order the old confirmation stranded (none on live, #10053 left as decided).
 
+
+## 2026-10-07 — two asks from the mobile team: `has_complaint`, and refusing an order outside coverage
+
+Sources: `order_has_complaint.md`, `order_out_of_coverage.md` (sent by the app team). The owner's decisions, asked first:
+refuse only when an address has **no zone** (a pin outside every drawn zone) — a zone nobody covers is still accepted
+unassigned; record the attempt on **a new panel screen**; one complaint per order, **always**.
+
+### A — `has_complaint`
+- [x] `ComplaintService::submit()` refuses a second complaint by the same person on the same order (`already_complained`), checked under a lock on the order row; `support_request` («تواصل معنا») neither counts nor is refused
+- [x] `ComplaintController::store()` → 422 `validation_error` with `errors.order_id`
+- [x] `has_complaint` in `OrderController::presentSummary()` (so the list, the detail and the placement answer all carry it) — from a `withExists`, no query per order; pinned by a query-count test
+- [x] Tests
+
+### B — `out_of_coverage`
+- [x] `OrderService::resolveContext()` throws `OutOfCoverage` (pickup and/or delivery address with no zone) — reaches `quote()`, `place()` and the repeat-schedule path
+- [x] `OrderController` answers it as 422 with `key: out_of_coverage` and `errors` naming the field(s) — `quote` and `store`
+- [x] `is_covered` on every address payload (`zone_id !== null`)
+- [x] Docblocks that state the old decision rewritten (`LaundryAssigner`, `ZoneLocator`, `OrderService`, architecture.md)
+- [x] Tests
+
+### C — «طلبات خارج التغطية» (`coverage_request`)
+- [x] Migration `coverage_requests`: one row per customer + address, snapshot of the pin and the street, `attempts`, `last_attempt_at`, `contacted_at` / `contacted_by`
+- [x] `Zone/Models/CoverageRequest` (+ DashboardModel, Searchable), repository, `coverageRequestCrudService` (`record()`, `toggleContacted()`, `shredData()`, `search()`); recorded by the controller after the refusal, outside any transaction, failure swallowed
+- [x] Screen: list + search + «كلّمناه» toggle; «now covered» shown when the address has since gained a zone; badge = now covered and nobody has rung
+- [x] `config/dashboard.php`, routes, `config/menu.php` (Locations), `RoleSeeder` + the harness, `activity.nouns`/`references`, `ar.json`
+- [x] Tests
+
+### Close
+- [x] Postman + `generate-reference.py`, `docs/mobile-2026-10-07-…md` + `mobile-api-changes.md`, QA guide, Changelog
+- [x] Full suite, browser check of the screen, `/code-review`, `/security-review`
+- [x] Brain update
+- [ ] Commit, deploy — waiting on the owner
+
+### Review
+
+- Done as planned. Checked on the dev database: real 422 responses (ar/en), and the screen driven in a browser: search, «اتصلنا بهم», «اتغطّى دلوقتي», the badge, RTL, 420px. The probe rows were deleted by id afterwards.
+- `/code-review`, fixed with tests: a repeat schedule on an uncovered address is refused the same way; a new refusal puts a rung row back on the list; the screen's badge and sort read `Address::scopeCovered()`; the rung-by name is searchable; the one-complaint rule is the order's customer's only (the driver app has no flag to explain a refusal). Not changed: a switched-off zone still counts as covered (the owner's definition is «no zone»), and the `has_complaint` subquery on `find()` costs one indexed EXISTS.
+- `/security-review`: nothing found.
+- The query-count test first failed on the default-language cache warming on the first request, not on the code; it warms up first now, and it was shown to fail (9 queries against 5) when the flag is read per row.

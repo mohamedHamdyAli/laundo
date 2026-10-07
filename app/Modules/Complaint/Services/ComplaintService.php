@@ -60,6 +60,30 @@ class ComplaintService
     }
 
     /**
+     * Whether this person has already complained about this order.
+     *
+     * **One complaint per order, per person, for good** (the owner, 2026-10-07):
+     * the app greys out «شكوى» on an order that has one, and this is the same
+     * rule on the server so a second tap, an old build or a hand-made request
+     * cannot file a second. A closed complaint still counts — a problem that
+     * comes back after one is a phone call.
+     *
+     * Per person, not per order: a driver's complaint about the same delivery
+     * is the driver's, and must not use up the customer's. And «تواصل معنا»
+     * (`support_request`) is a message, not a complaint, so it neither counts
+     * nor is refused. Both rules are `Complaint::scopeUsingUpTheOrder()`.
+     *
+     * `submit()` enforces it for **the order's own customer** only. The rule
+     * is the customer app's «شكوى» button; a driver who had two legs of one
+     * order can meet two separate problems at two doorsteps days apart, and
+     * the driver app has no flag that would tell them why a second was refused.
+     */
+    public function hasComplained(User $complainant, Order $order): bool
+    {
+        return $order->complaints()->usingUpTheOrder($complainant->id)->exists();
+    }
+
+    /**
      * @param  array{category: string, body: string, order_id?: int|null, photos?: array<int, UploadedFile>}  $data
      */
     public function submit(User $complainant, array $data): Complaint
@@ -75,6 +99,21 @@ class ComplaintService
         }
 
         $complaint = DB::transaction(function () use ($complainant, $order, $data) {
+            // One per order for its customer (`hasComplained()`), asked under
+            // a lock on the order: two taps a moment apart would otherwise both
+            // find nothing and file two. The order row rather than the
+            // complaints, because before the first complaint there is no
+            // complaint row to lock.
+            if ($order !== null
+                && (int) $order->user_id === (int) $complainant->id
+                && $data['category'] !== ComplaintCategory::SupportRequest->value) {
+                Order::withoutGlobalScopes()->whereKey($order->id)->lockForUpdate()->first();
+
+                if ($this->hasComplained($complainant, $order)) {
+                    throw new RuntimeException('already_complained');
+                }
+            }
+
             $complaint = Complaint::create([
                 'reference' => $this->reference(),
                 'user_id' => $complainant->id,

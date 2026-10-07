@@ -42,6 +42,11 @@ use Carbon\CarbonInterface;
  * problem, and `SlotOverflowBehavior` is where an operator says what to do
  * about it.
  *
+ * What is *not* a gap in our data is an address in **no zone** — a pin outside
+ * every zone drawn on the map. That order is refused before it gets here
+ * (`OutOfCoverage`, the owner's reversal on 2026-10-07 at the app team's
+ * request); a zone no laundry has claimed yet is still the null above.
+ *
  * Global scopes are dropped throughout: this runs while a *customer* is
  * authenticated, and a customer is not a tenant, so the scopes would be
  * inactive anyway — but a super admin placing an order on someone's behalf must
@@ -178,8 +183,10 @@ class LaundryAssigner
     public function candidates(Address $pickup, Service $service): array
     {
         if ($pickup->zone_id === null) {
-            // No zone means no coverage claim can match it. The order is accepted
-            // unassigned; operations will place it.
+            // No zone means no coverage claim can match it. A new order from it
+            // is refused before this (`OutOfCoverage`); this answers for one
+            // placed before 2026-10-07, or an address that lost its zone to a
+            // redrawn map, which operations place by hand.
             return [];
         }
 

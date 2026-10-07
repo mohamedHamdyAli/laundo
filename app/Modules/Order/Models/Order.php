@@ -3,6 +3,7 @@
 namespace App\Modules\Order\Models;
 
 use App\Modules\Address\Models\Address;
+use App\Modules\Complaint\Models\Complaint;
 use App\Modules\Coupon\Services\ReferralService;
 use App\Modules\Laundry\Models\Laundry;
 use App\Modules\Offer\Models\Offer;
@@ -80,6 +81,7 @@ use Illuminate\Support\Str;
  * @property-read Collection<int, OrderMedia> $media
  * @property-read Collection<int, OrderPriceQuery> $priceQueries
  * @property-read Collection<int, OrderTask> $tasks
+ * @property-read Collection<int, Complaint> $complaints
  * @property-read Collection<int, Payment> $payments
  *
  * @method static Builder<static>|Order active()
@@ -347,6 +349,18 @@ class Order extends Model
     public function priceQueries(): HasMany
     {
         return $this->hasMany(OrderPriceQuery::class, 'order_id')->latest('id');
+    }
+
+    /**
+     * «شكوى» filed about this order — by the customer, or by a driver who had a
+     * leg of it. Narrow it to one complainant before asking anything of it:
+     * see `ComplaintService::hasComplained()`.
+     *
+     * @return HasMany<Complaint, $this>
+     */
+    public function complaints(): HasMany
+    {
+        return $this->hasMany(Complaint::class, 'order_id');
     }
 
     /**

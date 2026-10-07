@@ -13,14 +13,16 @@
         "models": [
             "App\\Modules\\City\\Models\\City",
             "App\\Modules\\Country\\Models\\Country",
+            "App\\Modules\\Zone\\Models\\CoverageRequest",
             "App\\Modules\\Zone\\Models\\Zone"
         ],
         "tables": [
             "cities",
             "countries",
+            "coverage_requests",
             "zones"
         ],
-        "route_count": 27,
+        "route_count": 30,
         "routes": [
             "admin.city.create",
             "admin.city.delete",
@@ -40,6 +42,9 @@
             "admin.country.store",
             "admin.country.toggleStatus",
             "admin.country.update",
+            "admin.coverage_request.contacted",
+            "admin.coverage_request.index",
+            "admin.coverage_request.search",
             "admin.zone.create",
             "admin.zone.delete",
             "admin.zone.edit",
@@ -50,8 +55,8 @@
             "admin.zone.toggleStatus",
             "admin.zone.update"
         ],
-        "node_count": 217,
-        "cohesion": 0.571,
+        "node_count": 256,
+        "cohesion": 0.57,
         "screens": [
             {
                 "key": "country",
@@ -76,12 +81,21 @@
                 "modules": [
                     "Zone"
                 ]
+            },
+            {
+                "key": "coverage_request",
+                "title": "Out of coverage",
+                "route": "admin.coverage_request.index",
+                "modules": [
+                    "Zone"
+                ]
             }
         ],
         "menu_keys": [
             "country",
             "city",
-            "zone"
+            "zone",
+            "coverage_request"
         ]
     },
     {
@@ -421,8 +435,8 @@
             "admin.driver_bonus_rule.toggleStatus",
             "admin.driver_bonus_rule.update"
         ],
-        "node_count": 1079,
-        "cohesion": 0.451,
+        "node_count": 1083,
+        "cohesion": 0.449,
         "screens": [
             {
                 "key": "order_task",
@@ -519,7 +533,7 @@
             "admin.user.update"
         ],
         "node_count": 79,
-        "cohesion": 0.213,
+        "cohesion": 0.21,
         "screens": [
             {
                 "key": "user",
@@ -766,8 +780,8 @@
             "admin.refund.approve",
             "admin.refund.index"
         ],
-        "node_count": 775,
-        "cohesion": 0.404,
+        "node_count": 779,
+        "cohesion": 0.402,
         "screens": [
             {
                 "key": "order",
@@ -872,8 +886,8 @@
             "admin.time_slot.toggleStatus",
             "admin.time_slot.update"
         ],
-        "node_count": 576,
-        "cohesion": 0.376,
+        "node_count": 582,
+        "cohesion": 0.374,
         "screens": [
             {
                 "key": "complaint",
@@ -1164,8 +1178,8 @@
             "api.v1.driver.tasks.complete",
             "api.v1.driver.tasks.fail"
         ],
-        "node_count": 271,
-        "cohesion": 0.386
+        "node_count": 273,
+        "cohesion": 0.385
     },
     {
         "slug": "authentication",
@@ -1206,8 +1220,8 @@
         "tables": [],
         "route_count": 0,
         "routes": [],
-        "node_count": 220,
-        "cohesion": 0.438
+        "node_count": 222,
+        "cohesion": 0.439
     },
     {
         "slug": "public_site",
@@ -1239,7 +1253,7 @@
         "tables": [],
         "route_count": 0,
         "routes": [],
-        "node_count": 1668,
+        "node_count": 1684,
         "cohesion": 0.358
     },
     {
@@ -1256,7 +1270,7 @@
         "route_count": 0,
         "routes": [],
         "node_count": 36,
-        "cohesion": 0.246
+        "cohesion": 0.245
     },
     {
         "slug": "system",
@@ -1339,7 +1353,7 @@
             "admin.notification.compose"
         ],
         "node_count": 1107,
-        "cohesion": 0.438,
+        "cohesion": 0.436,
         "screens": [
             {
                 "key": "moderator",

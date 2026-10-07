@@ -60,6 +60,9 @@ return [
                 'country' => 1,
                 'city' => 2,
                 'zone' => 3,
+                // Who asked for an area no zone covers — where to draw next,
+                // and who to ring once it is drawn. Badged only for the second.
+                'coverage_request' => 4,
             ],
         ],
 
@@ -256,6 +259,7 @@ return [
         'country' => 'bi bi-globe2',
         'city' => 'bi bi-geo-alt',
         'zone' => 'bi bi-pin-map',
+        'coverage_request' => 'bi bi-signpost-split',
 
         'service' => 'bi bi-droplet-half',
         'item_category' => 'bi bi-collection-fill',
@@ -317,6 +321,7 @@ return [
         'country' => 'Countries',
         'city' => 'Cities',
         'zone' => 'Zones',
+        'coverage_request' => 'Out of coverage',
 
         'service' => 'Services',
         'item_category' => 'Item Categories',
@@ -377,6 +382,7 @@ return [
         'country' => 'admin.country.index',
         'city' => 'admin.city.index',
         'zone' => 'admin.zone.index',
+        'coverage_request' => 'admin.coverage_request.index',
 
         'service' => 'admin.service.index',
         'item_category' => 'admin.item_category.index',

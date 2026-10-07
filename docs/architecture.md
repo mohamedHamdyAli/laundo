@@ -181,8 +181,26 @@ and every query comes back empty — send them from a UTF-8 file.
 `AddressController` on create and edit: **inside a drawn, active zone → that
 zone and its city, whatever `zone_id` the app sent**; a zone **not drawn yet**
 is still taken at the app's word, so an install moves over one zone at a time;
-a pin **outside every drawn zone gets no zone**, and its order is accepted
-unassigned (the owner's choice — the same as an uncovered area always was).
+a pin **outside every drawn zone gets no zone**. Its order was accepted
+unassigned until **2026-10-07**; the owner reversed that at the app team's
+request: **an order whose pickup, or a different delivery, address has no zone
+is refused** — at `POST /orders/quote` as well as `POST /orders`, inside
+`OrderService::resolveContext()`, before anything is written, and a repeat
+schedule on one at `RecurrenceService::create()` — as **422 with
+`key: out_of_coverage`** (`OutOfCoverage`, `failReturnOutOfCoverage()`; the app
+keys on that string, so it is a contract) and `errors` naming the field.
+`Address::isCovered()` (`zone_id !== null`, and `scopeCovered()` in SQL beside
+it) is the one definition behind the refusal, the app's `is_covered`, and the
+screen's badge and order. A rung row goes back on the list at the next refusal. **A zone no laundry covers yet is still
+accepted unassigned** — that gap is in our setup, not where the customer lives,
+and `LaundryAssigner` keeps answering null for it. Each refusal is recorded by
+the controller, after the service has let go (outside any transaction, so the
+repeat-schedule path's rollback cannot take it) and never fatally, as one
+`coverage_requests` row per customer and address (`Zone/Models/CoverageRequest`,
+pin and street copied in, `attempts`): the panel's «خارج التغطية»
+(`coverage_request.*`, super admin only, like complaints), whose badge counts
+the rows whose address **has since gained a zone** and nobody has rung — the
+moment the app's «we will contact you» can be kept.
 Drawings **may not overlap** (`ZoneLocator::assertNoOverlap()`, from
 `ZoneRequest::after()` and again inside the save's transaction with the
 neighbours locked; against every drawn zone, inactive ones too). A border
@@ -996,7 +1014,7 @@ five Playwright specs** — leave it alone.
 - Domain vocabulary lives in **PHP enums** under `app/Modules/{Name}/Enums/` (`OrderStatus`, `TaskType`, `PaymentMethod`, `PaymentStatus`, `TransactionReason`, …). Prefer these over string literals.
 - Password reset is **two steps**, for the panel and both apps: `verify-reset-code` spends the code and issues a single-use ticket, `reset-password` takes the ticket. Shared in `app/Services/Auth/PasswordResetTicket.php`. Never accept code + new password in one call.
 - Cross-field rules shared between requests go in `app/Http/Requests/Api/V1/Concerns/` (see `OneDiscountPerOrder`).
-- **`POST /complaints` serves both apps, and `order_id` is optional for that reason.** A customer reaches it from an order; a driver reaches it from the account screen with no order in sight. When one *is* named it resolves through `ComplaintService::orderTheyCanName()` — orders the complainant **placed or was given a leg of**. Widening that to any order files a complaint against a stranger's laundry; narrowing it back to `$user->orders()` is the bug it replaced, where a driver naming the job they had just delivered got a 404.
+- **`POST /complaints` serves both apps, and `order_id` is optional for that reason.** A customer reaches it from an order; a driver reaches it from the account screen with no order in sight. When one *is* named it resolves through `ComplaintService::orderTheyCanName()` — orders the complainant **placed or was given a leg of**. Widening that to any order files a complaint against a stranger's laundry; narrowing it back to `$user->orders()` is the bug it replaced, where a driver naming the job they had just delivered got a 404. **One complaint per order for its customer, for good** (the owner, 2026-10-07): the customer's second naming the same order is a 422 on `order_id`, checked under a lock on the order row (`ComplaintService::hasComplained()`); a closed one still counts, a driver is not limited (two doorsteps, days apart, and no flag in the driver app to explain a refusal) and does not use up the customer's, and `support_request` neither counts nor is refused. The rule is `Complaint::scopeUsingUpTheOrder()`, which also gives the order list its `has_complaint` (a `withExists`, no query per card).
 
 ## Money, phones and dates
 

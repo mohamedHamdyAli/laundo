@@ -223,8 +223,9 @@ class OrderService
             $order = Order::create([
                 'code' => Order::generateCode(),
                 'user_id' => $customer->id,
-                // Null when nothing covers the zone — accepted by decision — or
-                // when automatic assignment is off and a person chooses (the fee
+                // Null when no laundry covers the zone — accepted by decision;
+                // an address in no zone at all was refused above — or when
+                // automatic assignment is off and a person chooses (the fee
                 // is still the one measured from this laundry; see AutoAssign).
                 'laundry_id' => $this->autoAssign->laundries() ? $laundry?->id : null,
                 'service_id' => $service->id,
@@ -809,6 +810,22 @@ class OrderService
 
         if (! $delivery) {
             throw new RuntimeException('delivery_address_not_found');
+        }
+
+        // Nowhere we serve: refused, at the quote as well as at the order, so
+        // the review screen stops the customer before «تأكيد الطلب». Until
+        // 2026-10-07 this was accepted and left for an operator to place; the
+        // owner reversed it at the app team's request — a pin outside every
+        // zone has no laundry to go to and no driver to send. Both ends, since
+        // the delivery leg is matched to a driver by its zone too; the delivery
+        // is named only when it is a different address.
+        $uncovered = array_filter(
+            ['pickup_address_id' => $pickup] + ($delivery->id !== $pickup->id ? ['delivery_address_id' => $delivery] : []),
+            fn (Address $address) => ! $address->isCovered()
+        );
+
+        if ($uncovered !== []) {
+            throw new OutOfCoverage($uncovered);
         }
 
         return [$service, $pickup, $delivery];

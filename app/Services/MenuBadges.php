@@ -13,6 +13,7 @@ use App\Modules\Order\Models\Order;
 use App\Modules\Order\Models\OrderPriceQuery;
 use App\Modules\Order\Models\OrderTask;
 use App\Modules\Payment\Models\Refund;
+use App\Modules\Zone\Models\CoverageRequest;
 
 /**
  * The counts the sidebar puts beside a menu item.
@@ -113,6 +114,12 @@ class MenuBadges
             // has nothing to decide, and counting them would put a number
             // beside a screen with no work on it.
             'driver_bonus_award' => DriverBonusAward::due()->where('amount', '>', 0)->count(),
+
+            // Customers told «we will contact you when we reach your area»
+            // whose address is served now and whom nobody has rung. Not every
+            // refused customer: until a zone covers them there is nothing to
+            // say, and a badge that only ever grows is one nobody reads.
+            'coverage_request' => CoverageRequest::readyToCall()->count(),
 
             default => null,
         };

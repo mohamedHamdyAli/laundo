@@ -44,6 +44,7 @@ use Illuminate\Support\Carbon;
  * @property-read User|null $handler
  *
  * @method static Builder<static>|Complaint open()
+ * @method static Builder<static>|Complaint usingUpTheOrder(int $complainantId)
  */
 class Complaint extends Model
 {
@@ -118,6 +119,22 @@ class Complaint extends Model
             ComplaintStatus::New->value,
             ComplaintStatus::InProgress->value,
         ]);
+    }
+
+    /**
+     * The complaints that use up a person's one complaint on an order: theirs,
+     * and not «تواصل معنا» (`support_request`), which is a message rather than
+     * a complaint. The one definition behind the refusal
+     * (`ComplaintService::hasComplained()`) and the app's `has_complaint`, so
+     * the button the app greys out is the complaint the server refuses.
+     *
+     * @param  Builder<static>  $query
+     * @return Builder<static>
+     */
+    public function scopeUsingUpTheOrder(Builder $query, int $complainantId): Builder
+    {
+        return $query->where($query->qualifyColumn('user_id'), $complainantId)
+            ->where($query->qualifyColumn('category'), '!=', ComplaintCategory::SupportRequest->value);
     }
 
     /**

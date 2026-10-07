@@ -22,9 +22,10 @@ use Illuminate\Validation\ValidationException;
  *     whatever the app sent;
  *   - a zone **not drawn yet** keeps working the old way, so an install moves
  *     over one zone at a time and nothing stops the day this ships;
- *   - a pin outside every drawn zone is in no zone, and its order is accepted
- *     without a laundry for an operator to place — exactly as an uncovered
- *     area always was.
+ *   - a pin outside every drawn zone is in no zone. Its order was accepted
+ *     without a laundry for an operator to place until 2026-10-07; it is now
+ *     refused (`OutOfCoverage`) and recorded for «طلبات خارج التغطية», at the
+ *     app team's request and the owner's say-so.
  *
  * Laundries and drivers are still matched by `zone_id`, unchanged — which is
  * right by construction once an address's zone is where its pin is: a driver

@@ -55,6 +55,7 @@ use App\Modules\Setting\Controllers\SettingController;
 use App\Modules\TimeSlot\Controllers\TimeSlotController;
 use App\Modules\User\Controllers\UserController;
 use App\Modules\Wallet\Controllers\WalletController;
+use App\Modules\Zone\Controllers\CoverageRequestController;
 use App\Modules\Zone\Controllers\ZoneController;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
@@ -1186,6 +1187,25 @@ Route::middleware(['auth', 'dashboard.only'])->prefix('/admin')->group(function 
         Route::put('/zone/update/{id}', 'update')->middleware('permission:zone.update')->name('admin.zone.update');
         Route::delete('/zone/delete/{id}', 'destroy')->middleware('permission:zone.delete')->name('admin.zone.delete');
         Route::post('/zone/status/{id}', 'toggleStatus')->middleware('permission:zone.toggle')->name('admin.zone.toggleStatus');
+    });
+
+    /*
+    |--------------------------------------------------------------------------
+    | «طلبات خارج التغطية» — customers refused for an address in no zone
+    |--------------------------------------------------------------------------
+    |
+    | No create, edit or delete: a row is a refused order, and the one action
+    | is «we rang them». On `.toggle`, like a driver application, and named
+    | `contacted` rather than `toggleStatus` — it is a form post that
+    | redirects, not the AJAX endpoint `x-status-toggle-button` expects.
+    */
+    Route::controller(CoverageRequestController::class)->group(function () {
+        Route::get('/coverage-request', 'index')
+            ->middleware('permission:coverage_request.view')->name('admin.coverage_request.index');
+        Route::get('/coverage-request/search', 'search')
+            ->middleware('permission:coverage_request.view')->name('admin.coverage_request.search');
+        Route::post('/coverage-request/contacted/{id}', 'toggleContacted')
+            ->middleware('permission:coverage_request.toggle')->name('admin.coverage_request.contacted');
     });
 
     /*

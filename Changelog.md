@@ -1,5 +1,19 @@
 # Changelog
 
+## 2026-10-07
+
+### Feature
+
+- **`has_complaint` on every customer order** (the app team's ask): `GET /orders` (every tab), `GET /orders/{id}` and the placed order carry it, always a bool. It is true once this customer has complained about the order. Read in the list's own query (`withExists`), with no query per card (API / Model).
+- **One complaint per order for its customer, for good** (the owner's choice): the customer's second complaint on the same order is a 422 on `order_id`, even after the first is closed. It is checked under a lock on the order row. A driver is not limited and does not use up the customer's complaint, and «تواصل معنا» (`support_request`) neither counts nor is refused. One definition, `Complaint::scopeUsingUpTheOrder()`, behind both the refusal and the flag (Service / Model / API).
+- **An order to or from an address in no zone is refused** (the app team's ask; the owner reversed the 29/9 decision to accept it unassigned). `POST /orders`, `POST /orders/quote` and `POST /recurrences` answer **422 with `key: out_of_coverage`**, and `errors` names the address field(s). Nothing is created. A zone no laundry covers yet is still accepted for an operator. `is_covered` is on every address (`Address::isCovered()`, the one definition). Reorder's `pricing_error` may now be `out_of_coverage` (Service / API).
+- **«خارج التغطية»** (`/admin/coverage-request`, under Locations, `coverage_request.view` / `.toggle`, super admin only): every refusal is recorded as one row per customer and address. The pin and the street are copied in, and the row counts attempts. A row whose address has since gained a zone reads «اتغطّى دلوقتي», sorts first, and is counted on the sidebar until somebody marks «اتصلنا بهم». A new refusal puts a rung row back on the list. The row is recorded outside any transaction and never fails the refusal (Repository / Service / Controller / Blade).
+- Docs: Postman, `generate-reference.py` → `api-reference.html`, `docs/mobile-2026-10-07-complaints-and-coverage.md` (with real responses), `mobile-api-changes.md`, the QA guide (HTML + PDF), `architecture.md`, CLAUDE.md (Docs).
+
+### Migration
+
+- `2026_10_07_100000_create_coverage_requests_table`: a new table, with no data rewritten. The deploy needs `db:seed --class=PermissionSeeder` for `coverage_request.*`.
+
 ## 2026-10-04
 
 ### Fix

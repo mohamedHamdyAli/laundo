@@ -1,8 +1,38 @@
 {
     "available": true,
-    "head": "5c1e8370e2ef2672a285a8ed255a2b290973aaf0",
-    "commits_scanned": 120,
+    "head": "ea3cb16ed1b25c3aaa245619acf279c76becd2f4",
+    "commits_scanned": 125,
     "recent": [
+        {
+            "sha": "ea3cb16e",
+            "date": "2026-10-04",
+            "subject": "docs: fifteen mobile notes were removed, not fourteen",
+            "files": 1
+        },
+        {
+            "sha": "5fe15f3a",
+            "date": "2026-10-04",
+            "subject": "docs: remove the mobile notes already sent to the app teams",
+            "files": 18
+        },
+        {
+            "sha": "b403985e",
+            "date": "2026-10-04",
+            "subject": "docs: CLAUDE.md keeps the rules; the long accounts move to docs/architecture.md",
+            "files": 1
+        },
+        {
+            "sha": "ff039579",
+            "date": "2026-10-04",
+            "subject": "docs: the cash-on-delivery release is live",
+            "files": 1
+        },
+        {
+            "sha": "6c37c5d5",
+            "date": "2026-10-04",
+            "subject": "fix: cash on delivery end to end, and «الكاش مع المناديب»",
+            "files": 28
+        },
         {
             "sha": "5c1e8370",
             "date": "2026-10-01",
@@ -62,52 +92,22 @@
             "date": "2026-09-23",
             "subject": "chore: commit the Second Brain and the working tree with it",
             "files": 2
-        },
-        {
-            "sha": "789445c9",
-            "date": "2026-09-23",
-            "subject": "fix: an override file overrides something, or holds nothing",
-            "files": 2
-        },
-        {
-            "sha": "d4551b30",
-            "date": "2026-09-23",
-            "subject": "feat: the dashboard's validation answers in Arabic too",
-            "files": 1
-        },
-        {
-            "sha": "035dbff0",
-            "date": "2026-09-23",
-            "subject": "feat: both apps reject a request in the language they were asked in",
-            "files": 1
-        },
-        {
-            "sha": "5adef8ff",
-            "date": "2026-09-23",
-            "subject": "fix: make the language files a pair that stays a pair",
-            "files": 3
-        },
-        {
-            "sha": "7215d774",
-            "date": "2026-09-23",
-            "subject": "fix: finish the dashboard's Arabic, and stop it drifting again",
-            "files": 3
         }
     ],
     "hottest_files": {
-        "routes/web.php": 25,
-        "docs/postman/Laundo API v1.postman_collection.json": 19,
+        "routes/web.php": 26,
+        "docs/postman/Laundo API v1.postman_collection.json": 20,
         "app/Helpers/Helpers.php": 18,
         "resources/views/admin/setting/generalSetting/forms/formInput.blade.php": 16,
         "config/menu.php": 15,
         "app/Modules/Setting/Requests/GeneralSettingRequest.php": 14,
         "resources/views/layouts/footer_script.blade.php": 14,
+        "docs/mobile-api-changes.md": 13,
         "app/Http/Controllers/Api/V1/OrderController.php": 12,
         "config/dashboard.php": 12,
-        "docs/mobile-api-changes.md": 11,
+        "app/Modules/Order/Services/OrderService.php": 11,
         "app/Http/Controllers/Admin/LanguageController.php": 11,
         "app/Services/languages/LanguageService.php": 11,
-        "app/Modules/Order/Services/OrderService.php": 10,
         "database/seeders/SettingsSeeder.php": 10,
         "app/Modules/User/Models/User.php": 9,
         "app/Modules/Order/Services/orderCrudService.php": 9,
@@ -120,6 +120,7 @@
         "resources/views/admin/order/index.blade.php": 8,
         "resources/views/admin/banner/forms/formInput.blade.php": 8,
         "app/Services/CachingService.php": 8,
+        "app/Modules/Order/Models/OrderTask.php": 7,
         "app/Modules/Order/Repositories/OrderRepository.php": 7,
         "tests/Feature/Api/DriverTaskTest.php": 7,
         "app/Modules/City/Models/City.php": 7,
@@ -133,7 +134,6 @@
         "resources/views/layouts/include.blade.php": 7,
         "resources/views/layouts/main.blade.php": 7,
         "resources/views/auth/login.blade.php": 7,
-        "app/Modules/Category/Models/Category.php": 7,
-        "app/Modules/Report/Services/DashboardSummary.php": 6
+        "app/Modules/Category/Models/Category.php": 7
     }
 }

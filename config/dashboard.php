@@ -45,6 +45,7 @@ use App\Modules\Setting\Models\Setting;
 use App\Modules\TimeSlot\Models\TimeSlot;
 use App\Modules\User\Models\User;
 use App\Modules\Wallet\Models\Wallet;
+use App\Modules\Zone\Models\CoverageRequest;
 use App\Modules\Zone\Models\Zone;
 
 return [
@@ -71,6 +72,8 @@ return [
         // Who changed what; `activity_log.view` is the only permission it uses.
         ActivityLog::class,
         Zone::class,
+        // «طلبات خارج التغطية» — customers refused for an address in no zone.
+        CoverageRequest::class,
         TimeSlot::class,
         LaundryZone::class,
         LaundrySlotCapacity::class,

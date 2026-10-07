@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Http\Controllers\Api\V1\Concerns\AnswersOutOfCoverage;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\V1\OrderQuoteRequest;
 use App\Http\Requests\Api\V1\OrderRequest;
@@ -15,6 +16,7 @@ use App\Modules\Order\Models\RecurrencePrompt;
 use App\Modules\Order\Services\OrderEta;
 use App\Modules\Order\Services\OrderService;
 use App\Modules\Order\Services\OrderTimeline;
+use App\Modules\Order\Services\OutOfCoverage;
 use App\Modules\Order\Services\RecurrenceService;
 use App\Modules\Order\Services\RescheduleService;
 use App\Modules\Order\Services\Turnaround;
@@ -37,6 +39,8 @@ use RuntimeException;
  */
 class OrderController extends Controller
 {
+    use AnswersOutOfCoverage;
+
     public function __construct(
         private readonly OrderService $orders,
         private readonly DriverCard $driverCard,
@@ -54,7 +58,7 @@ class OrderController extends Controller
         // fifteen extra round trips to render a list.
         $query = $request->user()->orders()->with([
             'service:id,name', 'laundry:id,name', 'pickupSlot',
-        ]);
+        ])->withExists($this->complaintFlag($request));
 
         $query = match ($tab) {
             'active' => $query->active(),
@@ -81,6 +85,8 @@ class OrderController extends Controller
     {
         try {
             $quote = $this->orders->quote($request->user(), $request->validated());
+        } catch (OutOfCoverage $e) {
+            return $this->outOfCoverage($request, $e);
         } catch (RuntimeException $e) {
             return $this->translateFailure($e);
         }
@@ -137,6 +143,8 @@ class OrderController extends Controller
             $order = $prompt
                 ? app(RecurrenceService::class)->placeFromPrompt($prompt, $request->user(), $data)
                 : $this->orders->place($request->user(), $data);
+        } catch (OutOfCoverage $e) {
+            return $this->outOfCoverage($request, $e);
         } catch (RuntimeException $e) {
             return $e->getMessage() === 'already_answered'
                 ? failReturnMsg(__('You have already answered this request.'))
@@ -376,7 +384,22 @@ class OrderController extends Controller
             'service:id,name', 'laundry:id,name',
             'pickupAddress', 'deliveryAddress', 'pickupSlot', 'deliverySlot',
             'items.item:id,name', 'media',
-        ])->find($id);
+        ])->withExists($this->complaintFlag($request))->find($id);
+    }
+
+    /**
+     * `has_complaint`, asked in the same query as the orders rather than once
+     * per card. The caller's own complaints only, by the rule the refusal uses
+     * (`Complaint::scopeUsingUpTheOrder()`), so a driver's complaint about the
+     * same delivery does not grey out the customer's button.
+     *
+     * @return array<string, \Closure>
+     */
+    private function complaintFlag(Request $request): array
+    {
+        $customerId = (int) $request->user()->id;
+
+        return ['complaints as has_complaint' => fn ($query) => $query->usingUpTheOrder($customerId)];
     }
 
     /**
@@ -457,6 +480,11 @@ class OrderController extends Controller
             'qr' => $order->qr_token,
             'created_at' => humanDate($order->created_at),
             'created_at_iso' => isoDate($order->created_at),
+            // «شكوى» on the card: greyed out once the customer has sent one
+            // about this order — one per order, and the server refuses a second
+            // (`ComplaintService::hasComplained()`). Always a bool: both queries
+            // that reach here load it with `complaintFlag()`.
+            'has_complaint' => (bool) $order->getAttribute('has_complaint'),
         ];
     }
 

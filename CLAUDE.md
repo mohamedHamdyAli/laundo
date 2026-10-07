@@ -191,6 +191,11 @@ requires a note; `GET /driver/profile` carries `pending_review`.
   OpenStreetMap Nominatim **by the owner's choice — do not switch to Google
   without asking**; test Arabic queries from a UTF-8 file, never the Windows
   shell.
+- **An address in no zone is refused** (since 2026-10-07): quote, order and
+  repeat schedule answer 422 `key: out_of_coverage` (a contract the app keys
+  on), and the attempt is recorded for «خارج التغطية» (`CoverageRequest`).
+  `Address::isCovered()` is the one definition. **A zone no laundry covers is
+  still accepted unassigned.**
 - **Distance is the road** (`app/Services/Routing/`, Google's Routes API, matched
   on `destinationIndex`). The key is the `Google_Maps_Key` setting. **A fallback
   is never cached.** `phpunit.xml` pins `ROUTING_DRIVER=haversine`.
@@ -462,7 +467,7 @@ only**. `LandingController` reads route parameters off the request.
 - **Driver endpoints are not gated by middleware.** Each driver controller resolves `Driver::find($request->user()->id)` and does `abort_unless($driver !== null, 403, …)` itself, which is what stops a customer's token (a plain `User`) operating them. Adding a driver endpoint means repeating that.
 - **`$request->user()` is not the same class in both apps.** A driver's token is minted on **`Driver`**, a customer's on `User`. Anything keyed on the caller's class (`getMorphClass()`, a morph relation) splits one account in two.
 - **Named rate limiters** beyond `api`: `otp`, `otp-verify`, `login`, `location` (60/minute — the driver reports every four seconds), `tracking`.
-- **`ComplaintCategory` has two sets**: `offeredTo($audience)` (the picker) and the wider `acceptedFrom($audience)` (submit). `POST /complaints` serves both apps; a named order resolves through `ComplaintService::orderTheyCanName()`.
+- **`ComplaintCategory` has two sets**: `offeredTo($audience)` (the picker) and the wider `acceptedFrom($audience)` (submit). `POST /complaints` serves both apps; a named order resolves through `ComplaintService::orderTheyCanName()`. **One complaint per order for its customer, for good** (`Complaint::scopeUsingUpTheOrder()`, also behind the order list's `has_complaint`); a driver is not limited.
 - `GET /orders/{id}/driver-location` is the moving marker's own endpoint; `config/tracking.php` holds the freshness window and poll cadence — **the window comes down only after the apps report faster**. `?audience=driver` on `/app-settings` swaps in the driver's support lines.
 - Controllers keep a private `present*()` method per payload shape; a field added to a summary must be eager-loaded in the matching `index()` (query-count tests).
 - Domain vocabulary lives in **PHP enums** under `app/Modules/{Name}/Enums/`. Prefer them over string literals.

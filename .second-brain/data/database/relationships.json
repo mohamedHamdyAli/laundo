@@ -683,6 +683,24 @@
             "column": "received_by",
             "to": "users",
             "migration": "database/migrations/2026_10_01_100000_add_cash_custody_to_payments_table.php"
+        },
+        {
+            "from": "coverage_requests",
+            "column": "user_id",
+            "to": "users",
+            "migration": "database/migrations/2026_10_07_100000_create_coverage_requests_table.php"
+        },
+        {
+            "from": "coverage_requests",
+            "column": "address_id",
+            "to": "addresses",
+            "migration": "database/migrations/2026_10_07_100000_create_coverage_requests_table.php"
+        },
+        {
+            "from": "coverage_requests",
+            "column": "contacted_by",
+            "to": "users",
+            "migration": "database/migrations/2026_10_07_100000_create_coverage_requests_table.php"
         }
     ],
     "eloquent": [
@@ -1144,6 +1162,15 @@
             "foreign_key": "delivery_address_id",
             "from_table": "orders",
             "to_table": "addresses"
+        },
+        {
+            "from": "App\\Modules\\Order\\Models\\Order",
+            "to": "App\\Modules\\Complaint\\Models\\Complaint",
+            "type": "has_many",
+            "method": "complaints",
+            "foreign_key": "order_id",
+            "from_table": "orders",
+            "to_table": "complaints"
         },
         {
             "from": "App\\Modules\\Order\\Models\\Order",
@@ -1747,6 +1774,24 @@
             "foreign_key": "wallet_id",
             "from_table": "wallet_transactions",
             "to_table": "wallets"
+        },
+        {
+            "from": "App\\Modules\\Zone\\Models\\CoverageRequest",
+            "to": "App\\Modules\\Address\\Models\\Address",
+            "type": "belongs_to",
+            "method": "address",
+            "foreign_key": "address_id",
+            "from_table": "coverage_requests",
+            "to_table": "addresses"
+        },
+        {
+            "from": "App\\Modules\\Zone\\Models\\CoverageRequest",
+            "to": "App\\Modules\\User\\Models\\User",
+            "type": "belongs_to",
+            "method": "contacter",
+            "foreign_key": null,
+            "from_table": "coverage_requests",
+            "to_table": "users"
         },
         {
             "from": "App\\Modules\\Zone\\Models\\Zone",

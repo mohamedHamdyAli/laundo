@@ -106,9 +106,17 @@ class ComplaintController extends Controller
         try {
             $complaint = $this->complaints->submit($request->user(), $validated);
         } catch (RuntimeException $e) {
-            return $e->getMessage() === 'order_not_found'
-                ? failReturnNotFound(__('Order not found.'))
-                : failReturnMsg(__('Could not submit your complaint.'));
+            return match ($e->getMessage()) {
+                'order_not_found' => failReturnNotFound(__('Order not found.')),
+                // Against the field, so the form can say it beside the order
+                // number. The app greys the button out off `has_complaint`;
+                // this is what an old build or a second tap meets.
+                'already_complained' => failReturnValidation(
+                    ['order_id' => [__('You have already sent a complaint about this order.')]],
+                    __('You have already sent a complaint about this order.')
+                ),
+                default => failReturnMsg(__('Could not submit your complaint.')),
+            };
         }
 
         return successReturnCreated(

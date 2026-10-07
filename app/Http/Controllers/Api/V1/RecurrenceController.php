@@ -2,11 +2,13 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Http\Controllers\Api\V1\Concerns\AnswersOutOfCoverage;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\V1\RecurrenceItemsRequest;
 use App\Http\Requests\Api\V1\RecurrenceRequest;
 use App\Modules\Order\Models\OrderRecurrence;
 use App\Modules\Order\Models\RecurrencePrompt;
+use App\Modules\Order\Services\OutOfCoverage;
 use App\Modules\Order\Services\RecurrenceService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -21,6 +23,8 @@ use RuntimeException;
  */
 class RecurrenceController extends Controller
 {
+    use AnswersOutOfCoverage;
+
     public function __construct(private readonly RecurrenceService $recurrences) {}
 
     public function index(Request $request): JsonResponse
@@ -48,7 +52,11 @@ class RecurrenceController extends Controller
             return failReturnNotFound(__('Pickup address not found.'));
         }
 
-        $schedule = $this->recurrences->create($request->user(), $data);
+        try {
+            $schedule = $this->recurrences->create($request->user(), $data);
+        } catch (OutOfCoverage $e) {
+            return $this->outOfCoverage($request, $e);
+        }
 
         return successReturnCreated(
             $this->present($schedule->fresh(['service', 'pickupAddress', 'timeSlot'])),

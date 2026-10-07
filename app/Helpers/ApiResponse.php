@@ -13,7 +13,8 @@ use Illuminate\Http\JsonResponse;
 |
 |   {
 |     "key":  "success" | "fail" | "not_auth" | "forbidden" | "not_found"
-|            | "validation_error" | "throttled" | "server_error",
+|            | "validation_error" | "throttled" | "server_error"
+|            | "out_of_coverage",
 |     "status": "success" | "error",
 |     "msg":    "human readable, translated",
 |     "code":   200,          // mirrors the HTTP status
@@ -290,6 +291,28 @@ if (! function_exists('failReturnValidation')) {
             apiResponseKey('VALIDATION_ERROR', 'validation_error'),
             apiResponseCode('VALIDATION_ERROR', 422),
             $msg !== '' ? $msg : 'Invalid data send',
+            ['errors' => $errors]
+        );
+    }
+}
+
+if (! function_exists('failReturnOutOfCoverage')) {
+    /**
+     * The order's address is somewhere we do not serve.
+     *
+     * A 422 like a validation failure, with `errors` naming the address field,
+     * but its own `key`: the customer app shows its own «we do not serve your
+     * area yet» message off `out_of_coverage`, and under `validation_error` it
+     * would show the field's line instead.
+     *
+     * @param  array<string, array<int, string>>  $errors
+     */
+    function failReturnOutOfCoverage(array $errors = [], string $msg = ''): JsonResponse
+    {
+        return apiEnvelope(
+            apiResponseKey('OUT_OF_COVERAGE', 'out_of_coverage'),
+            apiResponseCode('VALIDATION_ERROR', 422),
+            $msg,
             ['errors' => $errors]
         );
     }

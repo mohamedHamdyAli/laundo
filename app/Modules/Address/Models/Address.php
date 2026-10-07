@@ -5,6 +5,7 @@ namespace App\Modules\Address\Models;
 use App\Modules\City\Models\City;
 use App\Modules\User\Models\User;
 use App\Modules\Zone\Models\Zone;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -30,6 +31,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property string $lat
  * @property string $lng
  * @property bool $is_default
+ *
+ * @method static Builder<static>|Address covered()
  */
 class Address extends Model
 {
@@ -91,5 +94,33 @@ class Address extends Model
     public function callablePhone(): ?string
     {
         return $this->contact_phone ?: $this->user?->phone;
+    }
+
+    /**
+     * Whether we serve this address at all: it is in a zone. A pin outside
+     * every zone drawn on the map has none (`ZoneLocator`), and an order to or
+     * from it is refused (`OutOfCoverage`, the owner, 2026-10-07).
+     *
+     * A zone no laundry covers yet still counts — that order is accepted and
+     * waits for an operator, because the gap is in our own setup, not in where
+     * the customer lives. The one definition behind the refusal and the app's
+     * `is_covered`, so the warning the app shows is the order the server refuses.
+     */
+    public function isCovered(): bool
+    {
+        return $this->zone_id !== null;
+    }
+
+    /**
+     * `isCovered()` in SQL — for «خارج التغطية»'s badge and sort order, so the
+     * list, its count and the pill on each row cannot disagree. Change both
+     * together.
+     *
+     * @param  Builder<static>  $query
+     * @return Builder<static>
+     */
+    public function scopeCovered(Builder $query): Builder
+    {
+        return $query->whereNotNull($query->qualifyColumn('zone_id'));
     }
 }

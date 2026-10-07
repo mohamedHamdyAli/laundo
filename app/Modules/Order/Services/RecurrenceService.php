@@ -39,6 +39,15 @@ class RecurrenceService
      */
     public function create(User $customer, array $data): OrderRecurrence
     {
+        // An address in no zone is refused at the order (`OutOfCoverage`), so a
+        // schedule on one would ask every cycle «محتاج تغسل؟» and refuse the
+        // answer. Refused here first, the same way, rather than nagging weekly.
+        $address = $customer->addresses()->find($data['pickup_address_id'] ?? null);
+
+        if ($address !== null && ! $address->isCovered()) {
+            throw new OutOfCoverage(['pickup_address_id' => $address]);
+        }
+
         return DB::transaction(function () use ($customer, $data) {
             $frequency = $data['frequency'];
             $start = isset($data['starts_on'])

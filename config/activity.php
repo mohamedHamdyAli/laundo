@@ -136,6 +136,7 @@ return [
         // Cash taken at the door: the driver who took it, who received it.
         'collected_by' => User::class,
         'received_by' => User::class,
+        'contacted_by' => User::class,
         'answered_by' => User::class,
         'applied_by' => User::class,
         'approved_by' => User::class,
@@ -162,6 +163,7 @@ return [
         'ComplaintAttachment' => 'Complaint attachment',
         'Country' => 'Country',
         'Coupon' => 'Coupon',
+        'CoverageRequest' => 'Out-of-coverage request',
         'CouponRedemption' => 'Coupon use',
         'Driver' => 'Driver',
         'DriverApplication' => 'Driver application',

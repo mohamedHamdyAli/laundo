@@ -7,7 +7,7 @@
             "model": 1
         },
         "files": 1,
-        "lines": 96,
+        "lines": 127,
         "classes": [
             {
                 "fqcn": "App\\Modules\\Address\\Models\\Address",
@@ -37,9 +37,9 @@
             "Zone": 1
         },
         "depended_on_by": {
-            "Order": 10,
-            "Tests": 8,
-            "Zone": 4,
+            "Order": 11,
+            "Tests": 11,
+            "Zone": 7,
             "Api": 4,
             "User": 1,
             "Platform": 1,
@@ -156,10 +156,10 @@
         "community": "api",
         "path": null,
         "layers": {
-            "api-controller": 22
+            "api-controller": 23
         },
-        "files": 22,
-        "lines": 5179,
+        "files": 23,
+        "lines": 5264,
         "classes": [
             {
                 "fqcn": "App\\Http\\Controllers\\Api\\V1\\AddressController",
@@ -190,6 +190,12 @@
                 "layer": "api-controller",
                 "path": "app/Http/Controllers/Api/V1/ComplaintController.php",
                 "summary": "«تقديم شكوى» — for the customer and the driver alike; both apps offer it."
+            },
+            {
+                "fqcn": "App\\Http\\Controllers\\Api\\V1\\Concerns\\AnswersOutOfCoverage",
+                "layer": "api-controller",
+                "path": "app/Http/Controllers/Api/V1/Concerns/AnswersOutOfCoverage.php",
+                "summary": "«عذرًا، الخدمة غير متاحة حاليًا في منطقتك» — and a note of who asked."
             },
             {
                 "fqcn": "App\\Http\\Controllers\\Api\\V1\\ContentController",
@@ -441,7 +447,7 @@
         "summary": "A customer's saved addresses.",
         "depends_on": {
             "Platform": 69,
-            "Order": 52,
+            "Order": 55,
             "Payment": 17,
             "TimeSlot": 12,
             "Driver": 10,
@@ -453,7 +459,7 @@
             "Notification": 6,
             "User": 4,
             "Address": 4,
-            "Zone": 2,
+            "Zone": 3,
             "Pricing": 2,
             "Banner": 2,
             "Faq": 2,
@@ -780,7 +786,7 @@
             "service": 1
         },
         "files": 9,
-        "lines": 1550,
+        "lines": 1606,
         "classes": [
             {
                 "fqcn": "App\\Modules\\Complaint\\Controllers\\ComplaintController",
@@ -828,11 +834,11 @@
             "complaint_attachments"
         ],
         "reads_tables": [
+            "orders",
             "users",
             "roles",
             "order_ratings",
-            "laundries",
-            "orders"
+            "laundries"
         ],
         "routes": [
             "admin.complaint.index",
@@ -849,16 +855,17 @@
         "summary": "Taking and working a complaint.",
         "depends_on": {
             "Platform": 7,
+            "Order": 4,
             "User": 4,
-            "Order": 3,
             "Notification": 3,
             "Laundry": 1
         },
         "depended_on_by": {
-            "Tests": 19,
+            "Tests": 21,
             "Api": 6,
             "Platform": 6,
             "Report": 2,
+            "Order": 1,
             "Routing": 1
         }
     },
@@ -1073,11 +1080,11 @@
         "community": "database",
         "path": null,
         "layers": {
-            "migration": 114,
+            "migration": 115,
             "seeder": 11
         },
-        "files": 125,
-        "lines": 7531,
+        "files": 126,
+        "lines": 7590,
         "classes": [
             {
                 "fqcn": "Database\\Seeders\\AdminUserSeeder",
@@ -1206,10 +1213,10 @@
         "community": "quality",
         "path": null,
         "layers": {
-            "doc": 23
+            "doc": 10
         },
-        "files": 23,
-        "lines": 11427,
+        "files": 10,
+        "lines": 10889,
         "classes": [],
         "models": [],
         "owns_tables": [],
@@ -2846,7 +2853,7 @@
         "community": "order",
         "path": "app/Modules/Order",
         "layers": {
-            "service": 22,
+            "service": 23,
             "view": 13,
             "model": 10,
             "enum": 8,
@@ -2855,8 +2862,8 @@
             "repository": 1,
             "request": 1
         },
-        "files": 62,
-        "lines": 12733,
+        "files": 63,
+        "lines": 12809,
         "classes": [
             {
                 "fqcn": "App\\Modules\\Order\\Controllers\\DispatchController",
@@ -2965,6 +2972,12 @@
                 "layer": "service",
                 "path": "app/Modules/Order/Services/OrderTodayService.php",
                 "summary": "«طلبات اليوم» — one day's work: which orders, how many pieces in each, and how many of each piece across all of them."
+            },
+            {
+                "fqcn": "App\\Modules\\Order\\Services\\OutOfCoverage",
+                "layer": "service",
+                "path": "app/Modules/Order/Services/OutOfCoverage.php",
+                "summary": "An order to or from an address we do not serve — a pin outside every zone drawn on the map, so the address has no zone (`Address::isCovered()`)."
             },
             {
                 "fqcn": "App\\Modules\\Order\\Services\\PieceCheck",
@@ -3187,6 +3200,7 @@
             "item_prices",
             "coupons",
             "time_slots",
+            "complaints",
             "offers",
             "order_settlements",
             "payments",
@@ -3235,18 +3249,19 @@
             "Pricing": 14,
             "Routing": 12,
             "Service": 12,
-            "Address": 10,
+            "Address": 11,
             "Driver": 9,
             "Coupon": 7,
             "LaundryService": 2,
             "LaundryZone": 2,
             "Offer": 2,
             "Item": 2,
+            "Complaint": 1,
             "Wallet": 1
         },
         "depended_on_by": {
-            "Tests": 405,
-            "Api": 52,
+            "Tests": 414,
+            "Api": 55,
             "Report": 40,
             "Payment": 27,
             "Driver": 23,
@@ -3256,9 +3271,9 @@
             "Coupon": 7,
             "Recurrence": 5,
             "Routing": 5,
+            "Complaint": 4,
             "Laundry": 3,
             "TimeSlot": 3,
-            "Complaint": 3,
             "Zone": 2,
             "Pricing": 2,
             "Rating": 2,
@@ -3618,7 +3633,7 @@
             "mail": 2
         },
         "files": 187,
-        "lines": 19704,
+        "lines": 19749,
         "classes": [
             {
                 "fqcn": "App\\Http\\Controllers\\Controller",
@@ -4279,6 +4294,7 @@
             "zones",
             "device_tokens",
             "driver_record_submissions",
+            "coverage_requests",
             "driver_bonus_tiers",
             "order_settlement_lines",
             "addresses",
@@ -4328,6 +4344,7 @@
             "User": 9,
             "Country": 8,
             "TimeSlot": 8,
+            "Zone": 8,
             "ItemCategory": 7,
             "Item": 7,
             "Wallet": 7,
@@ -4335,7 +4352,6 @@
             "Complaint": 6,
             "Coupon": 6,
             "Pricing": 6,
-            "Zone": 6,
             "LaundryService": 5,
             "Offer": 5,
             "Report": 4,
@@ -4353,15 +4369,15 @@
             "LaundryZone": 1
         },
         "depended_on_by": {
-            "Tests": 95,
+            "Tests": 96,
             "Api": 69,
             "Payment": 46,
             "Order": 37,
             "AdminShell": 36,
             "Driver": 35,
+            "Zone": 22,
             "Laundry": 21,
             "LaundryService": 19,
-            "Zone": 16,
             "Auth": 14,
             "LaundryStaff": 14,
             "Report": 14,
@@ -4778,7 +4794,7 @@
             "routes": 3
         },
         "files": 9,
-        "lines": 2516,
+        "lines": 2536,
         "classes": [
             {
                 "fqcn": "App\\Services\\Routing\\Coordinate",
@@ -4835,6 +4851,7 @@
             "Laundry": 2,
             "Notification": 2,
             "Report": 2,
+            "Zone": 2,
             "Banner": 1,
             "City": 1,
             "Complaint": 1,
@@ -4856,8 +4873,7 @@
             "Setting": 1,
             "TimeSlot": 1,
             "User": 1,
-            "Wallet": 1,
-            "Zone": 1
+            "Wallet": 1
         },
         "depended_on_by": {
             "Order": 12,
@@ -5041,11 +5057,11 @@
         "community": "quality",
         "path": null,
         "layers": {
-            "test": 129,
+            "test": 132,
             "browser-test": 25
         },
-        "files": 154,
-        "lines": 49715,
+        "files": 157,
+        "lines": 50466,
         "classes": [
             {
                 "fqcn": "Tests\\Feature\\Api\\AddressTest",
@@ -5168,6 +5184,12 @@
                 "summary": "Telling people things."
             },
             {
+                "fqcn": "Tests\\Feature\\Api\\OrderComplaintFlagTest",
+                "layer": "test",
+                "path": "tests/Feature/Api/OrderComplaintFlagTest.php",
+                "summary": "«شكوى» on a card under «طلباتي»: `has_complaint`, and one complaint per order (the app team's ask and the owner's rule, 2026-10-07)."
+            },
+            {
                 "fqcn": "Tests\\Feature\\Api\\OrderLifecycleCompletionTest",
                 "layer": "test",
                 "path": "tests/Feature/Api/OrderLifecycleCompletionTest.php",
@@ -5184,6 +5206,12 @@
                 "layer": "test",
                 "path": "tests/Feature/Api/OrderTest.php",
                 "summary": "The customer's order endpoints."
+            },
+            {
+                "fqcn": "Tests\\Feature\\Api\\OutOfCoverageTest",
+                "layer": "test",
+                "path": "tests/Feature/Api/OutOfCoverageTest.php",
+                "summary": "An order to or from an address we do not serve is refused with `out_of_coverage` (the app team's ask, the owner's say-so, 2026-10-07)."
             },
             {
                 "fqcn": "Tests\\Feature\\Api\\PaymentTest",
@@ -5328,6 +5356,12 @@
                 "layer": "test",
                 "path": "tests/Feature/Dashboard/CommissionSettlementTest.php",
                 "summary": "«الكوميشين بتاع السوبر ادمن على كل اوردر» — and then turned round."
+            },
+            {
+                "fqcn": "Tests\\Feature\\Dashboard\\CoverageRequestTest",
+                "layer": "test",
+                "path": "tests/Feature/Dashboard/CoverageRequestTest.php",
+                "summary": "«طلبات خارج التغطية» — the customers the app told «we will contact you as soon as we reach your area»."
             },
             {
                 "fqcn": "Tests\\Feature\\Dashboard\\DispatchBoardTest",
@@ -5850,6 +5884,7 @@
             "order_items",
             "item_prices",
             "laundries",
+            "coverage_requests",
             "zones",
             "order_recurrences",
             "laundry_zones",
@@ -5929,9 +5964,11 @@
             "tests/Feature/Api/FigmaGapsTest.php",
             "tests/Feature/Api/LiveTrackingTest.php",
             "tests/Feature/Api/NotificationTest.php",
+            "tests/Feature/Api/OrderComplaintFlagTest.php",
             "tests/Feature/Api/OrderLifecycleCompletionTest.php",
             "tests/Feature/Api/OrderReviewTest.php",
             "tests/Feature/Api/OrderTest.php",
+            "tests/Feature/Api/OutOfCoverageTest.php",
             "tests/Feature/Api/PaymentTest.php",
             "tests/Feature/Api/PublicCatalogTest.php",
             "tests/Feature/Api/RatingTest.php",
@@ -5956,6 +5993,7 @@
             "tests/Feature/Dashboard/CatalogTest.php",
             "tests/Feature/Dashboard/ClientFilterWiringTest.php",
             "tests/Feature/Dashboard/CommissionSettlementTest.php",
+            "tests/Feature/Dashboard/CoverageRequestTest.php",
             "tests/Feature/Dashboard/DispatchBoardTest.php",
             "tests/Feature/Dashboard/DispatchDashboardTest.php",
             "tests/Feature/Dashboard/DispatchReasonTest.php",
@@ -6041,9 +6079,9 @@
         ],
         "summary": "",
         "depends_on": {
-            "Order": 405,
-            "Platform": 95,
-            "User": 91,
+            "Order": 414,
+            "Platform": 96,
+            "User": 93,
             "Payment": 80,
             "Notification": 64,
             "Driver": 61,
@@ -6051,15 +6089,15 @@
             "Setting": 37,
             "Laundry": 30,
             "Pricing": 22,
+            "Complaint": 21,
             "TimeSlot": 19,
-            "Complaint": 19,
             "Coupon": 18,
+            "Zone": 17,
             "Report": 17,
             "Service": 15,
             "City": 13,
-            "Zone": 12,
+            "Address": 11,
             "Database": 9,
-            "Address": 8,
             "Routing": 8,
             "Offer": 7,
             "ItemCategory": 7,
@@ -6272,7 +6310,7 @@
             "Laundry": 1
         },
         "depended_on_by": {
-            "Tests": 91,
+            "Tests": 93,
             "Order": 25,
             "Notification": 21,
             "Payment": 13,
@@ -6289,6 +6327,7 @@
             "Complaint": 4,
             "Moderator": 4,
             "Pricing": 3,
+            "Zone": 3,
             "LaundryStaff": 2,
             "Address": 1,
             "Routing": 1
@@ -6391,16 +6430,22 @@
         "community": "locations",
         "path": "app/Modules/Zone",
         "layers": {
-            "view": 7,
-            "service": 2,
-            "controller": 1,
-            "model": 1,
-            "repository": 1,
+            "view": 9,
+            "service": 3,
+            "controller": 2,
+            "model": 2,
+            "repository": 2,
             "request": 1
         },
-        "files": 13,
-        "lines": 1181,
+        "files": 19,
+        "lines": 1730,
         "classes": [
+            {
+                "fqcn": "App\\Modules\\Zone\\Controllers\\CoverageRequestController",
+                "layer": "controller",
+                "path": "app/Modules/Zone/Controllers/CoverageRequestController.php",
+                "summary": "«طلبات خارج التغطية» — customers we told «we will contact you as soon as we reach your area»."
+            },
             {
                 "fqcn": "App\\Modules\\Zone\\Controllers\\ZoneController",
                 "layer": "controller",
@@ -6414,9 +6459,21 @@
                 "summary": "Which zone a place is in — by where it is on the map, not by what somebody picked from a list."
             },
             {
+                "fqcn": "App\\Modules\\Zone\\Services\\coverageRequestCrudService",
+                "layer": "service",
+                "path": "app/Modules/Zone/Services/coverageRequestCrudService.php",
+                "summary": "«طلبات خارج التغطية»: writing down who asked, and marking them rung."
+            },
+            {
                 "fqcn": "App\\Modules\\Zone\\Services\\zoneCrudService",
                 "layer": "service",
                 "path": "app/Modules/Zone/Services/zoneCrudService.php",
+                "summary": ""
+            },
+            {
+                "fqcn": "App\\Modules\\Zone\\Repositories\\CoverageRequestRepository",
+                "layer": "repository",
+                "path": "app/Modules/Zone/Repositories/CoverageRequestRepository.php",
                 "summary": ""
             },
             {
@@ -6424,6 +6481,12 @@
                 "layer": "repository",
                 "path": "app/Modules/Zone/Repositories/ZoneRepository.php",
                 "summary": ""
+            },
+            {
+                "fqcn": "App\\Modules\\Zone\\Models\\CoverageRequest",
+                "layer": "model",
+                "path": "app/Modules/Zone/Models/CoverageRequest.php",
+                "summary": "A customer who tried to order to or from an address no zone covers."
             },
             {
                 "fqcn": "App\\Modules\\Zone\\Models\\Zone",
@@ -6439,17 +6502,23 @@
             }
         ],
         "models": [
+            "App\\Modules\\Zone\\Models\\CoverageRequest",
             "App\\Modules\\Zone\\Models\\Zone"
         ],
         "owns_tables": [
+            "coverage_requests",
             "zones"
         ],
         "reads_tables": [
             "addresses",
             "orders",
+            "users",
             "cities"
         ],
         "routes": [
+            "admin.coverage_request.contacted",
+            "admin.coverage_request.index",
+            "admin.coverage_request.search",
             "admin.zone.create",
             "admin.zone.delete",
             "admin.zone.edit",
@@ -6461,6 +6530,8 @@
             "admin.zone.update"
         ],
         "permissions": [
+            "coverage_request.toggle",
+            "coverage_request.view",
             "zone.create",
             "zone.delete",
             "zone.update",
@@ -6470,22 +6541,23 @@
         "tests": [],
         "summary": "Which zone a place is in — by where it is on the map, not by what somebody picked from a list.",
         "depends_on": {
-            "Platform": 16,
-            "Address": 4,
+            "Platform": 22,
+            "Address": 7,
+            "User": 3,
             "City": 3,
             "Order": 2
         },
         "depended_on_by": {
-            "Tests": 12,
-            "Platform": 6,
+            "Tests": 17,
+            "Platform": 8,
+            "Api": 3,
             "Driver": 3,
             "LaundryZone": 3,
             "Database": 3,
-            "Api": 2,
+            "Routing": 2,
             "Address": 1,
             "City": 1,
-            "Landing": 1,
-            "Routing": 1
+            "Landing": 1
         }
     }
 ]

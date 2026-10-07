@@ -59,5 +59,9 @@ return [
         'VALIDATION_ERROR' => 'validation_error',
         'THROTTLED' => 'throttled',
         'SERVER_ERROR' => 'server_error',
+        // A 422 the customer app answers with its own message rather than a
+        // field's — the order's address is outside every zone. The app keys
+        // on this string, so it is a contract: do not rename it.
+        'OUT_OF_COVERAGE' => 'out_of_coverage',
     ],
 ];

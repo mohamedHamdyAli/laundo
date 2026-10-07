@@ -164,6 +164,11 @@ class AddressController extends Controller
                 'id' => $address->zone->id,
                 'name' => getLocalizedValue($address->zone, 'name'),
             ] : null,
+            // Whether an order to or from here would be accepted — false is
+            // the pin outside every zone that `POST /orders` and the quote
+            // refuse with `out_of_coverage`. Sent so the app can warn when the
+            // address is picked, before the customer fills the basket.
+            'is_covered' => $address->isCovered(),
             'street' => $address->street,
             'building' => $address->building,
             'floor' => $address->floor,
