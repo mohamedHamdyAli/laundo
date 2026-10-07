@@ -1,8 +1,20 @@
 {
     "available": true,
-    "head": "ea3cb16ed1b25c3aaa245619acf279c76becd2f4",
-    "commits_scanned": 125,
+    "head": "2ee444d751bbc78b0b786a791b544b3d7c2d8aca",
+    "commits_scanned": 127,
     "recent": [
+        {
+            "sha": "2ee444d7",
+            "date": "2026-10-07",
+            "subject": "docs: the complaints and coverage release is live",
+            "files": 1
+        },
+        {
+            "sha": "ec5a674c",
+            "date": "2026-10-07",
+            "subject": "feat: has_complaint, one complaint per order, and refusing an address in no zone",
+            "files": 35
+        },
         {
             "sha": "ea3cb16e",
             "date": "2026-10-04",
@@ -80,32 +92,20 @@
             "date": "2026-09-29",
             "subject": "Implement code changes to enhance functionality and improve performance",
             "files": 4
-        },
-        {
-            "sha": "b13d61da",
-            "date": "2026-09-29",
-            "subject": "feat: laundry shares, coupon scope, price rises, activity log, sheets, piece checks, drawn zones",
-            "files": 252
-        },
-        {
-            "sha": "57c360c1",
-            "date": "2026-09-23",
-            "subject": "chore: commit the Second Brain and the working tree with it",
-            "files": 2
         }
     ],
     "hottest_files": {
-        "routes/web.php": 26,
-        "docs/postman/Laundo API v1.postman_collection.json": 20,
+        "routes/web.php": 27,
+        "docs/postman/Laundo API v1.postman_collection.json": 21,
         "app/Helpers/Helpers.php": 18,
+        "config/menu.php": 16,
         "resources/views/admin/setting/generalSetting/forms/formInput.blade.php": 16,
-        "config/menu.php": 15,
+        "docs/mobile-api-changes.md": 14,
         "app/Modules/Setting/Requests/GeneralSettingRequest.php": 14,
         "resources/views/layouts/footer_script.blade.php": 14,
-        "docs/mobile-api-changes.md": 13,
-        "app/Http/Controllers/Api/V1/OrderController.php": 12,
-        "config/dashboard.php": 12,
-        "app/Modules/Order/Services/OrderService.php": 11,
+        "app/Http/Controllers/Api/V1/OrderController.php": 13,
+        "config/dashboard.php": 13,
+        "app/Modules/Order/Services/OrderService.php": 12,
         "app/Http/Controllers/Admin/LanguageController.php": 11,
         "app/Services/languages/LanguageService.php": 11,
         "database/seeders/SettingsSeeder.php": 10,
@@ -115,16 +115,17 @@
         "app/Modules/Driver/Services/DriverCard.php": 9,
         "resources/views/layouts/topbar.blade.php": 9,
         "resources/views/layouts/sidebar.blade.php": 9,
+        "app/Modules/Order/Models/Order.php": 8,
         "resources/views/admin/home.blade.php": 8,
         "routes/api.php": 8,
         "resources/views/admin/order/index.blade.php": 8,
         "resources/views/admin/banner/forms/formInput.blade.php": 8,
         "app/Services/CachingService.php": 8,
+        "app/Services/MenuBadges.php": 7,
         "app/Modules/Order/Models/OrderTask.php": 7,
         "app/Modules/Order/Repositories/OrderRepository.php": 7,
         "tests/Feature/Api/DriverTaskTest.php": 7,
         "app/Modules/City/Models/City.php": 7,
-        "app/Modules/Order/Models/Order.php": 7,
         "app/Modules/Pricing/Services/pricingService.php": 7,
         "app/Providers/AppServiceProvider.php": 7,
         "resources/views/admin/laundry/index.blade.php": 7,
@@ -133,7 +134,6 @@
         "resources/views/admin/roles/index.blade.php": 7,
         "resources/views/layouts/include.blade.php": 7,
         "resources/views/layouts/main.blade.php": 7,
-        "resources/views/auth/login.blade.php": 7,
-        "app/Modules/Category/Models/Category.php": 7
+        "resources/views/auth/login.blade.php": 7
     }
 }

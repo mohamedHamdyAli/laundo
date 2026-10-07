@@ -55,8 +55,8 @@
             "admin.zone.toggleStatus",
             "admin.zone.update"
         ],
-        "node_count": 256,
-        "cohesion": 0.57,
+        "node_count": 258,
+        "cohesion": 0.571,
         "screens": [
             {
                 "key": "country",
@@ -1253,8 +1253,8 @@
         "tables": [],
         "route_count": 0,
         "routes": [],
-        "node_count": 1684,
-        "cohesion": 0.358
+        "node_count": 1679,
+        "cohesion": 0.357
     },
     {
         "slug": "routing_and_distance",

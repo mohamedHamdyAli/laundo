@@ -43,7 +43,8 @@ use Carbon\CarbonInterface;
  * about it.
  *
  * What is *not* a gap in our data is an address in **no zone** — a pin outside
- * every zone drawn on the map. That order is refused before it gets here
+ * every zone drawn on the map — or in a zone the owner switched off. That
+ * order is refused before it gets here
  * (`OutOfCoverage`, the owner's reversal on 2026-10-07 at the app team's
  * request); a zone no laundry has claimed yet is still the null above.
  *

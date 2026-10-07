@@ -7,7 +7,8 @@ use RuntimeException;
 
 /**
  * An order to or from an address we do not serve — a pin outside every zone
- * drawn on the map, so the address has no zone (`Address::isCovered()`).
+ * drawn on the map, so the address has no zone, or an address in a zone (or
+ * city) the owner switched off (`Address::isCovered()`).
  *
  * Its own class rather than a message on `RuntimeException`, because it
  * carries the addresses: the app is told which field to mark, and each

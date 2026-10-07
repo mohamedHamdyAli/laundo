@@ -24,9 +24,12 @@ class AddressController extends Controller
 
     public function index(Request $request): JsonResponse
     {
+        // `zone.city` for `is_covered`, `user` for `contact_phone` (the
+        // account's number when the address has none) — each once for the
+        // list, not once per address.
         $addresses = $request->user()
             ->addresses()
-            ->with(['city', 'zone'])
+            ->with(['city', 'zone.city', 'user'])
             ->orderByDesc('is_default')
             ->orderByDesc('id')
             ->get();
@@ -62,12 +65,12 @@ class AddressController extends Controller
             return $address;
         });
 
-        return successReturnCreated($this->present($address->fresh(['city', 'zone'])), 'Address saved.');
+        return successReturnCreated($this->present($address->fresh(['city', 'zone.city'])), 'Address saved.');
     }
 
     public function show(Request $request, $id): JsonResponse
     {
-        $address = $request->user()->addresses()->with(['city', 'zone'])->find($id);
+        $address = $request->user()->addresses()->with(['city', 'zone.city'])->find($id);
 
         if (! $address) {
             return failReturnNotFound('Address not found.');
@@ -94,7 +97,7 @@ class AddressController extends Controller
             }
         });
 
-        return successReturnData($this->present($address->fresh(['city', 'zone'])), 'Address updated.');
+        return successReturnData($this->present($address->fresh(['city', 'zone.city'])), 'Address updated.');
     }
 
     public function destroy(Request $request, $id): JsonResponse
@@ -132,7 +135,7 @@ class AddressController extends Controller
             $this->clearOtherDefaults($request, $address->id);
         });
 
-        return successReturnData($this->present($address->fresh(['city', 'zone'])), 'Default address updated.');
+        return successReturnData($this->present($address->fresh(['city', 'zone.city'])), 'Default address updated.');
     }
 
     /**
@@ -164,10 +167,12 @@ class AddressController extends Controller
                 'id' => $address->zone->id,
                 'name' => getLocalizedValue($address->zone, 'name'),
             ] : null,
-            // Whether an order to or from here would be accepted — false is
-            // the pin outside every zone that `POST /orders` and the quote
-            // refuse with `out_of_coverage`. Sent so the app can warn when the
-            // address is picked, before the customer fills the basket.
+            // Whether an order to or from here would be accepted — false is a
+            // pin outside every zone, or a zone (or city) switched off, which
+            // `POST /orders` and the quote refuse with `out_of_coverage`. Not
+            // the same as `zone` being null: a switched-off zone is still named
+            // above. Sent so the app can warn when the address is picked,
+            // before the customer fills the basket.
             'is_covered' => $address->isCovered(),
             'street' => $address->street,
             'building' => $address->building,

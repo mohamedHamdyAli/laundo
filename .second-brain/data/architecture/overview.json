@@ -72,7 +72,7 @@
             "file": 1054,
             "integration": 5,
             "interface": 4,
-            "method": 3319,
+            "method": 3316,
             "module": 42,
             "permission": 236,
             "route": 452,
@@ -82,13 +82,13 @@
             "view": 294
         },
         "edges_by_type": {
-            "contains": 5437,
+            "contains": 5434,
             "implemented_by": 4230,
-            "tested_by": 3170,
-            "imports": 2547,
-            "references": 2454,
+            "tested_by": 3174,
+            "imports": 2549,
+            "references": 2453,
             "entry_point": 1401,
-            "depends_on": 1134,
+            "depends_on": 1133,
             "calls": 877,
             "route_to": 873,
             "touches": 581,
@@ -122,7 +122,7 @@
                 "Zone"
             ],
             "routes": 30,
-            "cohesion": 0.57
+            "cohesion": 0.571
         },
         {
             "slug": "catalog",
@@ -284,7 +284,7 @@
                 "Docs"
             ],
             "routes": 0,
-            "cohesion": 0.358
+            "cohesion": 0.357
         },
         {
             "slug": "routing_and_distance",

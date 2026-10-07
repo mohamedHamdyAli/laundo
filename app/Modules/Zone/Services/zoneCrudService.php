@@ -137,7 +137,9 @@ class zoneCrudService
 
         // A drawn zone switched on claims the addresses whose pins are inside
         // it — the ones saved while it was off went elsewhere or nowhere.
-        // Switched off, nothing moves: that has always meant «paused».
+        // Switched off, nothing moves: that has always meant «paused». Its
+        // addresses keep the zone, and since 2026-10-07 a new order from them
+        // is refused until it is switched back on (`Address::isCovered()`).
         $zone->refresh();
 
         if ($zone->status === 'active' && $zone->isDrawn()) {

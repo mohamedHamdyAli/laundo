@@ -2328,5 +2328,8 @@
     "Contacted": "Contacted",
     "Not called yet": "Not called yet",
     "Nobody has been turned away for their area.": "Nobody has been turned away for their area.",
-    "Out-of-coverage request": "Out-of-coverage request"
+    "Out-of-coverage request": "Out-of-coverage request",
+    "Zone switched off": "Zone switched off",
+    "Orders are taken only in zones that are switched on. A customer in a zone switched off, or outside every zone, is told the service is not in their area yet and appears under «Out of coverage».": "Orders are taken only in zones that are switched on. A customer in a zone switched off, or outside every zone, is told the service is not in their area yet and appears under «Out of coverage».",
+    "City switched off": "City switched off"
 }

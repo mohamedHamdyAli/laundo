@@ -2328,5 +2328,8 @@
     "Contacted": "كلّمناه",
     "Not called yet": "لسه محدش كلّمه",
     "Nobody has been turned away for their area.": "مفيش عميل اترفض طلبه بسبب منطقته.",
-    "Out-of-coverage request": "طلب خارج التغطية"
+    "Out-of-coverage request": "طلب خارج التغطية",
+    "Zone switched off": "المنطقة مقفولة",
+    "Orders are taken only in zones that are switched on. A customer in a zone switched off, or outside every zone, is told the service is not in their area yet and appears under «Out of coverage».": "الطلبات بتتقبل في المناطق المفعّلة بس. العميل اللي عنوانه في منطقة مقفولة، أو برّه كل المناطق، بيتقاله إن الخدمة لسه مش في منطقته، وبيظهر في «خارج التغطية».",
+    "City switched off": "المدينة مقفولة"
 }

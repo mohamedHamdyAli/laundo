@@ -479,3 +479,21 @@ unassigned; record the attempt on **a new panel screen**; one complaint per orde
 - `/code-review`, fixed with tests: a repeat schedule on an uncovered address is refused the same way; a new refusal puts a rung row back on the list; the screen's badge and sort read `Address::scopeCovered()`; the rung-by name is searchable; the one-complaint rule is the order's customer's only (the driver app has no flag to explain a refusal). Not changed: a switched-off zone still counts as covered (the owner's definition is «no zone»), and the `has_complaint` subquery on `find()` costs one indexed EXISTS.
 - `/security-review`: nothing found.
 - The query-count test first failed on the default-language cache warming on the first request, not on the code; it warms up first now, and it was shown to fail (9 queries against 5) when the flag is read per row.
+
+## 2026-10-07 — a zone switched off takes no orders
+
+The owner: «لو انا عاوز احدد زون معينه استقبل عليها الطلبات والباقي لا». Switching a zone off moved no
+addresses, so a customer already saved in it could still order. Agreed: the zone's switch is the control.
+
+- [x] `Zone::isServing()` / `scopeServing()` — switched on, in a city switched on
+- [x] `Address::isCovered()` / `scopeCovered()` read it; every caller eager-loads `zone.city` (no query per address)
+- [x] Docblocks and comments that say «covered = has a zone»
+- [x] The zones screen says what the switch now does
+- [x] Tests: refused while off, accepted when back on, a city switched off, «اتغطّى دلوقتي» follows the switch, no N+1 on `GET /addresses`
+- [ ] Docs, Changelog, suite, reviews, deploy
+
+### Review
+
+- `/code-review`, fixed with tests: a repeat schedule in a zone switched off is no longer prompted (the cycle passes, it asks again once the zone is back on); a row whose zone is on and city off says «المدينة مقفولة»; the `is_covered` comment. The query-count test also found `contact_phone` reading the account once per address, now loaded once with the list.
+- Not changed, and said so in the docs: an active zone not drawn yet is still taken at the app's word (narrowing means switching every other zone off); an address edited while its undrawn zone, or its city, was off saved no zone and is not reclaimed when it is switched back on; `ZoneRepository::claiming()` keeps its own copy of the active-zone-in-an-active-city rule.
+- `/security-review` (subagent): nothing found.

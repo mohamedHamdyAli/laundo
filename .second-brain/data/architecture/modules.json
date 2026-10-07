@@ -7,7 +7,7 @@
             "model": 1
         },
         "files": 1,
-        "lines": 127,
+        "lines": 133,
         "classes": [
             {
                 "fqcn": "App\\Modules\\Address\\Models\\Address",
@@ -38,7 +38,7 @@
         },
         "depended_on_by": {
             "Order": 11,
-            "Tests": 11,
+            "Tests": 10,
             "Zone": 7,
             "Api": 4,
             "User": 1,
@@ -159,7 +159,7 @@
             "api-controller": 23
         },
         "files": 23,
-        "lines": 5264,
+        "lines": 5269,
         "classes": [
             {
                 "fqcn": "App\\Http\\Controllers\\Api\\V1\\AddressController",
@@ -1216,7 +1216,7 @@
             "doc": 10
         },
         "files": 10,
-        "lines": 10889,
+        "lines": 10900,
         "classes": [],
         "models": [],
         "owns_tables": [],
@@ -2863,7 +2863,7 @@
             "request": 1
         },
         "files": 63,
-        "lines": 12809,
+        "lines": 12826,
         "classes": [
             {
                 "fqcn": "App\\Modules\\Order\\Controllers\\DispatchController",
@@ -2977,7 +2977,7 @@
                 "fqcn": "App\\Modules\\Order\\Services\\OutOfCoverage",
                 "layer": "service",
                 "path": "app/Modules/Order/Services/OutOfCoverage.php",
-                "summary": "An order to or from an address we do not serve — a pin outside every zone drawn on the map, so the address has no zone (`Address::isCovered()`)."
+                "summary": "An order to or from an address we do not serve — a pin outside every zone drawn on the map, so the address has no zone, or an address in a zone (or city) the owner switched off (`Address::isCovered()`)."
             },
             {
                 "fqcn": "App\\Modules\\Order\\Services\\PieceCheck",
@@ -3260,7 +3260,7 @@
             "Wallet": 1
         },
         "depended_on_by": {
-            "Tests": 414,
+            "Tests": 416,
             "Api": 55,
             "Report": 40,
             "Payment": 27,
@@ -5061,7 +5061,7 @@
             "browser-test": 25
         },
         "files": 157,
-        "lines": 50466,
+        "lines": 50619,
         "classes": [
             {
                 "fqcn": "Tests\\Feature\\Api\\AddressTest",
@@ -6079,7 +6079,7 @@
         ],
         "summary": "",
         "depends_on": {
-            "Order": 414,
+            "Order": 416,
             "Platform": 96,
             "User": 93,
             "Payment": 80,
@@ -6096,7 +6096,7 @@
             "Report": 17,
             "Service": 15,
             "City": 13,
-            "Address": 11,
+            "Address": 10,
             "Database": 9,
             "Routing": 8,
             "Offer": 7,
@@ -6438,7 +6438,7 @@
             "request": 1
         },
         "files": 19,
-        "lines": 1730,
+        "lines": 1776,
         "classes": [
             {
                 "fqcn": "App\\Modules\\Zone\\Controllers\\CoverageRequestController",

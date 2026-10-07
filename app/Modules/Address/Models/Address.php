@@ -97,18 +97,23 @@ class Address extends Model
     }
 
     /**
-     * Whether we serve this address at all: it is in a zone. A pin outside
-     * every zone drawn on the map has none (`ZoneLocator`), and an order to or
-     * from it is refused (`OutOfCoverage`, the owner, 2026-10-07).
+     * Whether we serve this address at all: it is in a zone, and that zone
+     * takes orders (`Zone::isServing()` — switched on, in a city switched on).
+     * A pin outside every zone drawn on the map has no zone (`ZoneLocator`);
+     * an address in a zone the owner switched off keeps it but is not served.
+     * An order to or from either is refused (`OutOfCoverage`, the owner,
+     * 2026-10-07) — which is what makes the zones' switch the way to choose
+     * where the platform takes orders.
      *
      * A zone no laundry covers yet still counts — that order is accepted and
      * waits for an operator, because the gap is in our own setup, not in where
      * the customer lives. The one definition behind the refusal and the app's
      * `is_covered`, so the warning the app shows is the order the server refuses.
+     * Reads `zone.city`: load it with a list.
      */
     public function isCovered(): bool
     {
-        return $this->zone_id !== null;
+        return $this->zone_id !== null && $this->zone?->isServing() === true;
     }
 
     /**
@@ -121,6 +126,7 @@ class Address extends Model
      */
     public function scopeCovered(Builder $query): Builder
     {
-        return $query->whereNotNull($query->qualifyColumn('zone_id'));
+        return $query->whereNotNull($query->qualifyColumn('zone_id'))
+            ->whereHas('zone', fn (Builder $zone) => $zone->serving());
     }
 }

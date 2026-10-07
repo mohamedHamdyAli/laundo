@@ -191,11 +191,13 @@ requires a note; `GET /driver/profile` carries `pending_review`.
   OpenStreetMap Nominatim **by the owner's choice — do not switch to Google
   without asking**; test Arabic queries from a UTF-8 file, never the Windows
   shell.
-- **An address in no zone is refused** (since 2026-10-07): quote, order and
-  repeat schedule answer 422 `key: out_of_coverage` (a contract the app keys
-  on), and the attempt is recorded for «خارج التغطية» (`CoverageRequest`).
-  `Address::isCovered()` is the one definition. **A zone no laundry covers is
-  still accepted unassigned.**
+- **An address we do not serve is refused** (since 2026-10-07): no zone, **or a
+  zone (or its city) switched off** — the switch is how the owner chooses where
+  orders are taken. Quote, order and repeat schedule answer 422
+  `key: out_of_coverage` (a contract the app keys on), and the attempt is
+  recorded for «خارج التغطية» (`CoverageRequest`). `Address::isCovered()` /
+  `Zone::isServing()` are the one definition; load `zone.city` with a list.
+  **A zone no laundry covers is still accepted unassigned.**
 - **Distance is the road** (`app/Services/Routing/`, Google's Routes API, matched
   on `destinationIndex`). The key is the `Google_Maps_Key` setting. **A fallback
   is never cached.** `phpunit.xml` pins `ROUTING_DRIVER=haversine`.

@@ -20,8 +20,9 @@ class CoverageRequestRepository
      * address is served now — the promise that can be kept today — then the
      * latest attempt first.
      *
-     * `address:id,zone_id,city_id`: `isNowCovered()` reads `zone_id`, and a
-     * column left off a constrained eager load reads as null — which here
+     * `isNowCovered()` reads the address's `zone_id`, its zone's `status` and
+     * `city_id`, and that city's `status`, so all four are in the column lists:
+     * a column left off a constrained eager load reads as null — which here
      * would quietly say «still outside» for everybody.
      *
      * @return LengthAwarePaginator<int, CoverageRequest>
@@ -29,7 +30,7 @@ class CoverageRequestRepository
     public function list(?string $search = null, int $perPage = 15): LengthAwarePaginator
     {
         return CoverageRequest::query()
-            ->with(['customer:id,name,phone', 'address:id,zone_id,city_id', 'address.zone:id,name', 'contacter:id,name'])
+            ->with(['customer:id,name,phone', 'address:id,zone_id,city_id', 'address.zone:id,name,status,city_id', 'address.zone.city:id,name,status', 'contacter:id,name'])
             ->search($search, self::SEARCHABLE)
             // Through `Address::scopeCovered()`, the definition the badge and
             // the row's pill read, so the order cannot disagree with either.
@@ -43,7 +44,7 @@ class CoverageRequestRepository
 
     public function findById(int $id): CoverageRequest
     {
-        return CoverageRequest::with(['customer:id,name,phone', 'address:id,zone_id,city_id', 'address.zone:id,name', 'contacter:id,name'])
+        return CoverageRequest::with(['customer:id,name,phone', 'address:id,zone_id,city_id', 'address.zone:id,name,status,city_id', 'address.zone.city:id,name,status', 'contacter:id,name'])
             ->findOrFail($id);
     }
 

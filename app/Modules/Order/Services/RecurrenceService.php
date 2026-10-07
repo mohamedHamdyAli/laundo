@@ -39,10 +39,11 @@ class RecurrenceService
      */
     public function create(User $customer, array $data): OrderRecurrence
     {
-        // An address in no zone is refused at the order (`OutOfCoverage`), so a
+        // An address we do not serve — no zone, or a zone switched off — is
+        // refused at the order (`OutOfCoverage`), so a
         // schedule on one would ask every cycle «محتاج تغسل؟» and refuse the
         // answer. Refused here first, the same way, rather than nagging weekly.
-        $address = $customer->addresses()->find($data['pickup_address_id'] ?? null);
+        $address = $customer->addresses()->with('zone.city')->find($data['pickup_address_id'] ?? null);
 
         if ($address !== null && ! $address->isCovered()) {
             throw new OutOfCoverage(['pickup_address_id' => $address]);
@@ -82,11 +83,23 @@ class RecurrenceService
         $on = $on ?? now();
         $opened = [];
 
-        OrderRecurrence::due($on)->with('customer')->chunkById(100, function ($due) use (&$opened) {
+        OrderRecurrence::due($on)->with(['customer', 'pickupAddress.zone.city'])->chunkById(100, function ($due) use (&$opened) {
             foreach ($due as $recurrence) {
                 // Anchored on the cycle's own date, not on today: a scheduler
                 // running late must still record Monday's prompt as Monday's.
-                $prompt = $this->openPrompt($recurrence, Carbon::parse($recurrence->next_prompt_on));
+                $cycle = Carbon::parse($recurrence->next_prompt_on);
+
+                // An address we no longer serve — its zone switched off since
+                // the schedule was made — is not asked: the answer would be
+                // refused (`OutOfCoverage`). The cycle passes unasked, and the
+                // schedule asks again once the zone is back on.
+                if ($recurrence->pickupAddress !== null && ! $recurrence->pickupAddress->isCovered()) {
+                    $this->advance($recurrence, $cycle);
+
+                    continue;
+                }
+
+                $prompt = $this->openPrompt($recurrence, $cycle);
 
                 if ($prompt) {
                     $opened[] = $prompt;

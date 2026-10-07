@@ -189,9 +189,15 @@ is refused** — at `POST /orders/quote` as well as `POST /orders`, inside
 schedule on one at `RecurrenceService::create()` — as **422 with
 `key: out_of_coverage`** (`OutOfCoverage`, `failReturnOutOfCoverage()`; the app
 keys on that string, so it is a contract) and `errors` naming the field.
-`Address::isCovered()` (`zone_id !== null`, and `scopeCovered()` in SQL beside
-it) is the one definition behind the refusal, the app's `is_covered`, and the
-screen's badge and order. A rung row goes back on the list at the next refusal. **A zone no laundry covers yet is still
+`Address::isCovered()` (a zone, and that zone **serving** — `Zone::isServing()`:
+switched on, in a city switched on; `scopeCovered()` / `scopeServing()` in SQL
+beside them) is the one definition behind the refusal, the app's `is_covered`, and the
+screen's badge and order. A rung row goes back on the list at the next refusal. **A zone switched off takes no orders** — its addresses keep it, are refused,
+and are taken again the moment it is switched back on: the switch is how the
+owner chooses where the platform works (2026-10-07). A repeat schedule there is
+not prompted (`RecurrenceService::promptDue()` lets the cycle pass). An active
+zone not drawn yet is still taken at the app's word, so narrowing the platform
+to some zones means switching off every other one, drawn or not. **A zone no laundry covers yet is still
 accepted unassigned** — that gap is in our setup, not where the customer lives,
 and `LaundryAssigner` keeps answering null for it. Each refusal is recorded by
 the controller, after the service has let go (outside any transaction, so the

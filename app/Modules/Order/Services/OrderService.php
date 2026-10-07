@@ -794,7 +794,7 @@ class OrderService
             throw new RuntimeException('service_not_found');
         }
 
-        $pickup = $customer->addresses()->with('zone')->find($data['pickup_address_id'] ?? null);
+        $pickup = $customer->addresses()->with('zone.city')->find($data['pickup_address_id'] ?? null);
 
         if (! $pickup) {
             throw new RuntimeException('pickup_address_not_found');
@@ -805,7 +805,7 @@ class OrderService
         // The design's «التوصيل لنفس العنوان» toggle: absent or identical means one
         // address, which is also what keeps the 1.5x multiplier off.
         $delivery = $deliveryId && (int) $deliveryId !== $pickup->id
-            ? $customer->addresses()->with('zone')->find($deliveryId)
+            ? $customer->addresses()->with('zone.city')->find($deliveryId)
             : $pickup;
 
         if (! $delivery) {
@@ -816,7 +816,9 @@ class OrderService
         // the review screen stops the customer before «تأكيد الطلب». Until
         // 2026-10-07 this was accepted and left for an operator to place; the
         // owner reversed it at the app team's request — a pin outside every
-        // zone has no laundry to go to and no driver to send. Both ends, since
+        // zone has no laundry to go to and no driver to send. A zone the owner
+        // switched off is refused the same way: that switch is how the owner
+        // chooses where orders are taken (`Address::isCovered()`). Both ends, since
         // the delivery leg is matched to a driver by its zone too; the delivery
         // is named only when it is a different address.
         $uncovered = array_filter(

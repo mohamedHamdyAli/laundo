@@ -4,11 +4,14 @@ namespace Tests\Feature\Api;
 
 use App\Modules\Address\Models\Address;
 use App\Modules\Order\Models\Order;
+use App\Modules\Order\Models\RecurrencePrompt;
+use App\Modules\Order\Services\RecurrenceService;
 use App\Modules\User\Models\User;
 use App\Modules\Zone\Models\CoverageRequest;
 use App\Modules\Zone\Services\zoneCrudService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Testing\TestResponse;
 use Laravel\Sanctum\Sanctum;
@@ -151,6 +154,112 @@ class OutOfCoverageTest extends TestCase
 
         $this->assertNull(Order::withoutGlobalScopes()->firstOrFail()->laundry_id);
         $this->assertSame(0, CoverageRequest::count());
+    }
+
+    // ------------------------------------------------- the zone's own switch
+
+    #[Test]
+    public function a_zone_switched_off_takes_no_orders_and_takes_them_again_when_switched_on(): void
+    {
+        // The owner's way of choosing where the platform works: an address
+        // saved in a zone keeps it when the zone is switched off, and is
+        // refused like one in no zone until the zone is switched back on.
+        $address = $this->covered();
+        $this->geo['zones'][0]->update(['status' => 'inactive']);
+
+        $this->send('/api/v1/orders/quote', $address)
+            ->assertStatus(422)
+            ->assertJsonPath('key', 'out_of_coverage');
+        $this->send('/api/v1/orders', $address)->assertStatus(422);
+        $this->assertSame(0, Order::withoutGlobalScopes()->count());
+        $this->assertSame(1, CoverageRequest::count());
+
+        Sanctum::actingAs($this->customer);
+        $this->withHeaders($this->apiHeaders())->getJson("/api/v1/addresses/{$address->id}")
+            ->assertOk()
+            ->assertJsonPath('data.is_covered', false);
+
+        $this->geo['zones'][0]->update(['status' => 'active']);
+
+        $this->send('/api/v1/orders', $address)->assertCreated();
+    }
+
+    #[Test]
+    public function a_schedule_in_a_zone_switched_off_is_not_asked_until_it_is_switched_on(): void
+    {
+        // Asking «محتاج تغسل؟» and then refusing the answer is the weekly nag
+        // the schedule refusal exists to avoid.
+        $schedule = app(RecurrenceService::class)->create($this->customer, [
+            'service_id' => $this->catalog['service']->id,
+            'pickup_address_id' => $this->covered()->id,
+            'frequency' => 'weekly',
+            'day_of_week' => now()->dayOfWeekIso,
+            'items' => [['item_id' => $this->catalog['items'][0]->id, 'qty' => 1]],
+        ]);
+        $schedule->update(['next_prompt_on' => now()->toDateString()]);
+        $this->geo['zones'][0]->update(['status' => 'inactive']);
+
+        $this->assertSame([], app(RecurrenceService::class)->promptDue(now()));
+        $this->assertSame(0, RecurrencePrompt::count());
+        // The cycle passed; the schedule is waiting on the next one.
+        $this->assertTrue($schedule->fresh()->next_prompt_on->isAfter(now()));
+
+        $this->geo['zones'][0]->update(['status' => 'active']);
+        // Fresh: the sweep moved the date in the database, and the instance in
+        // hand still holds today's, so `update()` would see nothing to write.
+        $schedule->fresh()->update(['next_prompt_on' => now()->toDateString()]);
+
+        $this->assertCount(1, app(RecurrenceService::class)->promptDue(now()));
+    }
+
+    #[Test]
+    public function a_city_switched_off_takes_no_orders_in_any_of_its_zones(): void
+    {
+        $address = $this->covered();
+        $this->geo['city']->update(['status' => 'inactive']);
+
+        $this->send('/api/v1/orders', $address)
+            ->assertStatus(422)
+            ->assertJsonPath('key', 'out_of_coverage');
+    }
+
+    #[Test]
+    public function the_other_zones_are_unaffected_by_one_switched_off(): void
+    {
+        $this->geo['zones'][1]->update(['status' => 'inactive']);
+
+        $this->send('/api/v1/orders', $this->covered())->assertCreated();
+    }
+
+    /**
+     * `is_covered` reads the zone and its city. Loaded with the list, or every
+     * address would cost two more queries. (This test also found `contact_phone`
+     * reading the account per address, which the list now loads once.)
+     */
+    #[Test]
+    public function is_covered_costs_no_query_per_address(): void
+    {
+        $count = function (): int {
+            $this->app['auth']->forgetGuards();
+            Sanctum::actingAs($this->customer);
+            DB::flushQueryLog();
+            DB::enableQueryLog();
+            $this->withHeaders($this->apiHeaders())->getJson('/api/v1/addresses')->assertOk();
+            $queries = count(DB::getQueryLog());
+            DB::disableQueryLog();
+
+            return $queries;
+        };
+
+        $this->covered();
+        $count(); // warms the caches the first request fills
+        $one = $count();
+
+        $this->addressFor($this->customer, $this->geo['zones'][1], label: 'Work');
+        $this->addressFor($this->customer, $this->geo['zones'][0], label: 'Gym');
+        $this->nowhere();
+
+        $this->assertSame($one, $count(), 'is_covered must not cost a query per address');
     }
 
     // ------------------------------------------------------------- recorded

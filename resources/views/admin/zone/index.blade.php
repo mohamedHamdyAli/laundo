@@ -27,6 +27,11 @@
 
                 <div class="card">
                     <div class="card-body">
+                        {{-- The switch is how the owner chooses where orders are
+                             taken (Address::isCovered()), so say it where it is. --}}
+                        <p class="text-muted mb-3">
+                            {{ __('Orders are taken only in zones that are switched on. A customer in a zone switched off, or outside every zone, is told the service is not in their area yet and appears under «Out of coverage».') }}
+                        </p>
                         <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
                             <x-spreadsheet-actions sheet="zone" search="#zoneSearchInput" />
                             <div class="input-group" style="max-width: 350px;">

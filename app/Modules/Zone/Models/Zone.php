@@ -6,6 +6,7 @@ use App\Modules\City\Models\City;
 use App\Support\Geo\Polygon;
 use App\Trait\DashboardModel;
 use App\Trait\Scopes\Searchable;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -33,6 +34,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property string $status
  * @property-read mixed $name
  * @property-read City|null $city
+ *
+ * @method static Builder<static>|Zone serving()
  */
 class Zone extends Model
 {
@@ -100,5 +103,29 @@ class Zone extends Model
     public function isDrawn(): bool
     {
         return $this->polygon() !== null;
+    }
+
+    /**
+     * Whether orders are taken here: the zone is switched on, and so is its
+     * city. The switch is how the owner chooses where the platform works
+     * (2026-10-07) — an address in a zone switched off is refused like one in
+     * no zone (`Address::isCovered()`), and taken again the moment it is
+     * switched back on. Reads `city`; load `zone.city` with a list.
+     */
+    public function isServing(): bool
+    {
+        return $this->status === 'active' && $this->city?->status === 'active';
+    }
+
+    /**
+     * `isServing()` in SQL. Change both together.
+     *
+     * @param  Builder<static>  $query
+     * @return Builder<static>
+     */
+    public function scopeServing(Builder $query): Builder
+    {
+        return $query->where($query->qualifyColumn('status'), 'active')
+            ->whereHas('city', fn (Builder $city) => $city->where('status', 'active'));
     }
 }

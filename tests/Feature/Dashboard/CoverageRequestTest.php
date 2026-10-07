@@ -83,6 +83,50 @@ class CoverageRequestTest extends TestCase
     }
 
     #[Test]
+    public function a_customer_in_a_zone_switched_off_is_named_and_comes_back_when_it_is_switched_on(): void
+    {
+        $zone = $this->geo['zones'][0];
+        $row = $this->refused('+201055550310', 'Paused Zone', 'Some Street');
+        $row->address->update(['zone_id' => $zone->id]);
+
+        // Switched off with the panel's own button.
+        $this->actingAs($this->superAdmin())
+            ->postJson(route('admin.zone.toggleStatus', $zone->id), ['status' => 'inactive'])
+            ->assertOk();
+
+        $this->assertFalse($row->fresh()->isNowCovered());
+        $this->assertNull(MenuBadges::for('coverage_request'), 'still not served: nobody to ring yet');
+        $this->actingAs($this->superAdmin())->get(route('admin.coverage_request.index'))
+            ->assertOk()
+            ->assertSee(__('Zone switched off'));
+
+        $this->actingAs($this->superAdmin())
+            ->postJson(route('admin.zone.toggleStatus', $zone->id), ['status' => 'active'])
+            ->assertOk();
+
+        $this->assertTrue($row->fresh()->isNowCovered());
+        $this->assertSame(1, MenuBadges::for('coverage_request'));
+        $this->actingAs($this->superAdmin())->get(route('admin.coverage_request.index'))
+            ->assertOk()
+            ->assertSee(__('Covered now'));
+    }
+
+    #[Test]
+    public function a_city_switched_off_is_named_as_the_city_not_the_zone(): void
+    {
+        // The zone is on; switching it «on» again would change nothing. The
+        // row has to point at what actually closed the area.
+        $row = $this->refused('+201055550311', 'Closed City', 'Some Street');
+        $row->address->update(['zone_id' => $this->geo['zones'][0]->id]);
+        $this->geo['city']->update(['status' => 'inactive']);
+
+        $this->actingAs($this->superAdmin())->get(route('admin.coverage_request.index'))
+            ->assertOk()
+            ->assertSee(__('City switched off'))
+            ->assertDontSee(__('Zone switched off'));
+    }
+
+    #[Test]
     public function marking_them_rung_takes_them_off_the_badge_and_can_be_undone(): void
     {
         $row = $this->refused('+201055550304', 'Call Me', 'Some Street');

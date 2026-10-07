@@ -42,6 +42,17 @@
                 @endif
             @elseif ($coverageRequest->address === null)
                 <span class="status-pill tone-neutral">{{ __('Address deleted') }}</span>
+            @elseif ($coverageRequest->address->zone)
+                {{-- In a zone, or a city, the owner switched off: switching it
+                     back on is what serves this customer, so name which. --}}
+                @php($pausedZone = $coverageRequest->address->zone)
+                @if ($pausedZone->status !== 'active')
+                    <span class="status-pill tone-bad">{{ __('Zone switched off') }}</span>
+                    <span class="row-sub">{{ getLocalizedValueDashboard($pausedZone, 'name') }}</span>
+                @else
+                    <span class="status-pill tone-bad">{{ __('City switched off') }}</span>
+                    <span class="row-sub">{{ $pausedZone->city ? getLocalizedValueDashboard($pausedZone->city, 'name') : '—' }}</span>
+                @endif
             @else
                 <span class="status-pill tone-bad">{{ __('Still outside') }}</span>
             @endif
