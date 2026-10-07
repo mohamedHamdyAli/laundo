@@ -1,8 +1,14 @@
 {
     "available": true,
-    "head": "2ee444d751bbc78b0b786a791b544b3d7c2d8aca",
-    "commits_scanned": 127,
+    "head": "170ac76b01aa6738afe3ff6ca5bcc9b168b9812d",
+    "commits_scanned": 128,
     "recent": [
+        {
+            "sha": "170ac76b",
+            "date": "2026-10-07",
+            "subject": "feat: a zone switched off takes no orders",
+            "files": 17
+        },
         {
             "sha": "2ee444d7",
             "date": "2026-10-07",
@@ -86,26 +92,20 @@
             "date": "2026-09-29",
             "subject": "fix: update CLAUDE.md for accuracy and add deploying section",
             "files": 0
-        },
-        {
-            "sha": "7e3a5953",
-            "date": "2026-09-29",
-            "subject": "Implement code changes to enhance functionality and improve performance",
-            "files": 4
         }
     ],
     "hottest_files": {
         "routes/web.php": 27,
-        "docs/postman/Laundo API v1.postman_collection.json": 21,
+        "docs/postman/Laundo API v1.postman_collection.json": 22,
         "app/Helpers/Helpers.php": 18,
         "config/menu.php": 16,
         "resources/views/admin/setting/generalSetting/forms/formInput.blade.php": 16,
-        "docs/mobile-api-changes.md": 14,
+        "docs/mobile-api-changes.md": 15,
         "app/Modules/Setting/Requests/GeneralSettingRequest.php": 14,
         "resources/views/layouts/footer_script.blade.php": 14,
+        "app/Modules/Order/Services/OrderService.php": 13,
         "app/Http/Controllers/Api/V1/OrderController.php": 13,
         "config/dashboard.php": 13,
-        "app/Modules/Order/Services/OrderService.php": 12,
         "app/Http/Controllers/Admin/LanguageController.php": 11,
         "app/Services/languages/LanguageService.php": 11,
         "database/seeders/SettingsSeeder.php": 10,

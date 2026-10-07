@@ -31,16 +31,20 @@ class ZoneRepository
         return Zone::with('city')->where('status', 'active')->orderBy('city_id')->orderBy('sort_order')->get();
     }
 
-    public function findActive(int $id): ?Zone
+    /**
+     * A zone by id, switched on or off. Which zone an address is in does not
+     * depend on the switch — whether orders are taken there does
+     * (`Address::isCovered()`), so a zone switched off is still a zone.
+     */
+    public function find(int $id): ?Zone
     {
-        return Zone::query()->whereKey($id)->where('status', 'active')->first();
+        return Zone::query()->find($id);
     }
 
     /**
-     * Active drawn zones, in an active city, whose bounding box holds the pin —
-     * the only ones worth asking the exact question of. Zones may not overlap,
-     * so this is almost always one row, often none. A city switched off claims
-     * nothing: the app is not offered it, and orders must not be routed there.
+     * Drawn zones whose bounding box holds the pin — the only ones worth asking
+     * the exact question of. Zones may not overlap (inactive ones included),
+     * so this is almost always one row, often none.
      *
      * @return Collection<int, Zone>
      */
@@ -110,14 +114,20 @@ class ZoneRepository
     }
 
     /**
+     * Every drawn zone, switched on or off, in any city.
+     *
+     * Until 2026-10-07 only an active zone in an active city claimed a pin.
+     * That made switching a zone off erase it from any address saved or edited
+     * meanwhile — and let a pin inside a zone switched off be filed under
+     * another zone the app picked, whose order then went through. Where a pin
+     * is does not change with a switch; whether orders are taken there is
+     * `Address::isCovered()`.
+     *
      * @return Builder<Zone>
      */
     private function claiming(): Builder
     {
-        return Zone::query()
-            ->where('status', 'active')
-            ->whereNotNull('boundary')
-            ->whereHas('city', fn ($q) => $q->where('status', 'active'));
+        return Zone::query()->whereNotNull('boundary');
     }
 
     /**

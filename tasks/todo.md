@@ -497,3 +497,20 @@ addresses, so a customer already saved in it could still order. Agreed: the zone
 - `/code-review`, fixed with tests: a repeat schedule in a zone switched off is no longer prompted (the cycle passes, it asks again once the zone is back on); a row whose zone is on and city off says «المدينة مقفولة»; the `is_covered` comment. The query-count test also found `contact_phone` reading the account once per address, now loaded once with the list.
 - Not changed, and said so in the docs: an active zone not drawn yet is still taken at the app's word (narrowing means switching every other zone off); an address edited while its undrawn zone, or its city, was off saved no zone and is not reclaimed when it is switched back on; `ZoneRepository::claiming()` keeps its own copy of the active-zone-in-an-active-city rule.
 - `/security-review` (subagent): nothing found.
+
+## 2026-10-07 — an address keeps its zone while the zone is off
+
+The owner, after the last change: «ليها حل الجزء دا» — an address edited while its zone was off lost the
+zone for good. Agreed: which zone an address is in is where its pin is, whatever the switch; the switch
+only decides whether orders are taken (`Address::isCovered()`).
+
+- [x] `ZoneRepository::claiming()` — every drawn zone, on or off, in any city
+- [x] `ZoneLocator::forAddress()` — the app's pick of a zone not drawn yet stands whatever its switch
+- [x] `AddressRequest` — a zone switched off is a valid `zone_id` (an edit re-sends it)
+- [x] Rewrite the three zone tests that pinned the old rule; tests for the edit, the city, and the smuggled pick
+- [ ] Docs (architecture.md, CLAUDE.md, QA guide), Changelog, suite, reviews, deploy
+
+### Review
+
+- `/code-review`, fixed: a zone created drawn but switched off now takes in the addresses inside it (the switch does not decide where a pin is); `zoneAt()` / `relocateAround()` docblocks, the toggle comment and architecture.md said «active».
+- Not changed, said here: an address filed under the wrong zone before today (a pin in a paused drawn zone, saved under the app's pick) is only re-filed by a redraw, a switch-on or a re-saved pin — live has no drawn zone, so there is none; the edit form switching a zone on with the drawing unchanged does not re-claim (the toggle does — same reason it rarely matters now); a redraw can move such a legacy address into a paused zone with an order under way (the hold covers «no zone» only); `zone_id` accepts a paused zone not drawn yet, the same trust as an active one not drawn yet.

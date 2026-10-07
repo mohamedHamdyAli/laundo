@@ -1,11 +1,11 @@
 {
     "version": "1.0.0",
-    "built_at": "2026-10-07T13:58:07+00:00",
+    "built_at": "2026-10-07T14:27:52+00:00",
     "built_in_seconds": 1.51,
     "repository": "laundo",
     "files_scanned": 1054,
-    "files_parsed": 17,
-    "files_reused_from_cache": 1037,
+    "files_parsed": 9,
+    "files_reused_from_cache": 1045,
     "nodes": 6674,
     "edges": 24744,
     "nodes_by_type": {
@@ -66,7 +66,7 @@
     "indexed_documents": 5770,
     "git": {
         "available": true,
-        "head": "2ee444d751bbc78b0b786a791b544b3d7c2d8aca",
-        "commits_scanned": 127
+        "head": "170ac76b01aa6738afe3ff6ca5bcc9b168b9812d",
+        "commits_scanned": 128
     }
 }

@@ -442,31 +442,97 @@ class ZoneBoundaryTest extends TestCase
     }
 
     #[Test]
-    public function switching_a_drawn_zone_on_claims_the_addresses_inside_it(): void
+    public function a_pin_in_a_zone_switched_off_stays_in_it_and_is_served_when_it_is_switched_on(): void
     {
         $this->draw($this->nasr, self::NASR);
         $this->nasr->update(['status' => 'inactive']);
 
-        // Saved while Nasr City was off: the app's pick, Maadi, stood.
+        // Saved while Nasr City was off. Until 2026-10-07 the app's pick,
+        // Maadi, stood here — so a pin in a paused zone was filed under one
+        // that was open and its order went through. Where the pin is decides
+        // the zone; the switch decides only whether orders are taken.
         $customer = $this->customer();
         $saved = $this->saveAddress($customer, self::IN_NASR, $this->maadi->id);
-        $this->assertSame($this->maadi->id, $saved['zone']['id']);
+        $this->assertSame($this->nasr->id, $saved['zone']['id']);
+        $this->assertFalse($saved['is_covered']);
 
         $this->actingAs($this->superAdmin())
             ->postJson(route('admin.zone.toggleStatus', $this->nasr->id), ['status' => 'active'])
             ->assertOk();
 
-        $this->assertSame('active', $this->nasr->fresh()->status);
-        $this->assertSame($this->nasr->id, Address::find($saved['id'])->zone_id);
+        $address = Address::with('zone.city')->find($saved['id']);
+        $this->assertSame($this->nasr->id, $address->zone_id);
+        $this->assertTrue($address->isCovered());
     }
 
     #[Test]
-    public function a_drawn_zone_in_a_city_switched_off_claims_nothing(): void
+    public function a_zone_created_drawn_and_switched_off_takes_in_the_addresses_inside_it(): void
+    {
+        // Picked from the list as Maadi, but the pin is where the new zone is
+        // drawn. Created switched off, it still holds its ground — the same
+        // pin saved a minute later would land in it.
+        $customer = $this->customer();
+        $address = $this->addressFor($customer, $this->maadi, self::IN_NASR[0], self::IN_NASR[1]);
+
+        $zone = app(zoneCrudService::class)->addNew([
+            'city_id' => $this->geo['city']->id,
+            'name' => ['en' => 'Heliopolis', 'ar' => 'مصر الجديدة'],
+            'sort_order' => 3,
+            'status' => 'inactive',
+            'boundary' => json_encode(self::NASR),
+        ]);
+
+        $address = Address::with('zone.city')->find($address->id);
+        $this->assertSame($zone->id, $address->zone_id);
+        $this->assertFalse($address->isCovered());
+    }
+
+    #[Test]
+    public function a_drawn_zone_in_a_city_switched_off_still_holds_its_pins_and_is_not_served(): void
     {
         $this->draw($this->nasr, self::NASR);
         $this->geo['city']->update(['status' => 'inactive']);
 
-        $this->assertNull(app(ZoneLocator::class)->zoneAt(...self::IN_NASR));
+        $this->assertSame($this->nasr->id, app(ZoneLocator::class)->zoneAt(...self::IN_NASR)?->id);
+
+        $customer = $this->customer();
+        $saved = $this->saveAddress($customer, self::IN_NASR, null);
+        $this->assertSame($this->nasr->id, $saved['zone']['id']);
+        $this->assertFalse($saved['is_covered']);
+
+        // The city back on: nothing to re-locate, the address was never let go.
+        $this->geo['city']->update(['status' => 'active']);
+        $this->assertTrue(Address::with('zone.city')->find($saved['id'])->isCovered());
+    }
+
+    #[Test]
+    public function an_address_edited_while_its_zone_not_drawn_yet_is_off_keeps_it(): void
+    {
+        // The case the owner asked about: the zone has no drawing, so nothing
+        // could claim the address back when the zone is switched on again.
+        $customer = $this->customer();
+        $address = $this->addressFor($customer, $this->maadi, self::NOWHERE[0], self::NOWHERE[1]);
+        $this->maadi->update(['status' => 'inactive']);
+        $token = $customer->createToken('t')->plainTextToken;
+
+        // The app moves the pin a little and re-sends the zone it has on file.
+        $this->app['auth']->forgetGuards();
+        $this->putJson("/api/v1/addresses/{$address->id}", [
+            'lat' => self::NOWHERE[0] + 0.001, 'lng' => self::NOWHERE[1], 'zone_id' => $this->maadi->id,
+        ], $this->apiHeaders() + ['Authorization' => 'Bearer '.$token])
+            ->assertOk()
+            ->assertJsonPath('data.zone.id', $this->maadi->id)
+            ->assertJsonPath('data.is_covered', false);
+
+        // And without re-sending it.
+        $this->app['auth']->forgetGuards();
+        $this->putJson("/api/v1/addresses/{$address->id}", ['lat' => self::NOWHERE[0], 'lng' => self::NOWHERE[1]],
+            $this->apiHeaders() + ['Authorization' => 'Bearer '.$token])
+            ->assertOk()
+            ->assertJsonPath('data.zone.id', $this->maadi->id);
+
+        $this->maadi->update(['status' => 'active']);
+        $this->assertTrue(Address::with('zone.city')->find($address->id)->isCovered());
     }
 
     #[Test]
@@ -480,8 +546,9 @@ class ZoneBoundaryTest extends TestCase
         $this->assertSame($this->maadi->id, $locator->zoneAt(...self::IN_MAADI)?->id);
         $this->assertNull($locator->zoneAt(...self::NOWHERE));
 
-        // A zone switched off claims nothing new.
+        // A zone switched off still holds its ground: the switch decides
+        // whether orders are taken there, not where the pin is (2026-10-07).
         $this->maadi->update(['status' => 'inactive']);
-        $this->assertNull($locator->zoneAt(...self::IN_MAADI));
+        $this->assertSame($this->maadi->id, $locator->zoneAt(...self::IN_MAADI)?->id);
     }
 }

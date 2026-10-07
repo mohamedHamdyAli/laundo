@@ -197,7 +197,9 @@ requires a note; `GET /driver/profile` carries `pending_review`.
   `key: out_of_coverage` (a contract the app keys on), and the attempt is
   recorded for «خارج التغطية» (`CoverageRequest`). `Address::isCovered()` /
   `Zone::isServing()` are the one definition; load `zone.city` with a list.
-  **A zone no laundry covers is still accepted unassigned.**
+  **Which zone** an address is in is where its pin is, whatever the switch
+  (`ZoneRepository::claiming()` takes every drawn zone): a pause never erases
+  it. **A zone no laundry covers is still accepted unassigned.**
 - **Distance is the road** (`app/Services/Routing/`, Google's Routes API, matched
   on `destinationIndex`). The key is the `Google_Maps_Key` setting. **A fallback
   is never cached.** `phpunit.xml` pins `ROUTING_DRIVER=haversine`.

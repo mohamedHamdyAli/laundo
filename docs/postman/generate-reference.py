@@ -165,7 +165,7 @@ GROUPS = [
    ["كل عنوان فيه <code>is_covered</code> (٧ أكتوبر): <code>false</code> لو الدبوس برّه كل المناطق المرسومة، أو منطقته (أو مدينتها) مقفولة — والطلب منه أو ليه بيترفض بـ<code>out_of_coverage</code>. حذّروا العميل أول ما يختاره."]),
   ("POST", "/addresses", "customer", "حفظ عنوان جديد.",
    [P("label", "اختياري", "string", "«المنزل» / «العمل» / نص حر"),
-    P("city_id", "اختياري", "int", ""), P("zone_id", "اختياري", "int", "لازم منطقة مفعّلة"),
+    P("city_id", "اختياري", "int", ""), P("zone_id", "اختياري", "int", "أي منطقة موجودة. المقفولة بتتقبل، و<code>is_covered</code> بيرجع false"),
     P("street", "مطلوب", "string", "500 حرف"), P("building", "اختياري", "string", ""),
     P("floor", "اختياري", "string", ""), P("apartment", "اختياري", "string", ""),
     P("landmark", "اختياري", "string", "«علامة مميزة»"),

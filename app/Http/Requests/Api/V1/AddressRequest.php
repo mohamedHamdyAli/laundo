@@ -29,10 +29,13 @@ class AddressRequest extends FormRequest
             'label' => ['nullable', 'string', 'max:191'],
             'city_id' => ['nullable', 'exists:cities,id'],
             // The zone drives laundry and driver assignment, so it has to be a
-            // real, active zone rather than free text.
+            // real zone rather than free text. Switched off or not: an edit
+            // re-sends the address's own zone, and a zone paused by the owner
+            // is still where the address is — whether it is served there is
+            // `Address::isCovered()`, not this rule (2026-10-07).
             'zone_id' => [
                 'nullable',
-                Rule::exists('zones', 'id')->where(fn ($q) => $q->where('status', 'active')),
+                Rule::exists('zones', 'id'),
             ],
             'street' => [$req, 'string', 'max:500'],
             'building' => ['nullable', 'string', 'max:50'],

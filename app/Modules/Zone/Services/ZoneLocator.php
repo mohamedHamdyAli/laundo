@@ -18,8 +18,12 @@ use Illuminate\Validation\ValidationException;
  * owner draws each zone, and the drawing decides (the owner's rules,
  * 2026-09-29):
  *
- *   - a pin inside a drawn, active zone (in an active city) is in that zone —
- *     whatever the app sent;
+ *   - a pin inside a drawn zone is in that zone — whatever the app sent,
+ *     and whether the zone (or its city) is switched on or off. Until
+ *     2026-10-07 only a zone switched on claimed a pin; now the switch decides
+ *     only whether orders are taken there (`Address::isCovered()`), so an
+ *     address never loses its zone to a pause and is served again the moment
+ *     the zone is switched back on;
  *   - a zone **not drawn yet** keeps working the old way, so an install moves
  *     over one zone at a time and nothing stops the day this ships;
  *   - a pin outside every drawn zone is in no zone. Its order was accepted
@@ -36,8 +40,11 @@ class ZoneLocator
     public function __construct(private readonly ZoneRepository $zones) {}
 
     /**
-     * The active drawn zone the pin falls inside, or null. Zones may not
-     * overlap (refused on save), so there is at most one.
+     * The drawn zone the pin falls inside, or null — switched on or off, in
+     * any city. Where a pin is, not whether it is served: ask
+     * `Address::isCovered()` / `Zone::isServing()` for that. Zones may not
+     * overlap (refused on save, inactive ones included), so there is at most
+     * one.
      */
     public function zoneAt(float $lat, float $lng): ?Zone
     {
@@ -69,9 +76,10 @@ class ZoneLocator
         }
 
         // Not inside anything drawn. A zone the owner has not drawn yet is
-        // still taken at the app's word; a drawn one the pin is outside of is
-        // not — that pin is in no zone.
-        $requested = is_numeric($requestedZoneId) ? $this->zones->findActive((int) $requestedZoneId) : null;
+        // still taken at the app's word — switched off or not, so an edit that
+        // re-sends the address's own zone while it is paused keeps it; a drawn
+        // one the pin is outside of is not — that pin is in no zone.
+        $requested = is_numeric($requestedZoneId) ? $this->zones->find((int) $requestedZoneId) : null;
 
         if ($requested && ! $requested->isDrawn()) {
             return ['zone_id' => $requested->id, 'city_id' => $requested->city_id];
@@ -148,8 +156,9 @@ class ZoneLocator
      * addresses it now claims, and let go of the ones it no longer covers.
      *
      * Nothing else is touched — an address in some other zone moves only if a
-     * drawn, active zone now claims its pin; an address in a zone that is
-     * switched off keeps it, as switching off has always meant. An address
+     * drawn zone (switched on or off) now claims its pin, and only this zone's
+     * own addresses are ever let go; switching a zone off moves nothing, as it
+     * always has. An address
      * that would be left in no zone while an order on it is still under way
      * keeps its zone until the order is done: its legs are being routed by it,
      * and a leg with no zone can be given to nobody.

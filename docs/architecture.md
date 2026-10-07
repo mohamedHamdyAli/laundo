@@ -178,9 +178,14 @@ billed — do not switch it without asking. **Testing Arabic from the Windows
 shell lies**: the command line mangles Arabic arguments before `curl` sees them
 and every query comes back empty — send them from a UTF-8 file.
 `Zone/Services/ZoneLocator` decides an address's zone from its pin, in
-`AddressController` on create and edit: **inside a drawn, active zone → that
-zone and its city, whatever `zone_id` the app sent**; a zone **not drawn yet**
-is still taken at the app's word, so an install moves over one zone at a time;
+`AddressController` on create and edit: **inside a drawn zone → that zone and
+its city, whatever `zone_id` the app sent, and whether the zone or its city is
+switched on or off** (since 2026-10-07 — before, only an active zone in an
+active city claimed a pin, so a pause erased the zone from any address edited
+meanwhile, and a pin in a paused zone could be filed under another the app
+picked, whose order went through); a zone **not drawn yet** is still taken at
+the app's word, switched off or not (`AddressRequest` accepts any existing
+zone), so an install moves over one zone at a time;
 a pin **outside every drawn zone gets no zone**. Its order was accepted
 unassigned until **2026-10-07**; the owner reversed that at the app team's
 request: **an order whose pickup, or a different delivery, address has no zone
@@ -219,11 +224,12 @@ just inside an edge lying well inside the other ring, which is what catches the
 same ring drawn twice. A ring with no area, a spike, or over 500 corners is
 refused, each with its own message. Redrawing a zone, or switching a drawn one
 on, re-locates the addresses it takes in or lets go, through the models
-(`ZoneLocator::relocateAround()`): only an address a drawn active zone now
-claims, or this zone's own outside its new drawing — never another switched-off
-zone's — and **an address with an order under way is not left in no zone**
-(held, and the flash says how many). Switching a zone off moves nothing. A zone
-in a switched-off city claims nothing. A save that does not send `boundary` (a
+(`ZoneLocator::relocateAround()`): only an address a drawn zone (on or off) now
+claims, or this zone's own outside its new drawing — never another zone's
+address let go — and **an address with an order under way is not left in no zone**
+(held, and the flash says how many). Switching a zone off moves nothing, and a
+zone in a switched-off city still holds its ground: the switch decides service,
+not where a pin is. A save that does not send `boundary` (a
 spreadsheet row) keeps the drawing; the zones sheet has a read-only `drawn`. **Laundries and drivers are still matched by `zone_id`** —
 unchanged, and right by construction once an address's zone is its pin's: a
 driver given a zone is only offered trips inside it. A laundry may sit outside

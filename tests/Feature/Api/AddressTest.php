@@ -187,14 +187,26 @@ class AddressTest extends TestCase
             ->assertJsonCount(0, 'data');
     }
 
-    public function test_an_inactive_zone_is_refused(): void
+    public function test_an_inactive_zone_is_kept_but_not_served(): void
     {
         $zone = Zone::find($this->zoneId);
         $zone->update(['status' => 'inactive']);
 
-        // Zones drive assignment, so an inactive one must not be selectable.
+        // Until 2026-10-07 this was a 422, which also refused an edit that
+        // re-sent the address's own zone while it was paused. The zone is
+        // where the address is; the switch decides only whether orders are
+        // taken there — `is_covered` says no, and an order is refused.
         $this->withHeaders($this->as($this->alice))
             ->postJson('/api/v1/addresses', $this->payload())
+            ->assertCreated()
+            ->assertJsonPath('data.zone.id', $this->zoneId)
+            ->assertJsonPath('data.is_covered', false);
+    }
+
+    public function test_a_zone_that_does_not_exist_is_refused(): void
+    {
+        $this->withHeaders($this->as($this->alice))
+            ->postJson('/api/v1/addresses', $this->payload(['zone_id' => 999999]))
             ->assertStatus(422)
             ->assertJsonStructure(['errors' => ['zone_id']]);
     }

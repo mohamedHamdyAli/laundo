@@ -40,8 +40,10 @@ class zoneCrudService
 
             $zone = $this->zoneRepository->create($payload);
 
-            // A zone drawn on creation takes in the addresses already inside it.
-            $this->relocated = $zone->isDrawn() && $zone->status === 'active'
+            // A zone drawn on creation takes in the addresses already inside it
+            // — switched on or off: the switch decides whether orders are taken
+            // there, not where a pin is (`ZoneRepository::claiming()`).
+            $this->relocated = $zone->isDrawn()
                 ? $this->locator->relocateAround($zone, null)
                 : ['moved' => 0, 'held' => 0];
 
@@ -135,11 +137,14 @@ class zoneCrudService
         $zone = $this->zoneRepository->findById($id);
         $response = $this->responseService->toggleStatus($zone, $status);
 
-        // A drawn zone switched on claims the addresses whose pins are inside
-        // it — the ones saved while it was off went elsewhere or nowhere.
         // Switched off, nothing moves: that has always meant «paused». Its
         // addresses keep the zone, and since 2026-10-07 a new order from them
-        // is refused until it is switched back on (`Address::isCovered()`).
+        // is refused until it is switched back on (`Address::isCovered()`) —
+        // and a pin saved inside it meanwhile is placed in it too
+        // (`ZoneRepository::claiming()`). Switched on, a drawn zone still
+        // claims the pins inside it: a safety net for any address filed
+        // elsewhere before 2026-10-07, when a paused zone let its pins go. It
+        // finds nothing to move once no such address is left.
         $zone->refresh();
 
         if ($zone->status === 'active' && $zone->isDrawn()) {

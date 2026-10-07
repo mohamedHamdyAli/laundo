@@ -1216,7 +1216,7 @@
             "doc": 10
         },
         "files": 10,
-        "lines": 10900,
+        "lines": 10907,
         "classes": [],
         "models": [],
         "owns_tables": [],
@@ -3633,7 +3633,7 @@
             "mail": 2
         },
         "files": 187,
-        "lines": 19749,
+        "lines": 19752,
         "classes": [
             {
                 "fqcn": "App\\Http\\Controllers\\Controller",
@@ -5061,7 +5061,7 @@
             "browser-test": 25
         },
         "files": 157,
-        "lines": 50619,
+        "lines": 50698,
         "classes": [
             {
                 "fqcn": "Tests\\Feature\\Api\\AddressTest",
@@ -6438,7 +6438,7 @@
             "request": 1
         },
         "files": 19,
-        "lines": 1776,
+        "lines": 1800,
         "classes": [
             {
                 "fqcn": "App\\Modules\\Zone\\Controllers\\CoverageRequestController",
