@@ -10,6 +10,8 @@
 - **«خارج التغطية»** (`/admin/coverage-request`, under Locations, `coverage_request.view` / `.toggle`, super admin only): every refusal is recorded as one row per customer and address. The pin and the street are copied in, and the row counts attempts. A row whose address has since gained a zone reads «اتغطّى دلوقتي», sorts first, and is counted on the sidebar until somebody marks «اتصلنا بهم». A new refusal puts a rung row back on the list. The row is recorded outside any transaction and never fails the refusal (Repository / Service / Controller / Blade).
 - Docs: Postman, `generate-reference.py` → `api-reference.html`, `docs/mobile-2026-10-07-complaints-and-coverage.md` (with real responses), `mobile-api-changes.md`, the QA guide (HTML + PDF), `architecture.md`, CLAUDE.md (Docs).
 
+- Released to live on 2026-10-07 (`ec5a674`). Checked there inside a rolled-back transaction: `quote` and `orders` on an address in no zone answer 422 `out_of_coverage`, and the attempt is recorded; `has_complaint` and `is_covered` are on real rows. Live has no address in no zone today, so no current customer is refused (Infrastructure).
+
 ### Migration
 
 - `2026_10_07_100000_create_coverage_requests_table`: a new table, with no data rewritten. The deploy needs `db:seed --class=PermissionSeeder` for `coverage_request.*`.

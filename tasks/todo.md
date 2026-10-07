@@ -471,7 +471,7 @@ unassigned; record the attempt on **a new panel screen**; one complaint per orde
 - [x] Postman + `generate-reference.py`, `docs/mobile-2026-10-07-…md` + `mobile-api-changes.md`, QA guide, Changelog
 - [x] Full suite, browser check of the screen, `/code-review`, `/security-review`
 - [x] Brain update
-- [ ] Commit, deploy — waiting on the owner
+- [x] Commit (`ec5a674`), deploy to live, checked there in a rolled-back transaction
 
 ### Review
 
