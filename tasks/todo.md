@@ -524,5 +524,5 @@ The owner: «صلح» — the pre-existing finding from the 2026-10-07 security 
 - [x] Tests: the stranger, the guest, a non-existent id; `SlotAvailabilityTest` signs in as the owner. The stranger test fails without the check (it read `laundries_full: true`)
 - [x] Postman (`time-slots` now inherits the bearer token), the reference, the mobile log, Changelog
 - [x] Suite (1,922 green), `/code-review` (fixed: dates, a stronger «nobody's id» test, the settings hint and architecture.md say the token, the reference marks the endpoint «token optional», a send-as-it-is app note), `/security-review` (nothing)
-- [ ] Deploy — the app should send the token first; `hide_slot` is off on live, so nothing changes for orders meanwhile
+- [x] Deploy (`db6db65`), checked live as a guest; `hide_slot` is off on live, so orders are unaffected until the app sends the token
 
