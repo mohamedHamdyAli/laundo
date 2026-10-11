@@ -159,7 +159,7 @@
             "api-controller": 23
         },
         "files": 23,
-        "lines": 5281,
+        "lines": 5284,
         "classes": [
             {
                 "fqcn": "App\\Http\\Controllers\\Api\\V1\\AddressController",
@@ -1216,7 +1216,7 @@
             "doc": 11
         },
         "files": 11,
-        "lines": 10955,
+        "lines": 10973,
         "classes": [],
         "models": [],
         "owns_tables": [],
@@ -2863,7 +2863,7 @@
             "request": 1
         },
         "files": 63,
-        "lines": 12826,
+        "lines": 12832,
         "classes": [
             {
                 "fqcn": "App\\Modules\\Order\\Controllers\\DispatchController",
@@ -3260,7 +3260,7 @@
             "Wallet": 1
         },
         "depended_on_by": {
-            "Tests": 416,
+            "Tests": 419,
             "Api": 55,
             "Report": 40,
             "Payment": 27,
@@ -3633,7 +3633,7 @@
             "mail": 2
         },
         "files": 187,
-        "lines": 19752,
+        "lines": 19759,
         "classes": [
             {
                 "fqcn": "App\\Http\\Controllers\\Controller",
@@ -5057,12 +5057,18 @@
         "community": "quality",
         "path": null,
         "layers": {
-            "test": 132,
+            "test": 133,
             "browser-test": 25
         },
-        "files": 157,
-        "lines": 50755,
+        "files": 158,
+        "lines": 50897,
         "classes": [
+            {
+                "fqcn": "Tests\\Feature\\Api\\AddressIdDisclosureTest",
+                "layer": "test",
+                "path": "tests/Feature/Api/AddressIdDisclosureTest.php",
+                "summary": "An address id that is nobody's must answer exactly like one that is somebody else's (2026-10-11)."
+            },
             {
                 "fqcn": "Tests\\Feature\\Api\\AddressTest",
                 "layer": "test",
@@ -5859,6 +5865,7 @@
         "models": [],
         "owns_tables": [],
         "reads_tables": [
+            "recurrence_prompts",
             "addresses",
             "orders",
             "settings",
@@ -5879,7 +5886,6 @@
             "order_ratings",
             "device_tokens",
             "notification_preferences",
-            "recurrence_prompts",
             "order_settlements",
             "order_items",
             "item_prices",
@@ -5944,6 +5950,7 @@
             "tests/Browser/tenancy.spec.js",
             "tests/Browser/touch-targets.spec.js",
             "tests/Browser/zone-drawer.spec.js",
+            "tests/Feature/Api/AddressIdDisclosureTest.php",
             "tests/Feature/Api/AddressTest.php",
             "tests/Feature/Api/ApiContractTest.php",
             "tests/Feature/Api/AppTaxTest.php",
@@ -6079,9 +6086,9 @@
         ],
         "summary": "",
         "depends_on": {
-            "Order": 416,
+            "Order": 419,
             "Platform": 96,
-            "User": 93,
+            "User": 94,
             "Payment": 80,
             "Notification": 64,
             "Driver": 61,
@@ -6310,7 +6317,7 @@
             "Laundry": 1
         },
         "depended_on_by": {
-            "Tests": 93,
+            "Tests": 94,
             "Order": 25,
             "Notification": 21,
             "Payment": 13,

@@ -526,3 +526,14 @@ The owner: «صلح» — the pre-existing finding from the 2026-10-07 security 
 - [x] Suite (1,922 green), `/code-review` (fixed: dates, a stronger «nobody's id» test, the settings hint and architecture.md say the token, the reference marks the endpoint «token optional», a send-as-it-is app note), `/security-review` (nothing)
 - [x] Deploy (`db6db65`), checked live as a guest; `hide_slot` is off on live, so orders are unaffected until the app sends the token
 
+
+## 2026-10-11 — the order, quote and schedule requests told which address ids exist
+
+The owner: «قفله». `exists:addresses,id` answered 422 for an id that is nobody's while the service answered
+404 for one that is somebody else's.
+
+- [x] Drop `exists:addresses,id` from `OrderRequest`, `OrderQuoteRequest`, `RecurrenceRequest` (five fields) — ownership is already checked in `OrderService::resolveContext()` and `RecurrenceController::store()`
+- [x] Test: a non-existent id and a stranger's id answer the same, on all five (`AddressIdDisclosureTest`; fails with the rule restored)
+- [x] `/code-review`, fixed: `prompt_id` had the same oracle; `min:1` so `delivery_address_id: 0` is not read as «same address»; the schedule's ownership check moved into `RecurrenceService::create()`; the app note's messages and its status for this part
+- [x] Suite (1,929 green), `/security-review` (nothing)
+- [ ] Deploy

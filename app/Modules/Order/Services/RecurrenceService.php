@@ -43,9 +43,15 @@ class RecurrenceService
         // refused at the order (`OutOfCoverage`), so a
         // schedule on one would ask every cycle «محتاج تغسل؟» and refuse the
         // answer. Refused here first, the same way, rather than nagging weekly.
+        // Through the customer's own addresses: somebody else's, or nobody's,
+        // is one refusal, here rather than only in a controller in front.
         $address = $customer->addresses()->with('zone.city')->find($data['pickup_address_id'] ?? null);
 
-        if ($address !== null && ! $address->isCovered()) {
+        if ($address === null) {
+            throw new RuntimeException('pickup_address_not_found');
+        }
+
+        if (! $address->isCovered()) {
             throw new OutOfCoverage(['pickup_address_id' => $address]);
         }
 

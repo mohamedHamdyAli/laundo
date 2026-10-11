@@ -29,7 +29,9 @@ class RecurrenceRequest extends FormRequest
                 'required',
                 Rule::exists('services', 'id')->where(fn ($q) => $q->where('status', 'active')),
             ],
-            'pickup_address_id' => ['required', 'integer', 'exists:addresses,id'],
+            // Integer only: existence and ownership are one 404 in the
+            // controller, through the caller's own addresses.
+            'pickup_address_id' => ['required', 'integer', 'min:1'],
             'time_slot_id' => [
                 'nullable',
                 Rule::exists('time_slots', 'id')->where(fn ($q) => $q->where('status', 'active')),

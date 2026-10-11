@@ -13,10 +13,11 @@ use Illuminate\Validation\Validator;
 /**
  * The order wizard's payload.
  *
- * Addresses are validated only as "an address that exists" — that they belong to
- * *this* customer is settled in OrderService, by looking them up through the
- * user's own relation. A rule here would duplicate that check and could drift
- * from it.
+ * Addresses are validated only as integers — that they exist *and* belong to
+ * this customer is settled in OrderService, by looking them up through the
+ * user's own relation, which answers 404 for both. An `exists` rule here
+ * answered 422 for an id that is nobody's, so the two answers told a customer
+ * which ids exist (removed 2026-10-11).
  */
 class OrderRequest extends FormRequest
 {
@@ -51,9 +52,9 @@ class OrderRequest extends FormRequest
             ],
             'items.*.qty' => ['required', 'integer', 'min:1', 'max:999'],
 
-            'pickup_address_id' => ['required', 'integer', 'exists:addresses,id'],
+            'pickup_address_id' => ['required', 'integer', 'min:1'],
             // Absent means "same address", which is the design's default.
-            'delivery_address_id' => ['nullable', 'integer', 'exists:addresses,id'],
+            'delivery_address_id' => ['nullable', 'integer', 'min:1'],
 
             'pickup_date' => ['nullable', 'date', 'after_or_equal:today'],
             'delivery_date' => ['nullable', 'date', 'after_or_equal:pickup_date'],
@@ -104,7 +105,9 @@ class OrderRequest extends FormRequest
             // answering one. Only the id: which schedule it belongs to is read
             // off the prompt, never off the request, so a customer cannot file
             // an order under somebody else's schedule.
-            'prompt_id' => ['nullable', 'integer', 'exists:recurrence_prompts,id'],
+            // An integer only, like the addresses: existence and ownership
+            // are one 404 in the controller (removed `exists` 2026-10-11).
+            'prompt_id' => ['nullable', 'integer', 'min:1'],
 
             // «أضف صوراً للبقع الصعبة»
             'photos' => ['nullable', 'array', 'max:5'],

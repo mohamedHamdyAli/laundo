@@ -47,15 +47,18 @@ class RecurrenceController extends Controller
     {
         $data = $request->validated();
 
-        // Same rule as everywhere else: the address must be the caller's own.
-        if (! $request->user()->addresses()->whereKey($data['pickup_address_id'])->exists()) {
-            return failReturnNotFound(__('Pickup address not found.'));
-        }
-
         try {
             $schedule = $this->recurrences->create($request->user(), $data);
         } catch (OutOfCoverage $e) {
             return $this->outOfCoverage($request, $e);
+        } catch (RuntimeException $e) {
+            // The address must be the caller's own — the same 404 whether it
+            // is somebody else's or nobody's (checked in the service).
+            if ($e->getMessage() === 'pickup_address_not_found') {
+                return failReturnNotFound(__('Pickup address not found.'));
+            }
+
+            throw $e;
         }
 
         return successReturnCreated(

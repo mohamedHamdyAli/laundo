@@ -533,7 +533,7 @@
             "admin.user.update"
         ],
         "node_count": 79,
-        "cohesion": 0.21,
+        "cohesion": 0.209,
         "screens": [
             {
                 "key": "user",
@@ -781,7 +781,7 @@
             "admin.refund.index"
         ],
         "node_count": 779,
-        "cohesion": 0.402,
+        "cohesion": 0.401,
         "screens": [
             {
                 "key": "order",
@@ -887,7 +887,7 @@
             "admin.time_slot.update"
         ],
         "node_count": 582,
-        "cohesion": 0.374,
+        "cohesion": 0.373,
         "screens": [
             {
                 "key": "complaint",
@@ -1179,7 +1179,7 @@
             "api.v1.driver.tasks.fail"
         ],
         "node_count": 273,
-        "cohesion": 0.386
+        "cohesion": 0.385
     },
     {
         "slug": "authentication",
@@ -1253,7 +1253,7 @@
         "tables": [],
         "route_count": 0,
         "routes": [],
-        "node_count": 1683,
+        "node_count": 1690,
         "cohesion": 0.358
     },
     {

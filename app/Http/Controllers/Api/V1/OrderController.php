@@ -131,7 +131,7 @@ class OrderController extends Controller
 
         $prompt = $promptId ? $this->findPrompt($request, $promptId) : null;
 
-        // Validated as existing, but existing is not the same as the caller's.
+        // Nobody's, or somebody else's: one answer, so the id says nothing.
         if ($promptId && ! $prompt) {
             return failReturnNotFound(__('Request not found.'));
         }

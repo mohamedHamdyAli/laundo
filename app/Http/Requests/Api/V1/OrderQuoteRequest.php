@@ -37,8 +37,10 @@ class OrderQuoteRequest extends FormRequest
             'items' => ['present', 'array'],
             'items.*.item_id' => ['required', 'integer', 'exists:items,id'],
             'items.*.qty' => ['required', 'integer', 'min:1', 'max:999'],
-            'pickup_address_id' => ['required', 'integer', 'exists:addresses,id'],
-            'delivery_address_id' => ['nullable', 'integer', 'exists:addresses,id'],
+            // Integers only: existence and ownership are one 404 in
+            // OrderService (see OrderRequest).
+            'pickup_address_id' => ['required', 'integer', 'min:1'],
+            'delivery_address_id' => ['nullable', 'integer', 'min:1'],
             // «تطبيق» sits on this very screen. Without the field here the code
             // was validated away before the service could look at it.
             'coupon_code' => ['nullable', 'string', 'max:50'],
