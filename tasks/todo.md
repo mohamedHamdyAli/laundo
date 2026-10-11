@@ -536,4 +536,4 @@ The owner: «قفله». `exists:addresses,id` answered 422 for an id that is no
 - [x] Test: a non-existent id and a stranger's id answer the same, on all five (`AddressIdDisclosureTest`; fails with the rule restored)
 - [x] `/code-review`, fixed: `prompt_id` had the same oracle; `min:1` so `delivery_address_id: 0` is not read as «same address»; the schedule's ownership check moved into `RecurrenceService::create()`; the app note's messages and its status for this part
 - [x] Suite (1,929 green), `/security-review` (nothing)
-- [ ] Deploy
+- [x] Deploy (`7672432`); checked live: a stranger's address id and a missing one get the identical 404
