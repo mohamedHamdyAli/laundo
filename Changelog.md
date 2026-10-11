@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-10-11
+
+### Fix
+
+- **`GET /time-slots` no longer reports on a stranger's address.** It took any `address_id` and answered `laundries_full` for it, so anybody could learn whether the laundries around another customer's door were full. It now measures only the caller's own address (the bearer token, optional on this public route). Somebody else's address, or any id sent without a token, is answered as if none was sent. On this endpoint, a non-existent id is no longer a 422 that told a stranger which ids exist (the order, quote and schedule requests still validate `exists`, behind sign-in). The settings field for hiding full windows now says the apps must send the customer's token too. Found by the 2026-10-07 security review. App note in `docs/mobile-api-changes.md`: send the token with `address_id` (API / Controller).
+
 ## 2026-10-07
 
 ### Feature

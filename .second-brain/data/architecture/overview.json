@@ -69,10 +69,10 @@
             "command": 10,
             "enum": 21,
             "feature": 451,
-            "file": 1054,
+            "file": 1055,
             "integration": 5,
             "interface": 4,
-            "method": 3316,
+            "method": 3319,
             "module": 42,
             "permission": 236,
             "route": 452,
@@ -82,11 +82,11 @@
             "view": 294
         },
         "edges_by_type": {
-            "contains": 5434,
+            "contains": 5438,
             "implemented_by": 4230,
             "tested_by": 3174,
-            "imports": 2549,
-            "references": 2453,
+            "imports": 2548,
+            "references": 2452,
             "entry_point": 1401,
             "depends_on": 1133,
             "calls": 877,
@@ -102,9 +102,9 @@
             "uses_trait": 95,
             "belongs_to": 86,
             "validates": 67,
+            "integrates": 64,
             "defined_by": 63,
             "maps_to": 63,
-            "integrates": 63,
             "has_many": 28,
             "implements": 6,
             "belongs_to_many": 4,
@@ -243,7 +243,7 @@
                 "Api"
             ],
             "routes": 106,
-            "cohesion": 0.385
+            "cohesion": 0.386
         },
         {
             "slug": "authentication",
@@ -284,7 +284,7 @@
                 "Docs"
             ],
             "routes": 0,
-            "cohesion": 0.357
+            "cohesion": 0.358
         },
         {
             "slug": "routing_and_distance",
@@ -366,6 +366,7 @@
         "docs/architecture.md",
         "docs/driver-app-backend-answers.md",
         "docs/mobile-2026-10-07-complaints-and-coverage.md",
+        "docs/mobile-2026-10-11-time-slots-token.md",
         "docs/mobile-api-changes.md",
         "docs/order-cycle-explained.md",
         "docs/order-lifecycle.md",

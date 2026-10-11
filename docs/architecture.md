@@ -303,8 +303,11 @@ all full is the same shape of problem as a zone nothing covers, and
 `SlotOverflowBehavior` (`Slot_Overflow_Behavior`) is where an operator says what
 to do: accept it unassigned (default), give it to the nearest anyway, or hide
 the window from the customer. The last needs `GET /api/v1/time-slots` to be sent
-an `address_id` — until an app sends one it behaves like the first, which the
-settings field says on its face.
+an `address_id` **with the customer's own token** (since 2026-10-11 an address
+that is not the caller's, or any address without a token, is answered as if none
+was sent — the endpoint is public and must not report on a stranger's door) —
+until an app sends both it behaves like the first, which the settings field says
+on its face.
 
 **Capacity gates on `laundry_slot_capacity.update`, not `laundry.update`** — a
 laundry owner holds the latter by design, and capacity decides how much work

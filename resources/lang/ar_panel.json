@@ -2331,5 +2331,6 @@
     "Out-of-coverage request": "طلب خارج التغطية",
     "Zone switched off": "المنطقة مقفولة",
     "Orders are taken only in zones that are switched on. A customer in a zone switched off, or outside every zone, is told the service is not in their area yet and appears under «Out of coverage».": "الطلبات بتتقبل في المناطق المفعّلة بس. العميل اللي عنوانه في منطقة مقفولة، أو برّه كل المناطق، بيتقاله إن الخدمة لسه مش في منطقته، وبيظهر في «خارج التغطية».",
-    "City switched off": "المدينة مقفولة"
+    "City switched off": "المدينة مقفولة",
+    "Hiding the window needs the mobile apps to send the address, with the customer signed in, when they ask for windows; until they do, it behaves like the first option.": "إخفاء النافذة يتطلب أن ترسل التطبيقات العنوان والعميل مسجّل الدخول عند طلب النوافذ؛ وإلى أن تفعل، يعمل هذا الخيار مثل الخيار الأول."
 }

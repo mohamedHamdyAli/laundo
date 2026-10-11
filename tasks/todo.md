@@ -514,3 +514,15 @@ only decides whether orders are taken (`Address::isCovered()`).
 
 - `/code-review`, fixed: a zone created drawn but switched off now takes in the addresses inside it (the switch does not decide where a pin is); `zoneAt()` / `relocateAround()` docblocks, the toggle comment and architecture.md said «active».
 - Not changed, said here: an address filed under the wrong zone before today (a pin in a paused drawn zone, saved under the app's pick) is only re-filed by a redraw, a switch-on or a re-saved pin — live has no drawn zone, so there is none; the edit form switching a zone on with the drawing unchanged does not re-claim (the toggle does — same reason it rarely matters now); a redraw can move such a legacy address into a paused zone with an order under way (the hold covers «no zone» only); `zone_id` accepts a paused zone not drawn yet, the same trust as an active one not drawn yet.
+
+## 2026-10-11 — `GET /time-slots` measured a stranger's address
+
+The owner: «صلح» — the pre-existing finding from the 2026-10-07 security review.
+
+- [x] `GeoController::coveringFor()` reads the address through the token's own `addresses()`; no token, or not theirs, is no address
+- [x] `address_id` loses `exists:addresses,id` (a 422 vs a 200 told a stranger which ids exist)
+- [x] Tests: the stranger, the guest, a non-existent id; `SlotAvailabilityTest` signs in as the owner. The stranger test fails without the check (it read `laundries_full: true`)
+- [x] Postman (`time-slots` now inherits the bearer token), the reference, the mobile log, Changelog
+- [x] Suite (1,922 green), `/code-review` (fixed: dates, a stronger «nobody's id» test, the settings hint and architecture.md say the token, the reference marks the endpoint «token optional», a send-as-it-is app note), `/security-review` (nothing)
+- [ ] Deploy — the app should send the token first; `hide_slot` is off on live, so nothing changes for orders meanwhile
+

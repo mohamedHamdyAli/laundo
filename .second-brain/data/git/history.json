@@ -1,8 +1,26 @@
 {
     "available": true,
-    "head": "170ac76b01aa6738afe3ff6ca5bcc9b168b9812d",
-    "commits_scanned": 128,
+    "head": "17c256efdabfb79e0a94db0e6a097510030e3181",
+    "commits_scanned": 131,
     "recent": [
+        {
+            "sha": "17c256ef",
+            "date": "2026-10-07",
+            "subject": "docs: tick the zone placement release",
+            "files": 0
+        },
+        {
+            "sha": "42c58804",
+            "date": "2026-10-07",
+            "subject": "docs: the zone switch releases are live",
+            "files": 0
+        },
+        {
+            "sha": "3dd9edeb",
+            "date": "2026-10-07",
+            "subject": "fix: an address keeps its zone while the zone is switched off",
+            "files": 9
+        },
         {
             "sha": "170ac76b",
             "date": "2026-10-07",
@@ -74,33 +92,15 @@
             "date": "2026-09-30",
             "subject": "feat: the driver's order screen, GET /api/v1/driver/orders/{id}",
             "files": 6
-        },
-        {
-            "sha": "3942838e",
-            "date": "2026-09-30",
-            "subject": "fix: the place search finds «مدينه نصر», typed with ه",
-            "files": 2
-        },
-        {
-            "sha": "f9a0c540",
-            "date": "2026-09-30",
-            "subject": "feat: a place search and shape tools on the zone map",
-            "files": 6
-        },
-        {
-            "sha": "765387d7",
-            "date": "2026-09-29",
-            "subject": "fix: update CLAUDE.md for accuracy and add deploying section",
-            "files": 0
         }
     ],
     "hottest_files": {
         "routes/web.php": 27,
-        "docs/postman/Laundo API v1.postman_collection.json": 22,
+        "docs/postman/Laundo API v1.postman_collection.json": 23,
         "app/Helpers/Helpers.php": 18,
+        "docs/mobile-api-changes.md": 16,
         "config/menu.php": 16,
         "resources/views/admin/setting/generalSetting/forms/formInput.blade.php": 16,
-        "docs/mobile-api-changes.md": 15,
         "app/Modules/Setting/Requests/GeneralSettingRequest.php": 14,
         "resources/views/layouts/footer_script.blade.php": 14,
         "app/Modules/Order/Services/OrderService.php": 13,

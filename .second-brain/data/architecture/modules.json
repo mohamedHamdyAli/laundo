@@ -40,7 +40,7 @@
             "Order": 11,
             "Tests": 10,
             "Zone": 7,
-            "Api": 4,
+            "Api": 3,
             "User": 1,
             "Platform": 1,
             "Database": 1
@@ -159,7 +159,7 @@
             "api-controller": 23
         },
         "files": 23,
-        "lines": 5269,
+        "lines": 5281,
         "classes": [
             {
                 "fqcn": "App\\Http\\Controllers\\Api\\V1\\AddressController",
@@ -458,8 +458,8 @@
             "Complaint": 6,
             "Notification": 6,
             "User": 4,
-            "Address": 4,
             "Zone": 3,
+            "Address": 3,
             "Pricing": 2,
             "Banner": 2,
             "Faq": 2,
@@ -1213,10 +1213,10 @@
         "community": "quality",
         "path": null,
         "layers": {
-            "doc": 10
+            "doc": 11
         },
-        "files": 10,
-        "lines": 10907,
+        "files": 11,
+        "lines": 10955,
         "classes": [],
         "models": [],
         "owns_tables": [],
@@ -5061,7 +5061,7 @@
             "browser-test": 25
         },
         "files": 157,
-        "lines": 50698,
+        "lines": 50755,
         "classes": [
             {
                 "fqcn": "Tests\\Feature\\Api\\AddressTest",

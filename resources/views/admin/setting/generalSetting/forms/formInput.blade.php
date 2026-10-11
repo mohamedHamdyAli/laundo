@@ -1120,7 +1120,7 @@
             </div>
             <div class="form-text">
                 {{ __('Capacity is set per laundry per window, from the laundry own screen or from the capacity grid. The order is never refused at checkout — this only decides who gets it.') }}
-                <strong>{{ __('Hiding the window needs the mobile apps to send the address when they ask for windows; until they do, it behaves like the first option.') }}</strong>
+                <strong>{{ __('Hiding the window needs the mobile apps to send the address, with the customer signed in, when they ask for windows; until they do, it behaves like the first option.') }}</strong>
             </div>
         </div>
     </div>

@@ -13,6 +13,7 @@ use App\Modules\TimeSlot\Models\TimeSlot;
 use App\Modules\Zone\Models\Zone;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
+use Laravel\Sanctum\Sanctum;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
@@ -53,6 +54,10 @@ class SlotAvailabilityTest extends TestCase
 
         $customer = $this->customer();
         $this->addressId = $this->addressFor($customer, $this->zone)->id;
+
+        // Signed in as the address's owner: since 2026-10-11 only the caller's
+        // own address is measured (see the stranger and guest cases below).
+        Sanctum::actingAs($customer);
 
         $pair = $this->laundryWithOwner('A', '+201011110001', '+201011110002');
         $this->laundry = $pair['laundry'];
@@ -159,6 +164,58 @@ class SlotAvailabilityTest extends TestCase
 
         $this->assertNull($row['laundries_full']);
         $this->assertFalse($row['is_full']);
+    }
+
+    // ------------------------------------------- only the caller's own address
+
+    #[Test]
+    public function somebody_elses_address_is_answered_as_if_none_was_sent(): void
+    {
+        // The laundries around a stranger's door are full — the stranger's
+        // id must not reveal it.
+        $this->fill($this->morning, 1, 1);
+        $this->overflow('hide_slot');
+
+        $this->app['auth']->forgetGuards();
+        Sanctum::actingAs($this->customer('+201055550401'));
+
+        $row = $this->rowFor($this->getJson($this->url())->assertOk(), $this->morning->id);
+
+        $this->assertNull($row['laundries_full']);
+        $this->assertFalse($row['is_full']);
+    }
+
+    #[Test]
+    public function a_guest_sending_an_address_is_answered_as_if_none_was_sent(): void
+    {
+        $this->fill($this->morning, 1, 1);
+        $this->overflow('hide_slot');
+
+        $this->app['auth']->forgetGuards();
+        $this->app['auth']->guard('sanctum')->forgetUser();
+
+        $row = $this->rowFor($this->getJson($this->url())->assertOk(), $this->morning->id);
+
+        $this->assertNull($row['laundries_full']);
+        $this->assertFalse($row['is_full']);
+    }
+
+    #[Test]
+    public function an_id_that_is_nobodys_answers_the_same_as_one_that_is_somebody_elses(): void
+    {
+        // A 422 for one and a 200 for the other would tell a stranger which
+        // ids exist. Asked by a stranger, so neither id is theirs.
+        $this->fill($this->morning, 1, 1);
+        $this->overflow('hide_slot');
+        $this->app['auth']->forgetGuards();
+        Sanctum::actingAs($this->customer('+201055550402'));
+
+        $somebodys = $this->getJson($this->url())->assertOk()->json('data');
+        $nobodys = $this->getJson(str_replace('address_id='.$this->addressId, 'address_id=999999', $this->url()))
+            ->assertOk()
+            ->json('data');
+
+        $this->assertSame($somebodys, $nobodys);
     }
 
     private function url(): string

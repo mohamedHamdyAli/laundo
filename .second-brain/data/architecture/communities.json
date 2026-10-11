@@ -1179,7 +1179,7 @@
             "api.v1.driver.tasks.fail"
         ],
         "node_count": 273,
-        "cohesion": 0.385
+        "cohesion": 0.386
     },
     {
         "slug": "authentication",
@@ -1253,8 +1253,8 @@
         "tables": [],
         "route_count": 0,
         "routes": [],
-        "node_count": 1679,
-        "cohesion": 0.357
+        "node_count": 1683,
+        "cohesion": 0.358
     },
     {
         "slug": "routing_and_distance",

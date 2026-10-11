@@ -89,10 +89,10 @@ GROUPS = [
     "<code>chosen</code>: <code>{valid, reason: too_early|too_late, message}</code>، ونفس الرسالة اللي <code>POST /orders</code> بيرفض بيها.",
     "<code>suggestion</code>: أول نافذة تسليم فيها مكان جوه المدى، و<code>windows</code> نوافذ يوم <code>windows_date</code> ومع كل واحدة <code>available</code>.",
     "المدة = متوسط مدى الخدمة. آخر يوم = <code>Delivery_Window_Days</code> من الإعدادات بعد أبكر يوم، وهو 14 لو محدش غيّره. التطبيق بيبني عليه الـ bottom sheet اللي بيصلّح التعارض في مكانه."]),
-  ("GET", "/time-slots", None, "النوافذ اللي العميل يقدر يختار إن المندوب ييجيله فيها.",
+  ("GET", "/time-slots", "optional", "النوافذ اللي العميل يقدر يختار إن المندوب ييجيله فيها. عامة، بس <code>address_id</code> محتاج توكن صاحبه.",
    [P("type", "query", "pickup | delivery", "اختياري. بيرجّع نوافذ الطرف ده زائد كل نافذة <code>both</code>."),
     P("date", "query", "date", "لو بعتّه بترجع <code>remaining</code> و<code>is_full</code> لليوم ده."),
-    P("address_id", "query", "int", "اختياري. بيخلّي الرد يضيف <code>laundries_full</code>: هل كل المغاسل اللي بتغطي العنوان ده وصلت سعتها في النافذة."),
+    P("address_id", "query", "int", "اختياري. بيخلّي الرد يضيف <code>laundries_full</code>: هل كل المغاسل اللي بتغطي العنوان ده وصلت سعتها في النافذة. <strong>لازم يكون عنوان صاحب التوكن، فابعتوا التوكن معاه</strong> (١١ أكتوبر): عنوان حد تاني، أو أي عنوان من غير توكن، بيتعامل كأنه مش مبعوت."),
     P("service_id", "query", "int", "اختياري. مع <code>address_id</code> بيضيّق الحساب على المغاسل اللي بتقدّم الخدمة دي، ومع <code>pickup_date</code> بيحسب مدة الخدمة."),
     P("pickup_date", "query", "date", "اختياري، لنوافذ التسليم. ميعاد الاستلام اللي العميل اختاره، عشان كل نافذة تقول <code>too_early</code>."),
     P("pickup_slot_id", "query", "int", "اختياري، مع <code>pickup_date</code>. لازم للخدمات اللي مدتها بالساعات.")],
@@ -558,7 +558,7 @@ ODD = [
 ]
 
 METHOD_CLASS = {"GET": "get", "POST": "post", "PUT": "put", "DELETE": "del"}
-AUTH_LABEL = {None: ("عام", "pub"), "customer": ("عميل", "cus"),
+AUTH_LABEL = {None: ("عام", "pub"), "optional": ("عام، والتوكن بيفرق", "pub"), "customer": ("عميل", "cus"),
               "driver": ("مندوب", "drv"), "any": ("أي توكن", "any")}
 
 

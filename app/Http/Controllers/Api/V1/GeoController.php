@@ -3,7 +3,6 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
-use App\Modules\Address\Models\Address;
 use App\Modules\City\Models\City;
 use App\Modules\Laundry\Services\LaundryLoad;
 use App\Modules\Order\Enums\SlotOverflowBehavior;
@@ -97,6 +96,10 @@ class GeoController extends Controller
      * every laundry that could serve that address has filled its intake for
      * the window. It is null when the question cannot be asked: no address, an
      * address with no zone, a zone nothing covers, or a delivery-only window.
+     * **The address must be the caller's own** (the bearer token, optional on
+     * this public route): anybody else's — or any id at all without a token —
+     * is answered as if none was sent, so the endpoint never says how full the
+     * laundries are around a stranger's door (2026-10-11).
      * `is_full` folds it in only when `Slot_Overflow_Behavior` is `hide_slot`,
      * because on the other two settings the order is still accepted and
      * withholding the window would refuse business the server would take.
@@ -127,7 +130,10 @@ class GeoController extends Controller
              * `service_id` narrows it further, because a laundry that
              * does not offer the service was never a candidate.
              */
-            'address_id' => ['nullable', 'integer', 'exists:addresses,id'],
+            // Not `exists:addresses,id`: that answered 422 for an id that is
+            // nobody's and 200 for one that is somebody's, which tells a
+            // stranger which ids exist. Ownership is checked below instead.
+            'address_id' => ['nullable', 'integer'],
             'service_id' => ['nullable', 'integer', 'exists:services,id'],
             // The pickup the delivery has to leave time after.
             'pickup_date' => ['nullable', 'date'],
@@ -145,7 +151,7 @@ class GeoController extends Controller
         // Which laundries could take work at this address at all. Empty
         // when no address was sent, when it has no zone, or when nothing
         // covers it — and an empty list is deliberately NOT «all full».
-        $covering = $this->coveringFor($data['address_id'] ?? null, $data['service_id'] ?? null);
+        $covering = $this->coveringFor($request, $data['address_id'] ?? null, $data['service_id'] ?? null);
 
         // Only this setting turns a full set of laundries into a hidden
         // window. On the other two the order is still accepted, so
@@ -270,13 +276,19 @@ class GeoController extends Controller
      *
      * @return array<int, int>
      */
-    private function coveringFor(?int $addressId, ?int $serviceId): array
+    private function coveringFor(Request $request, ?int $addressId, ?int $serviceId): array
     {
-        if ($addressId === null) {
+        // The route is public — guests browse before signing up — so the
+        // token is read here rather than required, and only the caller's own
+        // address counts: through the relation, the rule `AddressController`
+        // keeps. A stranger's id, or any id from a guest, is no address.
+        $caller = $request->user('sanctum');
+
+        if ($addressId === null || $caller === null) {
             return [];
         }
 
-        $zoneId = Address::whereKey($addressId)->value('zone_id');
+        $zoneId = $caller->addresses()->whereKey($addressId)->value('zone_id');
 
         if ($zoneId === null) {
             return [];
