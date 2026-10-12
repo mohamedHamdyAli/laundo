@@ -8,7 +8,7 @@
 
 ### Improvement
 
-- **`POST /api/v1/driver/location` stores every report, not only during a journey** (the owner's call for the map), and answers `report_after_seconds` — 4 on a live leg, 15 otherwise (`tracking.idle_report_seconds`). What the customer sees is unchanged: the dot only on their own legs, never a reading from before the handover. App note: `docs/mobile-2026-10-12-driver-location-always.md` (API / Controller / Config).
+- **`POST /api/v1/driver/location` stores every report, not only during a journey** (the owner's call for the map), and answers `report_after_seconds` — 4 on a live leg, 15 otherwise (`tracking.idle_report_seconds`). What the customer sees is unchanged: the dot only on their own legs, never a reading from before the handover. App note: `docs/mobile-2026-10-12-driver-location-always.md` (API / Controller / Config). Released to live on 2026-10-12 (`39f7339`) together with the map; checked there read-only: 6 drivers, all holding legs one to four weeks old that were never closed, so all six read «معاه مهمة» · late · «الإشارة مقطوعة» until those legs are dealt with; no zone is drawn on live yet, so the map shows no outlines.
 
 ### Feature
 
