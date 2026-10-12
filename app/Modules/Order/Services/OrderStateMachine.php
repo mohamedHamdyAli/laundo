@@ -2,6 +2,7 @@
 
 namespace App\Modules\Order\Services;
 
+use App\Modules\Loyalty\Services\OrderPoints;
 use App\Modules\Notification\Services\OrderNotifier;
 use App\Modules\Order\Enums\OrderStatus;
 use App\Modules\Order\Enums\TaskStatus;
@@ -188,12 +189,20 @@ class OrderStateMachine
             $earnings->releaseFor($order);
             $settlements->settleFor($order);
 
+            // «مقابل كل أوردر 10 نقاط» — paid when the order is, once.
+            app(OrderPoints::class)->earn($order);
+
             return;
         }
 
         if ($to === OrderStatus::Cancelled || $to === OrderStatus::Returned) {
             $earnings->cancelFor($order);
             $settlements->cancelFor($order);
+
+            // Every point the order spent comes back. Here rather than in the
+            // customer's cancel, so a cancellation from the panel and a
+            // returned order give them back too.
+            app(OrderPoints::class)->giveAllBack($order);
         }
     }
 

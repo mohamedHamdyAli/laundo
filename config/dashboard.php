@@ -24,6 +24,7 @@ use App\Modules\LaundryService\Models\LaundryService;
 use App\Modules\LaundryService\Models\LaundryServiceRequest;
 use App\Modules\LaundryStaff\Models\LaundryStaff;
 use App\Modules\LaundryZone\Models\LaundryZone;
+use App\Modules\Loyalty\Models\PointAccount;
 use App\Modules\Moderator\Models\Moderator;
 use App\Modules\Notification\Models\NotificationLog;
 use App\Modules\Offer\Models\Offer;
@@ -91,6 +92,9 @@ return [
         JourneyStep::class,
         Refund::class,
         Wallet::class,
+        // «نقاط العملاء» — every customer's points. Its own permission, so the
+        // ledgers and a correction by hand are granted on purpose.
+        PointAccount::class,
         NotificationLog::class,
         Report::class,
         OrderRecurrence::class,

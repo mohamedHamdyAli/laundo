@@ -1,7 +1,7 @@
 [
     {
         "name": "Address",
-        "community": "order",
+        "community": "quality",
         "path": "app/Modules/Address",
         "layers": {
             "model": 1
@@ -38,7 +38,7 @@
         },
         "depended_on_by": {
             "Order": 11,
-            "Tests": 10,
+            "Tests": 11,
             "Zone": 7,
             "Api": 3,
             "User": 1,
@@ -156,10 +156,10 @@
         "community": "api",
         "path": null,
         "layers": {
-            "api-controller": 23
+            "api-controller": 24
         },
-        "files": 23,
-        "lines": 5347,
+        "files": 24,
+        "lines": 5518,
         "classes": [
             {
                 "fqcn": "App\\Http\\Controllers\\Api\\V1\\AddressController",
@@ -270,6 +270,12 @@
                 "summary": "Paying for an order."
             },
             {
+                "fqcn": "App\\Http\\Controllers\\Api\\V1\\PointsController",
+                "layer": "api-controller",
+                "path": "app/Http/Controllers/Api/V1/PointsController.php",
+                "summary": "«نقاطي»."
+            },
+            {
                 "fqcn": "App\\Http\\Controllers\\Api\\V1\\ProfileController",
                 "layer": "api-controller",
                 "path": "app/Http/Controllers/Api/V1/ProfileController.php",
@@ -323,6 +329,7 @@
             "notification_preferences",
             "order_media",
             "payments",
+            "point_transactions",
             "order_recurrences",
             "recurrence_prompts",
             "coupon_redemptions",
@@ -419,6 +426,8 @@
             "api.v1.payment-methods",
             "api.v1.payments.webhook",
             "api.v1.ping",
+            "api.v1.points",
+            "api.v1.points.transactions",
             "api.v1.profile.destroy",
             "api.v1.profile.password",
             "api.v1.profile.show",
@@ -446,10 +455,11 @@
         "tests": [],
         "summary": "A customer's saved addresses.",
         "depends_on": {
-            "Platform": 69,
-            "Order": 55,
+            "Platform": 71,
+            "Order": 57,
             "Payment": 17,
             "TimeSlot": 12,
+            "Loyalty": 11,
             "Driver": 10,
             "Auth": 8,
             "Coupon": 8,
@@ -471,7 +481,7 @@
             "Setting": 1
         },
         "depended_on_by": {
-            "Routing": 22,
+            "Routing": 23,
             "Tests": 1
         }
     },
@@ -1065,7 +1075,7 @@
             "ItemCategory": 2
         },
         "depended_on_by": {
-            "Tests": 17,
+            "Tests": 19,
             "Api": 8,
             "Order": 7,
             "Platform": 6,
@@ -1081,11 +1091,11 @@
         "community": "database",
         "path": null,
         "layers": {
-            "migration": 115,
+            "migration": 119,
             "seeder": 11
         },
-        "files": 126,
-        "lines": 7590,
+        "files": 130,
+        "lines": 7824,
         "classes": [
             {
                 "fqcn": "Database\\Seeders\\AdminUserSeeder",
@@ -1214,10 +1224,10 @@
         "community": "quality",
         "path": null,
         "layers": {
-            "doc": 13
+            "doc": 15
         },
-        "files": 13,
-        "lines": 11155,
+        "files": 15,
+        "lines": 11626,
         "classes": [],
         "models": [],
         "owns_tables": [],
@@ -2450,6 +2460,133 @@
         }
     },
     {
+        "name": "Loyalty",
+        "community": "money",
+        "path": "app/Modules/Loyalty",
+        "layers": {
+            "service": 4,
+            "model": 3,
+            "view": 3,
+            "command": 1,
+            "controller": 1,
+            "enum": 1,
+            "repository": 1
+        },
+        "files": 14,
+        "lines": 2273,
+        "classes": [
+            {
+                "fqcn": "App\\Modules\\Loyalty\\Controllers\\PointAccountController",
+                "layer": "controller",
+                "path": "app/Modules/Loyalty/Controllers/PointAccountController.php",
+                "summary": "«نقاط العملاء» — every customer's points, their ledger, and a correction by hand. HTTP only: the service does the rest."
+            },
+            {
+                "fqcn": "App\\Modules\\Loyalty\\Services\\OrderPoints",
+                "layer": "service",
+                "path": "app/Modules/Loyalty/Services/OrderPoints.php",
+                "summary": "Where an order and a customer's points meet."
+            },
+            {
+                "fqcn": "App\\Modules\\Loyalty\\Services\\PointsPolicy",
+                "layer": "service",
+                "path": "app/Modules/Loyalty/Services/PointsPolicy.php",
+                "summary": "The points programme's terms, as the owner set them on the settings screen."
+            },
+            {
+                "fqcn": "App\\Modules\\Loyalty\\Services\\PointsService",
+                "layer": "service",
+                "path": "app/Modules/Loyalty/Services/PointsService.php",
+                "summary": "The only thing that may change a customer's points."
+            },
+            {
+                "fqcn": "App\\Modules\\Loyalty\\Services\\pointAccountCrudService",
+                "layer": "service",
+                "path": "app/Modules/Loyalty/Services/pointAccountCrudService.php",
+                "summary": "«نقاط العملاء» — every customer's points, for operations."
+            },
+            {
+                "fqcn": "App\\Modules\\Loyalty\\Repositories\\PointAccountRepository",
+                "layer": "repository",
+                "path": "app/Modules/Loyalty/Repositories/PointAccountRepository.php",
+                "summary": "The queries behind «نقاط العملاء»."
+            },
+            {
+                "fqcn": "App\\Modules\\Loyalty\\Models\\PointAccount",
+                "layer": "model",
+                "path": "app/Modules/Loyalty/Models/PointAccount.php",
+                "summary": "A customer's points — «نقاط العملاء»."
+            },
+            {
+                "fqcn": "App\\Modules\\Loyalty\\Models\\PointLotSpend",
+                "layer": "model",
+                "path": "app/Modules/Loyalty/Models/PointLotSpend.php",
+                "summary": "«45 of the points spent on order 10244 came from the lot earned on order 10190.»"
+            },
+            {
+                "fqcn": "App\\Modules\\Loyalty\\Models\\PointTransaction",
+                "layer": "model",
+                "path": "app/Modules/Loyalty/Models/PointTransaction.php",
+                "summary": "One movement of points — and, when it is a credit, a lot."
+            },
+            {
+                "fqcn": "App\\Modules\\Loyalty\\Enums\\PointReason",
+                "layer": "enum",
+                "path": "app/Modules/Loyalty/Enums/PointReason.php",
+                "summary": "Why points moved."
+            },
+            {
+                "fqcn": "App\\Modules\\Loyalty\\Console\\ExpirePoints",
+                "layer": "command",
+                "path": "app/Modules/Loyalty/Console/ExpirePoints.php",
+                "summary": "Points that have reached their expiry, written off — and points about to, announced."
+            }
+        ],
+        "models": [
+            "App\\Modules\\Loyalty\\Models\\PointAccount",
+            "App\\Modules\\Loyalty\\Models\\PointLotSpend",
+            "App\\Modules\\Loyalty\\Models\\PointTransaction"
+        ],
+        "owns_tables": [
+            "point_accounts",
+            "point_lot_spends",
+            "point_transactions"
+        ],
+        "reads_tables": [
+            "roles",
+            "users",
+            "orders",
+            "order_tasks"
+        ],
+        "routes": [
+            "admin.point_account.adjust",
+            "admin.point_account.index",
+            "admin.point_account.search",
+            "admin.point_account.show"
+        ],
+        "permissions": [
+            "point_account.update",
+            "point_account.view"
+        ],
+        "tests": [],
+        "summary": "Where an order and a customer's points meet.",
+        "depends_on": {
+            "User": 11,
+            "Platform": 9,
+            "Order": 6,
+            "Notification": 3
+        },
+        "depended_on_by": {
+            "Tests": 15,
+            "Order": 12,
+            "Api": 11,
+            "Platform": 6,
+            "Notification": 4,
+            "Report": 3,
+            "Routing": 1
+        }
+    },
+    {
         "name": "Moderator",
         "community": "system",
         "path": "app/Modules/Moderator",
@@ -2540,7 +2677,7 @@
         "community": "system",
         "path": "app/Modules/Notification",
         "layers": {
-            "service": 13,
+            "service": 14,
             "model": 3,
             "view": 3,
             "command": 2,
@@ -2551,8 +2688,8 @@
             "request": 1,
             "notification": 1
         },
-        "files": 29,
-        "lines": 3239,
+        "files": 30,
+        "lines": 3337,
         "classes": [
             {
                 "fqcn": "App\\Modules\\Notification\\Controllers\\NotificationComposeController",
@@ -2625,6 +2762,12 @@
                 "layer": "service",
                 "path": "app/Modules/Notification/Services/PieceCountNotifier.php",
                 "summary": "Two counts of the same pieces disagreed — a driver at a handover, or the laundry at its review."
+            },
+            {
+                "fqcn": "App\\Modules\\Notification\\Services\\PointsNotifier",
+                "layer": "service",
+                "path": "app/Modules/Notification/Services/PointsNotifier.php",
+                "summary": "«كسبت 10 نقاط» and «عندك 30 نقطة هتنتهي يوم …»."
             },
             {
                 "fqcn": "App\\Services\\Push\\FcmPushDriver",
@@ -2730,6 +2873,7 @@
             "laundries",
             "laundry_service_requests",
             "piece_discrepancies",
+            "point_transactions",
             "order_price_queries",
             "recurrence_prompts",
             "refunds"
@@ -2747,20 +2891,22 @@
         "tests": [],
         "summary": "Work waiting for a person because automatic assignment is switched off.",
         "depends_on": {
-            "User": 21,
+            "User": 23,
             "Order": 15,
             "Platform": 11,
             "Laundry": 5,
             "Driver": 4,
+            "Loyalty": 4,
             "LaundryService": 2,
             "Payment": 1
         },
         "depended_on_by": {
-            "Tests": 64,
+            "Tests": 68,
             "Order": 16,
             "Platform": 10,
             "Driver": 8,
             "Api": 6,
+            "Loyalty": 3,
             "Complaint": 3,
             "LaundryService": 2,
             "Moderator": 2,
@@ -2883,7 +3029,7 @@
             "request": 1
         },
         "files": 63,
-        "lines": 12860,
+        "lines": 13130,
         "classes": [
             {
                 "fqcn": "App\\Modules\\Order\\Controllers\\DispatchController",
@@ -3269,6 +3415,7 @@
             "Pricing": 14,
             "Routing": 12,
             "Service": 12,
+            "Loyalty": 12,
             "Address": 11,
             "Driver": 9,
             "Coupon": 7,
@@ -3280,8 +3427,8 @@
             "Wallet": 1
         },
         "depended_on_by": {
-            "Tests": 423,
-            "Api": 55,
+            "Tests": 433,
+            "Api": 57,
             "Report": 40,
             "Driver": 34,
             "Payment": 27,
@@ -3289,6 +3436,7 @@
             "Notification": 15,
             "Database": 13,
             "Coupon": 7,
+            "Loyalty": 6,
             "Recurrence": 5,
             "Routing": 5,
             "Complaint": 4,
@@ -3318,7 +3466,7 @@
             "gateway": 1
         },
         "files": 54,
-        "lines": 6700,
+        "lines": 6742,
         "classes": [
             {
                 "fqcn": "App\\Modules\\Payment\\Controllers\\CommissionRuleController",
@@ -3621,7 +3769,7 @@
             "Notification": 1
         },
         "depended_on_by": {
-            "Tests": 80,
+            "Tests": 81,
             "Platform": 30,
             "Api": 17,
             "Order": 15,
@@ -3638,7 +3786,7 @@
         "path": null,
         "layers": {
             "view": 63,
-            "support": 44,
+            "support": 45,
             "config": 20,
             "request": 15,
             "service": 9,
@@ -3652,8 +3800,8 @@
             "view-component": 3,
             "mail": 2
         },
-        "files": 187,
-        "lines": 19805,
+        "files": 188,
+        "lines": 19925,
         "classes": [
             {
                 "fqcn": "App\\Http\\Controllers\\Controller",
@@ -4190,6 +4338,12 @@
                 "summary": "«المدفوعات» — every payment, export only. A payment typed into a spreadsheet is a ledger entry nobody made."
             },
             {
+                "fqcn": "App\\Support\\Spreadsheet\\Sheets\\PointAccountSheet",
+                "layer": "support",
+                "path": "app/Support/Spreadsheet/Sheets/PointAccountSheet.php",
+                "summary": "«نقاط العملاء» — every customer's points, export only. A balance is never edited directly, and a spreadsheet is no exception."
+            },
+            {
                 "fqcn": "App\\Support\\Spreadsheet\\Sheets\\RefundSheet",
                 "layer": "support",
                 "path": "app/Support/Spreadsheet/Sheets/RefundSheet.php",
@@ -4308,6 +4462,7 @@
             "order_price_queries",
             "order_tasks",
             "payments",
+            "point_accounts",
             "refunds",
             "time_slots",
             "wallets",
@@ -4318,6 +4473,7 @@
             "driver_bonus_tiers",
             "order_settlement_lines",
             "addresses",
+            "point_lot_spends",
             "order_status_logs",
             "price_change_items",
             "banners",
@@ -4372,6 +4528,7 @@
             "Complaint": 6,
             "Coupon": 6,
             "Pricing": 6,
+            "Loyalty": 6,
             "LaundryService": 5,
             "Offer": 5,
             "Report": 4,
@@ -4389,8 +4546,8 @@
             "LaundryZone": 1
         },
         "depended_on_by": {
-            "Tests": 97,
-            "Api": 69,
+            "Tests": 100,
+            "Api": 71,
             "Payment": 46,
             "Driver": 38,
             "Order": 37,
@@ -4405,6 +4562,7 @@
             "Notification": 11,
             "User": 11,
             "Country": 10,
+            "Loyalty": 9,
             "Banner": 8,
             "City": 8,
             "Coupon": 8,
@@ -4640,7 +4798,7 @@
             "data": 1
         },
         "files": 23,
-        "lines": 3938,
+        "lines": 3988,
         "classes": [
             {
                 "fqcn": "App\\Modules\\Report\\Controllers\\FinanceController",
@@ -4750,7 +4908,8 @@
             "refunds",
             "wallets",
             "roles",
-            "order_status_logs"
+            "order_status_logs",
+            "point_transactions"
         ],
         "routes": [
             "admin.finance.index",
@@ -4774,6 +4933,7 @@
             "Payment": 12,
             "Laundry": 5,
             "User": 5,
+            "Loyalty": 3,
             "Complaint": 2,
             "Service": 2,
             "Notification": 2,
@@ -4814,7 +4974,7 @@
             "routes": 3
         },
         "files": 9,
-        "lines": 2559,
+        "lines": 2604,
         "classes": [
             {
                 "fqcn": "App\\Services\\Routing\\Coordinate",
@@ -4861,7 +5021,7 @@
         "tests": [],
         "summary": "A point on the map, and the only thing a router is allowed to be given.",
         "depends_on": {
-            "Api": 22,
+            "Api": 23,
             "Driver": 6,
             "Payment": 6,
             "AdminShell": 5,
@@ -4884,6 +5044,7 @@
             "JourneyStep": 1,
             "LaundryStaff": 1,
             "LaundryZone": 1,
+            "Loyalty": 1,
             "Moderator": 1,
             "Offer": 1,
             "Pricing": 1,
@@ -5010,7 +5171,7 @@
             "service": 1
         },
         "files": 11,
-        "lines": 1821,
+        "lines": 2000,
         "classes": [
             {
                 "fqcn": "App\\Modules\\Setting\\Controllers\\SettingController",
@@ -5065,7 +5226,7 @@
             "Platform": 6
         },
         "depended_on_by": {
-            "Tests": 36,
+            "Tests": 39,
             "Platform": 6,
             "Database": 4,
             "Api": 1,
@@ -5078,11 +5239,11 @@
         "community": "quality",
         "path": null,
         "layers": {
-            "test": 134,
+            "test": 136,
             "browser-test": 26
         },
-        "files": 160,
-        "lines": 51770,
+        "files": 162,
+        "lines": 53074,
         "classes": [
             {
                 "fqcn": "Tests\\Feature\\Api\\AddressIdDisclosureTest",
@@ -5203,6 +5364,12 @@
                 "layer": "test",
                 "path": "tests/Feature/Api/LiveTrackingTest.php",
                 "summary": "«تتبع المندوب مباشرة» — the moving dot."
+            },
+            {
+                "fqcn": "Tests\\Feature\\Api\\LoyaltyPointsTest",
+                "layer": "test",
+                "path": "tests/Feature/Api/LoyaltyPointsTest.php",
+                "summary": "«النقاط» — earned per order and per hanger, spent as a discount, lapsing on the owner's schedule."
             },
             {
                 "fqcn": "Tests\\Feature\\Api\\NotificationTest",
@@ -5643,6 +5810,12 @@
                 "summary": "The platform's own charge, carried by the customer."
             },
             {
+                "fqcn": "Tests\\Feature\\Dashboard\\PointAccountDashboardTest",
+                "layer": "test",
+                "path": "tests/Feature/Dashboard/PointAccountDashboardTest.php",
+                "summary": "«نقاط العملاء» on the panel, and the «النقاط» tab on the settings screen."
+            },
+            {
                 "fqcn": "Tests\\Feature\\Dashboard\\PriceIncreaseTest",
                 "layer": "test",
                 "path": "tests/Feature/Dashboard/PriceIncreaseTest.php",
@@ -5911,6 +6084,8 @@
             "faqs",
             "driver_record_submissions",
             "order_ratings",
+            "point_accounts",
+            "point_transactions",
             "device_tokens",
             "notification_preferences",
             "order_settlements",
@@ -5998,6 +6173,7 @@
             "tests/Feature/Api/FaqTest.php",
             "tests/Feature/Api/FigmaGapsTest.php",
             "tests/Feature/Api/LiveTrackingTest.php",
+            "tests/Feature/Api/LoyaltyPointsTest.php",
             "tests/Feature/Api/NotificationTest.php",
             "tests/Feature/Api/OrderComplaintFlagTest.php",
             "tests/Feature/Api/OrderLifecycleCompletionTest.php",
@@ -6071,6 +6247,7 @@
             "tests/Feature/Dashboard/PaymentLedgerTest.php",
             "tests/Feature/Dashboard/PieceCheckTest.php",
             "tests/Feature/Dashboard/PlatformFeeTest.php",
+            "tests/Feature/Dashboard/PointAccountDashboardTest.php",
             "tests/Feature/Dashboard/PriceIncreaseTest.php",
             "tests/Feature/Dashboard/QuotePricedReviewTest.php",
             "tests/Feature/Dashboard/RatingDashboardTest.php",
@@ -6115,24 +6292,25 @@
         ],
         "summary": "",
         "depends_on": {
-            "Order": 423,
-            "Platform": 97,
-            "User": 95,
-            "Payment": 80,
-            "Notification": 64,
+            "Order": 433,
+            "Platform": 100,
+            "User": 98,
+            "Payment": 81,
+            "Notification": 68,
             "Driver": 62,
             "Wallet": 46,
-            "Setting": 36,
+            "Setting": 39,
             "Laundry": 30,
             "Pricing": 22,
             "Complaint": 21,
             "TimeSlot": 19,
+            "Coupon": 19,
             "Zone": 18,
-            "Coupon": 17,
             "Report": 17,
+            "Loyalty": 15,
             "Service": 15,
             "City": 13,
-            "Address": 10,
+            "Address": 11,
             "Database": 9,
             "Routing": 8,
             "ItemCategory": 7,
@@ -6267,7 +6445,7 @@
             "request": 1
         },
         "files": 13,
-        "lines": 971,
+        "lines": 983,
         "classes": [
             {
                 "fqcn": "App\\Modules\\User\\Controllers\\UserController",
@@ -6347,11 +6525,12 @@
             "Laundry": 1
         },
         "depended_on_by": {
-            "Tests": 95,
+            "Tests": 98,
             "Order": 25,
-            "Notification": 21,
+            "Notification": 23,
             "Payment": 13,
             "Driver": 11,
+            "Loyalty": 11,
             "Auth": 9,
             "Platform": 9,
             "Wallet": 6,

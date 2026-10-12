@@ -2536,3 +2536,21 @@ above the green line said otherwise.
 **Rule:** a revert-to-prove script prints a marker after its write
 (`print('BROKEN-WRITTEN')`), and the failing run is read only when the marker is
 there. A green result from a revert you did not see land is no result.
+
+## 2026-10-12 — a row lock plus plain reads is not a lock
+
+`PointsService` took `lockForUpdate()` on the customer's points account and then
+read the lots, and `refresh()`ed the balance, with plain queries. At MySQL's
+REPEATABLE READ a plain SELECT returns the transaction's **snapshot**, fixed at
+its first read — and a checkout fixes it in `Order::generateCode()`, before it
+ever asks for the lock. So the second of two parallel checkouts waited for the
+lock, then read the points the first had just spent as still there, and spent
+them again. Every test was green: the suite runs on SQLite, which serializes
+writers and has no such snapshot. Found by `/security-review`, then reproduced
+on the development MySQL with two connections before anything was changed.
+
+**Rule:** under a row lock, every read a decision or a write depends on is a
+locking read, and the write is made from the row the lock returned — never
+`refresh()`, never a plain re-read. (`WalletService::move()` was already right:
+it decides on `$locked`.) A race on MySQL is proved on MySQL — two connections,
+one with its snapshot fixed first — not on the suite.

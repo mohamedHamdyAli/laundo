@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\V1;
 use App\Http\Controllers\Controller;
 use App\Modules\Address\Models\Address;
 use App\Modules\Driver\Models\Driver;
+use App\Modules\Loyalty\Services\PointsPolicy;
 use App\Modules\Order\Enums\TaskFailureReason;
 use App\Modules\Order\Enums\TaskStatus;
 use App\Modules\Order\Enums\TaskType;
@@ -31,7 +32,10 @@ use RuntimeException;
  */
 class DriverTaskController extends Controller
 {
-    public function __construct(private readonly TaskService $tasks) {}
+    public function __construct(
+        private readonly TaskService $tasks,
+        private readonly PointsPolicy $points,
+    ) {}
 
     /**
      * «قائمة المهام», with the design's two filter rows.
@@ -261,6 +265,10 @@ class DriverTaskController extends Controller
             'piece_count' => ['nullable', 'integer', 'min:0', 'max:999'],
             'receiver_name' => ['nullable', 'string', 'max:191'],
             'collected_amount' => ['nullable', 'numeric', 'min:0'],
+            // «شماعات راجعة» — on the two legs at the customer's door. The
+            // ceiling a visit may be credited for is the service's to enforce
+            // (`Max_Hangers_Per_Visit`), with its own message.
+            'hangers_returned' => ['nullable', 'integer', 'min:0', 'max:999'],
             'note' => ['nullable', 'string', 'max:1000'],
             'signature' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
             'photos' => ['nullable', 'array', 'max:5'],
@@ -271,7 +279,7 @@ class DriverTaskController extends Controller
             $task = $this->tasks->complete(
                 $task,
                 $this->driver($request),
-                $request->only(['piece_count', 'receiver_name', 'collected_amount', 'note']),
+                $request->only(['piece_count', 'receiver_name', 'collected_amount', 'hangers_returned', 'note']),
                 (array) $request->file('photos', []),
                 $request->file('signature'),
             );
@@ -607,6 +615,12 @@ class DriverTaskController extends Controller
             'requires_signature' => $type->requiresSignature(),
             'requires_piece_count' => $type->countsPieces(),
             'collects_payment' => $type->collectsPayment(),
+            // «شماعات راجعة (اختياري)» — asked at the customer's door while the
+            // points programme is on; each hanger earns the customer points.
+            'accepts_hangers' => $type->takesHangers() && $this->points->enabled() && $this->points->maxHangersPerVisit() > 0,
+            // Always the integer ceiling — a setting, not a property of the leg.
+            'max_hangers' => $this->points->maxHangersPerVisit(),
+            'hangers_returned' => $task->hangers_returned,
 
             'service' => $order?->service ? getLocalizedValue($order->service, 'name') : null,
             'contact' => $atCustomer
@@ -859,6 +873,10 @@ class DriverTaskController extends Controller
             'collected_amount_required' => failReturnValidation(
                 ['collected_amount' => [__('Enter the amount you collected from the customer (0 if nothing was paid).')]],
                 __('Enter the amount you collected from the customer (0 if nothing was paid).')
+            ),
+            'hangers_too_many' => failReturnValidation(
+                ['hangers_returned' => [__('One visit can record up to :max hangers.', ['max' => $this->points->maxHangersPerVisit()])]],
+                __('One visit can record up to :max hangers.', ['max' => $this->points->maxHangersPerVisit()])
             ),
             'collected_amount_too_high' => failReturnValidation(
                 ['collected_amount' => [__('The amount is more than the customer owes.')]],

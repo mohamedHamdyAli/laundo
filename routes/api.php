@@ -17,6 +17,7 @@ use App\Http\Controllers\Api\V1\OrderController;
 use App\Http\Controllers\Api\V1\OrderRatingController;
 use App\Http\Controllers\Api\V1\OrderReviewController;
 use App\Http\Controllers\Api\V1\PaymentController;
+use App\Http\Controllers\Api\V1\PointsController;
 use App\Http\Controllers\Api\V1\ProfileController;
 use App\Http\Controllers\Api\V1\RecurrenceController;
 use App\Http\Controllers\Api\V1\ReferralController;
@@ -315,6 +316,17 @@ Route::middleware('auth:sanctum')->group(function () {
         ->name('api.v1.wallet.transactions');
     Route::post('/wallet/top-up', [WalletController::class, 'topUp'])->name('api.v1.wallet.top-up');
     Route::post('/wallet/withdraw', [WalletController::class, 'withdraw'])->name('api.v1.wallet.withdraw');
+
+    /*
+    | «نقاطي» — the points balance and its history.
+    |
+    | Reached through the customer, like the wallet. Read-only: points are
+    | spent at checkout (`use_points` on the quote and the order) and earned by
+    | orders and hangers, never through an endpoint of their own.
+    */
+    Route::get('/points', [PointsController::class, 'show'])->name('api.v1.points');
+    Route::get('/points/transactions', [PointsController::class, 'transactions'])
+        ->name('api.v1.points.transactions');
 
     /*
     | Notifications.

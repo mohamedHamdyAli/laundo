@@ -3,6 +3,7 @@
 namespace App\Modules\Order\Services;
 
 use App\Modules\Driver\Models\Driver;
+use App\Modules\Loyalty\Services\OrderPoints;
 use App\Modules\Notification\Data\NotificationMessage;
 use App\Modules\Notification\Enums\NotificationEvent;
 use App\Modules\Notification\Services\NotificationDispatcher;
@@ -45,6 +46,7 @@ class TaskService
         private readonly PieceCheck $pieceCheck,
         private readonly PieceCountNotifier $pieceNotifier,
         private readonly OrderRepository $orders,
+        private readonly OrderPoints $points,
     ) {}
 
     /**
@@ -101,7 +103,7 @@ class TaskService
     /**
      * «تأكيد» — the leg is done.
      *
-     * @param  array{piece_count?: int|null, receiver_name?: string|null, collected_amount?: float|null, note?: string|null}  $data
+     * @param  array{piece_count?: int|null, receiver_name?: string|null, collected_amount?: float|null, hangers_returned?: int|null, note?: string|null}  $data
      * @param  array<int, UploadedFile>  $photos
      */
     public function complete(
@@ -143,9 +145,20 @@ class TaskService
             throw new RuntimeException('piece_count_required');
         }
 
+        // «شماعات راجعة» — only at the customer's door, and never more than a
+        // visit may be credited for. Ignored on the laundry legs, the way
+        // `receiver_name` is ignored where nobody signs.
+        $hangers = $type->takesHangers() && isset($data['hangers_returned'])
+            ? (int) $data['hangers_returned']
+            : null;
+
+        if ($hangers !== null && ($hangers < 0 || $hangers > $this->points->hangersAllowed())) {
+            throw new RuntimeException('hangers_too_many');
+        }
+
         $raised = [];
 
-        $completed = DB::transaction(function () use ($task, $driver, $data, $photos, $signature, $type, &$raised) {
+        $completed = DB::transaction(function () use ($task, $driver, $data, $photos, $signature, $type, $hangers, &$raised) {
             // Re-checked under a row lock: the same «تأكيد» sent twice at once —
             // a double tap, a retry on a slow line — would otherwise pass the
             // check above twice and complete the leg twice, its earnings and
@@ -188,7 +201,18 @@ class TaskService
                 $update['collected_amount'] = round((float) $data['collected_amount'], 2);
             }
 
+            if ($hangers !== null) {
+                $update['hangers_returned'] = $hangers;
+            }
+
             $task->update($update);
+
+            // Credited now, with the leg — the owner's call. Keyed on the leg,
+            // so the row lock above and the ledger's key both stand between a
+            // double «تأكيد» and points paid twice.
+            if ($hangers !== null && $hangers > 0) {
+                $this->points->earnForHangers($task->refresh());
+            }
 
             // In the handover's own transaction: a leg recorded without the
             // disagreement it raised would be a mismatch nobody is ever asked

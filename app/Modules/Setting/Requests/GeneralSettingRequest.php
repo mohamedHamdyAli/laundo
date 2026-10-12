@@ -154,6 +154,28 @@ class GeneralSettingRequest extends FormRequest
                 'Delivery_Window_Days' => 'nullable|integer|min:1|max:365',
                 // SlotClock: minutes before a window's end it stops being bookable.
                 'Slot_Booking_Cutoff_Minutes' => 'nullable|integer|min:0|max:720',
+
+                /*
+                 * «النقاط» — every figure of the points programme, read by
+                 * `PointsPolicy` and nowhere else. Blank means the owner's
+                 * figures (ten an order, a point a pound, a point a hanger);
+                 * the switch alone is off until it is turned on. Each ceiling
+                 * is the policy's clamp, so the form refuses what the policy
+                 * would quietly cut.
+                 */
+                'Points_Enabled' => 'nullable|in:0,1',
+                'Points_Per_Order' => 'nullable|integer|min:0|max:10000',
+                // Never zero: a point worth nothing spends a balance for nothing.
+                'Point_Value' => 'nullable|numeric|min:0.01|max:1000',
+                'Points_Per_Hanger' => 'nullable|integer|min:0|max:1000',
+                'Max_Hangers_Per_Visit' => 'nullable|integer|min:0|max:999',
+                'Points_Min_Redeem' => 'nullable|integer|min:0|max:1000000',
+                'Points_Max_Redeem_Percent' => 'nullable|numeric|min:0|max:100',
+                'Points_Min_Order_To_Earn' => 'nullable|numeric|min:0|max:100000',
+                // Blank is «never». Stamped on each lot when it is earned, so
+                // changing it moves only the points earned afterwards.
+                'Points_Expiry_Days' => 'nullable|integer|min:1|max:3650',
+                'Points_Expiry_Warning_Days' => 'nullable|integer|min:0|max:365',
             ];
         } elseif (Route::is('admin.generalSetting.updatePrivacyAndTerms')) {
             $rules = [

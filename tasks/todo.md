@@ -1,3 +1,104 @@
+# Loyalty points «النقاط» (asked 2026-10-12) — built, under review
+
+«هتكون عبارة عن نقاط و يقدر يستخدمها لعمل خصم على الأوردر بحيث يكون مقابل كل
+أوردر 10 نقاط و النقطة تساوي واحد جنيه، و برضو لو رجع مع المندوب شماعات يكون له
+عن كل شماعة نقطه … عاوزين نخليها بالكامل ديناميك».
+
+Today there is nothing: no points, and no hanger is counted anywhere. The wallet
+is money (top-ups, refunds, payouts) and stays money — points are their own
+ledger and never become wallet balance.
+
+Owner's decisions (2026-10-12):
+- A points discount is **the platform's, all of it** — the laundry's share is
+  worked out as if there were no points.
+- Points **may sit beside a coupon or an offer** — they are the customer's own
+  balance, not a promotion; they come off what is left after the coupon.
+- Hangers are recorded on **both doorstep legs** (pickup and delivery) and the
+  points are **credited the moment the leg completes**, capped per visit.
+- Points **expire** after a number of days set in the settings.
+
+Defaults not asked: points come off the washing only (never the delivery fee,
+the cash surcharge or the tax); a quoted service has no priced pieces at
+checkout, so points cannot be used on it in v1; per-order points are credited
+at `Completed` only; nothing is retroactive; the app sends `use_points` (use as
+many as allowed), not a number; points spent are taken **oldest expiry first**;
+points returned by a cancelled order go back with their original expiry, or —
+if that has passed meanwhile — with the time they had left when they were
+spent (the customer did not choose to lose them; changed after the review from
+«a fresh expiry», which let cancelling an order renew points for ever).
+
+Changed from the plan while building: `point_accounts` (one row per customer,
+like `wallets`) instead of a `users.points_balance` column; the permission is
+`point_account.*` (the model's name), not `loyalty_point.*`; the unique key is
+a `dedupe_key` column (portable) rather than reason + source; no block on
+`/app-settings` — `GET /points` carries the rules.
+
+Phase 1 — the ledger (new module `app/Modules/Loyalty/`)
+- [x] Migrations `2026_10_12_100000` (`point_accounts`, `point_transactions` —
+      lots with `remaining` / `expires_at` / `expiry_warned_at`, `reverses_id`,
+      `dedupe_key` — `point_lot_spends`) and `2026_10_12_100100` (order, task
+      and settlement columns).
+- [x] `PointReason`; `PointsService` (credit / debit / giveBack / expireDue,
+      under the account lock, soonest-expiry first); `PointsPolicy`.
+
+Phase 2 — the settings
+- [x] «النقاط» tab, ten `Points_*` settings, rules + Arabic names, hidden-0
+      switch, off until switched on.
+- [x] `loyalty:expire-points` daily 10:00 Cairo: write-off + reminder once per lot.
+
+Phase 3–5 — the order
+- [x] `OrderPoints`: spend at `place()` (`points_changed`), cap at the review,
+      earn at `Completed`, give back at `Cancelled` / `Returned`, hangers at
+      `TaskService::complete()`. `compose()` takes the points discount as a
+      required argument. Settlement leaves the laundry's share whole.
+- [x] «خصم النقاط» in `moneyRows()` (order screen + invoice), the review
+      preview, the order payload; hangers on the trip rows.
+
+Phase 6 — the panel
+- [x] «نقاط العملاء» (`point_account.view` / `.update`): list with SQL
+      reconciliation, search, Excel export, ledger, correction with a note,
+      refused inside a laundry. Customer screen link. «ملخص الماليات».
+
+Phase 7 — the apps
+- [x] `GET /points`, `GET /points/transactions`, `use_points`, order detail
+      `points`, driver `hangers_returned` / `accepts_hangers` / `max_hangers`.
+- [x] Postman, `generate-reference.py`, `docs/mobile-2026-10-12-loyalty-points.md`,
+      `mobile-api-changes.md`.
+
+Phase 8 — proof
+- [x] `LoyaltyPointsTest` (37), `PointAccountDashboardTest` (12), translation
+      coverage, validation names.
+- [x] Walked the dev DB in a rolled-back transaction (`walk_points.php`): 12
+      checks green after one fix — **a settlement's `commission_rate` overflowed
+      decimal(5,2)** when points paid for nearly all the washing (basis 0.55,
+      platform −43.90 → −7,981.82%); MySQL refused the insert and the order
+      could not have been confirmed. The column is now decimal(12,2)
+      (`2026_10_12_100200`), re-walked green.
+- [x] CLAUDE.md, architecture.md, QA guide + PDF, Changelog, brain.
+- [x] `/code-review` (9): fixed — renewal by spend-and-cancel (paused clock),
+      «أسعار المغسلة» without the points, promise under the earn minimum,
+      decimal(5,2) `commission_rate` (widened, not clamped), `per_page` < 1,
+      double reminder after a return, the debit comment, a delivery-covering
+      coupon shrinking the points' room. Not changed: «expired this month» is a
+      UTC month, like every other figure on the page (known rough edge).
+- [x] `/security-review` (1, confirmed 8/10): **two parallel checkouts could
+      spend the same points** — plain reads after the account lock saw the
+      REPEATABLE READ snapshot. Reproduced on MySQL, fixed (locking reads, writes
+      from the locked row, `giveBack($spend, $keep)`), re-verified on MySQL in
+      five interleavings (`race_probe.php`, `race_probe2.php`), every probe row
+      deleted by primary key.
+- [x] Six-lens review workflow (ultracode). Run twice; both times the account's
+      session limit killed most agents (second run: 8 of 72 finished, the
+      ledger lens never did). The 22 unverified findings (15 distinct) were
+      checked by hand against the code and all fixed with tests — see the
+      Changelog. The ledger lens was covered by the MySQL probes instead.
+- [x] Full suite after the review fixes.
+- [x] Full suite green: 2006 tests, 8211 assertions (578 s), after every fix above.
+- [x] QC note `docs/qc-2026-10-12-loyalty-points.html` + `.pdf`; the mobile note has a per-team checklist.
+
+Before switching the programme on (the owner): set `Points_Expiry_Days`
+**first** — a lot earned while it is blank never expires.
+
 # Zones drawn on the map (asked 2026-09-28)
 
 «العميل محتاج يعمل زون تتحدد ف المكان زي رسمه بحدد نطاق المكان دا علي الخريطه».

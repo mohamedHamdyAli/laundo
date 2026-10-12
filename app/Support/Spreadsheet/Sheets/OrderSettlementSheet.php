@@ -69,6 +69,7 @@ class OrderSettlementSheet extends Sheet
             Column::make('laundry_amount'),
             Column::make('discount_amount'),
             Column::make('laundry_discount_amount'),
+            Column::make('points_discount_amount'),
             Column::make('platform_fee_amount'),
             Column::make('tax_amount'),
             // The charges behind the figures, as the list names them under the

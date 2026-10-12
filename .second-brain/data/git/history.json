@@ -1,8 +1,20 @@
 {
     "available": true,
-    "head": "fa6c3351ac8492c8103ed8d9862c6cf0e2799cad",
-    "commits_scanned": 137,
+    "head": "fa6ddfcc0d90c3eae5b7e4c675209440183ddac2",
+    "commits_scanned": 139,
     "recent": [
+        {
+            "sha": "fa6ddfcc",
+            "date": "2026-10-12",
+            "subject": "docs: the driver map release is live",
+            "files": 1
+        },
+        {
+            "sha": "39f73396",
+            "date": "2026-10-12",
+            "subject": "feat: «خريطة المناديب» — every driver, live, on one map",
+            "files": 20
+        },
         {
             "sha": "fa6c3351",
             "date": "2026-10-12",
@@ -80,27 +92,15 @@
             "date": "2026-10-04",
             "subject": "docs: fifteen mobile notes were removed, not fourteen",
             "files": 1
-        },
-        {
-            "sha": "5fe15f3a",
-            "date": "2026-10-04",
-            "subject": "docs: remove the mobile notes already sent to the app teams",
-            "files": 18
-        },
-        {
-            "sha": "b403985e",
-            "date": "2026-10-04",
-            "subject": "docs: CLAUDE.md keeps the rules; the long accounts move to docs/architecture.md",
-            "files": 1
         }
     ],
     "hottest_files": {
-        "routes/web.php": 27,
-        "docs/postman/Laundo API v1.postman_collection.json": 25,
+        "routes/web.php": 28,
+        "docs/postman/Laundo API v1.postman_collection.json": 26,
+        "docs/mobile-api-changes.md": 20,
         "app/Helpers/Helpers.php": 19,
-        "docs/mobile-api-changes.md": 19,
+        "config/menu.php": 17,
         "resources/views/admin/setting/generalSetting/forms/formInput.blade.php": 17,
-        "config/menu.php": 16,
         "app/Http/Controllers/Api/V1/OrderController.php": 14,
         "app/Modules/Setting/Requests/GeneralSettingRequest.php": 14,
         "resources/views/layouts/footer_script.blade.php": 14,
@@ -109,13 +109,14 @@
         "app/Http/Controllers/Admin/LanguageController.php": 11,
         "app/Services/languages/LanguageService.php": 11,
         "database/seeders/SettingsSeeder.php": 10,
+        "docs/architecture.md": 9,
         "app/Modules/User/Models/User.php": 9,
         "app/Modules/Order/Services/orderCrudService.php": 9,
         "resources/views/admin/order/show.blade.php": 9,
         "app/Modules/Driver/Services/DriverCard.php": 9,
         "resources/views/layouts/topbar.blade.php": 9,
         "resources/views/layouts/sidebar.blade.php": 9,
-        "docs/architecture.md": 8,
+        "app/Http/Controllers/Api/V1/DriverController.php": 8,
         "app/Modules/Order/Models/Order.php": 8,
         "resources/views/admin/home.blade.php": 8,
         "routes/api.php": 8,
@@ -132,7 +133,6 @@
         "app/Providers/AppServiceProvider.php": 7,
         "resources/views/admin/laundry/index.blade.php": 7,
         "resources/views/admin/pricing/index.blade.php": 7,
-        "app/Http/Controllers/Api/V1/DriverController.php": 7,
         "resources/views/admin/roles/index.blade.php": 7,
         "resources/views/layouts/include.blade.php": 7
     }

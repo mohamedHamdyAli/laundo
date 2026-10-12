@@ -541,6 +541,124 @@ Rules that are easy to break by accident:
   figure rounded and the platform's part is taken by subtraction, so the halves
   always reconcile.
 
+## Customer points «النقاط»
+
+Asked 2026-10-12: «نقاط … مقابل كل أوردر 10 نقاط و النقطة تساوي واحد جنيه، و
+برضو لو رجع مع المندوب شماعات يكون له عن كل شماعة نقطه … بالكامل ديناميك».
+The owner's decisions the same day: the discount is the platform's, all of it;
+points sit beside a coupon or an offer; hangers are counted at both doors and
+paid the moment the leg completes; points expire after a number of days set in
+the settings.
+
+**The terms are settings, read by `Loyalty/Services/PointsPolicy` alone**, and
+clamped there: `Points_Enabled` (off until set — the moment it is on every
+completion pays), `Points_Per_Order` (10), `Point_Value` (1.00, never 0),
+`Points_Per_Hanger` (1), `Max_Hangers_Per_Visit` (50, a ceiling on a number
+typed at a door), `Points_Min_Redeem`, `Points_Max_Redeem_Percent` (of the
+washing after a coupon), `Points_Min_Order_To_Earn` (on the pieces washed,
+before discounts), `Points_Expiry_Days` (blank never), `Points_Expiry_Warning_Days`
+(7). The «النقاط» tab on the settings screen, `setting.update`.
+
+**The ledger.** `point_accounts.balance` is a cache of `point_transactions`, and
+`PointsService` is the only writer — every change a row, under the account's row
+lock, the wallet's two rules. **Every read after that lock is a locking read, and
+every write is made from the row the lock returned** (never `refresh()`): MySQL
+runs at REPEATABLE READ, where a plain SELECT sees the transaction's snapshot —
+and a checkout fixes its snapshot (`Order::generateCode()`) before it asks for
+the lock. Mixing the two let two parallel checkouts spend the same points
+(reproduced on MySQL, 2026-10-12; SQLite serializes writers and cannot show it).
+`lock()` reads the account by `user_id` with a lock, and survives the account's
+first row being created by another transaction after the snapshot. Whole points; their worth is stamped on the order.
+A credit row is also a **lot**: `remaining` and `expires_at`, stamped when
+earned and never re-read, so changing the expiry moves only what is earned
+afterwards. A debit eats live lots soonest-expiry first (never-expiring last)
+and writes which in `point_lot_spends`. `PointAccount::isReconciled()` checks
+three figures: cached balance, ledger sum, and the lots' `remaining`.
+
+- **A lapsed point is never spendable** because `live()` excludes it, whenever
+  the write-off ran. `loyalty:expire-points` (daily 10:00 on the business clock)
+  writes each lapsed lot off as its own `expired` row (keyed `expired:{lot}`)
+  and sends `points_expiring` once per lot (`expiry_warned_at`), one message per
+  customer per run for the soonest day. A spend also writes off lapsed lots
+  first, in its own transaction, so a refused spend still leaves them written off.
+- **A return is bounded by the spend.** `giveBack($spend, $keep)` is told what
+  stays spent, adds up (locked) what has already come back (`reverses_id`), and
+  returns the difference — so two returns racing land on the same figure, walking the spend's
+  lots longest-lived first, the same order every time. Each point comes back
+  with the time its lot had left when it was spent, to the end of that business
+  day and never less than the lot's own expiry — the clock stops while an order
+  holds points, it is neither reset (cancelling would renew points for ever) nor
+  left running (points handed back an hour before their end would lapse unused).
+  A return that lands on a business day already announced carries the lot's
+  `expiry_warned_at`, so it is not announced twice. `credit()` and `giveBack()`
+  write lapsed lots off under the lock first, so `balance_after` and the
+  «رصيدك دلوقتي» push never count dead points; a closed (soft-deleted) account's
+  lots lapse like anyone's. Reminders stop while the programme is off (the lot
+  stays unannounced for when it is back on), and «N days before» is measured to
+  the end of the business day N days ahead (`PointsPolicy::warningHorizon()`).
+  `expires_at` is DATETIME: a TIMESTAMP ends in 2038, inside the 3,650 days the
+  setting allows.
+- **Automatic credits happen once**: `dedupe_key` (unique) — `order_earned:{order}`,
+  `hangers:{task}`, `redeemed:{order}`.
+
+**The order** (`Loyalty/Services/OrderPoints`, each moment from the one place
+it happens):
+
+- *Checkout.* `use_points` on the quote and the order. `OrderPricing::quote()`
+  works out `redeemable` on the washing the coupon left (only the coupon's part
+  on the pieces — `OrderPoints::piecesShare()` — when it also covers delivery)
+  and spends it only when asked; `compose()` takes the points discount as a **required last argument**
+  (a caller written before points fails loudly, the lesson of the cash fee that
+  went missing). `place()` stamps `points_used`, `points_discount`,
+  `points_to_earn` and `points_terms` (point value, cap, earn minimum) and takes
+  the points in its own transaction under the lock — a balance spent meanwhile
+  throws `points_changed` and the order is not placed (422 on `use_points`).
+  A quoted service has no priced pieces at checkout, so nothing to spend on.
+- *The review.* `capAfterReview()` re-caps the points on the counted washing at
+  the order's own terms and gives the difference back in the review's
+  transaction, with the order row locked (two counts saved at once). Never
+  grown: a second count that finds more pieces does not take points again.
+  Reassigning the laundry re-caps them the same way, on the new delivery fee.
+  `OrderPoints::promised()` is what the order still pays at completion — zero
+  once the count falls under the stamped minimum — and is what the app and the
+  order screen show. Deleting an uncollected order gives its points back first.
+- *Completion.* `settleMoney()` pays `points_to_earn` at `Completed` if the
+  washing reached the stamped minimum — the promise shown at checkout, whatever
+  the switch says by then. A basket under the minimum is promised 0 at checkout
+  (`toEarn()`), so the app never shows «+10» that completion will refuse; a
+  quoted service has nothing to measure until it is counted. `Cancelled` / `Returned` give back every point spent,
+  there rather than in the customer's cancel so the panel's cancellations do too.
+- *Hangers.* `TaskType::takesHangers()` — pickup from and delivery to the
+  customer. `TaskService::complete()` stamps `order_tasks.hangers_returned`
+  (refused above `Max_Hangers_Per_Visit`, ignored on the laundry legs) and
+  credits `hangers × Points_Per_Hanger` in the same transaction. The count is
+  recorded with the programme off; only the points wait on the switch.
+- Notifications (`PointsNotifier`, `points_earned`) go **after the commit**
+  (`DB::afterCommit`), so a rolled-back completion never announced points.
+
+**Money.** The points discount is the platform's: `Order::effectivePointsDiscount()`
+(capped at what the coupon left) is inside `cleaningRevenue()` and so inside
+the settlement's basis, but `SettlementService::recordFor()` passes it to
+`splitFor()` in the discount and **not** in `discountOnPieces()`, so the
+laundry's share is untouched and `commission_amount` carries it (below zero →
+`DiscountFunded`, as with a coupon). Stored as `points_discount_amount`;
+«أسعار المغسلة» on the order screen is `OrderSettlement::laundryPrices()`, the
+basis with both discounts added back. A basis of piastres makes the display
+rate `commission_rate` run to thousands of per cent, so the column is
+`decimal(12,2)` (`2026_10_12_100200`) — at `decimal(5,2)` MySQL refused the
+insert and the order could not be confirmed.
+`RevenueReport` reports `points_discounts`; «ملخص الماليات» shows the points
+still owed (live points × today's value) and the month's expiries.
+
+**The panel.** «نقاط العملاء» under Money (`point_account.view`; correcting is
+`point_account.update`, a note required, `adjustment` rows with `created_by`).
+`{id}` is the customer's user id, so a customer with no account yet can be given
+points; anybody who is not a customer is a 404. Refused inside a laundry by
+`pointAccountCrudService` whatever was granted, and `PointAccountSheet` exports
+nothing there — the accounts are every customer on the platform. The order
+screen shows «خصم النقاط» (a `moneyRows()` line, so the invoice too), the points
+the order earns, and hangers on the trip rows.
+
 ## The home page counts; «ملخص الماليات» has the money
 
 **No money on the home page** (the owner, 2026-09-30). The home page has no
@@ -1175,7 +1293,7 @@ regression, not as a flaky stub.
 
 `docs/` is maintained by hand and drifts if you don't:
 
-- `docs/postman/Laundo API v1.postman_collection.json` — 114 requests in 6 caller-grouped folders, one per endpoint except the eight notification/device endpoints, which both apps call and so sit in both 5.2 and 6.4, with substantive per-request descriptions. An endpoint diff will not catch a **stale request body**; check the bodies when you add a field.
+- `docs/postman/Laundo API v1.postman_collection.json` — 116 requests in 6 caller-grouped folders, one per endpoint except the eight notification/device endpoints, which both apps call and so sit in both 5.2 and 6.4, with substantive per-request descriptions. An endpoint diff will not catch a **stale request body**; check the bodies when you add a field.
 - `docs/postman/generate-reference.py` → `docs/api-reference.html`. **The endpoint list is hand-written Python inside that script**, not derived from the collection or from `route:list`. Run it from the repo root (it writes a relative path).
 - `docs/laundo-screen-actions.html` + `.pdf` — every Figma screen against the route its button calls and the panel page staff act from. The HTML is the source; the PDF is rendered from it with headless Chrome `--print-to-pdf`.
 - `docs/laundo-qa-guide.html` + `.pdf` — the QA guide, in Arabic: every panel screen, what must exist before it works, what it feeds in the apps, its permission, and the traps a tester would otherwise file as bugs. Ordered by build order, the same order `config/menu.php` uses. Same HTML-is-the-source rule as above; regenerate the PDF with:
@@ -1277,7 +1395,7 @@ Don't "fix" these blind, but know they're there:
 - `Banner` and `Intro` model **classes are lowercase** (`class banner`, `class intro`) — match existing usage rather than renaming casually.
 - `CachingService::getSystemSettings()` plucks by a `name` column; the `settings` table has `key`. It is currently unreferenced — dead code.
 - Settings are key/value rows with **PascalCase keys** (`App_Name`, `App_Logo`, `About`, `Privacy_Policy`, `Terms`, `Country_Id`, `Currency`, `Cash_Surcharge`, `Commission_Rate`); `About`/`Privacy_Policy`/`Terms` hold translatable JSON.
-- **The settings screen is four tabs on one form** (عام / التواصل / المالية /
+- **The settings screen is five tabs on one form** (عام / التواصل / المالية /
   العمليات), so a save still posts every field and a closed tab is never
   blanked. `form-validation.js`'s `reveal()` opens the tab holding the first
   refused field, and the page remembers the open tab across a save. There were

@@ -34,6 +34,7 @@ use Illuminate\Support\Carbon;
  * @property Carbon|null $started_at
  * @property Carbon|null $completed_at
  * @property int|null $piece_count
+ * @property int|null $hangers_returned
  * @property int|null $expected_piece_count
  * @property PieceCountSource|null $expected_piece_source
  * @property string|null $receiver_name
@@ -79,7 +80,7 @@ class OrderTask extends Model
         'order_id', 'type', 'sequence', 'status', 'driver_id', 'assigned_at', 'due_at',
         'started_at', 'completed_at', 'piece_count', 'receiver_name', 'signature_path',
         'collected_amount', 'failure_reason', 'failure_note', 'attempts', 'note',
-        'expected_piece_count', 'expected_piece_source',
+        'expected_piece_count', 'expected_piece_source', 'hangers_returned',
     ];
 
     protected function casts(): array
@@ -94,6 +95,7 @@ class OrderTask extends Model
             'started_at' => 'datetime',
             'completed_at' => 'datetime',
             'collected_amount' => 'decimal:2',
+            'hangers_returned' => 'integer',
         ];
     }
 

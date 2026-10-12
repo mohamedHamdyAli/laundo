@@ -42,6 +42,9 @@ class RevenueReport
             ->selectRaw('coalesce(sum(coalesce(final_total, estimated_total)), 0) gross')
             ->selectRaw('coalesce(sum(delivery_fee), 0) delivery')
             ->selectRaw('coalesce(sum(discount_total), 0) discounts')
+            // «خصم النقاط» — beside the coupons, not inside them: points are
+            // the platform's to bear, a coupon may be the laundry's.
+            ->selectRaw('coalesce(sum(points_discount), 0) points')
             ->first();
 
         $refunded = (float) Refund::where('status', Refund::SETTLED)
@@ -57,6 +60,7 @@ class RevenueReport
             'gross' => round($gross, 2),
             'delivery_fees' => round((float) ($paid->delivery ?? 0), 2),
             'discounts' => round((float) ($paid->discounts ?? 0), 2),
+            'points_discounts' => round((float) ($paid->points ?? 0), 2),
             'refunds' => round($refunded, 2),
             'net' => round($gross - $refunded, 2),
             // Deliberately outside net: this is owed, not earned.

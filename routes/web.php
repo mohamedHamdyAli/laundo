@@ -31,6 +31,7 @@ use App\Modules\LaundryService\Controllers\LaundryServiceController;
 use App\Modules\LaundryService\Controllers\LaundryServiceRequestController;
 use App\Modules\LaundryStaff\Controllers\LaundryStaffController;
 use App\Modules\LaundryZone\Controllers\LaundryZoneController;
+use App\Modules\Loyalty\Controllers\PointAccountController;
 use App\Modules\Moderator\Controllers\ModeratorController;
 use App\Modules\Notification\Controllers\NotificationComposeController;
 use App\Modules\Notification\Controllers\NotificationLogController;
@@ -1047,6 +1048,24 @@ Route::middleware(['auth', 'dashboard.only'])->prefix('/admin')->group(function 
         Route::get('/wallet/show/{id}', 'show')->middleware('permission:wallet.view')->name('admin.wallet.show');
         Route::post('/wallet/adjust/{id}', 'adjust')->middleware('permission:wallet.update')->name('admin.wallet.adjust');
         Route::post('/wallet/freeze/{id}', 'toggleFreeze')->middleware('permission:wallet.update')->name('admin.wallet.freeze');
+    });
+
+    /*
+    |--------------------------------------------------------------------------
+    | Customer points (نقاط العملاء)
+    |--------------------------------------------------------------------------
+    |
+    | Like the wallets: nothing sets a balance, a correction is a row. `{id}` on
+    | show and adjust is the customer's user id, so a customer who has never
+    | earned a point can be given some. Refused inside a laundry by the service,
+    | whatever the laundry was granted — the list is every customer.
+    |
+    */
+    Route::controller(PointAccountController::class)->group(function () {
+        Route::get('/point-account', 'index')->middleware('permission:point_account.view')->name('admin.point_account.index');
+        Route::get('/point-account/search', 'search')->middleware('permission:point_account.view')->name('admin.point_account.search');
+        Route::get('/point-account/show/{id}', 'show')->middleware('permission:point_account.view')->name('admin.point_account.show');
+        Route::post('/point-account/adjust/{id}', 'adjust')->middleware('permission:point_account.update')->name('admin.point_account.adjust');
     });
 
     /*

@@ -57,7 +57,21 @@ class OrderQuoteRequest extends FormRequest
             // one. Absent from these rules, the method was stripped before pricing
             // saw it and the fee could never appear.
             'payment_method' => ['nullable', 'string', 'in:'.implode(',', PaymentMethod::values())],
+            // The «استخدم نقاطك» toggle, re-quoted as it flips. Absent from
+            // these rules it would be stripped before pricing saw it — the
+            // trap the two fields above already fell into once.
+            'use_points' => ['nullable', 'boolean'],
         ];
+    }
+
+    /**
+     * `use_points` as a real boolean whatever the body is — see OrderRequest.
+     */
+    protected function prepareForValidation(): void
+    {
+        if ($this->has('use_points') && is_string($this->input('use_points'))) {
+            $this->merge(['use_points' => filter_var($this->input('use_points'), FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE) ?? $this->input('use_points')]);
+        }
     }
 
     public function withValidator(Validator $validator): void

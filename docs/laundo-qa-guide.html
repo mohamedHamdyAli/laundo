@@ -1350,6 +1350,20 @@ a:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; border-r
     </article>
 
     <article class="screen">
+      <header><h4>نقاط العملاء</h4><span class="path">/admin/point-account · /point-account/show/{user_id}</span></header>
+      <dl class="facts">
+        <dt>الغرض</dt><dd>من ١٢ أكتوبر: كل عميل معاه نقاط، رصيده وقيمته، وسجل حركاته بالدفعات وتاريخ انتهاء كل دفعة. الكروت فوق: النقاط اللي العملاء يقدروا يصرفوها وقيمتها، اللي هتنتهي قريب، وعدد الحسابات اللي رصيدها مش مطابق للسجل.</dd>
+        <dt>الأزرار</dt><dd><code>POST /admin/point-account/adjust/{user_id}</code> — إضافة أو خصم نقاط <strong>بسبب إجباري</strong>. النقاط المضافة بتنتهي زي المكتسبة، والمخصومة بتتاخد من الأقرب انتهاءً.</dd>
+        <dt>أسباب الحركة</dt><dd><code>order_earned</code>، <code>hangers_returned</code>، <code>redeemed</code>، <code>redemption_returned</code>، <code>adjustment</code>، <code>expired</code></dd>
+        <dt>يعتمد على</dt><dd><strong>عميل</strong> (الـ id في الرابط هو id العميل، فعميل لسه ماكسبش نقطة ينفع تضيفله). أي حد مش عميل → 404.</dd>
+        <dt>يغذّي</dt><dd><span class="tag t-mute">API</span> <code>GET /points</code>، <code>GET /points/transactions</code>، و<code>use_points</code> في <code>/orders/quote</code> و<code>/orders</code>، و<code>hangers_returned</code> في تأكيد رحلة المندوب.</dd>
+        <dt>الصلاحية</dt><dd><code>point_account.view</code> / <code>update</code>. <strong>المغسلة بتترفض حتى لو اتدّالها الصلاحية</strong> (403)، والتصدير بيطلعلها فاضي.</dd>
+        <dt>فخاخ</dt><dd class="n-crit"><strong>الرصيد ما بيتعدّلش مباشرة أبداً</strong> — زي المحفظة. ولو الحساب طلع «مش مطابق للسجل»، دي تذكرة باج.</dd>
+        <dt>مش باگ</dt><dd>النقاط اللي صلاحيتها خلصت بتختفي من «يقدر يصرفها» على طول، لكن سطر «انتهت» في السجل بيظهر لما الأمر اليومي يشتغل (١٠ الصبح)، أو أول ما العميل يحاول يصرف.</dd>
+      </dl>
+    </article>
+
+    <article class="screen">
       <header><h4>قواعد البونس</h4><span class="path">/admin/driver-bonus-rule</span></header>
       <dl class="facts">
         <dt>الغرض</dt><dd>شروط البونس اللي بيتحاسب بيها السائق. القاعدة بتتعمل مرة وبتتربط بأكتر من سائق.</dd>
@@ -1752,6 +1766,34 @@ a:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; border-r
         مغسلة لسه ما اتعيّنتش (مفيش نقطة تقيس منها)، أو منطقة ما اتسعّرتش. رجوع
         <code>0.00</code> كان معناه إننا بنقول للعميل التوصيل مجاني، وده كذب. لو
         شفت «غير معروفة» في الاختبار، اسأل: المغسلة اتعيّنت؟ المنطقة ليها سعر كيلو؟
+      </p>
+    </div>
+
+    <h3>النقاط (من ١٢ أكتوبر)</h3>
+    <p>
+      كل أرقام البرنامج في تاب <strong>«النقاط»</strong> في الإعدادات، و<strong>البرنامج مقفول لحد ما حد يشغّله</strong>.
+      الافتراضي: ١٠ نقاط للأوردر، النقطة بجنيه، نقطة لكل شماعة، بحد ٥٠ شماعة للزيارة.
+    </p>
+    <div class="scroll">
+      <table>
+        <thead><tr><th>جرّب</th><th>المفروض يحصل</th></tr></thead>
+        <tbody>
+          <tr><td>عميل معاه ٤٠ نقطة يعمل quote بـ <code>use_points: true</code> على غسيل ٥١ ج</td><td><code>points.used</code> = ٤٠، و<code>total</code> ينزل ٤٠. من غير <code>use_points</code>: <code>redeemable</code> = ٤٠ و<code>used</code> = ٠</td></tr>
+          <tr><td>نفس الكلام مع كوبون ١٠ ج وحد أقصى ٥٠٪</td><td>النقاط تخصم من الـ ٤١ اللي فاضلين بعد الكوبون: ٢٠ نقطة بس</td></tr>
+          <tr><td>إلغاء طلب اتصرف عليه نقاط (من التطبيق أو من اللوحة)</td><td>النقاط ترجع كلها، بنفس تاريخ انتهائها</td></tr>
+          <tr><td>المغسلة تعدّ قطع أقل من اللي النقاط دفعت تمنها</td><td>خصم النقاط يقل، والزيادة ترجع للعميل في نفس اللحظة</td></tr>
+          <tr><td>الطلب يكتمل (اتسلّم واتدفع)</td><td>العميل ياخد النقاط اللي اتكتبت له وقت الطلب، مرة واحدة، ويوصله إشعار</td></tr>
+          <tr><td>المندوب يكتب ٤ شماعات في الاستلام أو التسليم</td><td>٤ نقاط للعميل على طول. لو كتب أكتر من الحد: ٤٢٢ والرحلة ماتتقفلش. في رحلات المغسلة الحقل بيتجاهل</td></tr>
+          <tr><td>تسوية الطلب في «تسويات المغاسل»</td><td><strong>نصيب المغسلة زي ما هو</strong> كأنه مفيش نقاط، والخصم كله نازل من نصيب المنصة</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="note n-warn">
+      <span class="note-t">الصلاحية بتتختم وقت الكسب</span>
+      <p>
+        كل دفعة نقاط بتاخد تاريخ انتهائها <strong>يوم ما اتكسبت</strong>. لو غيّرت «مدة الصلاحية» بعدين، النقاط القديمة
+        مش هتتأثر. ولو الإعداد كان فاضي وقت الكسب، الدفعة دي <strong>مش هتنتهي أبداً</strong>. يعني لازم تملا المدة
+        <strong>قبل</strong> ما تشغّل البرنامج.
       </p>
     </div>
 

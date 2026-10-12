@@ -124,6 +124,13 @@
                                     @else
                                         {{ $task->piece_count ?? '—' }}
                                     @endif
+                                    {{-- «شماعات راجعة» — counted at the customer's door,
+                                         and each one earned the customer points. --}}
+                                    @if ($task->hangers_returned)
+                                        <small class="d-block text-muted">
+                                            {{ trans_choice(':count hanger returned|:count hangers returned', $task->hangers_returned, ['count' => $task->hangers_returned]) }}
+                                        </small>
+                                    @endif
                                 </td>
                                 <td class="text-end">
                                     @if (canDo('order_task.update') && ! $task->status->isFinished())

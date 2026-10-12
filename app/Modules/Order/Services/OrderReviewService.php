@@ -3,6 +3,7 @@
 namespace App\Modules\Order\Services;
 
 use App\Modules\Coupon\Models\Coupon;
+use App\Modules\Loyalty\Services\OrderPoints;
 use App\Modules\Notification\Services\OrderNotifier;
 use App\Modules\Notification\Services\PieceCountNotifier;
 use App\Modules\Order\Enums\OrderStatus;
@@ -52,6 +53,7 @@ class OrderReviewService
         private readonly PriceIncrease $priceIncrease,
         private readonly PieceCheck $pieceCheck,
         private readonly PieceCountNotifier $pieceNotifier,
+        private readonly OrderPoints $points,
     ) {}
 
     /**
@@ -94,6 +96,15 @@ class OrderReviewService
         $discrepancy = null;
 
         $reviewed = DB::transaction(function () use ($order, $priced, $count, $subtotal, $baseSubtotal, $note, $actor, &$discrepancy) {
+            // Locked and read again, as confirm() does: two counts saved at once
+            // would each re-cap the points from the same stale `points_used`,
+            // and the second would stamp a discount the ledger no longer holds.
+            $order = Order::whereKey($order->id)->lockForUpdate()->first() ?? $order;
+
+            if (! $order->status->isReviewable()) {
+                throw new RuntimeException('not_reviewable');
+            }
+
             // A re-review replaces the previous final set rather than adding to
             // it. The estimated rows, and therefore the original agreement,
             // survive both.
@@ -137,18 +148,27 @@ class OrderReviewService
                 $discount = round(min($discount, $worth), 2);
             }
 
+            // The points the customer spent, on the pieces actually counted:
+            // what no longer fits after the coupon goes back to them now, in
+            // this transaction. Never grown — a second review that finds more
+            // pieces leaves the points where the first one put them.
+            $points = $this->points->capAfterReview($order, $subtotal, $discount);
+
             $money = $this->pricing->compose(
                 $subtotal,
                 (float) $order->delivery_fee,
                 $discount,
                 (float) $order->cash_surcharge,
                 $order->taxRate(),
+                $points['discount'],
             );
 
             $order->update([
                 'final_items_count' => $count,
                 'final_subtotal' => $subtotal,
                 'discount_total' => $discount,
+                'points_used' => $points['points'],
+                'points_discount' => $points['discount'],
                 // Recomputed, not carried over: the pieces changed, so the fee
                 // inside their prices changed with them. The *rate* is the one
                 // thing not re-read — it is whatever was stamped at placement,
@@ -342,6 +362,10 @@ class OrderReviewService
             ],
             'delivery_fee' => (float) $order->delivery_fee,
             'discount' => (float) $order->discount_total,
+            // As they stand after the count: fewer pieces may have handed some
+            // of the points back.
+            'points_used' => (int) $order->points_used,
+            'points_discount' => (float) $order->points_discount,
             'cash_surcharge' => (float) $order->cash_surcharge,
             // The rate as well as the amount: a customer asking why the total
             // moved needs to see what it was charged at, not only what it came

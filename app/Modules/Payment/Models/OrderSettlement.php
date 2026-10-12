@@ -34,6 +34,7 @@ use Illuminate\Support\Carbon;
  * @property string $laundry_amount
  * @property string $discount_amount
  * @property string $laundry_discount_amount
+ * @property string $points_discount_amount
  * @property string $tax_amount
  * @property string $platform_fee_amount
  * @property string $status
@@ -70,7 +71,7 @@ class OrderSettlement extends Model
     protected $fillable = [
         'order_id', 'laundry_id',
         'basis', 'commission_rate', 'laundry_share_rate', 'commission_amount', 'laundry_amount',
-        'discount_amount', 'laundry_discount_amount',
+        'discount_amount', 'laundry_discount_amount', 'points_discount_amount',
         'tax_amount', 'platform_fee_amount', 'status', 'settled_at',
     ];
 
@@ -84,6 +85,7 @@ class OrderSettlement extends Model
             'laundry_amount' => 'decimal:2',
             'discount_amount' => 'decimal:2',
             'laundry_discount_amount' => 'decimal:2',
+            'points_discount_amount' => 'decimal:2',
             'tax_amount' => 'decimal:2',
             'platform_fee_amount' => 'decimal:2',
             'settled_at' => 'datetime',
@@ -124,12 +126,26 @@ class OrderSettlement extends Model
     }
 
     /**
-     * The part of the discount the platform bore — everything the laundry did
-     * not. Derived, because the two stored figures already fix it.
+     * The part of the coupon discount the platform bore — everything the
+     * laundry did not. Derived, because the two stored figures already fix it.
+     *
+     * The coupon's alone: the points discount is the platform's by definition
+     * and sits beside it in `points_discount_amount`.
      */
     public function platformDiscount(): float
     {
         return round((float) $this->discount_amount - (float) $this->laundry_discount_amount, 2);
+    }
+
+    /**
+     * The laundry's own prices for the pieces — what its share is measured on.
+     *
+     * The basis is after every discount, so both come back off it: the coupon
+     * and the points. Shown as «أسعار المغسلة» above the discount lines.
+     */
+    public function laundryPrices(): float
+    {
+        return round((float) $this->basis + (float) $this->discount_amount + (float) $this->points_discount_amount, 2);
     }
 
     /**
@@ -141,7 +157,7 @@ class OrderSettlement extends Model
         return $this->status === self::PENDING
             && $this->laundry_share_rate === null
             && $this->lines->isEmpty()
-            && (float) $this->basis + (float) $this->discount_amount > 0;
+            && (float) $this->basis + (float) $this->discount_amount + (float) $this->points_discount_amount > 0;
     }
 
     /**

@@ -141,6 +141,21 @@
                                     </div>
                                 </div>
                             @endif
+                            @if ($owed['points'] !== null)
+                                {{-- «النقاط» — discounts the platform has promised and
+                                     customers have not taken yet. --}}
+                                <div class="col-6 col-lg">
+                                    <div class="home-stat">
+                                        <span class="home-stat-num">{{ moneyFormat($owed['points']['value']) }}</span>
+                                        <span class="home-stat-label">
+                                            {{ __('Customer points not spent yet') }}
+                                            <small class="d-block">
+                                                {{ trans_choice(':count point|:count points', $owed['points']['points'], ['count' => number_format($owed['points']['points'])]) }}@if ($owed['points']['expired'] > 0) · {{ __(':count expired this month', ['count' => number_format($owed['points']['expired'])]) }}@endif
+                                            </small>
+                                        </span>
+                                    </div>
+                                </div>
+                            @endif
                             <div class="col-6 col-lg">
                                 <div class="home-stat">
                                     <span class="home-stat-num">{{ moneyFormat($month['refunds']) }}</span>
@@ -243,6 +258,7 @@
                                 <li><span></span><span>{{ __('Delivery fees') }}</span><span class="viz-value">{{ moneyFormat($split['delivery_fees']) }}</span></li>
                                 <li><span></span><span>{{ __('Customer platform fee') }}</span><span class="viz-value">{{ moneyFormat($split['platform_fees']) }}</span></li>
                                 <li><span></span><span>{{ __('Discounts given') }}</span><span class="viz-value">{{ moneyFormat($split['discounts']) }}</span></li>
+                                <li><span></span><span>{{ __('Points discounts') }}</span><span class="viz-value">{{ moneyFormat($split['points_discounts']) }}</span></li>
                                 <li><span></span><span>{{ __('Tax') }}</span><span class="viz-value">{{ moneyFormat($split['tax']) }}</span></li>
                             </ul>
                         @endif

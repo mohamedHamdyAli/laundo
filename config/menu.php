@@ -177,17 +177,21 @@ return [
                 'payment' => 1,
                 'refund' => 2,
                 'wallet' => 3,
+                // Beside the wallets: the other balance a customer holds. Points
+                // are worth money off an order, and what is still unspent is
+                // owed by the platform.
+                'point_account' => 4,
                 // First of the pair a laundry owner can see, and the only item
                 // in this group they hold a permission for — so on their sidebar
                 // «Money» is a dropdown of one, which is exactly right: it is
                 // the screen that says what they are owed.
-                'order_settlement' => 4,
+                'order_settlement' => 5,
                 // The terms, beside the settlements they produce.
-                'commission_rule' => 5,
+                'commission_rule' => 6,
                 // The roll-up, after the detail: settlements are one row per
                 // order, this is one row per laundry — what each brought in,
                 // what the platform took, and what is left to pay them.
-                'laundry_revenue' => 6,
+                'laundry_revenue' => 7,
             ],
         ],
 
@@ -310,6 +314,7 @@ return [
         'payment' => 'bi bi-credit-card',
         'refund' => 'bi bi-arrow-counterclockwise',
         'wallet' => 'bi bi-wallet2',
+        'point_account' => 'bi bi-stars',
 
         'report' => 'bi bi-bar-chart-line',
 
@@ -372,6 +377,7 @@ return [
         'payment' => 'Payments',
         'refund' => 'Refunds',
         'wallet' => 'Wallets',
+        'point_account' => 'Customer points',
 
         'report' => 'Reports',
 
@@ -434,6 +440,7 @@ return [
         'payment' => 'admin.payment.index',
         'refund' => 'admin.refund.index',
         'wallet' => 'admin.wallet.index',
+        'point_account' => 'admin.point_account.index',
 
         'report' => 'admin.report.revenue',
 

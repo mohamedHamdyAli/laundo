@@ -2,6 +2,9 @@
 
 namespace App\Modules\Report\Services;
 
+use App\Modules\Loyalty\Enums\PointReason;
+use App\Modules\Loyalty\Models\PointTransaction;
+use App\Modules\Loyalty\Services\PointsPolicy;
 use App\Modules\Payment\Enums\PaymentMethod;
 use App\Modules\Payment\Models\DriverEarning;
 use App\Modules\Payment\Models\OrderSettlement;
@@ -96,7 +99,7 @@ class FinanceSummary
      * delivery fees and the tax are beside it, not in it — dividing them is
      * the bug `SettlementService::basisFor()` exists to prevent.
      *
-     * @return array{orders: int, laundries: float, platform: float, platform_fees: float, tax: float, delivery_fees: float, discounts: float}
+     * @return array{orders: int, laundries: float, platform: float, platform_fees: float, tax: float, delivery_fees: float, discounts: float, points_discounts: float}
      */
     public function split(): array
     {
@@ -123,6 +126,9 @@ class FinanceSummary
             'tax' => round((float) $settled->getAttribute('tax'), 2),
             'delivery_fees' => $summary['delivery_fees'],
             'discounts' => $summary['discounts'],
+            // Already inside `platform` — the platform bears them all — and
+            // named apart so a month of points is visible as what it cost.
+            'points_discounts' => $summary['points_discounts'],
         ];
     }
 
@@ -133,7 +139,11 @@ class FinanceSummary
      * laundry_id), so it is null for a laundry account and the page leaves it
      * out — the same rule as the home page's drivers card.
      *
-     * @return array{receivables: float, settlements: array{count: int, amount: float}, drivers: float|null}
+     * The customers' points are the same: every customer's, so null for a
+     * laundry. What they are worth is what the platform owes in discounts not
+     * yet taken, at today's value of a point.
+     *
+     * @return array{receivables: float, settlements: array{count: int, amount: float}, drivers: float|null, points: array{points: int, value: float, expired: int}|null}
      */
     public function owed(): array
     {
@@ -150,6 +160,26 @@ class FinanceSummary
             'drivers' => LaundryContext::isTenant()
                 ? null
                 : round((float) DriverEarning::where('status', DriverEarning::PENDING)->sum('amount'), 2),
+            'points' => LaundryContext::isTenant() ? null : $this->points(),
+        ];
+    }
+
+    /**
+     * The points customers can still spend, what they are worth, and how many
+     * lapsed this month.
+     *
+     * @return array{points: int, value: float, expired: int}
+     */
+    private function points(): array
+    {
+        $outstanding = (int) PointTransaction::query()->live()->sum('remaining');
+
+        return [
+            'points' => $outstanding,
+            'value' => round($outstanding * app(PointsPolicy::class)->pointValue(), 2),
+            'expired' => (int) PointTransaction::where('reason', PointReason::Expired->value)
+                ->whereBetween('created_at', [now()->startOfMonth(), now()->endOfDay()])
+                ->sum('points'),
         ];
     }
 

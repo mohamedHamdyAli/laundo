@@ -310,25 +310,37 @@
                                         </td>
                                     </tr>
                                 @endif
-                                @if ($settlement->isOnLaundryShare() && (float) $settlement->discount_amount > 0)
+                                @if ($settlement->isOnLaundryShare() && ((float) $settlement->discount_amount > 0 || (float) $settlement->points_discount_amount > 0))
                                     {{-- The laundry's share is measured before the
                                          discount, so its prices are shown first and
-                                         the discount as its own line, split by who
-                                         paid for it. --}}
+                                         each discount as its own line: the coupon
+                                         split by who paid for it, the points the
+                                         platform's alone. --}}
                                     <tr>
                                         <td>{{ __('Laundry prices') }}</td>
-                                        <td class="text-end">{{ moneyFormat((float) $settlement->basis + (float) $settlement->discount_amount) }}</td>
+                                        <td class="text-end">{{ moneyFormat($settlement->laundryPrices()) }}</td>
                                     </tr>
-                                    <tr>
-                                        <td class="text-danger">
-                                            {{ __('Discount') }}
-                                            <small>
-                                                ({{ __('laundry') }} {{ moneyFormat($settlement->laundry_discount_amount) }}
-                                                · {{ __('platform') }} {{ moneyFormat($settlement->platformDiscount()) }})
-                                            </small>
-                                        </td>
-                                        <td class="text-end text-danger">−{{ moneyFormat($settlement->discount_amount) }}</td>
-                                    </tr>
+                                    @if ((float) $settlement->discount_amount > 0)
+                                        <tr>
+                                            <td class="text-danger">
+                                                {{ __('Discount') }}
+                                                <small>
+                                                    ({{ __('laundry') }} {{ moneyFormat($settlement->laundry_discount_amount) }}
+                                                    · {{ __('platform') }} {{ moneyFormat($settlement->platformDiscount()) }})
+                                                </small>
+                                            </td>
+                                            <td class="text-end text-danger">−{{ moneyFormat($settlement->discount_amount) }}</td>
+                                        </tr>
+                                    @endif
+                                    @if ((float) $settlement->points_discount_amount > 0)
+                                        <tr>
+                                            <td class="text-danger">
+                                                {{ __('Points discount') }}
+                                                <small>({{ __('platform') }})</small>
+                                            </td>
+                                            <td class="text-end text-danger">−{{ moneyFormat($settlement->points_discount_amount) }}</td>
+                                        </tr>
+                                    @endif
                                 @else
                                     <tr>
                                         <td>{{ __('Basis') }}</td>
@@ -497,6 +509,32 @@
                                     <td class="text-muted">{{ __('Difference') }}</td>
                                     <td class="text-end {{ $difference > 0 ? 'text-danger' : ($difference < 0 ? 'text-success' : 'text-muted') }}">
                                         {{ $difference > 0 ? '+' : '' }}{{ moneyFormat($difference) }}
+                                    </td>
+                                </tr>
+                            @endif
+                            @if ((int) $row->points_to_earn > 0)
+                                {{-- What completing it pays the customer, as they were
+                                     shown it at checkout — and whether it has. --}}
+                                @php
+                                    $orderPoints = app(\App\Modules\Loyalty\Services\OrderPoints::class);
+                                    $pointsEarned = $orderPoints->earnedOn($row, hangers: false);
+                                    $pointsPromised = $orderPoints->promised($row);
+                                @endphp
+                                <tr>
+                                    <td class="text-muted">{{ __('Points for this order') }}</td>
+                                    <td class="text-end text-muted">
+                                        {{ number_format($row->points_to_earn) }}
+                                        <small class="d-block">
+                                            @if ($pointsEarned > 0)
+                                                {{ __('Earned: :count', ['count' => number_format($pointsEarned)]) }}
+                                            @elseif (in_array($row->status, [\App\Modules\Order\Enums\OrderStatus::Cancelled, \App\Modules\Order\Enums\OrderStatus::Returned], true))
+                                                {{ __('Not earned — the order did not go ahead') }}
+                                            @elseif ($pointsPromised === 0)
+                                                {{ __('Not earned — the pieces counted are under the minimum') }}
+                                            @else
+                                                {{ __('Paid when the order completes') }}
+                                            @endif
+                                        </small>
                                     </td>
                                 </tr>
                             @endif

@@ -150,6 +150,15 @@
                                 <td class="text-end">- {{ moneyFormat($row->discount_total) }}</td>
                             </tr>
                         @endif
+                        @if ((int) $row->points_used > 0)
+                            {{-- Fewer pieces than the points paid for gives the rest
+                                 back to the customer on save — the preview shows
+                                 what will be left. --}}
+                            <tr class="text-danger">
+                                <td colspan="4" class="text-end">{{ __('Points discount') }}</td>
+                                <td class="text-end" id="review-points">- {{ moneyFormat($row->points_discount) }}</td>
+                            </tr>
+                        @endif
                         <tr>
                             <th colspan="4" class="text-end">{{ __('Final total') }}</th>
                             <th class="text-end fs-5" id="review-total">—</th>
@@ -229,6 +238,16 @@
         $(function () {
             const deliveryFee = {{ (float) $row->delivery_fee }};
             const discount = {{ (float) $row->discount_total }};
+            // The points the customer spent, on the order's own terms — the
+            // save caps them at what the counted washing leaves after the
+            // coupon (`OrderPoints::capAfterReview()`), and never raises them.
+            const pointsUsed = {{ (int) $row->points_used }};
+            const pointValue = {{ (float) (($row->points_terms['point_value'] ?? null) ?: ((int) $row->points_used > 0 ? (float) $row->points_discount / (int) $row->points_used : 1)) }};
+            const pointsCap = {{ (float) ($row->points_terms['cap_percent'] ?? 100) }};
+            // A coupon that also covers the delivery fee was sized on both, so
+            // only its share on the pieces comes off the washing — the save's
+            // rule (`OrderPoints::piecesShare()`).
+            const couponCoversDelivery = {{ $row->discount_covers_delivery ? 'true' : 'false' }};
             const estimated = {{ (float) $row->estimated_total }};
             // The order's own stamped rate, not the setting as it stands now —
             // the save prices at the stamp, so the preview has to as well.
@@ -261,7 +280,16 @@
                     row.find('.review-line-total').text(money(line));
                 });
 
-                const total = subtotal + deliveryFee - discount;
+                const measured = subtotal + Math.max(deliveryFee, 0);
+                const onPieces = couponCoversDelivery
+                    ? (measured > 0 ? Math.round(discount * (subtotal / measured) * 100) / 100 : 0)
+                    : discount;
+                const left = Math.max(subtotal - onPieces, 0);
+                const pointsAllowed = Math.floor(left * pointsCap / 100 / pointValue + 1e-9);
+                const points = Math.min(pointsUsed, Math.max(pointsAllowed, 0)) * pointValue;
+                $('#review-points').text('- ' + money(points));
+
+                const total = subtotal + deliveryFee - discount - points;
 
                 $('#review-subtotal').text(money(subtotal));
                 $('#review-total').text(money(total));

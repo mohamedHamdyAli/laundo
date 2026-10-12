@@ -97,6 +97,10 @@ class OrderSheet extends Sheet
             Column::make('final_subtotal'),
             Column::make('delivery_fee'),
             Column::make('discount_total'),
+            // «خصم النقاط» — beside the coupon, the platform's to bear.
+            Column::make('points_used'),
+            Column::make('points_discount'),
+            Column::make('points_to_earn'),
             Column::make('cash_surcharge'),
             Column::make('platform_fee'),
             Column::make('tax_rate'),

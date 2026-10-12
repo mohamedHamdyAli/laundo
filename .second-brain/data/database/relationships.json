@@ -701,6 +701,42 @@
             "column": "contacted_by",
             "to": "users",
             "migration": "database/migrations/2026_10_07_100000_create_coverage_requests_table.php"
+        },
+        {
+            "from": "point_accounts",
+            "column": "user_id",
+            "to": "users",
+            "migration": "database/migrations/2026_10_12_100000_create_point_ledger_tables.php"
+        },
+        {
+            "from": "point_transactions",
+            "column": "user_id",
+            "to": "users",
+            "migration": "database/migrations/2026_10_12_100000_create_point_ledger_tables.php"
+        },
+        {
+            "from": "point_transactions",
+            "column": "reverses_id",
+            "to": "point_transactions",
+            "migration": "database/migrations/2026_10_12_100000_create_point_ledger_tables.php"
+        },
+        {
+            "from": "point_transactions",
+            "column": "created_by",
+            "to": "users",
+            "migration": "database/migrations/2026_10_12_100000_create_point_ledger_tables.php"
+        },
+        {
+            "from": "point_lot_spends",
+            "column": "debit_id",
+            "to": "point_transactions",
+            "migration": "database/migrations/2026_10_12_100000_create_point_ledger_tables.php"
+        },
+        {
+            "from": "point_lot_spends",
+            "column": "lot_id",
+            "to": "point_transactions",
+            "migration": "database/migrations/2026_10_12_100000_create_point_ledger_tables.php"
         }
     ],
     "eloquent": [
@@ -1117,6 +1153,51 @@
             "foreign_key": "time_slot_id",
             "from_table": "laundry_slot_capacities",
             "to_table": "time_slots"
+        },
+        {
+            "from": "App\\Modules\\Loyalty\\Models\\PointAccount",
+            "to": "App\\Modules\\Loyalty\\Models\\PointTransaction",
+            "type": "has_many",
+            "method": "transactions",
+            "foreign_key": "user_id",
+            "from_table": "point_accounts",
+            "to_table": "point_transactions"
+        },
+        {
+            "from": "App\\Modules\\Loyalty\\Models\\PointAccount",
+            "to": "App\\Modules\\User\\Models\\User",
+            "type": "belongs_to",
+            "method": "owner",
+            "foreign_key": "user_id",
+            "from_table": "point_accounts",
+            "to_table": "users"
+        },
+        {
+            "from": "App\\Modules\\Loyalty\\Models\\PointLotSpend",
+            "to": "App\\Modules\\Loyalty\\Models\\PointTransaction",
+            "type": "belongs_to",
+            "method": "debit",
+            "foreign_key": "debit_id",
+            "from_table": "point_lot_spends",
+            "to_table": "point_transactions"
+        },
+        {
+            "from": "App\\Modules\\Loyalty\\Models\\PointTransaction",
+            "to": "App\\Modules\\Loyalty\\Models\\PointLotSpend",
+            "type": "has_many",
+            "method": "spends",
+            "foreign_key": "debit_id",
+            "from_table": "point_transactions",
+            "to_table": "point_lot_spends"
+        },
+        {
+            "from": "App\\Modules\\Loyalty\\Models\\PointTransaction",
+            "to": "App\\Modules\\User\\Models\\User",
+            "type": "belongs_to",
+            "method": "author",
+            "foreign_key": null,
+            "from_table": "point_transactions",
+            "to_table": "users"
         },
         {
             "from": "App\\Modules\\Notification\\Models\\DeviceToken",

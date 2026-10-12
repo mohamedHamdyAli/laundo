@@ -435,8 +435,8 @@
             "admin.driver_bonus_rule.toggleStatus",
             "admin.driver_bonus_rule.update"
         ],
-        "node_count": 1106,
-        "cohesion": 0.451,
+        "node_count": 1109,
+        "cohesion": 0.445,
         "screens": [
             {
                 "key": "order_task",
@@ -542,7 +542,7 @@
             "admin.user.update"
         ],
         "node_count": 79,
-        "cohesion": 0.208,
+        "cohesion": 0.198,
         "screens": [
             {
                 "key": "user",
@@ -633,7 +633,7 @@
             "admin.journey_step.index"
         ],
         "node_count": 455,
-        "cohesion": 0.661,
+        "cohesion": 0.659,
         "screens": [
             {
                 "key": "offer",
@@ -702,7 +702,6 @@
         "modules": [
             "Order",
             "Payment",
-            "Address",
             "Rating",
             "Recurrence"
         ],
@@ -789,8 +788,8 @@
             "admin.refund.approve",
             "admin.refund.index"
         ],
-        "node_count": 782,
-        "cohesion": 0.398,
+        "node_count": 785,
+        "cohesion": 0.392,
         "screens": [
             {
                 "key": "order",
@@ -815,7 +814,6 @@
             "order_today"
         ],
         "inferred_modules": [
-            "Address",
             "Rating",
             "Recurrence"
         ]
@@ -895,8 +893,8 @@
             "admin.time_slot.toggleStatus",
             "admin.time_slot.update"
         ],
-        "node_count": 585,
-        "cohesion": 0.369,
+        "node_count": 587,
+        "cohesion": 0.363,
         "screens": [
             {
                 "key": "complaint",
@@ -947,9 +945,13 @@
         "modules": [
             "Report",
             "Payment",
-            "Wallet"
+            "Wallet",
+            "Loyalty"
         ],
         "models": [
+            "App\\Modules\\Loyalty\\Models\\PointAccount",
+            "App\\Modules\\Loyalty\\Models\\PointLotSpend",
+            "App\\Modules\\Loyalty\\Models\\PointTransaction",
             "App\\Modules\\Payment\\Models\\CommissionRule",
             "App\\Modules\\Payment\\Models\\DriverEarning",
             "App\\Modules\\Payment\\Models\\LaundryDeduction",
@@ -964,6 +966,9 @@
             "App\\Modules\\Wallet\\Models\\WalletTransaction"
         ],
         "tables": [
+            "point_accounts",
+            "point_lot_spends",
+            "point_transactions",
             "commission_rules",
             "driver_earnings",
             "laundry_deductions",
@@ -977,7 +982,7 @@
             "wallets",
             "wallet_transactions"
         ],
-        "route_count": 41,
+        "route_count": 45,
         "routes": [
             "admin.commission_rule.create",
             "admin.commission_rule.delete",
@@ -1000,6 +1005,10 @@
             "admin.payment.cash.receive",
             "admin.payment.index",
             "admin.payment.search",
+            "admin.point_account.adjust",
+            "admin.point_account.index",
+            "admin.point_account.search",
+            "admin.point_account.show",
             "admin.refund.approve",
             "admin.refund.index",
             "admin.refund.reject",
@@ -1014,14 +1023,10 @@
             "admin.settlement.index",
             "admin.settlement.search",
             "admin.settlement.settle",
-            "admin.wallet.adjust",
-            "admin.wallet.freeze",
-            "admin.wallet.index",
-            "admin.wallet.mine",
-            "admin.wallet.search"
+            "admin.wallet.adjust"
         ],
-        "node_count": 529,
-        "cohesion": 0.498,
+        "node_count": 637,
+        "cohesion": 0.506,
         "screens": [
             {
                 "key": "finance",
@@ -1056,6 +1061,14 @@
                 ]
             },
             {
+                "key": "point_account",
+                "title": "Customer points",
+                "route": "admin.point_account.index",
+                "modules": [
+                    "Loyalty"
+                ]
+            },
+            {
                 "key": "order_settlement",
                 "title": "Order Settlements",
                 "route": "admin.settlement.index",
@@ -1085,6 +1098,7 @@
             "payment",
             "refund",
             "wallet",
+            "point_account",
             "order_settlement",
             "commission_rule",
             "laundry_revenue"
@@ -1118,7 +1132,7 @@
             "admin.report.revenue"
         ],
         "node_count": 129,
-        "cohesion": 0.498,
+        "cohesion": 0.491,
         "screens": [
             {
                 "key": "report",
@@ -1144,7 +1158,7 @@
         ],
         "models": [],
         "tables": [],
-        "route_count": 106,
+        "route_count": 108,
         "routes": [
             "api.v1.addresses.default",
             "api.v1.addresses.destroy",
@@ -1187,8 +1201,8 @@
             "api.v1.driver.tasks.complete",
             "api.v1.driver.tasks.fail"
         ],
-        "node_count": 273,
-        "cohesion": 0.381
+        "node_count": 280,
+        "cohesion": 0.373
     },
     {
         "slug": "authentication",
@@ -1229,8 +1243,8 @@
         "tables": [],
         "route_count": 0,
         "routes": [],
-        "node_count": 222,
-        "cohesion": 0.439
+        "node_count": 229,
+        "cohesion": 0.445
     },
     {
         "slug": "public_site",
@@ -1256,14 +1270,18 @@
         "order": 90,
         "modules": [
             "Tests",
-            "Docs"
+            "Docs",
+            "Address"
         ],
         "models": [],
         "tables": [],
         "route_count": 0,
         "routes": [],
-        "node_count": 1677,
-        "cohesion": 0.355
+        "node_count": 1719,
+        "cohesion": 0.353,
+        "inferred_modules": [
+            "Address"
+        ]
     },
     {
         "slug": "routing_and_distance",
@@ -1279,7 +1297,7 @@
         "route_count": 0,
         "routes": [],
         "node_count": 36,
-        "cohesion": 0.235
+        "cohesion": 0.233
     },
     {
         "slug": "system",
@@ -1361,8 +1379,8 @@
             "admin.myNotifications.unread",
             "admin.notification.compose"
         ],
-        "node_count": 1107,
-        "cohesion": 0.434,
+        "node_count": 1119,
+        "cohesion": 0.431,
         "screens": [
             {
                 "key": "moderator",

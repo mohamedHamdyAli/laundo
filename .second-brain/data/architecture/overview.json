@@ -11,12 +11,12 @@
     "surfaces": {
         "panel": {
             "prefix": "/admin",
-            "routes": 324,
+            "routes": 328,
             "note": "Blade admin panel; laundry owners share it and are confined by the tenant scope"
         },
         "api": {
             "prefix": "/api/v1",
-            "routes": 106,
+            "routes": 108,
             "note": "stateless JSON for the customer app and the driver app"
         },
         "landing": {
@@ -60,52 +60,52 @@
     },
     "scale": {
         "communities": 17,
-        "modules": 42,
-        "features": 455,
-        "routes": 455,
-        "tables": 72,
+        "modules": 43,
+        "features": 465,
+        "routes": 461,
+        "tables": 75,
         "nodes_by_type": {
-            "class": 557,
-            "command": 10,
-            "enum": 21,
-            "feature": 455,
-            "file": 1063,
+            "class": 572,
+            "command": 11,
+            "enum": 22,
+            "feature": 465,
+            "file": 1088,
             "integration": 5,
             "interface": 4,
-            "method": 3319,
-            "module": 42,
-            "permission": 237,
-            "route": 455,
-            "table": 72,
-            "test": 160,
+            "method": 3436,
+            "module": 43,
+            "permission": 242,
+            "route": 461,
+            "table": 75,
+            "test": 162,
             "trait": 7,
-            "view": 295
+            "view": 298
         },
         "edges_by_type": {
-            "contains": 5454,
-            "implemented_by": 4278,
-            "tested_by": 3210,
-            "imports": 2581,
-            "references": 2477,
-            "entry_point": 1413,
-            "depends_on": 1142,
-            "calls": 889,
-            "route_to": 879,
-            "touches": 582,
-            "guarded_by": 416,
-            "includes": 371,
-            "extends": 245,
-            "renders": 177,
-            "writes_table": 156,
+            "contains": 5617,
+            "implemented_by": 4436,
+            "tested_by": 3290,
+            "imports": 2680,
+            "references": 2573,
+            "entry_point": 1499,
+            "depends_on": 1205,
+            "calls": 947,
+            "route_to": 891,
+            "touches": 611,
+            "guarded_by": 424,
+            "includes": 374,
+            "extends": 250,
+            "renders": 180,
+            "writes_table": 168,
             "co_changes": 121,
-            "foreign_key": 101,
-            "uses_trait": 95,
-            "belongs_to": 86,
+            "foreign_key": 104,
+            "uses_trait": 97,
+            "belongs_to": 89,
+            "integrates": 67,
             "validates": 67,
-            "integrates": 66,
-            "defined_by": 63,
-            "maps_to": 63,
-            "has_many": 28,
+            "defined_by": 66,
+            "maps_to": 66,
+            "has_many": 30,
             "implements": 6,
             "belongs_to_many": 4,
             "has_one": 4
@@ -160,7 +160,7 @@
                 "Payment"
             ],
             "routes": 83,
-            "cohesion": 0.451
+            "cohesion": 0.445
         },
         {
             "slug": "user",
@@ -170,7 +170,7 @@
                 "User"
             ],
             "routes": 9,
-            "cohesion": 0.208
+            "cohesion": 0.198
         },
         {
             "slug": "marketing",
@@ -185,7 +185,7 @@
                 "Faq"
             ],
             "routes": 54,
-            "cohesion": 0.661
+            "cohesion": 0.659
         },
         {
             "slug": "order",
@@ -194,12 +194,11 @@
             "modules": [
                 "Order",
                 "Payment",
-                "Address",
                 "Rating",
                 "Recurrence"
             ],
             "routes": 46,
-            "cohesion": 0.398
+            "cohesion": 0.392
         },
         {
             "slug": "operations",
@@ -211,7 +210,7 @@
                 "TimeSlot"
             ],
             "routes": 31,
-            "cohesion": 0.369
+            "cohesion": 0.363
         },
         {
             "slug": "money",
@@ -220,10 +219,11 @@
             "modules": [
                 "Report",
                 "Payment",
-                "Wallet"
+                "Wallet",
+                "Loyalty"
             ],
-            "routes": 41,
-            "cohesion": 0.498
+            "routes": 45,
+            "cohesion": 0.506
         },
         {
             "slug": "report",
@@ -233,7 +233,7 @@
                 "Report"
             ],
             "routes": 7,
-            "cohesion": 0.498
+            "cohesion": 0.491
         },
         {
             "slug": "api",
@@ -242,8 +242,8 @@
             "modules": [
                 "Api"
             ],
-            "routes": 106,
-            "cohesion": 0.381
+            "routes": 108,
+            "cohesion": 0.373
         },
         {
             "slug": "authentication",
@@ -263,7 +263,7 @@
                 "Database"
             ],
             "routes": 0,
-            "cohesion": 0.439
+            "cohesion": 0.445
         },
         {
             "slug": "public_site",
@@ -281,10 +281,11 @@
             "source": "derived",
             "modules": [
                 "Tests",
-                "Docs"
+                "Docs",
+                "Address"
             ],
             "routes": 0,
-            "cohesion": 0.355
+            "cohesion": 0.353
         },
         {
             "slug": "routing_and_distance",
@@ -294,7 +295,7 @@
                 "Routing"
             ],
             "routes": 0,
-            "cohesion": 0.235
+            "cohesion": 0.233
         },
         {
             "slug": "system",
@@ -310,7 +311,7 @@
                 "Roles"
             ],
             "routes": 67,
-            "cohesion": 0.434
+            "cohesion": 0.431
         }
     ],
     "runtime": {
@@ -350,6 +351,10 @@
             {
                 "command": "drivers:close-bonus-month",
                 "cadence": "monthlyOn(1, '07:00')"
+            },
+            {
+                "command": "loyalty:expire-points",
+                "cadence": "dailyAt('10:00')"
             }
         ]
     },
@@ -368,7 +373,9 @@
         "docs/mobile-2026-10-07-complaints-and-coverage.md",
         "docs/mobile-2026-10-11-social-links.md",
         "docs/mobile-2026-10-11-time-slots-token.md",
+        "docs/mobile-2026-10-12-address-pin-reply.md",
         "docs/mobile-2026-10-12-driver-location-always.md",
+        "docs/mobile-2026-10-12-loyalty-points.md",
         "docs/mobile-api-changes.md",
         "docs/order-cycle-explained.md",
         "docs/order-lifecycle.md",

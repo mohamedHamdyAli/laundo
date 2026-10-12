@@ -6,7 +6,7 @@
 
 @endphp
 
-{{-- Four tabs of related settings, on one form: one save still posts every
+{{-- Five tabs of related settings, on one form: one save still posts every
      field, so a tab left unopened is never blanked. A field refused on save
      opens its own tab first (see the script at the foot of the page). --}}
 <ul class="nav nav-tabs settings-tabs mb-3" role="tablist">
@@ -32,6 +32,12 @@
         <button class="nav-link" id="settings-tab-operations" data-bs-toggle="tab" data-bs-target="#settings-operations"
             type="button" role="tab" aria-controls="settings-operations" aria-selected="false">
             <i class="bi bi-diagram-3 me-1" aria-hidden="true"></i>{{ __('Operations') }}
+        </button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="settings-tab-points" data-bs-toggle="tab" data-bs-target="#settings-points"
+            type="button" role="tab" aria-controls="settings-points" aria-selected="false">
+            <i class="bi bi-stars me-1" aria-hidden="true"></i>{{ __('Points') }}
         </button>
     </li>
 </ul>
@@ -1161,6 +1167,157 @@
             <div class="form-text">
                 {{ __('A window of today stops being offered this long before it ends, so nobody books a time a driver cannot reach. Blank is 60; 0 keeps it open until it ends.') }}
             </div>
+        </div>
+    </div>
+</div>
+
+</div>
+
+{{-- «النقاط» — the points programme, every figure of it. Read by
+     App\Modules\Loyalty\Services\PointsPolicy and nowhere else. Blank fields
+     are the owner's own figures (shown as placeholders); the switch is the one
+     thing that starts off. --}}
+<div class="tab-pane fade" id="settings-points" role="tabpanel" aria-labelledby="settings-tab-points" tabindex="0">
+
+@php($pointsPolicy = app(\App\Modules\Loyalty\Services\PointsPolicy::class))
+
+<div class="row g-3 border rounded p-3 mb-3">
+    <h5 class="mb-1">{{ __('Points programme') }}</h5>
+    <p class="text-muted small mb-2">
+        {{ __('Customers earn points for every completed order and for every hanger they hand back to a driver, and spend them as a discount on a later order. The discount comes entirely out of the platform share: the laundry is paid as if there were no points.') }}
+    </p>
+
+    <div class="col-12">
+        <input type="hidden" name="Points_Enabled" value="0">
+        <div class="form-check form-switch">
+            <input class="form-check-input" type="checkbox" role="switch" id="setting-points-enabled"
+                name="Points_Enabled" value="1" @checked($pointsPolicy->enabled())>
+            <label class="form-check-label fw-semibold" for="setting-points-enabled">{{ __('Run the points programme') }}</label>
+        </div>
+        <div class="form-text">
+            {{ __('Off: no order or hanger earns points and none can be spent at checkout. Balances are kept, and an order placed while it was on still earns what it was promised.') }}
+        </div>
+    </div>
+</div>
+
+<div class="row g-3 border rounded p-3 mb-3">
+    <h5 class="mb-1">{{ __('Earning points') }}</h5>
+
+    <div class="col-md-6 col-lg-3">
+        <div class="form-group">
+            <label for="setting-points-per-order" class="form-label">{{ __('Points for each order') }}</label>
+            <input type="number" step="1" min="0" max="10000" name="Points_Per_Order" id="setting-points-per-order"
+                class="form-control" placeholder="{{ \App\Modules\Loyalty\Services\PointsPolicy::DEFAULT_PER_ORDER }}"
+                value="{{ getSettingValue('Points_Per_Order') }}">
+            <div class="form-text">{{ __('Paid when the order completes — delivered and paid for. A cancelled or returned order earns nothing.') }}</div>
+        </div>
+    </div>
+
+    <div class="col-md-6 col-lg-3">
+        <div class="form-group">
+            <label for="setting-points-min-order" class="form-label">{{ __('Smallest order that earns points') }}</label>
+            <div class="input-group">
+                <input type="number" step="0.01" min="0" max="100000" name="Points_Min_Order_To_Earn" id="setting-points-min-order"
+                    class="form-control" placeholder="0" value="{{ getSettingValue('Points_Min_Order_To_Earn') }}">
+                <span class="input-group-text">{{ appCurrency() }}</span>
+            </div>
+            <div class="form-text">{{ __('Measured on the pieces washed, before any discount. Blank or 0: every order earns.') }}</div>
+        </div>
+    </div>
+
+    <div class="col-md-6 col-lg-3">
+        <div class="form-group">
+            <label for="setting-points-per-hanger" class="form-label">{{ __('Points for each hanger') }}</label>
+            <input type="number" step="1" min="0" max="1000" name="Points_Per_Hanger" id="setting-points-per-hanger"
+                class="form-control" placeholder="{{ \App\Modules\Loyalty\Services\PointsPolicy::DEFAULT_PER_HANGER }}"
+                value="{{ getSettingValue('Points_Per_Hanger') }}">
+            <div class="form-text">{{ __('The driver records the hangers handed back at the customer door, at pickup or at delivery, and the points are added straight away.') }}</div>
+        </div>
+    </div>
+
+    <div class="col-md-6 col-lg-3">
+        <div class="form-group">
+            <label for="setting-max-hangers" class="form-label">{{ __('Most hangers on one visit') }}</label>
+            <input type="number" step="1" min="0" max="999" name="Max_Hangers_Per_Visit" id="setting-max-hangers"
+                class="form-control" placeholder="{{ \App\Modules\Loyalty\Services\PointsPolicy::DEFAULT_MAX_HANGERS }}"
+                value="{{ getSettingValue('Max_Hangers_Per_Visit') }}">
+            <div class="form-text">{{ __('A ceiling on what a driver can type at the door, so a slip of the thumb is not worth a hundred pounds.') }}</div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-3 border rounded p-3 mb-3">
+    <h5 class="mb-1">{{ __('Spending points') }}</h5>
+
+    <div class="col-md-4">
+        <div class="form-group">
+            <label for="setting-point-value" class="form-label">{{ __('Value of one point') }}</label>
+            <div class="input-group">
+                <input type="number" step="0.01" min="0.01" max="1000" name="Point_Value" id="setting-point-value"
+                    class="form-control" placeholder="{{ number_format(\App\Modules\Loyalty\Services\PointsPolicy::DEFAULT_POINT_VALUE, 2) }}"
+                    value="{{ getSettingValue('Point_Value') }}">
+                <span class="input-group-text">{{ appCurrency() }}</span>
+            </div>
+            <div class="form-text">{{ __('What one point takes off an order. Copied onto each order when it is placed.') }}</div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="form-group">
+            <label for="setting-points-min-redeem" class="form-label">{{ __('Fewest points to spend') }}</label>
+            <input type="number" step="1" min="0" max="1000000" name="Points_Min_Redeem" id="setting-points-min-redeem"
+                class="form-control" placeholder="0" value="{{ getSettingValue('Points_Min_Redeem') }}">
+            <div class="form-text">{{ __('A customer holding fewer cannot use them yet. Blank or 0: any number.') }}</div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="form-group">
+            <label for="setting-points-max-percent" class="form-label">{{ __('Most of the washing points can pay') }}</label>
+            <div class="input-group">
+                <input type="number" step="0.01" min="0" max="100" name="Points_Max_Redeem_Percent" id="setting-points-max-percent"
+                    class="form-control" placeholder="100" value="{{ getSettingValue('Points_Max_Redeem_Percent') }}">
+                <span class="input-group-text">%</span>
+            </div>
+            <div class="form-text">{{ __('Of the washing left after any coupon. Points never pay the delivery fee, the cash fee or the tax.') }}</div>
+        </div>
+    </div>
+
+    <div class="col-12">
+        <div class="border rounded p-2 small bg-light-subtle">
+            <strong>{{ __('Example') }}</strong>
+            <div class="text-muted">
+                {{ __('Washing 120, a coupon of 20, 60 points at 1 each, and at most 50%. The points can pay up to 50 of the 100 the coupon left, so 50 points are spent and 10 kept.') }}
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-3 border rounded p-3 mb-3">
+    <h5 class="mb-1">{{ __('Expiry') }}</h5>
+
+    <div class="col-md-6">
+        <div class="form-group">
+            <label for="setting-points-expiry" class="form-label">{{ __('Points expire after') }}</label>
+            <div class="input-group">
+                <input type="number" step="1" min="1" max="3650" name="Points_Expiry_Days" id="setting-points-expiry"
+                    class="form-control" placeholder="{{ __('Never') }}" value="{{ getSettingValue('Points_Expiry_Days') }}">
+                <span class="input-group-text">{{ __('days') }}</span>
+            </div>
+            <div class="form-text">{{ __('Counted from the day the points are earned. Each batch keeps the expiry it was earned with, so changing this moves only the points earned afterwards. The oldest points are spent first. Blank: points never expire.') }}</div>
+        </div>
+    </div>
+
+    <div class="col-md-6">
+        <div class="form-group">
+            <label for="setting-points-warning" class="form-label">{{ __('Expiry reminder') }}</label>
+            <div class="input-group">
+                <input type="number" step="1" min="0" max="365" name="Points_Expiry_Warning_Days" id="setting-points-warning"
+                    class="form-control" placeholder="{{ \App\Modules\Loyalty\Services\PointsPolicy::DEFAULT_EXPIRY_WARNING_DAYS }}"
+                    value="{{ getSettingValue('Points_Expiry_Warning_Days') }}">
+                <span class="input-group-text">{{ __('days before') }}</span>
+            </div>
+            <div class="form-text">{{ __('The customer is told once, this many days before points expire. 0: no reminder.') }}</div>
         </div>
     </div>
 </div>

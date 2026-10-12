@@ -10,6 +10,7 @@ use App\Modules\Coupon\Models\Coupon;
 use App\Modules\Item\Models\Item;
 use App\Modules\ItemCategory\Models\ItemCategory;
 use App\Modules\Laundry\Models\Laundry;
+use App\Modules\Loyalty\Models\PointLotSpend;
 use App\Modules\Notification\Models\DeviceToken;
 use App\Modules\Notification\Models\NotificationLog;
 use App\Modules\Offer\Models\Offer;
@@ -57,6 +58,9 @@ return [
         PriceChangeItem::class,
         // Rewritten on every settlement recompute; the settlement is recorded.
         OrderSettlementLine::class,
+        // Which lots a points spend ate — the spend itself is logged, and this
+        // is its arithmetic, as a settlement's lines are.
+        PointLotSpend::class,
         // A log of its own — every order status with its actor — which the
         // order's history reads directly.
         OrderStatusLog::class,
@@ -110,6 +114,10 @@ return [
         'boundary',
         // A cash payment's leg: an id with nothing to read in a sentence.
         'order_task_id',
+        // A points movement's plumbing: the key that makes it happen once and
+        // the spend a return gives back. Its reason and note say both.
+        'dedupe_key',
+        'reverses_id',
     ],
     'hidden_suffixes' => ['_lat', '_lng', '_token'],
 
@@ -211,6 +219,8 @@ return [
         'User' => 'Account',
         'Wallet' => 'Wallet',
         'WalletTransaction' => 'Wallet transaction',
+        'PointAccount' => 'Points balance',
+        'PointTransaction' => 'Points movement',
         'Zone' => 'Zone',
     ],
 

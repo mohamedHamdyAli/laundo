@@ -8,6 +8,7 @@ use App\Http\Requests\Api\V1\OrderQuoteRequest;
 use App\Http\Requests\Api\V1\OrderRequest;
 use App\Modules\Address\Models\Address;
 use App\Modules\Driver\Services\DriverCard;
+use App\Modules\Loyalty\Services\OrderPoints;
 use App\Modules\Order\Enums\OrderStatus;
 use App\Modules\Order\Enums\TaskType;
 use App\Modules\Order\Models\Order;
@@ -100,6 +101,18 @@ class OrderController extends Controller
             // تحديدها لاحقاً» rather than a misleading 0.00.
             'delivery_fee_reason' => $quote['delivery_fee_reason'],
             'discount' => $quote['discount'],
+            // «النقاط» — what the customer holds, what the order would let them
+            // spend (for the toggle's label, whatever it is set to), what they
+            // are spending, and what completing it will earn. `discount` above
+            // is the coupon's; this is its own line.
+            'points' => [
+                'available' => $quote['points_available'],
+                'redeemable' => $quote['points_redeemable'],
+                'redeemable_discount' => $quote['points_redeemable_discount'],
+                'used' => $quote['points_used'],
+                'discount' => $quote['points_discount'],
+                'to_earn' => $quote['points_to_earn'],
+            ],
             // The code that actually applied, and — when one was typed and
             // refused — why. A refused code is never fatal: the customer asked
             // for a discount, not for the order to fail.
@@ -443,6 +456,12 @@ class OrderController extends Controller
             ),
             // Named against the field so the wizard can mark the window red
             // rather than showing a banner over the whole form.
+            // Another checkout spent the points between this one's quote and
+            // its submit. Named against the field so the app can re-quote.
+            'points_changed' => failReturnValidation(
+                ['use_points' => [__('Your points balance has changed. Please review your order and try again.')]],
+                __('Your points balance has changed. Please review your order and try again.')
+            ),
             'slot_full' => failReturnValidation(
                 ['pickup_slot_id' => [__('This window is fully booked. Please choose another one.')]],
                 __('This window is fully booked. Please choose another one.')
@@ -532,6 +551,10 @@ class OrderController extends Controller
                 'estimated_subtotal' => (float) $order->estimated_subtotal,
                 'delivery_fee' => (float) $order->delivery_fee,
                 'discount' => (float) $order->discount_total,
+                // «خصم النقاط» — after a review, what is left of it: fewer
+                // pieces counted hands points back.
+                'points_used' => (int) $order->points_used,
+                'points_discount' => (float) $order->points_discount,
                 // Its own line here as well as in the quote. A total carrying a
                 // fee that appears nowhere is a fee the customer cannot check.
                 'cash_surcharge' => (float) $order->cash_surcharge,
@@ -552,6 +575,17 @@ class OrderController extends Controller
             ],
             'items' => $items,
             'photos' => $photos,
+            // What this order pays in points once it completes, and what it
+            // has paid so far — the order's own and its hangers.
+            'points' => [
+                // Zero once the count has fallen under the minimum that earns.
+                'to_earn' => app(OrderPoints::class)->promised($order),
+                'earned' => app(OrderPoints::class)->earnedOn($order),
+                // Asked rather than eager-loaded: `find()` also serves cancel,
+                // which walks the legs, and half-loaded legs there would be a
+                // trap. One sum, on the detail only.
+                'hangers_returned' => (int) $order->tasks()->sum('hangers_returned'),
+            ],
         ];
     }
 

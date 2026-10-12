@@ -101,6 +101,12 @@ class OrderRequest extends FormRequest
             // priced, and then refused at the last step.
             'payment_method' => ['nullable', Rule::in(PaymentMethod::values())],
 
+            // «استخدم نقاطك» — spend as many points as the order allows. Not a
+            // number: how many is the server's to work out (the balance, the
+            // cap on the washing, the minimum), and the quote already showed it.
+            // Beside a coupon or an offer, by the owner's decision.
+            'use_points' => ['nullable', 'boolean'],
+
             // The repeat schedule's question this order is answering, if it is
             // answering one. Only the id: which schedule it belongs to is read
             // off the prompt, never off the request, so a customer cannot file
@@ -127,6 +133,20 @@ class OrderRequest extends FormRequest
             'pickup_slot_id.exists' => __('This pickup window is not available.'),
             'delivery_slot_id.exists' => __('This delivery window is not available.'),
         ];
+    }
+
+    /**
+     * `use_points` as a real boolean whatever the body is. An order with stain
+     * photos is multipart, where every value is a string, and `boolean` refuses
+     * "true"/"false" — with the same 422 the app is told means «your points
+     * changed», so it would retry for ever. Normalised rather than widened:
+     * the service reads it with `empty()`, and the string "false" is not empty.
+     */
+    protected function prepareForValidation(): void
+    {
+        if ($this->has('use_points') && is_string($this->input('use_points'))) {
+            $this->merge(['use_points' => filter_var($this->input('use_points'), FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE) ?? $this->input('use_points')]);
+        }
     }
 
     public function withValidator(Validator $validator): void

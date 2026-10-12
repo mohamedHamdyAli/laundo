@@ -49,6 +49,10 @@
                     · {{ __('discount') }} {{ moneyFormat($row->discount_amount) }}
                     ({{ __('laundry') }} {{ moneyFormat($row->laundry_discount_amount) }})
                 @endif
+                @if ((float) $row->points_discount_amount > 0)
+                    {{-- Also out of the basis, and the platform's alone. --}}
+                    · {{ __('Points discount') }} {{ moneyFormat($row->points_discount_amount) }}
+                @endif
             </span>
         </div>
         <div>

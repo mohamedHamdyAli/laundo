@@ -97,6 +97,18 @@ enum TaskType: string
     }
 
     /**
+     * Whether the driver asks for hangers back here — «شماعات راجعة».
+     *
+     * The two legs at the customer's door, the owner's answer: a customer hands
+     * back the last order's hangers whenever a driver is standing there, at the
+     * collection or at the delivery. Each one earns points (`OrderPoints`).
+     */
+    public function takesHangers(): bool
+    {
+        return $this === self::PickupFromCustomer || $this === self::DeliverToCustomer;
+    }
+
+    /**
      * Which of `order_media`'s types a photo from this leg is filed under.
      */
     public function mediaType(): string

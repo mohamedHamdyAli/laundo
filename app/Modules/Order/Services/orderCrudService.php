@@ -5,6 +5,7 @@ namespace App\Modules\Order\Services;
 use App\Modules\Driver\Models\Driver;
 use App\Modules\Item\Models\Item;
 use App\Modules\Laundry\Models\Laundry;
+use App\Modules\Loyalty\Services\OrderPoints;
 use App\Modules\Order\Enums\OrderStatus;
 use App\Modules\Order\Enums\TaskType;
 use App\Modules\Order\Models\Order;
@@ -305,6 +306,10 @@ class orderCrudService
             if ($blocker !== null) {
                 throw new RuntimeException($blocker);
             }
+
+            // An order erased before anybody collected it never reaches
+            // «cancelled», so the points it spent would be lost with it.
+            app(OrderPoints::class)->giveAllBack($order);
 
             $this->orders->delete($order->id);
         });

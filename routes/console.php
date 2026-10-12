@@ -112,3 +112,17 @@ Schedule::command('laundo:weekly-reports')
 Schedule::command('drivers:close-bonus-month')
     ->monthlyOn(1, '07:00')
     ->withoutOverlapping();
+
+/*
+| «النقاط» — lapsed points written off, and points about to lapse announced.
+|
+| Daily, mid-morning on the business's clock: the write-off could run at any
+| hour (a spend writes off whatever has lapsed before it takes anything, and
+| the app never counts a lapsed point), but the reminder is a push to a
+| customer's phone, and «your points expire on Thursday» does not belong at
+| half past midnight. Once per lot, so running it again is harmless.
+*/
+Schedule::command('loyalty:expire-points')
+    ->dailyAt('10:00')
+    ->timezone(config('app.display_timezone', 'Africa/Cairo'))
+    ->withoutOverlapping();

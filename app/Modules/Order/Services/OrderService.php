@@ -6,6 +6,7 @@ use App\Modules\Address\Models\Address;
 use App\Modules\Coupon\Models\Coupon;
 use App\Modules\Coupon\Services\CouponService;
 use App\Modules\Laundry\Models\Laundry;
+use App\Modules\Loyalty\Services\OrderPoints;
 use App\Modules\Notification\Services\AssignmentNotifier;
 use App\Modules\Notification\Services\OrderNotifier;
 use App\Modules\Offer\Models\Offer;
@@ -48,6 +49,7 @@ class OrderService
         private readonly DriverDispatcher $dispatcher,
         private readonly Turnaround $turnaround,
         private readonly SlotClock $clock,
+        private readonly OrderPoints $points,
     ) {}
 
     /**
@@ -85,6 +87,8 @@ class OrderService
             $laundry,
         );
 
+        $available = $this->points->availableFor($customer);
+
         $quote = $this->pricing->quote(
             $service,
             $data['items'] ?? [],
@@ -97,9 +101,16 @@ class OrderService
             // if they change their mind. A fee that only shows up on the receipt
             // is a fee they never agreed to.
             $data['payment_method'] ?? null,
+            // «استخدم نقاطك» re-quotes the same way: the toggle shows what the
+            // points would take off before the customer commits them.
+            $available,
+            ! empty($data['use_points']),
+            $coupon !== null && $discount > 0 && $coupon->coversDeliveryFee(),
         );
 
         return $quote + [
+            'points_available' => $available,
+            'points_to_earn' => $this->points->toEarn($service->isPerItem() ? $quote['subtotal'] : null),
             'coupon_code' => $coupon?->code,
             'coupon_error' => $couponError,
             // None when the laundry is chosen by hand: the order will not be given
@@ -172,6 +183,11 @@ class OrderService
             // picked cash, because only they were shown it — the quote taken
             // before a method is chosen carries none. Stored as cash below.
             $data['payment_method'] ?? null,
+            // Worked out on the balance as it is now; taken under the lock
+            // below, where a balance spent meanwhile refuses the order.
+            ! empty($data['use_points']) ? $this->points->availableFor($customer) : 0,
+            ! empty($data['use_points']),
+            $coupon !== null && $discount > 0 && $coupon->coversDeliveryFee(),
         );
 
         // The delivery leaves the service its time and is inside the booking
@@ -274,6 +290,14 @@ class OrderService
                         'rate' => $coupon->type === Coupon::PERCENTAGE ? (float) $coupon->value : null,
                     ]
                     : null,
+                // «خصم النقاط» — the platform's, all of it. Copied with the
+                // terms it was worked out on, so the review caps it at the
+                // same value and the same share of the washing.
+                'points_used' => $quote['points_used'],
+                'points_discount' => $quote['points_discount'],
+                // What completing it will pay, as the customer was shown it.
+                'points_to_earn' => $this->points->toEarn($service->isPerItem() ? $quote['subtotal'] : null),
+                'points_terms' => $this->points->terms(),
                 'cash_surcharge' => $quote['cash_surcharge'],
                 // Already inside `estimated_subtotal`; recorded separately so the
                 // settlement can take it back out. Same copy-at-placement rule as
@@ -310,6 +334,12 @@ class OrderService
             if ($coupon && $quote['discount'] > 0) {
                 $this->coupons->redeem($coupon, $customer, $order, $quote['discount']);
             }
+
+            // In the order's own transaction and under the account's lock: a
+            // second checkout that spent them meanwhile refuses this order
+            // (`points_changed`) rather than placing it with a discount nobody
+            // paid for.
+            $this->points->spend($order, $customer);
 
             $this->machine->open($order, 'customer', $customer);
 
@@ -400,6 +430,18 @@ class OrderService
             $fee = $this->pricing->deliveryFeeFor($laundry, $pickup, $order->deliveryAddress);
 
             if ($fee['fee'] !== null) {
+                // The points re-capped on the new fee, the review's rule: a
+                // coupon that also covers the delivery fee leaves a different
+                // share of the washing once the fee moves, and points that no
+                // longer fit go back now rather than at the count.
+                $order->delivery_fee = $fee['fee'];
+                $points = $this->points->capAfterReview(
+                    $order,
+                    (float) ($order->hasFinalPrice() ? $order->final_subtotal : $order->estimated_subtotal),
+                    (float) $order->discount_total,
+                );
+                $order->forceFill(['points_used' => $points['points'], 'points_discount' => $points['discount']]);
+
                 // Through the one assembler, at the order's OWN stored rate.
                 // Adding the fee by hand here is how the cash surcharge came to
                 // be dropped from a reassigned order's total, and re-reading the
@@ -410,6 +452,7 @@ class OrderService
                     (float) $order->discount_total,
                     (float) $order->cash_surcharge,
                     $order->taxRate(),
+                    (float) $order->points_discount,
                 );
 
                 $order->update([
@@ -427,6 +470,7 @@ class OrderService
                         (float) $order->discount_total,
                         (float) $order->cash_surcharge,
                         $order->taxRate(),
+                        (float) $order->points_discount,
                     );
 
                     $order->update([

@@ -104,9 +104,9 @@ Laravel 13 · PHP ^8.3 · MySQL · Sanctum (mobile API) · `laravel/ui` (Bootstr
 
 ### Module structure
 
-`app/Modules/{Name}/` — Controllers, Models, Repositories, Services, Requests, and often `Enums`. 31 modules: Address, Banner, City, Complaint, Country, Coupon, Driver, Faq, Intro, Item, ItemCategory, JourneyStep, Laundry, LaundryService, LaundryStaff, LaundryZone, Moderator, Notification, Offer, Order, Payment, Pricing, Rating, Recurrence, Report, Service, Setting, TimeSlot, User, Wallet, Zone.
+`app/Modules/{Name}/` — Controllers, Models, Repositories, Services, Requests, and often `Enums`. 32 modules: Address, Banner, City, Complaint, Country, Coupon, Driver, Faq, Intro, Item, ItemCategory, JourneyStep, Laundry, LaundryService, LaundryStaff, LaundryZone, Loyalty, Moderator, Notification, Offer, Order, Payment, Pricing, Rating, Recurrence, Report, Service, Setting, TimeSlot, User, Wallet, Zone.
 
-**A sidebar screen is not a module directory.** There are 31 module dirs and
+**A sidebar screen is not a module directory.** There are 32 module dirs and
 rather more panel screens than that, and the newer ones live inside an existing
 module rather than getting their own — so **do not go looking for `app/Modules/Settlement/`**:
 
@@ -286,6 +286,42 @@ Rules that are easy to break:
 | `Driver/Services/MonthlyBonusService` | measures a month, applies gates, picks a tier |
 | `Driver/Models/DriverBonusAward` | one driver-month — `due\|approved\|rejected` |
 | `Support/PlatformAccount` | the platform's wallet = the **oldest super admin** |
+
+### Customer points «النقاط»
+
+`app/Modules/Loyalty/` (since 2026-10-12). Points per completed order and per
+hanger handed back at the door, spent as a discount, lapsing on a schedule.
+**Every figure is a `Points_*` setting, read only by `PointsPolicy`** (the
+settings screen's «النقاط» tab); the switch is off until the owner turns it on.
+
+- **`PointsService` is the only thing that changes a balance**: every change a
+  `point_transactions` row, under the `point_accounts` row lock — **and every
+  read after the lock a locking read, every write from the locked row** (MySQL's
+  REPEATABLE READ snapshot double-spent points otherwise). A credit is a
+  **lot** (`remaining`, `expires_at` stamped when earned, never re-read); a
+  spend eats the soonest-expiring first and records it in `point_lot_spends`;
+  a return (`giveBack()`) is bounded by what the spend took and keeps each
+  lot's expiry. `live()` is what makes a lapsed point unspendable;
+  `loyalty:expire-points` (daily, 10:00 Cairo) writes lapsed lots off and
+  reminds once per lot.
+- **`OrderPoints` is where an order meets points**, from one place each:
+  `place()` (spend, under the lock — `points_changed` refuses the order),
+  `OrderReviewService` (capped at the counted washing, the rest given back,
+  never grown), `settleMoney()` (earn at `Completed`, give everything back at
+  `Cancelled`/`Returned`), `TaskService::complete()` (hangers, on
+  `TaskType::takesHangers()` legs, paid at once). Automatic credits are keyed
+  (`dedupe_key`), so a replay pays nothing.
+- **The points discount is the platform's, all of it** (the owner's call):
+  `orders.points_discount` beside `discount_total`, its own argument to
+  `OrderPricing::compose()` (required — a caller that forgets it fails),
+  inside `cleaningRevenue()`, never inside the laundry's share
+  (`order_settlements.points_discount_amount`). It comes off the washing left
+  after a coupon, never the delivery fee, the cash fee or the tax, and sits
+  beside a coupon or offer.
+- The terms (`point_value`, cap, earn minimum) and `points_to_earn` are
+  **copied onto the order at placement**, like the tax rate.
+- «نقاط العملاء» (`point_account.*`, `admin/point-account`) lists and corrects
+  balances; **refused inside a laundry** by the service and empty in the export.
 
 ### The home page counts; «ملخص الماليات» has the money
 
@@ -540,7 +576,7 @@ included), currently green. Treat a failure as a regression, not a flaky stub.
 each file is for, is in `docs/architecture.md` (**Docs**). The ones a change
 usually touches:
 
-- **`docs/postman/Laundo API v1.postman_collection.json`** (114 requests in six
+- **`docs/postman/Laundo API v1.postman_collection.json`** (116 requests in six
   caller-grouped folders) and **`docs/postman/generate-reference.py`** →
   `docs/api-reference.html`, whose endpoint list is hand-written Python. Check
   request *bodies* when a field changes.
@@ -610,7 +646,7 @@ Don't "fix" these blind. The reasons are in `docs/architecture.md`.
   `LOWER(CAST(… AS CHAR))` — **do not simplify it back** (`ListSearchTest`).
 - Every module's `search()` returns **null** unless the request is AJAX; tests need `X-Requested-With: XMLHttpRequest`.
 - `Banner` and `Intro` model **classes are lowercase**. `CachingService::getSystemSettings()` is dead code.
-- Settings are key/value rows with **PascalCase keys**. **The settings screen is four tabs on one form**; a switch setting needs the hidden-`0` input before its checkbox. `About` / `Privacy_Policy` / `Terms` hold **HTML** authored in TinyMCE (already loaded on every page) and are printed unescaped; `assets/js/pages/ckeditor.js` draws nothing.
+- Settings are key/value rows with **PascalCase keys**. **The settings screen is five tabs on one form**; a switch setting needs the hidden-`0` input before its checkbox. `About` / `Privacy_Policy` / `Terms` hold **HTML** authored in TinyMCE (already loaded on every page) and are printed unescaped; `assets/js/pages/ckeditor.js` draws nothing.
 - **No Arabic webfont in the panel** (Nunito only); the landing page self-hosts IBM Plex Sans Arabic.
 - The **`App_Name` setting still says `BaseCode`** — the owner's call (an invoice may need a legal name).
 - Seven images are still placeholders pending export from Figma.

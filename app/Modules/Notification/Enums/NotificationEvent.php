@@ -118,6 +118,24 @@ enum NotificationEvent: string
     case DriverRecordRejected = 'driver_record_rejected';
 
     /**
+     * Points were added to a customer's balance — for an order that completed,
+     * or for hangers handed back at the door.
+     *
+     * Not transactional: nothing waits on it. It is the one moment the
+     * programme is visible at all, which is why it is sent, and the mute switch
+     * still silences it.
+     */
+    case PointsEarned = 'points_earned';
+
+    /**
+     * Some of a customer's points lapse in a few days — «عندك 30 نقطة هتنتهي».
+     *
+     * Once per lot (`point_transactions.expiry_warned_at`). Not transactional:
+     * a customer who muted the app chose not to be told.
+     */
+    case PointsExpiring = 'points_expiring';
+
+    /**
      * Whether silence would stall something.
      */
     public function isTransactional(): bool
@@ -182,6 +200,8 @@ enum NotificationEvent: string
             self::DriverBonusReady => 'Driver bonuses ready',
             self::ManualMessage => 'Message from the team',
             self::DriverRecordRejected => 'Driver details refused',
+            self::PointsEarned => 'Points earned',
+            self::PointsExpiring => 'Points about to expire',
         };
     }
 

@@ -56,6 +56,10 @@ use Illuminate\Support\Str;
  * @property string|null $discount_laundry_share
  * @property bool $discount_covers_delivery
  * @property array{type: string, ids: list<int>, agreed: float, rate: float|null}|null $discount_scope
+ * @property int $points_used
+ * @property string $points_discount
+ * @property int $points_to_earn
+ * @property array{point_value: float, cap_percent: float, earn_min: float}|null $points_terms
  * @property string $estimated_total
  * @property int|null $final_items_count
  * @property string|null $final_subtotal
@@ -103,6 +107,7 @@ class Order extends Model
         'driver_note', 'special_instructions', 'review_terms_accepted_at',
         'estimated_items_count', 'estimated_subtotal', 'delivery_fee',
         'discount_total', 'discount_laundry_share', 'discount_covers_delivery', 'discount_scope',
+        'points_used', 'points_discount', 'points_to_earn', 'points_terms',
         'cash_surcharge', 'platform_fee', 'platform_fee_rate', 'price_increase_rate',
         'tax_rate', 'estimated_tax', 'estimated_total',
         'final_items_count', 'final_subtotal', 'final_tax', 'final_total', 'review_note', 'reviewed_at',
@@ -127,6 +132,10 @@ class Order extends Model
             'discount_laundry_share' => 'decimal:2',
             'discount_covers_delivery' => 'boolean',
             'discount_scope' => 'array',
+            'points_used' => 'integer',
+            'points_discount' => 'decimal:2',
+            'points_to_earn' => 'integer',
+            'points_terms' => 'array',
             'cash_surcharge' => 'decimal:2',
             'platform_fee' => 'decimal:2',
             'platform_fee_rate' => 'decimal:2',
@@ -465,8 +474,8 @@ class Order extends Model
 
     /**
      * What the customer paid for the laundry's work: its base, less the whole
-     * discount. The settlement's `basis` — the figure the platform's part and the
-     * laundry's part add back up to.
+     * discount — the coupon's and the points'. The settlement's `basis` — the
+     * figure the platform's part and the laundry's part add back up to.
      *
      * Can be below zero, and deliberately is not floored: a coupon larger than
      * the laundry's prices (possible once the platform fee sits inside the
@@ -475,7 +484,22 @@ class Order extends Model
      */
     public function cleaningRevenue(): float
     {
-        return round($this->laundryBase() - $this->effectiveDiscount(), 2);
+        return round($this->laundryBase() - $this->effectiveDiscount() - $this->effectivePointsDiscount(), 2);
+    }
+
+    /**
+     * The points discount as it actually came off the washing.
+     *
+     * After the coupon's part on the pieces, and capped at what it left: the review gives
+     * back points the counted pieces no longer cover (`OrderPoints`), and this
+     * is the backstop for an order whose figures were set some other way.
+     * **Always the platform's** — nothing here is divided by a bearer.
+     */
+    public function effectivePointsDiscount(): float
+    {
+        $left = max($this->pieceSubtotal() - $this->discountOnPieces(), 0.0);
+
+        return round(min(max((float) $this->points_discount, 0.0), $left), 2);
     }
 
     /**
@@ -583,6 +607,7 @@ class Order extends Model
         $subtotal = (float) ($final ? $this->final_subtotal : $this->estimated_subtotal);
         $delivery = (float) $this->delivery_fee;
         $discount = (float) $this->discount_total;
+        $points = (float) $this->points_discount;
         $surcharge = (float) $this->cash_surcharge;
         $tax = $this->payableTax();
 
@@ -598,6 +623,19 @@ class Order extends Model
             $rows[] = ['key' => 'discount', 'label' => __('Discount'), 'amount' => -$discount, 'note' => null, 'kind' => 'credit'];
         }
 
+        if ($points > 0) {
+            // Its own line, never folded into «Discount»: the customer paid for
+            // it with points they earned, and it is the platform's to bear while
+            // a coupon may be the laundry's.
+            $rows[] = [
+                'key' => 'points_discount',
+                'label' => __('Points discount'),
+                'amount' => -$points,
+                'note' => trans_choice(':count point|:count points', (int) $this->points_used, ['count' => (int) $this->points_used]),
+                'kind' => 'credit',
+            ];
+        }
+
         if ($surcharge > 0) {
             // Its own line rather than folded into delivery: the customer can
             // avoid it by paying another way, and a charge you cannot see is a
@@ -609,7 +647,7 @@ class Order extends Model
             // The subtotal-before-tax line only earns its place when something
             // moved the subtotal; with nothing between them it would restate the
             // row above it.
-            if ($delivery != 0.0 || $discount > 0 || $surcharge > 0) {
+            if ($delivery != 0.0 || $discount > 0 || $points > 0 || $surcharge > 0) {
                 $rows[] = ['key' => 'pre_tax', 'label' => __('Subtotal before tax'), 'amount' => $this->preTaxTotal(), 'note' => null, 'kind' => 'subtotal'];
             }
 

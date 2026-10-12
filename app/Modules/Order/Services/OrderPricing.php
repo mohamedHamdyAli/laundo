@@ -4,6 +4,8 @@ namespace App\Modules\Order\Services;
 
 use App\Modules\Address\Models\Address;
 use App\Modules\Laundry\Models\Laundry;
+use App\Modules\Loyalty\Services\OrderPoints;
+use App\Modules\Loyalty\Services\PointsPolicy;
 use App\Modules\Payment\Enums\PaymentMethod;
 use App\Modules\Pricing\Models\ItemPrice;
 use App\Modules\Pricing\Services\PlatformFee;
@@ -24,6 +26,7 @@ class OrderPricing
         private readonly DeliveryFeeCalculator $deliveryFee,
         private readonly PlatformFee $platformFee,
         private readonly PriceIncrease $priceIncrease,
+        private readonly PointsPolicy $points,
     ) {}
 
     /**
@@ -43,6 +46,12 @@ class OrderPricing
     /**
      * Price a basket for one service.
      *
+     * `$pointsAvailable` is what the customer holds (zero when the programme is
+     * off), and `$usePoints` whether they asked to spend it. The points are
+     * worked out on the washing the coupon left — `points_redeemable` whatever
+     * the customer chose, so the app can offer «استخدم 45 نقطة», and
+     * `points_used` only when they did.
+     *
      * @param  array<int, array{item_id: int, qty: int}>  $items
      * @return array{
      *     lines: array<int, array{item_id: int, qty: int, unit_price: float, base_unit_price: float, line_total: float}>,
@@ -53,6 +62,10 @@ class OrderPricing
      *     delivery_fee_reason: string|null,
      *     delivery_distance_source: string|null,
      *     discount: float,
+     *     points_redeemable: int,
+     *     points_redeemable_discount: float,
+     *     points_used: int,
+     *     points_discount: float,
      *     cash_surcharge: float,
      *     platform_fee: float,
      *     platform_fee_rate: float,
@@ -72,6 +85,9 @@ class OrderPricing
         ?Laundry $laundry = null,
         float $discount = 0.0,
         ?string $paymentMethod = null,
+        int $pointsAvailable = 0,
+        bool $usePoints = false,
+        bool $discountCoversDelivery = false,
     ): array {
         [
             'lines' => $lines,
@@ -86,6 +102,17 @@ class OrderPricing
         // A discount cannot exceed what is being discounted.
         $discount = round(min(max($discount, 0.0), $subtotal), 2);
 
+        // After the coupon, on what it left of the washing — never the delivery
+        // fee, the cash fee or the tax. Only the coupon's part on the pieces
+        // counts: one that also covers the delivery fee leaves more washing
+        // than its whole value suggests. A quoted service has no priced pieces
+        // yet, so nothing for points to come off.
+        $onPieces = $discountCoversDelivery
+            ? OrderPoints::piecesShare($discount, $subtotal, (float) ($fee['fee'] ?? 0))
+            : $discount;
+        $redeemable = $this->points->redeemable($pointsAvailable, round($subtotal - $onPieces, 2));
+        $spent = $usePoints ? $redeemable : ['points' => 0, 'discount' => 0.0];
+
         $surcharge = $this->cashSurcharge($paymentMethod);
 
         $money = $this->compose(
@@ -94,6 +121,7 @@ class OrderPricing
             $discount,
             $surcharge,
             $this->taxRate(),
+            $spent['discount'],
         );
 
         return [
@@ -108,6 +136,10 @@ class OrderPricing
             // road distance somebody drove.
             'delivery_distance_source' => $fee['distance_source'],
             'discount' => $discount,
+            'points_redeemable' => $redeemable['points'],
+            'points_redeemable_discount' => $redeemable['discount'],
+            'points_used' => $spent['points'],
+            'points_discount' => $spent['discount'],
             // Its own line, never folded into the delivery fee: the customer can
             // remove it by paying another way, and a charge you cannot see is a
             // charge you cannot avoid.
@@ -231,6 +263,8 @@ class OrderPricing
      * The order of operations, and each step is a decision:
      *
      *   subtotal - discount        a coupon discounts the washing
+     *   - points discount          points pay for what the coupon left of the
+     *                              washing, never more (the caller caps it)
      *   + delivery fee             measured from the laundry, never discounted
      *   + cash surcharge           added after the discount, deliberately: a
      *                              coupon large enough would otherwise pay the
@@ -245,6 +279,10 @@ class OrderPricing
      * rate that was in force when it was placed, and re-reading the setting at
      * review time would retax an agreed order at next quarter's rate.
      *
+     * `$pointsDiscount` is required, not defaulted, and last: a caller that
+     * predates points fails loudly rather than quietly charging a customer for
+     * the points they spent — the way the cash fee once went missing.
+     *
      * @return array{pre_tax_total: float, tax_rate: float, tax: float, total: float}
      */
     public function compose(
@@ -253,8 +291,9 @@ class OrderPricing
         float $discount,
         float $surcharge,
         float $rate,
+        float $pointsDiscount,
     ): array {
-        $preTax = round($subtotal + $deliveryFee - $discount + $surcharge, 2);
+        $preTax = round($subtotal + $deliveryFee - $discount - max($pointsDiscount, 0.0) + $surcharge, 2);
 
         // Floored before the tax is taken, not after. A negative base would hand
         // the customer tax back, and a total that cannot go below zero must not

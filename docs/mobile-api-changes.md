@@ -1233,3 +1233,16 @@ git: `git show b403985:docs/<اسم الملف>`.
 - الرد فيه `report_after_seconds`: `4` وفيه رجلة `assigned`/`started`، و`15` غير كده. التطبيق يقراه من كل رد ويبعت على أساسه.
 - `tracking: false` مبقاش إشارة «بطّل تبعت».
 - اللي العميل بيشوفه متغيّرش.
+
+---
+
+## ١٢ أكتوبر ٢٠٢٦ — «النقاط» (تطبيق العميل، والمندوب)
+
+ملف مستقل بالتفصيل: `docs/mobile-2026-10-12-loyalty-points.md`. الملخص:
+
+- endpoints جديدة: `GET /points` (الرصيد وقيمته وأقرب انتهاء والقواعد) و`GET /points/transactions` (السجل بتبويبات `earned` و`spent` و`expired` و`adjusted`).
+- `POST /orders/quote` و`POST /orders` بياخدوا `use_points`. الـ quote بيرجّع `points: {available, redeemable, redeemable_discount, used, discount, to_earn}` دايمًا.
+- `POST /orders`: لو النقاط اتصرفت في طلب تاني في نفس اللحظة، الرد **422** على `use_points`.
+- `GET /orders/{id}`: فيه `pricing.points_used` و`pricing.points_discount`، وبلوك `points: {to_earn, earned, hangers_returned}`.
+- المندوب: `GET /driver/tasks/{id}` فيه `accepts_hangers` و`max_hangers` و`hangers_returned`. وزرار «تأكيد» بياخد `hangers_returned` في الاستلام والتسليم.
+- إشعارات جديدة: `points_earned` و`points_expiring`، والاتنين بيفتحوا `/points`.

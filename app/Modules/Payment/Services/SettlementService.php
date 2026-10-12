@@ -203,7 +203,17 @@ class SettlementService
      */
     public function effectiveRate(float $basis, float $commission): float
     {
-        return $basis > 0 ? round($commission / $basis * 100, 2) : 0.0;
+        if ($basis <= 0) {
+            return 0.0;
+        }
+
+        // A discount the platform funds almost to the whole washing — points
+        // paying for all of it, say — leaves a basis of piastres, and the
+        // platform's part over it reads in the thousands of per cent. Stored as
+        // it is: the column was widened for it (`2026_10_12_100200`), because
+        // at decimal(5,2) the insert failed on MySQL and the order could not be
+        // confirmed. Held only to that wider column's own bounds.
+        return round(max(min($commission / $basis * 100, 9999999999.99), -9999999999.99), 2);
     }
 
     /**
@@ -249,10 +259,18 @@ class SettlementService
         $laundry = $this->laundryFor($order);
         $basis = $this->basisFor($order);
 
+        // The points discount joins the coupon in what comes off the washing,
+        // but not in what the laundry bears: `discountOnPieces()` and the
+        // laundry's share of it are the coupon's alone. Points are the
+        // platform's — the owner's decision — so the laundry is paid as if
+        // there were none, and the platform's part comes out lower (below zero
+        // and `settleFor()` funds it from the platform's wallet).
+        $points = $order->effectivePointsDiscount();
+
         $split = $this->splitFor(
             $laundry,
             $order->laundryBase(),
-            $order->effectiveDiscount(),
+            $order->effectiveDiscount() + $points,
             $order->discountOnPieces(),
             $order->laundryShareOfDiscount(),
         );
@@ -276,6 +294,9 @@ class SettlementService
             // settled row must say what it was paid on.
             'discount_amount' => $order->effectiveDiscount(),
             'laundry_discount_amount' => $split['laundry_discount'],
+            // The points, beside the coupon rather than inside it: they have no
+            // bearer to divide them by. The platform's part already carries them.
+            'points_discount_amount' => $points,
             'tax_amount' => $order->payableTax(),
             // The platform's own charge, already inside what the customer paid
             // and already outside `basis` — recorded so the revenue screen can
@@ -325,7 +346,8 @@ class SettlementService
         // whole basis and the laundry nothing — for work the laundry did, on
         // terms nobody set. It waits on the screen as pending instead, and
         // `SettlementController::settle()` pays it once a share exists.
-        if ($settlement->laundry_share_rate === null && (float) $settlement->basis + (float) $settlement->discount_amount > 0) {
+        if ($settlement->laundry_share_rate === null
+            && (float) $settlement->basis + (float) $settlement->discount_amount + (float) $settlement->points_discount_amount > 0) {
             Log::warning('[settlement] no laundry share set, left pending', [
                 'order' => $order->id,
                 'laundry' => $settlement->laundry_id,
