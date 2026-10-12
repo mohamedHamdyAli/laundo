@@ -2,6 +2,10 @@
 
 ## 2026-10-12
 
+### Improvement
+
+- **The app teams' notes of 7–12 October are sent and removed** (`docs/mobile-2026-10-07-complaints-and-coverage.md`, `-10-11-social-links.md`, `-10-11-time-slots-token.md`, `-10-12-driver-location-always.md`, `-10-12-loyalty-points.md`). Their summaries stay in `docs/mobile-api-changes.md`; the full text is `git show c00a548:docs/<file>` (Docs).
+
 ### Feature
 
 - **«النقاط» — customer points** (the owner: «مقابل كل أوردر 10 نقاط و النقطة تساوي واحد جنيه، و برضو لو رجع مع المندوب شماعات يكون له عن كل شماعة نقطه … بالكامل ديناميك»; decisions the same day: the platform bears the discount, points sit beside a coupon or offer, hangers at both doors paid at once, points expire). New module `app/Modules/Loyalty/`. Every figure is a setting on a new «النقاط» tab (`Points_Enabled` — off until switched on — `Points_Per_Order` 10, `Point_Value` 1, `Points_Per_Hanger` 1, `Max_Hangers_Per_Visit` 50, `Points_Min_Redeem`, `Points_Max_Redeem_Percent`, `Points_Min_Order_To_Earn`, `Points_Expiry_Days`, `Points_Expiry_Warning_Days` 7), read only by `PointsPolicy` (Service / Blade / Request).

@@ -1246,3 +1246,9 @@ git: `git show b403985:docs/<اسم الملف>`.
 - `GET /orders/{id}`: فيه `pricing.points_used` و`pricing.points_discount`، وبلوك `points: {to_earn, earned, hangers_returned}`.
 - المندوب: `GET /driver/tasks/{id}` فيه `accepts_hangers` و`max_hangers` و`hangers_returned`. وزرار «تأكيد» بياخد `hangers_returned` في الاستلام والتسليم.
 - إشعارات جديدة: `points_earned` و`points_expiring`، والاتنين بيفتحوا `/points`.
+
+---
+
+## ١٢ أكتوبر ٢٠٢٦ — الملفات المستقلة اتشالت تاني
+
+الملفات المستقلة من ٧ لـ ١٢ أكتوبر («ملف مستقل بالتفصيل» فوق: الشكاوى والتغطية، ولينكات السوشيال، و`address_id` في المواعيد، وموقع المندوب على طول، والنقاط) اتبعتت لفريق الموبايل واتشالت من المشروع. الملخص هنا هو اللي فاضل، والنص الكامل لأي ملف في تاريخ git: `git show c00a548:docs/<اسم الملف>`.
