@@ -537,3 +537,15 @@ The owner: «قفله». `exists:addresses,id` answered 422 for an id that is no
 - [x] `/code-review`, fixed: `prompt_id` had the same oracle; `min:1` so `delivery_address_id: 0` is not read as «same address»; the schedule's ownership check moved into `RecurrenceService::create()`; the app note's messages and its status for this part
 - [x] Suite (1,929 green), `/security-review` (nothing)
 - [x] Deploy (`7672432`); checked live: a stranger's address id and a missing one get the identical 404
+
+## 2026-10-11 — the social links on `/app-settings`
+
+The owner: «عاوز api يكون فيها سوشيال كونتكت الموجوده ف سيتنج». They were already flat fields on
+`GET /app-settings`, but live holds only the template's placeholders (`http://facebook.com/`…), served
+as-is. Agreed: a ready list in the same endpoint, real links only.
+
+- [x] `social: [{key, label, url}]` in a fixed order, only links filled in for real (`isPlaceholderSetting()`, the landing page's rule); the WhatsApp line follows `?audience=driver` like the flat field
+- [x] The flat social fields read null for a placeholder, so the two never disagree
+- [x] `/code-review`, fixed: `SOCIAL` is the one list (flat field + row); a placeholder driver WhatsApp falls back; a row is an `http(s)` link only; trimmed through `realSettingValue()` shared with `realSetting()`; a test that every label has Arabic. Kept: a root-domain link counts as a placeholder (the landing page's rule)
+- [x] Platform names translated; tests (each fails without its fix); Postman, reference, app note, Changelog; suite (1,936 green, 845s — CLAUDE.md's figure corrected); `/security-review` (nothing)
+- [ ] Deploy

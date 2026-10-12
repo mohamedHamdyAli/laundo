@@ -430,7 +430,7 @@
                     "app-settings"
                   ]
                 },
-                "description": "Everything the account screen needs in one call: app name, both logos, contact details and social links.\n\nAn explicit allow-list, not the settings table — `Country_Id`, `Tax` and `Login_Cover` are excluded deliberately.\n\nThe long-form pages are **not** included; `pages` only names them, so a client fetches one when it is opened.",
+                "description": "Everything the account screen needs in one call: app name, both logos, contact details and social links.\n\nAn explicit allow-list, not the settings table — `Country_Id`, `Tax` and `Login_Cover` are excluded deliberately.\n\nThe long-form pages are **not** included; `pages` only names them, so a client fetches one when it is opened.\n\n**`social`** (2026-10-11) — the «Social Setting» section as a list to loop over: `[{key, label, url}]`, in a fixed order (`whatsapp`, `facebook`, `instagram`, `twitter`, `snapchat`, `youtube`, `linkedin`, `gmail`). `key` picks the icon, `label` is the platform's name in the request's language. **Only links filled in for real**: a link still holding the template's own value (`http://facebook.com/` — Facebook's front page, not ours) is left out, and the matching flat field (`facebook_url`…) reads `null`. An empty list means none has been filled in. The WhatsApp line follows `?audience=driver` like `whats_app`.",
                 "auth": {
                   "type": "noauth"
                 }

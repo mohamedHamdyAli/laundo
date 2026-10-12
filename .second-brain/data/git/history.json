@@ -1,8 +1,20 @@
 {
     "available": true,
-    "head": "a91450b5deac99920a854b11462a847c8d626b79",
-    "commits_scanned": 133,
+    "head": "0df1432677a59ee0273db5bc7633e3efd7f270bd",
+    "commits_scanned": 135,
     "recent": [
+        {
+            "sha": "0df14326",
+            "date": "2026-10-11",
+            "subject": "docs: the address id fix is live",
+            "files": 1
+        },
+        {
+            "sha": "76724322",
+            "date": "2026-10-11",
+            "subject": "fix: an id that is nobody's answers like one that is somebody else's",
+            "files": 9
+        },
         {
             "sha": "a91450b5",
             "date": "2026-10-11",
@@ -80,31 +92,19 @@
             "date": "2026-10-04",
             "subject": "fix: cash on delivery end to end, and «الكاش مع المناديب»",
             "files": 28
-        },
-        {
-            "sha": "5c1e8370",
-            "date": "2026-10-01",
-            "subject": "fix: «طلبات اليوم» says how late a date that has gone by is",
-            "files": 4
-        },
-        {
-            "sha": "014b4fa7",
-            "date": "2026-09-30",
-            "subject": "docs: the live log is daily, and the 2026-09-30 mobile notes are live",
-            "files": 2
         }
     ],
     "hottest_files": {
         "routes/web.php": 27,
         "docs/postman/Laundo API v1.postman_collection.json": 24,
+        "docs/mobile-api-changes.md": 18,
         "app/Helpers/Helpers.php": 18,
-        "docs/mobile-api-changes.md": 17,
         "resources/views/admin/setting/generalSetting/forms/formInput.blade.php": 17,
         "config/menu.php": 16,
+        "app/Http/Controllers/Api/V1/OrderController.php": 14,
         "app/Modules/Setting/Requests/GeneralSettingRequest.php": 14,
         "resources/views/layouts/footer_script.blade.php": 14,
         "app/Modules/Order/Services/OrderService.php": 13,
-        "app/Http/Controllers/Api/V1/OrderController.php": 13,
         "config/dashboard.php": 13,
         "app/Http/Controllers/Admin/LanguageController.php": 11,
         "app/Services/languages/LanguageService.php": 11,
@@ -121,6 +121,7 @@
         "resources/views/admin/order/index.blade.php": 8,
         "resources/views/admin/banner/forms/formInput.blade.php": 8,
         "app/Services/CachingService.php": 8,
+        "app/Modules/Order/Services/RecurrenceService.php": 7,
         "docs/architecture.md": 7,
         "app/Services/MenuBadges.php": 7,
         "app/Modules/Order/Models/OrderTask.php": 7,
@@ -133,7 +134,6 @@
         "resources/views/admin/pricing/index.blade.php": 7,
         "app/Http/Controllers/Api/V1/DriverController.php": 7,
         "resources/views/admin/roles/index.blade.php": 7,
-        "resources/views/layouts/include.blade.php": 7,
-        "resources/views/layouts/main.blade.php": 7
+        "resources/views/layouts/include.blade.php": 7
     }
 }

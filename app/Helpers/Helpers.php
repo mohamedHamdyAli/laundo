@@ -1062,9 +1062,19 @@ if (! function_exists('realSetting')) {
     {
         $value = getSettingValue($key);
 
-        return isPlaceholderSetting(is_string($value) ? $value : null)
-            ? null
-            : trim((string) $value);
+        return realSettingValue(is_string($value) ? $value : null);
+    }
+}
+
+if (! function_exists('realSettingValue')) {
+    /**
+     * `realSetting()` for a value already in hand: null when blank or still
+     * seed data, otherwise trimmed. The one rule for the public pages and the
+     * apps' `/app-settings`, so the two never disagree about a link.
+     */
+    function realSettingValue(?string $value): ?string
+    {
+        return isPlaceholderSetting($value) ? null : trim((string) $value);
     }
 }
 

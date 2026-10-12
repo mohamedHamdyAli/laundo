@@ -58,15 +58,28 @@ class AppSettingController extends Controller
         'Hotline' => false,
         'Call' => false,
         'Email' => false,
-        'Whats_App' => false,
+    ];
 
-        'Facebook_Url' => false,
-        'Twitter_Url' => false,
-        'Instagram_Url' => false,
-        'Linkedin_Url' => false,
-        'Youtube_Url' => false,
-        'Snapchat_Url' => false,
-        'Gmail_Url' => false,
+    /**
+     * The «Social Setting» section of the settings screen, in the order the app
+     * draws it: the setting, the `key` the app picks an icon by, and the name.
+     *
+     * The one list of social keys: each is served as its own flat field
+     * (`whats_app`, `facebook_url`…) and as a row of `social`, so adding a
+     * platform here is the whole change — and its name needs an Arabic entry
+     * (`ContentTest` checks every label).
+     *
+     * @var array<string, array{0: string, 1: string}>
+     */
+    private const SOCIAL = [
+        'Whats_App' => ['whatsapp', 'WhatsApp'],
+        'Facebook_Url' => ['facebook', 'Facebook'],
+        'Instagram_Url' => ['instagram', 'Instagram'],
+        'Twitter_Url' => ['twitter', 'X (Twitter)'],
+        'Snapchat_Url' => ['snapchat', 'Snapchat'],
+        'Youtube_Url' => ['youtube', 'YouTube'],
+        'Linkedin_Url' => ['linkedin', 'LinkedIn'],
+        'Gmail_Url' => ['gmail', 'Gmail'],
     ];
 
     /** The three keys that have a screen of their own, by their public slug. */
@@ -118,8 +131,25 @@ class AppSettingController extends Controller
             }
 
             // A key absent from the table reads as null rather than throwing. An
-            // install that has not filled in its WhatsApp number is normal.
+            // install that has not filled in its hotline is normal.
             $payload[$this->slug($key)] = $this->contact($key, $stored, $audience);
+        }
+
+        // The social links, as their own flat fields and as a list the app can
+        // loop over — only the ones filled in for real, in a fixed order — so it
+        // draws an icon per row and a platform added to SOCIAL appears without
+        // an app release.
+        $payload['social'] = [];
+
+        foreach (self::SOCIAL as $key => [$slug, $label]) {
+            $value = $this->social($key, $stored, $audience);
+            $payload[$this->slug($key)] = $value;
+
+            // A row only for something an app can open: the driver's WhatsApp
+            // is a free-text setting, and a bare number is not a link.
+            if ($value !== null && preg_match('#^https?://#i', $value) === 1) {
+                $payload['social'][] = ['key' => $slug, 'label' => __($label), 'url' => $value];
+            }
         }
 
         // The white mark, for anywhere the app draws on a dark surface. Shipped
@@ -163,6 +193,31 @@ class AppSettingController extends Controller
         }
 
         return $stored[$key] ?? null;
+    }
+
+    /**
+     * A social link — null when blank or still the template's own value
+     * («http://facebook.com/» is Facebook's front page, not ours), the rule
+     * the landing page keeps (`realSettingValue()`), so an app never draws an
+     * icon that opens somebody else's site.
+     *
+     * The WhatsApp line is also a support line: the driver app gets the
+     * drivers' own, and a placeholder there falls back to the customer's like
+     * a blank one does (see `contact()`).
+     *
+     * @param  array<string, string|null>  $stored
+     */
+    private function social(string $key, array $stored, ?string $audience): ?string
+    {
+        if ($audience === 'driver' && in_array($key, self::DRIVER_OVERRIDES, true)) {
+            $override = realSettingValue($stored['Driver_'.$key] ?? null);
+
+            if ($override !== null) {
+                return $override;
+            }
+        }
+
+        return realSettingValue($stored[$key] ?? null);
     }
 
     /**

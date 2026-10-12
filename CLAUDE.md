@@ -29,12 +29,13 @@ php .second-brain/bin/brain.php update  # …or only what git says changed
 
 Single test: `php artisan test --filter=TestName` · one file: `php artisan test tests/Feature/Api/OrderTest.php` · one suite: `php artisan test --testsuite=Unit`. One browser spec: `npx playwright test tests/Browser/<name>.spec.js`.
 
-The full PHPUnit suite takes **four to thirteen minutes** — measured runs on the
+The full PHPUnit suite takes **four to fifteen minutes** — measured runs on the
 same machine came in at 251s, 317s, 477s, (at 1,570 tests, 2026-09-27) 341s
 and 521s, (at 1,662 tests, 2026-09-28) 575s, (at 1,814 tests, 2026-09-29,
 with another agent busy on the machine) 643s, (at 1,861 tests, 2026-09-30)
-317s, and (at 1,863–1,877 tests, 2026-10-01/04) 596s, 747s and 785s, so
-budget for the longest.
+317s, (at 1,863–1,877 tests, 2026-10-01/04) 596s, 747s and 785s, and (at
+1,922–1,936 tests, 2026-10-11/12) 424s, 584s, 624s and — with a review agent
+reading the tree alongside — 845s, so budget for the longest.
 When MySQL is down, `php artisan test` cannot boot at all (see the Second Brain
 note below) — run `vendor/bin/phpunit` directly, which reads `phpunit.xml`'s
 SQLite and needs no database server. Use

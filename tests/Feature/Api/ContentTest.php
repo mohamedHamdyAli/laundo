@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Api;
 
+use App\Http\Controllers\Api\V1\AppSettingController;
 use App\Modules\Banner\Models\banner;
 use App\Modules\Coupon\Models\Coupon;
 use App\Modules\Intro\Models\intro;
@@ -290,6 +291,110 @@ class ContentTest extends TestCase
 
         $this->assertSame('Laundo', $driver['app_name']);
         $this->assertArrayNotHasKey('driver_app_name', $driver);
+    }
+
+    #[Test]
+    public function the_social_links_come_as_a_list_of_the_real_ones_in_a_fixed_order(): void
+    {
+        // Real ones, set out of order on purpose.
+        $this->setting('Youtube_Url', 'https://youtube.com/@laundo');
+        $this->setting('Facebook_Url', 'https://facebook.com/laundo.eg');
+        $this->setting('Whats_App', 'https://wa.me/201000000000');
+        // The template's own values: somebody else's front page, not ours.
+        $this->setting('Instagram_Url', 'http://instagram.com');
+        $this->setting('Twitter_Url', 'http://twitter.com/');
+        // And one never filled in at all: Snapchat, LinkedIn, Gmail have no row.
+
+        $this->withHeaders(['lang' => 'ar']);
+        $data = $this->getJson('/api/v1/app-settings')->assertOk()->json('data');
+
+        $this->assertSame([
+            ['key' => 'whatsapp', 'label' => 'واتساب', 'url' => 'https://wa.me/201000000000'],
+            ['key' => 'facebook', 'label' => 'فيسبوك', 'url' => 'https://facebook.com/laundo.eg'],
+            ['key' => 'youtube', 'label' => 'يوتيوب', 'url' => 'https://youtube.com/@laundo'],
+        ], $data['social']);
+
+        // The flat fields say the same: a placeholder is null, not a link.
+        $this->assertNull($data['instagram_url']);
+        $this->assertNull($data['twitter_url']);
+        $this->assertSame('https://facebook.com/laundo.eg', $data['facebook_url']);
+    }
+
+    #[Test]
+    public function an_install_with_only_the_template_values_has_no_social_links(): void
+    {
+        $this->setting('Facebook_Url', 'http://facebook.com/');
+        $this->setting('Whats_App', 'http://whatsapp.com/');
+
+        $data = $this->getJson('/api/v1/app-settings')->assertOk()->json('data');
+
+        $this->assertSame([], $data['social']);
+        $this->assertNull($data['facebook_url']);
+    }
+
+    #[Test]
+    public function the_driver_app_gets_the_drivers_own_whatsapp_in_the_list_too(): void
+    {
+        $this->setting('Whats_App', 'https://wa.me/201000000000');
+        $this->setting('Driver_Whats_App', 'https://wa.me/201555555555');
+        $this->setting('Facebook_Url', 'https://facebook.com/laundo.eg');
+
+        $driver = $this->getJson('/api/v1/app-settings?audience=driver')->assertOk()->json('data');
+
+        $this->assertSame('https://wa.me/201555555555', $driver['social'][0]['url']);
+        // The company's own pages are the same for everybody.
+        $this->assertSame('https://facebook.com/laundo.eg', $driver['social'][1]['url']);
+    }
+
+    #[Test]
+    public function a_placeholder_driver_whatsapp_falls_back_to_the_real_one(): void
+    {
+        // A blank driver line falls back; a template one must too, rather than
+        // leaving the courier with no WhatsApp at all.
+        $this->setting('Whats_App', 'https://wa.me/201000000000');
+        $this->setting('Driver_Whats_App', 'http://whatsapp.com/');
+
+        $driver = $this->getJson('/api/v1/app-settings?audience=driver')->assertOk()->json('data');
+
+        $this->assertSame('https://wa.me/201000000000', $driver['whats_app']);
+        $this->assertSame('https://wa.me/201000000000', $driver['social'][0]['url']);
+    }
+
+    #[Test]
+    public function a_bare_number_is_a_contact_but_not_a_link_to_open(): void
+    {
+        // The driver's WhatsApp is free text on the settings form.
+        $this->setting('Driver_Whats_App', '01555555555');
+
+        $driver = $this->getJson('/api/v1/app-settings?audience=driver')->assertOk()->json('data');
+
+        $this->assertSame('01555555555', $driver['whats_app']);
+        $this->assertSame([], $driver['social']);
+    }
+
+    #[Test]
+    public function a_link_pasted_with_spaces_is_served_trimmed(): void
+    {
+        $this->setting('Facebook_Url', "  https://facebook.com/laundo.eg \n");
+
+        $data = $this->getJson('/api/v1/app-settings')->assertOk()->json('data');
+
+        $this->assertSame('https://facebook.com/laundo.eg', $data['facebook_url']);
+        $this->assertSame('https://facebook.com/laundo.eg', $data['social'][0]['url']);
+    }
+
+    #[Test]
+    public function every_platform_name_has_arabic(): void
+    {
+        // The labels reach `__()` through a variable, which the translation
+        // coverage sweep cannot see.
+        $social = (new \ReflectionClassConstant(AppSettingController::class, 'SOCIAL'))->getValue();
+        $arabic = json_decode((string) file_get_contents(resource_path('lang/ar.json')), true);
+
+        foreach ($social as [$key, $label]) {
+            $this->assertArrayHasKey($label, $arabic, "«{$label}» ({$key}) has no Arabic name");
+            $this->assertNotSame($label, $arabic[$label]);
+        }
     }
 
     #[Test]

@@ -159,7 +159,7 @@
             "api-controller": 23
         },
         "files": 23,
-        "lines": 5284,
+        "lines": 5339,
         "classes": [
             {
                 "fqcn": "App\\Http\\Controllers\\Api\\V1\\AddressController",
@@ -471,7 +471,8 @@
             "Setting": 1
         },
         "depended_on_by": {
-            "Routing": 22
+            "Routing": 22,
+            "Tests": 1
         }
     },
     {
@@ -1064,7 +1065,7 @@
             "ItemCategory": 2
         },
         "depended_on_by": {
-            "Tests": 18,
+            "Tests": 17,
             "Api": 8,
             "Order": 7,
             "Platform": 6,
@@ -1213,10 +1214,10 @@
         "community": "quality",
         "path": null,
         "layers": {
-            "doc": 11
+            "doc": 12
         },
-        "files": 11,
-        "lines": 10973,
+        "files": 12,
+        "lines": 11025,
         "classes": [],
         "models": [],
         "owns_tables": [],
@@ -2840,7 +2841,7 @@
             "Service": 2
         },
         "depended_on_by": {
-            "Tests": 7,
+            "Tests": 6,
             "Platform": 5,
             "Api": 2,
             "Order": 2,
@@ -3633,7 +3634,7 @@
             "mail": 2
         },
         "files": 187,
-        "lines": 19759,
+        "lines": 19769,
         "classes": [
             {
                 "fqcn": "App\\Http\\Controllers\\Controller",
@@ -5044,7 +5045,7 @@
             "Platform": 6
         },
         "depended_on_by": {
-            "Tests": 37,
+            "Tests": 36,
             "Platform": 6,
             "Database": 4,
             "Api": 1,
@@ -5061,7 +5062,7 @@
             "browser-test": 25
         },
         "files": 158,
-        "lines": 50897,
+        "lines": 51002,
         "classes": [
             {
                 "fqcn": "Tests\\Feature\\Api\\AddressIdDisclosureTest",
@@ -5873,10 +5874,10 @@
             "complaints",
             "order_tasks",
             "banners",
-            "coupons",
             "intros",
-            "offers",
+            "coupons",
             "item_categories",
+            "offers",
             "coupon_redemptions",
             "users",
             "roles",
@@ -6093,12 +6094,12 @@
             "Notification": 64,
             "Driver": 61,
             "Wallet": 46,
-            "Setting": 37,
+            "Setting": 36,
             "Laundry": 30,
             "Pricing": 22,
             "Complaint": 21,
             "TimeSlot": 19,
-            "Coupon": 18,
+            "Coupon": 17,
             "Zone": 17,
             "Report": 17,
             "Service": 15,
@@ -6106,9 +6107,9 @@
             "Address": 10,
             "Database": 9,
             "Routing": 8,
-            "Offer": 7,
             "ItemCategory": 7,
             "Country": 7,
+            "Offer": 6,
             "Faq": 6,
             "LaundryService": 6,
             "LaundryZone": 5,
@@ -6118,6 +6119,7 @@
             "Intro": 2,
             "AdminShell": 2,
             "JourneyStep": 2,
+            "Api": 1,
             "Landing": 1,
             "LaundryStaff": 1
         },

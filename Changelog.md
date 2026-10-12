@@ -2,6 +2,10 @@
 
 ## 2026-10-11
 
+### Feature
+
+- **The social links as a list on `GET /app-settings`** (the owner: «عاوز api يكون فيها سوشيال كونتكت الموجوده ف سيتنج»). They were flat fields already, but live holds only the template's own values (`http://facebook.com/` — Facebook's front page), served as-is. Now `social: [{key, label, url}]` lists the «Social Setting» section in a fixed order, real links only (`isPlaceholderSetting()`, the landing page's rule), with the platform's name translated; the flat fields read `null` for a placeholder so the two never disagree; the WhatsApp line follows `?audience=driver` and falls back to the customer's when the driver's is blank or a placeholder; a row is only ever an `http(s)` link (the driver's WhatsApp is free text), and values are trimmed through `realSettingValue()`, now the one rule shared with the landing page's `realSetting()`. App note: `docs/mobile-2026-10-11-social-links.md` (API / Controller / Helper).
+
 ### Fix
 
 - **`GET /time-slots` no longer reports on a stranger's address.** It took any `address_id` and answered `laundries_full` for it, so anybody could learn whether the laundries around another customer's door were full. It now measures only the caller's own address (the bearer token, optional on this public route). Somebody else's address, or any id sent without a token, is answered as if none was sent. On this endpoint, a non-existent id is no longer a 422 that told a stranger which ids exist (the order, quote and schedule requests still validate `exists`, behind sign-in). The settings field for hiding full windows now says the apps must send the customer's token too. Released to live on 2026-10-11 (`db6db65`) and checked there as a guest: a real customer's address answers `laundries_full: null`, and an id that does not exist answers 200. Found by the 2026-10-07 security review. App note in `docs/mobile-api-changes.md`: send the token with `address_id` (API / Controller).

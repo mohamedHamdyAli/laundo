@@ -436,7 +436,7 @@
             "admin.driver_bonus_rule.update"
         ],
         "node_count": 1083,
-        "cohesion": 0.449,
+        "cohesion": 0.448,
         "screens": [
             {
                 "key": "order_task",
@@ -624,7 +624,7 @@
             "admin.journey_step.index"
         ],
         "node_count": 455,
-        "cohesion": 0.659,
+        "cohesion": 0.661,
         "screens": [
             {
                 "key": "offer",
@@ -1179,7 +1179,7 @@
             "api.v1.driver.tasks.fail"
         ],
         "node_count": 273,
-        "cohesion": 0.385
+        "cohesion": 0.382
     },
     {
         "slug": "authentication",
@@ -1253,8 +1253,8 @@
         "tables": [],
         "route_count": 0,
         "routes": [],
-        "node_count": 1690,
-        "cohesion": 0.358
+        "node_count": 1670,
+        "cohesion": 0.356
     },
     {
         "slug": "routing_and_distance",
@@ -1353,7 +1353,7 @@
             "admin.notification.compose"
         ],
         "node_count": 1107,
-        "cohesion": 0.436,
+        "cohesion": 0.435,
         "screens": [
             {
                 "key": "moderator",

@@ -2332,5 +2332,13 @@
     "Zone switched off": "Zone switched off",
     "Orders are taken only in zones that are switched on. A customer in a zone switched off, or outside every zone, is told the service is not in their area yet and appears under «Out of coverage».": "Orders are taken only in zones that are switched on. A customer in a zone switched off, or outside every zone, is told the service is not in their area yet and appears under «Out of coverage».",
     "City switched off": "City switched off",
-    "Hiding the window needs the mobile apps to send the address, with the customer signed in, when they ask for windows; until they do, it behaves like the first option.": "Hiding the window needs the mobile apps to send the address, with the customer signed in, when they ask for windows; until they do, it behaves like the first option."
+    "Hiding the window needs the mobile apps to send the address, with the customer signed in, when they ask for windows; until they do, it behaves like the first option.": "Hiding the window needs the mobile apps to send the address, with the customer signed in, when they ask for windows; until they do, it behaves like the first option.",
+    "WhatsApp": "WhatsApp",
+    "Facebook": "Facebook",
+    "Instagram": "Instagram",
+    "X (Twitter)": "X (Twitter)",
+    "Snapchat": "Snapchat",
+    "YouTube": "YouTube",
+    "LinkedIn": "LinkedIn",
+    "Gmail": "Gmail"
 }

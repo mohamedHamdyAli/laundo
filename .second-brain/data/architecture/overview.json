@@ -69,10 +69,10 @@
             "command": 10,
             "enum": 21,
             "feature": 451,
-            "file": 1056,
+            "file": 1057,
             "integration": 5,
             "interface": 4,
-            "method": 3323,
+            "method": 3302,
             "module": 42,
             "permission": 236,
             "route": 452,
@@ -82,13 +82,13 @@
             "view": 294
         },
         "edges_by_type": {
-            "contains": 5445,
+            "contains": 5425,
             "implemented_by": 4230,
-            "tested_by": 3182,
-            "imports": 2552,
-            "references": 2454,
+            "tested_by": 3184,
+            "imports": 2553,
+            "references": 2452,
             "entry_point": 1401,
-            "depends_on": 1134,
+            "depends_on": 1131,
             "calls": 877,
             "route_to": 873,
             "touches": 581,
@@ -97,7 +97,7 @@
             "extends": 243,
             "renders": 176,
             "writes_table": 156,
-            "co_changes": 105,
+            "co_changes": 119,
             "foreign_key": 101,
             "uses_trait": 95,
             "belongs_to": 86,
@@ -160,7 +160,7 @@
                 "Payment"
             ],
             "routes": 80,
-            "cohesion": 0.449
+            "cohesion": 0.448
         },
         {
             "slug": "user",
@@ -185,7 +185,7 @@
                 "Faq"
             ],
             "routes": 54,
-            "cohesion": 0.659
+            "cohesion": 0.661
         },
         {
             "slug": "order",
@@ -243,7 +243,7 @@
                 "Api"
             ],
             "routes": 106,
-            "cohesion": 0.385
+            "cohesion": 0.382
         },
         {
             "slug": "authentication",
@@ -284,7 +284,7 @@
                 "Docs"
             ],
             "routes": 0,
-            "cohesion": 0.358
+            "cohesion": 0.356
         },
         {
             "slug": "routing_and_distance",
@@ -310,7 +310,7 @@
                 "Roles"
             ],
             "routes": 67,
-            "cohesion": 0.436
+            "cohesion": 0.435
         }
     ],
     "runtime": {
@@ -366,6 +366,7 @@
         "docs/architecture.md",
         "docs/driver-app-backend-answers.md",
         "docs/mobile-2026-10-07-complaints-and-coverage.md",
+        "docs/mobile-2026-10-11-social-links.md",
         "docs/mobile-2026-10-11-time-slots-token.md",
         "docs/mobile-api-changes.md",
         "docs/order-cycle-explained.md",
