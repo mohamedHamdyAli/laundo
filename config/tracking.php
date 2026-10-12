@@ -50,4 +50,32 @@ return [
     */
     'report_seconds' => (int) env('TRACKING_REPORT_SECONDS', 4),
 
+    /*
+    |--------------------------------------------------------------------------
+    | How often a driver with no live leg should report
+    |--------------------------------------------------------------------------
+    |
+    | Every driver is tracked, not only one on a job (the owner's call,
+    | 2026-10-12, for «خريطة السواقين»). Between jobs nobody is watching a
+    | moving dot — only the operations map is — so the phone is asked for less.
+    | Sent back as `report_after_seconds` from `POST /driver/location`.
+    |
+    | Keep it well inside `fresh_for_seconds` above, or an idle driver who is
+    | reporting perfectly reads as «الإشارة مقطوعة» on the map between reports.
+    |
+    */
+    'idle_report_seconds' => (int) env('TRACKING_IDLE_REPORT_SECONDS', 15),
+
+    /*
+    |--------------------------------------------------------------------------
+    | How often the dashboard's driver map asks again
+    |--------------------------------------------------------------------------
+    |
+    | One request redraws every driver, so this is the panel's cost, not the
+    | phones'. Ten seconds against a four-second report: the map is for
+    | deciding who goes where, not for watching a car turn a corner.
+    |
+    */
+    'panel_poll_seconds' => (int) env('TRACKING_PANEL_POLL_SECONDS', 10),
+
 ];

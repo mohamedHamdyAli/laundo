@@ -159,7 +159,7 @@
             "api-controller": 23
         },
         "files": 23,
-        "lines": 5339,
+        "lines": 5347,
         "classes": [
             {
                 "fqcn": "App\\Http\\Controllers\\Api\\V1\\AddressController",
@@ -1214,10 +1214,10 @@
         "community": "quality",
         "path": null,
         "layers": {
-            "doc": 12
+            "doc": 13
         },
-        "files": 12,
-        "lines": 11025,
+        "files": 13,
+        "lines": 11155,
         "classes": [],
         "models": [],
         "owns_tables": [],
@@ -1234,17 +1234,17 @@
         "community": "delivery",
         "path": "app/Modules/Driver",
         "layers": {
-            "view": 22,
+            "view": 23,
+            "service": 8,
             "model": 7,
-            "service": 7,
-            "controller": 5,
+            "controller": 6,
             "request": 3,
             "enum": 2,
             "repository": 2,
             "command": 1
         },
-        "files": 49,
-        "lines": 5797,
+        "files": 52,
+        "lines": 6485,
         "classes": [
             {
                 "fqcn": "App\\Modules\\Driver\\Controllers\\DriverApplicationController",
@@ -1271,6 +1271,12 @@
                 "summary": ""
             },
             {
+                "fqcn": "App\\Modules\\Driver\\Controllers\\DriverMapController",
+                "layer": "controller",
+                "path": "app/Modules/Driver/Controllers/DriverMapController.php",
+                "summary": "«خريطة السواقين» — HTTP only; what is shown and to whom is `DriverMap`'s."
+            },
+            {
                 "fqcn": "App\\Modules\\Driver\\Controllers\\DriverRecordSubmissionController",
                 "layer": "controller",
                 "path": "app/Modules/Driver/Controllers/DriverRecordSubmissionController.php",
@@ -1287,6 +1293,12 @@
                 "layer": "service",
                 "path": "app/Modules/Driver/Services/DriverCard.php",
                 "summary": "«مندوب الاستلام · أحمد · ★ 4.9» — the driver, as the customer sees them."
+            },
+            {
+                "fqcn": "App\\Modules\\Driver\\Services\\DriverMap",
+                "layer": "service",
+                "path": "app/Modules/Driver/Services/DriverMap.php",
+                "summary": "«خريطة السواقين» — every driver, where they are, and what they are carrying."
             },
             {
                 "fqcn": "App\\Modules\\Driver\\Services\\DriverRecordReview",
@@ -1434,7 +1446,8 @@
             "roles",
             "cities",
             "notification_logs",
-            "zones"
+            "zones",
+            "laundries"
         ],
         "routes": [
             "admin.driver.bonus",
@@ -1465,6 +1478,9 @@
             "admin.driver_bonus_rule.store",
             "admin.driver_bonus_rule.toggleStatus",
             "admin.driver_bonus_rule.update",
+            "admin.driver_map.candidates",
+            "admin.driver_map.data",
+            "admin.driver_map.index",
             "admin.driver_record_submission.approve",
             "admin.driver_record_submission.index",
             "admin.driver_record_submission.reject",
@@ -1495,21 +1511,23 @@
         "tests": [],
         "summary": "Which terms a driver is on, and what one completed journey earns under them.",
         "depends_on": {
-            "Platform": 35,
-            "Order": 23,
+            "Platform": 38,
+            "Order": 34,
             "User": 11,
             "Notification": 8,
+            "Zone": 5,
+            "Routing": 4,
             "Wallet": 4,
-            "Zone": 3,
+            "Laundry": 3,
             "City": 2
         },
         "depended_on_by": {
-            "Tests": 61,
+            "Tests": 62,
             "Platform": 22,
             "Api": 10,
             "Order": 9,
             "Payment": 8,
-            "Routing": 5,
+            "Routing": 6,
             "Notification": 4,
             "Database": 1
         }
@@ -2035,7 +2053,7 @@
             "repository": 1
         },
         "files": 20,
-        "lines": 2389,
+        "lines": 2403,
         "classes": [
             {
                 "fqcn": "App\\Modules\\Laundry\\Controllers\\LaundryController",
@@ -2170,6 +2188,7 @@
             "LaundryService": 5,
             "Notification": 5,
             "Report": 5,
+            "Driver": 3,
             "Database": 3,
             "Api": 2,
             "LaundryStaff": 2,
@@ -2864,7 +2883,7 @@
             "request": 1
         },
         "files": 63,
-        "lines": 12832,
+        "lines": 12860,
         "classes": [
             {
                 "fqcn": "App\\Modules\\Order\\Controllers\\DispatchController",
@@ -3261,11 +3280,11 @@
             "Wallet": 1
         },
         "depended_on_by": {
-            "Tests": 419,
+            "Tests": 423,
             "Api": 55,
             "Report": 40,
+            "Driver": 34,
             "Payment": 27,
-            "Driver": 23,
             "Platform": 23,
             "Notification": 15,
             "Database": 13,
@@ -3634,7 +3653,7 @@
             "mail": 2
         },
         "files": 187,
-        "lines": 19769,
+        "lines": 19805,
         "classes": [
             {
                 "fqcn": "App\\Http\\Controllers\\Controller",
@@ -4370,12 +4389,12 @@
             "LaundryZone": 1
         },
         "depended_on_by": {
-            "Tests": 96,
+            "Tests": 97,
             "Api": 69,
             "Payment": 46,
+            "Driver": 38,
             "Order": 37,
             "AdminShell": 36,
-            "Driver": 35,
             "Zone": 22,
             "Laundry": 21,
             "LaundryService": 19,
@@ -4795,7 +4814,7 @@
             "routes": 3
         },
         "files": 9,
-        "lines": 2536,
+        "lines": 2559,
         "classes": [
             {
                 "fqcn": "App\\Services\\Routing\\Coordinate",
@@ -4843,9 +4862,9 @@
         "summary": "A point on the map, and the only thing a router is allowed to be given.",
         "depends_on": {
             "Api": 22,
+            "Driver": 6,
             "Payment": 6,
             "AdminShell": 5,
-            "Driver": 5,
             "Order": 5,
             "Platform": 4,
             "LaundryService": 2,
@@ -4879,6 +4898,7 @@
         "depended_on_by": {
             "Order": 12,
             "Tests": 8,
+            "Driver": 4,
             "Platform": 2
         }
     },
@@ -5058,11 +5078,11 @@
         "community": "quality",
         "path": null,
         "layers": {
-            "test": 133,
-            "browser-test": 25
+            "test": 134,
+            "browser-test": 26
         },
-        "files": 158,
-        "lines": 51002,
+        "files": 160,
+        "lines": 51770,
         "classes": [
             {
                 "fqcn": "Tests\\Feature\\Api\\AddressIdDisclosureTest",
@@ -5405,6 +5425,12 @@
                 "layer": "test",
                 "path": "tests/Feature/Dashboard/DriverManagementTest.php",
                 "summary": "P5 — driver management in the dashboard."
+            },
+            {
+                "fqcn": "Tests\\Feature\\Dashboard\\DriverMapTest",
+                "layer": "test",
+                "path": "tests/Feature/Dashboard/DriverMapTest.php",
+                "summary": "«خريطة السواقين» — every driver, where they are, and what they carry."
             },
             {
                 "fqcn": "Tests\\Feature\\Dashboard\\DriverRecordReviewTest",
@@ -5935,6 +5961,7 @@
             "tests/Browser/dashboard.spec.js",
             "tests/Browser/dispatch.spec.js",
             "tests/Browser/driver-bonus.spec.js",
+            "tests/Browser/driver-map.spec.js",
             "tests/Browser/drivers.spec.js",
             "tests/Browser/error-pages.spec.js",
             "tests/Browser/helpers.js",
@@ -6008,6 +6035,7 @@
             "tests/Feature/Dashboard/DriverApplicationTest.php",
             "tests/Feature/Dashboard/DriverBonusTest.php",
             "tests/Feature/Dashboard/DriverManagementTest.php",
+            "tests/Feature/Dashboard/DriverMapTest.php",
             "tests/Feature/Dashboard/DriverRecordReviewTest.php",
             "tests/Feature/Dashboard/ErrorPageTest.php",
             "tests/Feature/Dashboard/FaqTranslationTest.php",
@@ -6087,20 +6115,20 @@
         ],
         "summary": "",
         "depends_on": {
-            "Order": 419,
-            "Platform": 96,
-            "User": 94,
+            "Order": 423,
+            "Platform": 97,
+            "User": 95,
             "Payment": 80,
             "Notification": 64,
-            "Driver": 61,
+            "Driver": 62,
             "Wallet": 46,
             "Setting": 36,
             "Laundry": 30,
             "Pricing": 22,
             "Complaint": 21,
             "TimeSlot": 19,
+            "Zone": 18,
             "Coupon": 17,
-            "Zone": 17,
             "Report": 17,
             "Service": 15,
             "City": 13,
@@ -6319,7 +6347,7 @@
             "Laundry": 1
         },
         "depended_on_by": {
-            "Tests": 94,
+            "Tests": 95,
             "Order": 25,
             "Notification": 21,
             "Payment": 13,
@@ -6447,7 +6475,7 @@
             "request": 1
         },
         "files": 19,
-        "lines": 1800,
+        "lines": 1814,
         "classes": [
             {
                 "fqcn": "App\\Modules\\Zone\\Controllers\\CoverageRequestController",
@@ -6557,10 +6585,10 @@
             "Order": 2
         },
         "depended_on_by": {
-            "Tests": 17,
+            "Tests": 18,
             "Platform": 8,
+            "Driver": 5,
             "Api": 3,
-            "Driver": 3,
             "LaundryZone": 3,
             "Database": 3,
             "Routing": 2,

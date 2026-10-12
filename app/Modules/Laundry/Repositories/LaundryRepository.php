@@ -3,6 +3,7 @@
 namespace App\Modules\Laundry\Repositories;
 
 use App\Modules\Laundry\Models\Laundry;
+use Illuminate\Database\Eloquent\Collection;
 
 /**
  * All queries run through the Laundry model, so the tenant global scope declared
@@ -37,6 +38,19 @@ class LaundryRepository
         $laundry->update($data);
 
         return $laundry;
+    }
+
+    /**
+     * Every laundry with a pin, for the driver map. Through `Laundry`, so its
+     * own `own_laundry` scope applies.
+     *
+     * @return Collection<int, Laundry>
+     */
+    public function pinned(): Collection
+    {
+        return Laundry::query()
+            ->whereNotNull('lat')->whereNotNull('lng')
+            ->get(['id', 'name', 'address', 'lat', 'lng', 'status']);
     }
 
     public function delete($id)

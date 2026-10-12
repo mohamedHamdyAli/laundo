@@ -1,8 +1,20 @@
 {
     "available": true,
-    "head": "0df1432677a59ee0273db5bc7633e3efd7f270bd",
-    "commits_scanned": 135,
+    "head": "fa6c3351ac8492c8103ed8d9862c6cf0e2799cad",
+    "commits_scanned": 137,
     "recent": [
+        {
+            "sha": "fa6c3351",
+            "date": "2026-10-12",
+            "subject": "docs: the social links release is live",
+            "files": 1
+        },
+        {
+            "sha": "234a96f9",
+            "date": "2026-10-12",
+            "subject": "feat: the social links as a list on /app-settings, real ones only",
+            "files": 7
+        },
         {
             "sha": "0df14326",
             "date": "2026-10-11",
@@ -80,25 +92,13 @@
             "date": "2026-10-04",
             "subject": "docs: CLAUDE.md keeps the rules; the long accounts move to docs/architecture.md",
             "files": 1
-        },
-        {
-            "sha": "ff039579",
-            "date": "2026-10-04",
-            "subject": "docs: the cash-on-delivery release is live",
-            "files": 1
-        },
-        {
-            "sha": "6c37c5d5",
-            "date": "2026-10-04",
-            "subject": "fix: cash on delivery end to end, and «الكاش مع المناديب»",
-            "files": 28
         }
     ],
     "hottest_files": {
         "routes/web.php": 27,
-        "docs/postman/Laundo API v1.postman_collection.json": 24,
-        "docs/mobile-api-changes.md": 18,
-        "app/Helpers/Helpers.php": 18,
+        "docs/postman/Laundo API v1.postman_collection.json": 25,
+        "app/Helpers/Helpers.php": 19,
+        "docs/mobile-api-changes.md": 19,
         "resources/views/admin/setting/generalSetting/forms/formInput.blade.php": 17,
         "config/menu.php": 16,
         "app/Http/Controllers/Api/V1/OrderController.php": 14,
@@ -115,6 +115,7 @@
         "app/Modules/Driver/Services/DriverCard.php": 9,
         "resources/views/layouts/topbar.blade.php": 9,
         "resources/views/layouts/sidebar.blade.php": 9,
+        "docs/architecture.md": 8,
         "app/Modules/Order/Models/Order.php": 8,
         "resources/views/admin/home.blade.php": 8,
         "routes/api.php": 8,
@@ -122,7 +123,6 @@
         "resources/views/admin/banner/forms/formInput.blade.php": 8,
         "app/Services/CachingService.php": 8,
         "app/Modules/Order/Services/RecurrenceService.php": 7,
-        "docs/architecture.md": 7,
         "app/Services/MenuBadges.php": 7,
         "app/Modules/Order/Models/OrderTask.php": 7,
         "app/Modules/Order/Repositories/OrderRepository.php": 7,

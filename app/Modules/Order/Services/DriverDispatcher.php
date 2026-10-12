@@ -371,8 +371,12 @@ class DriverDispatcher
     /**
      * The zone a leg happens in — where the driver has to be, not where the order
      * came from.
+     *
+     * Public because the driver map files a waiting leg under an area with it:
+     * filtered to a zone, the map has to show the legs that zone's drivers are
+     * the ones offered, which is this answer and no other.
      */
-    private function zoneFor(OrderTask $task): ?int
+    public function zoneFor(OrderTask $task): ?int
     {
         $order = $task->order;
 

@@ -1,6 +1,14 @@
 # Changelog
 
-## 2026-10-11
+## 2026-10-12
+
+### Feature
+
+- **«خريطة المناديب» — every driver, live, on one map** (the owner: «ماب تكون زي لايف لوكيشين فيها كل السواقين … ولما ادوس عليه يطلعلي التفاصيل … واقدر اعمل سيرش جوا الماب»). `admin/driver-map`, in the Delivery group after Dispatch, gated on `driver.view` and refused inside a laundry even when granted. Each driver is a marker coloured by status (on a job / available / unavailable / suspended), ringed red when a leg is late and faded when the reading is old; the card shows phone, vehicle, areas, orders in hand against the cap, and each order with its legs, destination and time, with a dashed line to where the current leg is going. Side list: search by name, phone, plate or order code, status chips with counts, an area filter, and «الإشارة مقطوعة» (a leg under way and no live reading) sorted first and announced. Orders waiting for a driver are pins where their first waiting leg begins (`order_task.view`); «مين ياخدها؟» lists the drivers the assignment would accept (`DriverDispatcher::candidates()`), nearest first by straight line, with Assign (and «the rest of the order») through the existing `admin.order.tasks.assign`. Zones and laundries are drawn on it. Polls every 10 s (`tracking.panel_poll_seconds`), not while the tab is hidden. Without `order_task.view` a leg carries no customer name, street or pin (Service / Repository / Controller / Blade / JS / CSS).
+
+### Improvement
+
+- **`POST /api/v1/driver/location` stores every report, not only during a journey** (the owner's call for the map), and answers `report_after_seconds` — 4 on a live leg, 15 otherwise (`tracking.idle_report_seconds`). What the customer sees is unchanged: the dot only on their own legs, never a reading from before the handover. App note: `docs/mobile-2026-10-12-driver-location-always.md` (API / Controller / Config).
 
 ### Feature
 

@@ -214,6 +214,30 @@ enum TaskType: string
     }
 
     /**
+     * Where this leg **begins** — the other end from `coordinatesFor()`.
+     *
+     * What «the nearest driver» is measured to on the driver map: a leg waiting
+     * for somebody is a place a driver has to get to first. The run to the
+     * laundry starts at the customer's door, the run back starts at the
+     * laundry, and the two doorstep legs start and end in the same place.
+     *
+     * @return array{lat: float, lng: float}|null
+     */
+    public function startCoordinatesFor(Order $order): ?array
+    {
+        return $this->pointOf($this->startsAtLaundry() ? $order->laundry : $order->pickupAddress);
+    }
+
+    /**
+     * The two legs of the way back begin at the laundry; the two of the way
+     * there begin at the customer's door.
+     */
+    public function startsAtLaundry(): bool
+    {
+        return in_array($this, [self::CollectFromLaundry, self::DeliverToCustomer], true);
+    }
+
+    /**
      * One place that decides what «has a pin» means.
      *
      * The two sides differ and the difference is in the schema: `addresses.lat`

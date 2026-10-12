@@ -1,0 +1,579 @@
+/*
+ * «خريطة السواقين» — the drivers map.
+ *
+ * Its own file, loaded only by that screen. Colours come from the panel's
+ * tone tokens, so the side list follows the dark theme; the markers carry
+ * white text on fills chosen at 4.5:1 or better against it, and sit on
+ * OpenStreetMap's light tiles in both themes.
+ */
+
+.driver-map {
+    --dm-on-job: #1d4ed8;
+    --dm-available: #0f7b3f;
+    --dm-unavailable: #4b5563;
+    --dm-inactive: #1f2937;
+    --dm-late: #b3261e;
+    --dm-waiting: #b45309;
+    --dm-height: max(30rem, calc(100vh - 13rem));
+
+    display: grid;
+    grid-template-columns: minmax(17rem, 23rem) minmax(0, 1fr);
+    gap: 1rem;
+    align-items: stretch;
+}
+
+.driver-map > .card {
+    margin-bottom: 0;
+}
+
+@media (max-width: 991.98px) {
+    .driver-map {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .driver-map-stage {
+        order: -1;
+    }
+
+    .driver-map {
+        --dm-height: 26rem;
+    }
+}
+
+/* ---------------------------------------------------------------- the list */
+
+.driver-map-side {
+    display: flex;
+    flex-direction: column;
+    height: var(--dm-height);
+    overflow: hidden;
+}
+
+.driver-map-tools {
+    display: grid;
+    gap: .5rem;
+    padding: .875rem .875rem .5rem;
+    border-bottom: 1px solid var(--surface-border);
+}
+
+.driver-map-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .375rem;
+}
+
+.driver-map-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: .375rem;
+    padding: .25rem .625rem;
+    border: 1px solid var(--surface-border);
+    border-radius: 999px;
+    background: transparent;
+    color: var(--text-strong);
+    font-size: .8125rem;
+    line-height: 1.4;
+}
+
+.driver-map-chip:hover {
+    background: var(--tone-neutral-bg);
+}
+
+.driver-map-chip.active {
+    border-color: var(--brand-text);
+    background: var(--tone-live-bg);
+    color: var(--tone-live);
+    font-weight: 600;
+}
+
+.driver-map-chip-count {
+    min-width: 1.25rem;
+    padding: 0 .3rem;
+    border-radius: 999px;
+    background: var(--tone-neutral-bg);
+    color: var(--text-strong);
+    font-size: .75rem;
+    font-weight: 600;
+    text-align: center;
+}
+
+.driver-map-lost {
+    margin: .625rem .875rem 0;
+    padding: .5rem .75rem;
+    border: 1px solid var(--tone-bad);
+    border-radius: 8px;
+    background: var(--tone-bad-bg);
+    color: var(--tone-bad);
+    font-size: .8125rem;
+    font-weight: 600;
+    text-align: start;
+}
+
+.driver-map-lost[hidden],
+.driver-map-empty[hidden] {
+    display: none;
+}
+
+.driver-map-list {
+    flex: 1 1 auto;
+    margin: 0;
+    padding: .5rem;
+    overflow-y: auto;
+    list-style: none;
+}
+
+.driver-map-empty {
+    margin: 1rem;
+    color: var(--text-muted);
+    font-size: .875rem;
+    text-align: center;
+}
+
+.dm-row {
+    border: 1px solid transparent;
+    border-radius: 10px;
+}
+
+.dm-row + .dm-row {
+    margin-top: .25rem;
+}
+
+.dm-row.selected {
+    border-color: var(--brand-text);
+    background: var(--tone-live-bg);
+}
+
+.dm-row-head {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    gap: .625rem;
+    align-items: center;
+    width: 100%;
+    padding: .5rem .625rem;
+    border: 0;
+    border-radius: 10px;
+    background: transparent;
+    color: var(--text-strong);
+    text-align: start;
+}
+
+.dm-row-head:hover {
+    background: var(--tone-neutral-bg);
+}
+
+.dm-row-name {
+    display: block;
+    overflow: hidden;
+    font-weight: 600;
+    font-size: .875rem;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.dm-row-sub {
+    display: block;
+    overflow: hidden;
+    color: var(--text-muted);
+    font-size: .75rem;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.dm-row-flags {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: .2rem;
+}
+
+.dm-row-body {
+    padding: 0 .625rem .625rem;
+}
+
+.dm-row-body[hidden] {
+    display: none;
+}
+
+.driver-map .status-pill {
+    font-size: .6875rem;
+    white-space: nowrap;
+}
+
+/* ----------------------------------------------------------- the dots/key */
+
+.dm-dot {
+    display: inline-block;
+    flex: none;
+    width: .625rem;
+    height: .625rem;
+    border-radius: 50%;
+    background: var(--tone-neutral);
+}
+
+.dm-dot--all { background: linear-gradient(135deg, var(--dm-on-job) 50%, var(--dm-available) 50%); }
+.dm-dot--on_job { background: var(--dm-on-job); }
+.dm-dot--available { background: var(--dm-available); }
+.dm-dot--unavailable { background: var(--dm-unavailable); }
+.dm-dot--inactive { background: var(--dm-inactive); }
+.dm-dot--signal_lost,
+.dm-dot--stale { background: transparent; border: 2px dashed var(--tone-bad); }
+.dm-dot--late { background: transparent; border: 2px solid var(--dm-late); }
+.dm-dot--waiting { background: var(--dm-waiting); border-radius: 2px; transform: rotate(45deg); }
+
+/* ------------------------------------------------------------------ the map */
+
+.driver-map-stage {
+    display: flex;
+    flex-direction: column;
+    height: var(--dm-height);
+    overflow: hidden;
+}
+
+.driver-map-canvas {
+    flex: 1 1 auto;
+    min-height: 0;
+    z-index: 0; /* under select2 and modals */
+}
+
+.driver-map-canvas.leaflet-container {
+    font-family: inherit;
+}
+
+.driver-map-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .375rem 1rem;
+    margin: 0;
+    padding: .5rem .875rem;
+    border-top: 1px solid var(--surface-border);
+    color: var(--text-muted);
+    font-size: .75rem;
+    list-style: none;
+}
+
+.driver-map-legend li {
+    display: inline-flex;
+    align-items: center;
+    gap: .375rem;
+}
+
+.driver-map-updated {
+    color: var(--text-muted);
+    font-size: .8125rem;
+}
+
+.driver-map-updated.is-error {
+    color: var(--tone-bad);
+    font-weight: 600;
+}
+
+/* A driver on the map: a disc with their initials. Leaflet positions the
+   outer box; the inner one is what is drawn. */
+.dm-pin {
+    background: none;
+    border: 0;
+}
+
+.dm-pin-disc {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 34px;
+    border: 3px solid #fff;
+    border-radius: 50%;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, .35);
+    color: #fff;
+    font-size: 12px;
+    font-weight: 700;
+    line-height: 1;
+    background: var(--dm-unavailable);
+}
+
+.dm-pin--on_job .dm-pin-disc { background: var(--dm-on-job); }
+.dm-pin--available .dm-pin-disc { background: var(--dm-available); }
+.dm-pin--unavailable .dm-pin-disc { background: var(--dm-unavailable); }
+.dm-pin--inactive .dm-pin-disc { background: var(--dm-inactive); }
+
+/* Late: a red ring outside the white one. */
+.dm-pin--late .dm-pin-disc {
+    box-shadow: 0 0 0 3px var(--dm-late), 0 2px 6px rgba(0, 0, 0, .35);
+}
+
+/* An old reading is drawn where it was, faded and dashed — never as a
+   driver standing still. */
+.dm-pin--stale .dm-pin-disc {
+    border-style: dashed;
+    border-color: var(--dm-late);
+    opacity: .6;
+}
+
+.dm-pin--selected .dm-pin-disc {
+    transform: scale(1.18);
+}
+
+/* A waiting order: an orange diamond. */
+.dm-wait-pin {
+    background: none;
+    border: 0;
+}
+
+.dm-wait-pin-shape {
+    display: block;
+    width: 18px;
+    height: 18px;
+    margin: 4px;
+    border: 2px solid #fff;
+    border-radius: 3px;
+    background: var(--dm-waiting);
+    box-shadow: 0 2px 5px rgba(0, 0, 0, .35);
+    transform: rotate(45deg);
+}
+
+.dm-wait-pin--late .dm-wait-pin-shape {
+    background: var(--dm-late);
+}
+
+.dm-laundry-pin {
+    background: none;
+    border: 0;
+}
+
+.dm-laundry-pin-shape {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    border: 2px solid #fff;
+    border-radius: 6px;
+    background: #0f766e;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, .3);
+    color: #fff;
+    font-size: 12px;
+}
+
+.dm-destination {
+    background: none;
+    border: 0;
+}
+
+.dm-destination-shape {
+    display: block;
+    width: 16px;
+    height: 16px;
+    border: 3px solid var(--dm-on-job);
+    border-radius: 50%;
+    background: #fff;
+}
+
+/* ---------------------------------------------------------------- the card */
+
+.driver-map .leaflet-popup-content {
+    /* Leaflet centres popup text; a card of facts reads from the start. */
+    text-align: start;
+    margin: .75rem .875rem;
+    min-width: 15rem;
+    max-width: 19rem;
+    font-size: .8125rem;
+    line-height: 1.5;
+}
+
+.dm-card-head {
+    display: flex;
+    align-items: center;
+    gap: .625rem;
+    margin-bottom: .5rem;
+}
+
+.dm-card-photo {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    object-fit: cover;
+    flex: none;
+}
+
+.dm-card-name {
+    display: block;
+    font-size: .9375rem;
+    font-weight: 700;
+}
+
+.dm-card-pills {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .25rem;
+    margin-top: .2rem;
+}
+
+.dm-card-facts {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: .15rem .625rem;
+    margin: 0 0 .5rem;
+}
+
+.dm-card-facts dt {
+    color: var(--text-muted);
+    font-weight: 400;
+}
+
+.dm-card-facts dd {
+    margin: 0;
+    overflow-wrap: anywhere;
+}
+
+.dm-leg {
+    margin-top: .5rem;
+    padding: .5rem .625rem;
+    border: 1px solid var(--surface-border);
+    border-radius: 8px;
+}
+
+.dm-leg--late {
+    border-color: var(--tone-bad);
+    background: var(--tone-bad-bg);
+}
+
+.dm-leg-title {
+    display: flex;
+    justify-content: space-between;
+    gap: .5rem;
+    font-weight: 600;
+}
+
+.dm-leg-line {
+    display: block;
+    color: var(--text-muted);
+    overflow-wrap: anywhere;
+}
+
+.dm-card-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .375rem;
+    margin-top: .625rem;
+}
+
+.dm-card-actions a,
+.dm-card-actions button {
+    font-size: .75rem;
+}
+
+.dm-candidates {
+    margin: .5rem 0 0;
+    padding: 0;
+    list-style: none;
+}
+
+.dm-candidate {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: .5rem;
+    align-items: center;
+    padding: .375rem 0;
+    border-top: 1px solid var(--surface-border);
+}
+
+.dm-candidate form {
+    margin: 0;
+}
+
+.dm-rest {
+    display: flex;
+    align-items: center;
+    gap: .375rem;
+    margin-top: .5rem;
+    color: var(--text-muted);
+}
+
+.dm-note {
+    margin: .5rem 0 0;
+    color: var(--text-muted);
+}
+
+/* The popup is white in both themes (Leaflet's own), so its text has to
+   be dark in both — the panel's tokens turn light in the dark theme. */
+.driver-map .leaflet-popup-content-wrapper,
+.driver-map .leaflet-popup-tip {
+    background: #fff;
+    color: #1f1f1f;
+}
+
+.driver-map .leaflet-popup-content .dm-card-facts dt,
+.driver-map .leaflet-popup-content .dm-leg-line,
+.driver-map .leaflet-popup-content .dm-rest,
+.driver-map .leaflet-popup-content .dm-note {
+    color: #424655;
+}
+
+.driver-map .leaflet-popup-content .dm-leg,
+.driver-map .leaflet-popup-content .dm-candidate {
+    border-color: #e0e3e5;
+}
+
+.driver-map .leaflet-popup-content .dm-leg--late {
+    border-color: #b3261e;
+    background: #fdeceb;
+}
+
+.driver-map .leaflet-popup-content .status-pill.tone-live { background: #e7edfd; color: #1d4ed8; }
+.driver-map .leaflet-popup-content .status-pill.tone-ok { background: #e6f4ec; color: #0f7b3f; }
+.driver-map .leaflet-popup-content .status-pill.tone-warn { background: #fdf1e3; color: #b45309; }
+.driver-map .leaflet-popup-content .status-pill.tone-bad { background: #fdeceb; color: #b3261e; }
+.driver-map .leaflet-popup-content .status-pill.tone-neutral { background: #eef0f3; color: #4b5563; }
+
+.driver-map .leaflet-popup-content a {
+    color: #1d4ed8;
+}
+
+.driver-map .leaflet-control-layers {
+    color: #1f1f1f;
+}
+
+/* Leaflet draws this toggle from images/layers.png, which the vendored copy
+   does not ship (a 404 on every load). The panel's icon font has the glyph. */
+.driver-map .leaflet-control-layers-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-image: none;
+    color: #1f1f1f;
+    text-decoration: none;
+}
+
+.driver-map .leaflet-control-layers-toggle::before {
+    content: "\f45b";
+    font-family: bootstrap-icons;
+    font-size: 18px;
+    line-height: 1;
+}
+
+.driver-map .leaflet-retina .leaflet-control-layers-toggle {
+    background-image: none;
+}
+
+/* The legs of one order, under it. */
+.dm-steps {
+    margin: .375rem 0 0;
+    padding: 0;
+    list-style: none;
+}
+
+.dm-steps li {
+    padding: .3rem 0 0;
+    border-top: 1px dashed var(--surface-border);
+    margin-top: .3rem;
+}
+
+.dm-step-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: .5rem;
+}
+
+.driver-map .leaflet-popup-content .dm-steps li {
+    border-top-color: #e0e3e5;
+}

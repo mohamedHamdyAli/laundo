@@ -549,3 +549,42 @@ as-is. Agreed: a ready list in the same endpoint, real links only.
 - [x] `/code-review`, fixed: `SOCIAL` is the one list (flat field + row); a placeholder driver WhatsApp falls back; a row is an `http(s)` link only; trimmed through `realSettingValue()` shared with `realSetting()`; a test that every label has Arabic. Kept: a root-domain link counts as a placeholder (the landing page's rule)
 - [x] Platform names translated; tests (each fails without its fix); Postman, reference, app note, Changelog; suite (1,936 green, 845s — CLAUDE.md's figure corrected); `/security-review` (nothing)
 - [x] Deploy (`234a96f`), checked live for both apps; the owner still has to fill the real links (and a `wa.me` WhatsApp) in settings
+
+## 2026-10-12 — «خريطة السواقين»: every driver, live, on one map
+
+The owner: «ماب تكون زي لايف لوكيشين فيها كل السواقين … ولما ادوس عليه يطلعلي التفاصيل هو معاه اوردر ولا لا
+وتفاصيل الاوردر … واقدر اعمل سيرش جوا الماب علي سواق معين». Decided with the owner (2026-10-12):
+**every driver is tracked, always** (not only on a job — reverses the 2026-09-01 «only while carrying
+something» rule), the screen is gated on **`driver.view`**, and all four extras: waiting legs + nearest
+driver + assign from the map, the driver's destination + lateness, zones and laundries, «signal lost».
+
+### A. The driver app reports always (API)
+- [x] `DriverController::reportLocation()` — drop the live-task gate; every report is written (still `forceFill`, still never fillable)
+- [x] Answer `tracking: true` plus `report_after_seconds` — `tracking.report_seconds` (4) on a live leg, new `tracking.idle_report_seconds` (15) otherwise, so the cadence is tuned from the box
+- [x] `DriverCard` privacy gate unchanged (`lastSeen()` still bounded by `assigned_at`) — re-read and pin with a test that an idle reading from before the handover never reaches the customer
+- [x] Rewrite the docblock and the `LiveTrackingTest` cases that pinned the old refusal (a reversed decision rewrites what documented it)
+
+### B. The screen — `app/Modules/Driver/` (`DriverMapController`, `Services/DriverMap`, queries in `DriverRepository`)
+- [x] `GET /admin/driver-map` (`admin.driver_map.index`) and `GET /admin/driver-map/data` (JSON, polled every `tracking.panel_poll_seconds` = 10, paused while the tab is hidden) — `permission:driver.view`; refused inside a laundry in the service (`LaundryContext::currentId() !== null`)
+- [x] Per driver: name, phone, photo, plate, status (`on_job` / `available` / `unavailable` / `inactive`), signal (`live` / `stale` / `none` against `tracking.fresh_for_seconds`), position + age, orders in hand vs cap, and each live leg: order code, leg, status, customer, laundry, destination street + pin, due time, `is_late`; link to the order only with `order.view`
+- [x] Waiting legs (`OrderTask::needingAPerson()`, through the scoped `Order`) as pins at the leg's starting point — only with `order_task.view`; clicking one asks `GET /admin/driver-map/task/{id}/candidates` (`DriverDispatcher::candidates()` = the same eligibility, sorted by straight-line distance from a fresh position); «عيّن» posts the existing `admin.order.tasks.assign` (`order_task.update`), which redirects back to the map
+- [x] Zones (drawn boundaries) and laundries (pins) rendered once into the page, with a zone filter
+- [x] Map: Leaflet + OSM (already loaded), CSS markers coloured by status, a red ring when a leg is late, the selected driver's dashed line to their destination; every string through `esc()`
+- [x] Side list: search by name / phone / plate / order code (client-side, keyup), status chips with counts, «الإشارة مقطوعة» (on a job and not live) sorted to the top; clicking a row flies to the driver and opens the card
+- [x] Sidebar: `driver_map` in the Delivery group (after Dispatch), borrowing `driver.view` in `permissions`, plus `icons` / `titles` / `routes`; Arabic for every new string
+
+### C. Proof
+- [x] Feature tests: the gate (no `driver.view` 403; a laundry owner refused even when granted it; the supervisor in), each status and signal, `is_late`, waiting legs withheld without `order_task.view`, candidates ordered by distance and limited to the eligible, query count flat as drivers grow, the location write while idle
+- [x] Browser spec `tests/Browser/driver-map.spec.js`: markers drawn, search with `page.type()`, a click opens the card
+- [x] Full suite, PHPStan, Pint (own lines), `view:cache` + lint, drive the page
+
+### D. Docs and review
+- [x] architecture.md + CLAUDE.md (tracking is now always-on; the map), Postman + `generate-reference.py` (`POST /driver/location`), `docs/mobile-2026-10-12-driver-location-always.md` + `mobile-api-changes.md`, Changelog, `brain.php update`
+- [x] `/code-review` and `/security-review`, findings fixed before anything ships
+
+### Review
+
+- Driven in the panel against the dev database (positions and two released legs set by id and restored to their recorded values): markers, the card, search by order code, the miss, «who can take it» on a real waiting leg (4.4 km, 5 of 20), RTL and the dark theme. Fixed on the way: Leaflet's missing `layers.png` (a 404 on every load), repeated order codes in a row, an 18-leg card taller than the map (now grouped by order, scrolling), a card cut off once its candidate list loaded (re-rendered through `setPopupContent`).
+- `/code-review`, fixed with a test each (each fails without its fix): «signal lost» only for a leg under way (started, or due within the hour) — not for one handed out for tomorrow; zones drawn by `isServing()`; a waiting leg filed under `DriverDispatcher::zoneFor()` (now public); `isLate()` on the pins; the load counted for the shown candidates only; the laundry query in `LaundryRepository::pinned()`; one search listener. Declined: the photo URL's file check per poll (two local stats a driver), the `order_id IN (SELECT id FROM orders)` guard (kept, as on the dispatch board). Noted in the app note: older builds keep their own rate between jobs until they read `report_after_seconds`.
+- `/security-review`: nothing at the reporting bar. Applied the one hardening it raised: without `order_task.view` a leg carries no customer name, street or pin.
+

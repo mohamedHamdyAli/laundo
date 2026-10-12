@@ -115,7 +115,7 @@ module rather than getting their own — so **do not go looking for `app/Modules
 | `payment`, `driver_earning`, `refund`, `order_settlement`, `commission_rule`, invoices | `app/Modules/Payment/` |
 | `dispatch`, `order_task`, `order_today` | `app/Modules/Order/` |
 | `laundry_slot_capacity` (intake capacity) | `app/Modules/Laundry/` |
-| `driver_application`, `driver_bonus_rule`, `driver_bonus_award` | `app/Modules/Driver/` |
+| `driver_application`, `driver_bonus_rule`, `driver_bonus_award`, `driver_map` | `app/Modules/Driver/` |
 | `finance` («ملخص الماليات»), `report` | `app/Modules/Report/` |
 | `role`, `language`, `notification_log` | `app/Http/Controllers/Admin/` + `app/Models/` |
 
@@ -175,6 +175,23 @@ somebody approves them (`Driver/Services/DriverRecordReview`, screen
 photo apply at once. Zones are refused outright. The dashboard writes directly.
 One pending row per driver; the diff is computed at review time; a rejection
 requires a note; `GET /driver/profile` carries `pending_review`.
+
+### Where every driver is — «خريطة المناديب»
+
+`admin/driver-map` (`Driver/Services/DriverMap`), polled every
+`tracking.panel_poll_seconds`.
+
+- **Every driver reports their position, always** (since 2026-10-12, the owner's
+  call): `POST /driver/location` no longer refuses a driver with no live leg, and
+  answers `report_after_seconds` (4 on a live leg, 15 otherwise). **What the
+  customer sees did not move** — `DriverCard` gates the dot to their legs and
+  never shows a reading from before the handover. Only the last point is stored.
+- **`driver.view`, never a laundry**: `DriverMap` refuses inside a laundry even
+  if the permission is granted. Waiting pins and «who can take it» need
+  `order_task.view` and use `DriverDispatcher::candidates()`; assigning posts
+  the existing `admin.order.tasks.assign`. Distances there are straight lines.
+- A driver on a job whose reading is older than `tracking.fresh_for_seconds` is
+  «الإشارة مقطوعة».
 
 ### Which laundry gets the order
 

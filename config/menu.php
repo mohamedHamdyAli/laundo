@@ -111,20 +111,23 @@ return [
                 // day's work; the driver list is where they go to fix what it
                 // reports.
                 'order_task' => 1,
-                'driver' => 2,
-                // Third rather than last: it is the only item in the panel
+                // Beside the board: the board says what is waiting, the map
+                // says who is near it and who has gone quiet on a job.
+                'driver_map' => 2,
+                'driver' => 3,
+                // Fourth rather than last: it is the only item in the panel
                 // that grows on its own, and a queue nobody is reminded of is
                 // a queue of couriers who took another job.
-                'driver_application' => 3,
-                // Beside the applications for the same reason they are third:
+                'driver_application' => 4,
+                // Beside the applications for the same reason they are fourth:
                 // it grows on its own, and a driver waiting on somebody to look
                 // at his licence is a driver who cannot be dispatched with a
                 // record anybody trusts.
-                'driver_record_submission' => 4,
-                'driver_earning' => 5,
+                'driver_record_submission' => 5,
+                'driver_earning' => 6,
                 // The terms, then what those terms came to this month.
-                'driver_bonus_rule' => 6,
-                'driver_bonus_award' => 7,
+                'driver_bonus_rule' => 7,
+                'driver_bonus_award' => 8,
             ],
         ],
 
@@ -274,6 +277,7 @@ return [
         'laundry_slot_capacity' => 'bi bi-speedometer2',
 
         'order_task' => 'bi bi-signpost-split',
+        'driver_map' => 'bi bi-pin-map',
         'driver' => 'bi bi-truck',
         'driver_application' => 'bi bi-person-plus',
         'driver_record_submission' => 'bi bi-file-earmark-check',
@@ -336,6 +340,7 @@ return [
         'laundry_slot_capacity' => 'Intake Capacity',
 
         'order_task' => 'Dispatch',
+        'driver_map' => 'Drivers map',
         'driver' => 'Drivers',
         'driver_application' => 'Applicants',
         'driver_record_submission' => 'Document Reviews',
@@ -397,6 +402,7 @@ return [
         'laundry_slot_capacity' => 'admin.laundry_slot_capacity.index',
 
         'order_task' => 'admin.dispatch.index',
+        'driver_map' => 'admin.driver_map.index',
         'driver' => 'admin.driver.index',
         'driver_application' => 'admin.driver_application.index',
         'driver_record_submission' => 'admin.driver_record_submission.index',
@@ -454,5 +460,7 @@ return [
 
     'permissions' => [
         'order_today' => 'order',
+        // «خريطة السواقين» is the drivers, read off a map.
+        'driver_map' => 'driver',
     ],
 ];

@@ -15,12 +15,14 @@ use Tests\TestCase;
 /**
  * «تتبع المندوب مباشرة» — the moving dot.
  *
- * The owner's decision was the last point only, every thirty seconds, and only
- * while a journey is in progress. Most of what is asserted here is therefore
- * about **when there is no dot**: a driver between jobs, a phone that stopped
- * reporting, a leg that runs between the laundry and back. Following somebody who
- * is not coming to you is not a feature, and a stale marker is worse than none
- * because it reads as a driver who has stopped.
+ * The owner's decision was the last point only. It was also «only while a
+ * journey is in progress»; since 2026-10-12 every driver reports, always, for the
+ * operations map — but **the customer's side did not move**. Most of what is
+ * asserted here is therefore about **when there is no dot**: a reading from
+ * before the handover, a phone that stopped reporting, a leg that runs between
+ * the laundry and back. Following somebody who is not coming to you is not a
+ * feature for a customer, and a stale marker is worse than none because it reads
+ * as a driver who has stopped.
  */
 class LiveTrackingTest extends TestCase
 {
@@ -112,23 +114,58 @@ class LiveTrackingTest extends TestCase
     }
 
     #[Test]
-    public function a_driver_with_no_journey_is_not_tracked(): void
+    public function a_driver_with_no_journey_is_recorded_too(): void
     {
-        // Between jobs, or with the app left open on their own time. Following
-        // somebody who is not working is not a feature of a laundry, and the
-        // reply tells the app to stop asking.
-        $this->report()->assertOk()->assertJsonPath('data.tracking', false);
+        // It was refused — «following somebody who is not working is not a
+        // feature of a laundry». The owner reversed it on 2026-10-12: the
+        // operations map has to show where every driver is, and the free ones
+        // are exactly who the next pickup goes to. The app is told to report
+        // at the slower idle rate.
+        config(['tracking.idle_report_seconds' => 15]);
 
-        $this->assertNull($this->driver->fresh()->profile?->last_lat);
+        $this->report()->assertOk()
+            ->assertJsonPath('data.tracking', true)
+            ->assertJsonPath('data.report_after_seconds', 15);
+
+        $this->assertEquals(30.05, $this->driver->fresh()->profile->last_lat);
     }
 
     #[Test]
-    public function a_finished_journey_stops_the_recording(): void
+    public function a_live_leg_asks_for_the_fast_rate_and_a_finished_one_the_idle_rate(): void
     {
-        $order = $this->order();
-        $this->leg($order, TaskType::PickupFromCustomer, TaskStatus::Completed);
+        config(['tracking.report_seconds' => 4, 'tracking.idle_report_seconds' => 15]);
 
-        $this->report()->assertOk()->assertJsonPath('data.tracking', false);
+        $order = $this->order();
+        $task = $this->leg($order, TaskType::PickupFromCustomer);
+
+        $this->report()->assertOk()->assertJsonPath('data.report_after_seconds', 4);
+
+        $task->forceFill(['status' => TaskStatus::Completed->value, 'completed_at' => now()])->save();
+
+        $this->report()->assertOk()
+            ->assertJsonPath('data.tracking', true)
+            ->assertJsonPath('data.report_after_seconds', 15);
+    }
+
+    #[Test]
+    public function a_reading_made_between_jobs_is_not_handed_to_the_next_customer(): void
+    {
+        // Idle tracking is what makes this a live question rather than a
+        // theoretical one: a free driver now reports from wherever they spend
+        // the gap — home included. The customer handed this driver later is
+        // shown readings from their own leg onwards, never the ones before it.
+        $this->report();
+        $this->driver->profile->forceFill(['located_at' => now()->subMinutes(30)])->save();
+
+        $order = $this->order();
+        $this->leg($order, TaskType::PickupFromCustomer, TaskStatus::Assigned);
+        $order->tasks()->where('type', TaskType::PickupFromCustomer->value)->update(['assigned_at' => now()->subMinute()]);
+
+        $card = $this->card($order->fresh());
+
+        $this->assertNotNull($card);
+        $this->assertNull($card['location']);
+        $this->assertNull($card['last_seen']);
     }
 
     #[Test]
@@ -156,8 +193,8 @@ class LiveTrackingTest extends TestCase
                 'last_lng' => 0,
             ])->assertSuccessful();
 
-        // The columns are not fillable on purpose: the position is written after
-        // a live-task check and nowhere else.
+        // The columns are not fillable on purpose: the position is written by
+        // `POST /driver/location` and nowhere else.
         $this->assertEquals(30.05, $this->driver->fresh()->profile->last_lat);
     }
 

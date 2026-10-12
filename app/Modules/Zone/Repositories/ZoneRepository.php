@@ -32,6 +32,20 @@ class ZoneRepository
     }
 
     /**
+     * Every zone, on or off, drawn or not — the driver map's outlines and its
+     * zone filter, read once. A driver can be matched to a zone nobody has
+     * drawn yet, so the filter cannot be limited to the drawn ones.
+     *
+     * @return Collection<int, Zone>
+     */
+    public function everyZone(): Collection
+    {
+        // With the city: whether a zone takes orders is `isServing()`, which
+        // reads the city's switch as well as its own.
+        return Zone::with('city')->orderBy('city_id')->orderBy('sort_order')->orderBy('id')->get();
+    }
+
+    /**
      * A zone by id, switched on or off. Which zone an address is in does not
      * depend on the switch — whether orders are taken there does
      * (`Address::isCovered()`), so a zone switched off is still a zone.

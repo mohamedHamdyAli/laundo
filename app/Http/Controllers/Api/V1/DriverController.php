@@ -233,15 +233,23 @@ class DriverController extends Controller
      *
      * Three rules, and each is a decision rather than a detail:
      *
-     * **Only while they are carrying something.** A driver between jobs, or on
-     * their own time with the app open, is not tracked — the write is refused and
-     * the response says `tracking: false` so the app stops asking. Following
-     * somebody who is not working is not a feature of a laundry.
+     * **Always, not only on a job.** It was «only while they are carrying
+     * something», and a report from a driver between jobs was refused with
+     * `tracking: false`. The owner reversed that on 2026-10-12 for «خريطة
+     * السواقين»: operations has to see where every driver is — the free ones
+     * most of all, because they are who the next pickup goes to. What the
+     * *customer* sees is unchanged: `DriverCard` still gates the dot to the leg
+     * they are waiting on and bounds it to readings after the handover.
+     *
+     * **The cadence comes from here.** `report_after_seconds` is the fast rate
+     * on a live leg (the customer is watching a moving dot) and a slower one
+     * otherwise (only the operations map is), so the battery cost of idle
+     * tracking is tuned from the box rather than in an app release.
      *
      * **The last point only.** No trail. The design draws one moving dot, and a
      * points table would be the largest in the system inside a month.
      *
-     * **Never fillable.** Written with forceFill after the check above, so no
+     * **Never fillable.** Written with forceFill here and nowhere else, so no
      * profile update can move a driver on the map.
      */
     public function reportLocation(Request $request): JsonResponse
@@ -252,18 +260,13 @@ class DriverController extends Controller
         ]);
 
         $driver = $this->driver($request);
-
-        if (! $this->hasLiveTask($driver)) {
-            return successReturnData(
-                ['tracking' => false],
-                __('You have no journey in progress.')
-            );
-        }
-
         $profile = $driver->profile;
 
+        // A driver account with no profile row has nowhere to keep the point.
+        // Accounts are created with one, so this is a broken row rather than a
+        // state — answered rather than failed, as it always was.
         if (! $profile) {
-            return successReturnData(['tracking' => false]);
+            return successReturnData(['tracking' => false, 'report_after_seconds' => null]);
         }
 
         $profile->forceFill([
@@ -272,7 +275,12 @@ class DriverController extends Controller
             'located_at' => now(),
         ])->save();
 
-        return successReturnData(['tracking' => true]);
+        return successReturnData([
+            'tracking' => true,
+            'report_after_seconds' => $this->hasLiveTask($driver)
+                ? (int) config('tracking.report_seconds', 4)
+                : (int) config('tracking.idle_report_seconds', 15),
+        ]);
     }
 
     /**

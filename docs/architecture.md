@@ -140,6 +140,62 @@ The screen is `admin/driver-record-submission`, gated on
 photograph is a different job from keeping a shift current — and `MenuBadges`
 counts what is pending.
 
+## Where every driver is — «خريطة المناديب»
+
+`admin/driver-map` (`admin.driver_map.*`, `Driver/Controllers/DriverMapController`,
+`Driver/Services/DriverMap`, queries in `DriverRepository::forMap()` /
+`waitingLegsForMap()`). The owner asked for a live map of every driver, a card
+per driver with what they are carrying, and a search; then took all four extras
+offered (2026-10-12).
+
+- **Every driver reports, always.** `POST /driver/location` used to refuse a
+  driver with no live leg («following somebody who is not working is not a
+  feature of a laundry»). The owner reversed it for this screen: the free drivers
+  are exactly who the next pickup goes to. The reply carries
+  `report_after_seconds` — `tracking.report_seconds` (4) on a live leg,
+  `tracking.idle_report_seconds` (15) otherwise — so the battery cost of idle
+  tracking is tuned from the box. **The customer's side did not move:**
+  `DriverCard` still gates the dot to the three legs they wait on, and
+  `lastSeen()` still refuses a reading older than the handover — which matters
+  more now, because an idle driver reports from wherever they spend the gap.
+- **`driver.view`, and never a laundry.** Where every driver stands is the
+  platform's; no laundry role holds `driver.view`, and `DriverMap` refuses
+  `LaundryContext::currentId() !== null` itself in case one is ever granted it.
+  The sidebar key `driver_map` borrows `driver.view` through `menu.permissions`.
+  **Whose door a leg goes to is the dispatch board's:** without
+  `order_task.view` a leg in hand carries its order code, type and time but not
+  the customer's name, street or pin (the 2026-10-12 security review — a role
+  holding `driver.view` alone was otherwise handed every in-flight customer's
+  address).
+- **Status** is one of `on_job` (holds an `assigned`/`started` leg — outranks
+  everything, a suspended account still carrying clothes included), `inactive`,
+  `available`, `unavailable`. **Signal** is `live` inside
+  `tracking.fresh_for_seconds`, `stale` after, `none` with no reading; a driver
+  `on_job` whose signal is not live is **«الإشارة مقطوعة»**, sorted first and
+  announced. A free driver going quiet is not an alarm.
+- **Waiting pins are the dispatch board's rows** (`needingAPerson()` through the
+  scoped Order), one per order at the place its first waiting leg *begins*
+  (`TaskType::startCoordinatesFor()`), shown only with `order_task.view`. «مين
+  ياخدها؟» (`admin.driver_map.candidates`, `driver.view` + `order_task.view`) is
+  `DriverDispatcher::candidates()` — the assignment's own five rules — sorted by
+  **straight-line** distance from a live position (a road measurement per pair on
+  every ask would be a paid Google call; these rank, they do not price). Assign
+  posts the existing `admin.order.tasks.assign` (`order_task.update`), with
+  `rest_of_order` ticked by default.
+- **The page polls** `admin.driver_map.data` every `tracking.panel_poll_seconds`
+  (10), not while the tab is hidden, and backs off up to a minute on failure.
+  Markers are moved, not rebuilt, so an open card survives a refresh. The order
+  link in a card needs `order.view`. Zones and laundries are drawn once, from the
+  page. One request costs the same queries however many drivers there are
+  (`DriverMapTest`).
+- **No trail.** Only the last point is stored (the 2026-09-01 decision stands);
+  a route history would need a points table.
+- Assets: `public/assets/css/driver-map.css` and
+  `public/assets/js/custom/driver-map.js`, through `assetVersion()`. Every
+  string the script prints is escaped (`driver-map.spec.js` asserts a customer
+  named `<b>…</b>` is shown, not parsed). The vendored Leaflet ships no
+  `images/layers.png`, so the layer toggle is drawn from the icon font.
+
 ## Which laundry gets the order
 
 `Order/Services/LaundryAssigner` decides, at placement and again whenever an
@@ -914,6 +970,7 @@ user's `*.view` permissions. Four top-level keys:
   can already see orders. `MenuBuilder::visible()` reads it. Its routes stay
   `admin.order_today.*` on purpose: the sidebar lights an item by route prefix,
   and under `admin.order.*` «All orders» would light up on this page too.
+  `driver_map` («خريطة المناديب») borrows `driver.view` the same way.
 - **`icons` / `titles` / `routes`** — three parallel maps keyed by model name,
   one entry each per screen and exactly as many as `groups` + `singles`. A key
   present in two of the three renders with a null in the third, so the three

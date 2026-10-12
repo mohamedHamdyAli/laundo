@@ -18,6 +18,7 @@ use App\Modules\Driver\Controllers\DriverApplicationController;
 use App\Modules\Driver\Controllers\DriverBonusAwardController;
 use App\Modules\Driver\Controllers\DriverBonusRuleController;
 use App\Modules\Driver\Controllers\DriverController;
+use App\Modules\Driver\Controllers\DriverMapController;
 use App\Modules\Driver\Controllers\DriverRecordSubmissionController;
 use App\Modules\Faq\Controllers\FaqController;
 use App\Modules\Intro\Controllers\IntroController;
@@ -620,6 +621,28 @@ Route::middleware(['auth', 'dashboard.only'])->prefix('/admin')->group(function 
         Route::put('/driver/update/{id}', 'update')->middleware('permission:driver.update')->name('admin.driver.update');
         Route::delete('/driver/delete/{id}', 'destroy')->middleware('permission:driver.delete')->name('admin.driver.delete');
         Route::post('/driver/status/{id}', 'toggleStatus')->middleware('permission:driver.toggle')->name('admin.driver.toggleStatus');
+    });
+
+    /*
+    |--------------------------------------------------------------------------
+    | «خريطة السواقين» — every driver, live
+    |--------------------------------------------------------------------------
+    |
+    | `driver.view`, which no laundry role holds: where every driver is standing
+    | is the platform's, not a tenant's — and `DriverMap` refuses anybody inside
+    | a laundry even if it is granted. The waiting pins are the dispatch board's
+    | rows, so asking who could take one also needs `order_task.view`; the
+    | assign button posts the board's own `admin.order.tasks.assign`.
+    |
+    */
+    Route::controller(DriverMapController::class)->group(function () {
+        Route::get('/driver-map', 'index')
+            ->middleware('permission:driver.view')->name('admin.driver_map.index');
+        Route::get('/driver-map/data', 'data')
+            ->middleware('permission:driver.view')->name('admin.driver_map.data');
+        Route::get('/driver-map/task/{id}/candidates', 'candidates')
+            ->middleware(['permission:driver.view', 'permission:order_task.view'])
+            ->name('admin.driver_map.candidates');
     });
 
     /*

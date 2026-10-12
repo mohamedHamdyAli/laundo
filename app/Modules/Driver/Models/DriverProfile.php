@@ -55,9 +55,9 @@ class DriverProfile extends Model
         'max_concurrent_orders',
         'city_id',
         'notes',
-        // Deliberately not fillable from any request payload: DriverController
-        // writes them with forceFill after checking there is a live task, and a
-        // profile update must not be able to move the driver on the map.
+        // Deliberately not fillable from any request payload: only
+        // `POST /driver/location` writes them, with forceFill, and a profile
+        // update must not be able to move the driver on the map.
         //
         // `bonus_rule_id` is absent for two reasons of its own. It is a money
         // term, so it belongs behind `setting.update` rather than the

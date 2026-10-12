@@ -2524,3 +2524,15 @@ ends mid-statement («syntax error, unexpected end of file»): Blade's inline
 directive reads to the matching parenthesis without knowing about quotes, so the
 `)` inside the string closes it. Use the `@php … @endphp` block for any value
 that contains a parenthesis — every `$stackCols` does.
+
+## 2026-10-12 — a «does the test fail without the fix» run that never broke anything
+
+Proving four new tests by reverting four fixes in one Python pass: the fourth
+pattern occurred twice, its `assert` fired, and the script died **before
+writing anything** — so the tests ran against the fixed code and reported
+`OK (4 tests)`, which read as «these tests cannot fail». Only the traceback
+above the green line said otherwise.
+
+**Rule:** a revert-to-prove script prints a marker after its write
+(`print('BROKEN-WRITTEN')`), and the failing run is read only when the marker is
+there. A green result from a revert you did not see land is no result.

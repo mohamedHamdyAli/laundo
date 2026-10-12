@@ -55,8 +55,8 @@
             "admin.zone.toggleStatus",
             "admin.zone.update"
         ],
-        "node_count": 258,
-        "cohesion": 0.571,
+        "node_count": 259,
+        "cohesion": 0.568,
         "screens": [
             {
                 "key": "country",
@@ -266,8 +266,8 @@
             "admin.laundry_zone.index",
             "admin.laundry_zone.update"
         ],
-        "node_count": 274,
-        "cohesion": 0.498,
+        "node_count": 275,
+        "cohesion": 0.496,
         "screens": [
             {
                 "key": "laundry",
@@ -392,7 +392,7 @@
             "payments",
             "refunds"
         ],
-        "route_count": 80,
+        "route_count": 83,
         "routes": [
             "admin.commission_rule.create",
             "admin.commission_rule.delete",
@@ -435,8 +435,8 @@
             "admin.driver_bonus_rule.toggleStatus",
             "admin.driver_bonus_rule.update"
         ],
-        "node_count": 1083,
-        "cohesion": 0.448,
+        "node_count": 1106,
+        "cohesion": 0.451,
         "screens": [
             {
                 "key": "order_task",
@@ -444,6 +444,14 @@
                 "route": "admin.dispatch.index",
                 "modules": [
                     "Order"
+                ]
+            },
+            {
+                "key": "driver_map",
+                "title": "Drivers map",
+                "route": "admin.driver_map.index",
+                "modules": [
+                    "Driver"
                 ]
             },
             {
@@ -497,6 +505,7 @@
         ],
         "menu_keys": [
             "order_task",
+            "driver_map",
             "driver",
             "driver_application",
             "driver_record_submission",
@@ -533,7 +542,7 @@
             "admin.user.update"
         ],
         "node_count": 79,
-        "cohesion": 0.209,
+        "cohesion": 0.208,
         "screens": [
             {
                 "key": "user",
@@ -780,8 +789,8 @@
             "admin.refund.approve",
             "admin.refund.index"
         ],
-        "node_count": 779,
-        "cohesion": 0.401,
+        "node_count": 782,
+        "cohesion": 0.398,
         "screens": [
             {
                 "key": "order",
@@ -886,8 +895,8 @@
             "admin.time_slot.toggleStatus",
             "admin.time_slot.update"
         ],
-        "node_count": 582,
-        "cohesion": 0.373,
+        "node_count": 585,
+        "cohesion": 0.369,
         "screens": [
             {
                 "key": "complaint",
@@ -1179,7 +1188,7 @@
             "api.v1.driver.tasks.fail"
         ],
         "node_count": 273,
-        "cohesion": 0.382
+        "cohesion": 0.381
     },
     {
         "slug": "authentication",
@@ -1253,8 +1262,8 @@
         "tables": [],
         "route_count": 0,
         "routes": [],
-        "node_count": 1670,
-        "cohesion": 0.356
+        "node_count": 1677,
+        "cohesion": 0.355
     },
     {
         "slug": "routing_and_distance",
@@ -1270,7 +1279,7 @@
         "route_count": 0,
         "routes": [],
         "node_count": 36,
-        "cohesion": 0.245
+        "cohesion": 0.235
     },
     {
         "slug": "system",
@@ -1353,7 +1362,7 @@
             "admin.notification.compose"
         ],
         "node_count": 1107,
-        "cohesion": 0.435,
+        "cohesion": 0.434,
         "screens": [
             {
                 "key": "moderator",
