@@ -548,4 +548,4 @@ as-is. Agreed: a ready list in the same endpoint, real links only.
 - [x] The flat social fields read null for a placeholder, so the two never disagree
 - [x] `/code-review`, fixed: `SOCIAL` is the one list (flat field + row); a placeholder driver WhatsApp falls back; a row is an `http(s)` link only; trimmed through `realSettingValue()` shared with `realSetting()`; a test that every label has Arabic. Kept: a root-domain link counts as a placeholder (the landing page's rule)
 - [x] Platform names translated; tests (each fails without its fix); Postman, reference, app note, Changelog; suite (1,936 green, 845s — CLAUDE.md's figure corrected); `/security-review` (nothing)
-- [ ] Deploy
+- [x] Deploy (`234a96f`), checked live for both apps; the owner still has to fill the real links (and a `wa.me` WhatsApp) in settings
