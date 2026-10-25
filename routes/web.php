@@ -59,6 +59,7 @@ use App\Modules\User\Controllers\UserController;
 use App\Modules\Wallet\Controllers\WalletController;
 use App\Modules\Zone\Controllers\CoverageRequestController;
 use App\Modules\Zone\Controllers\ZoneController;
+use App\Services\languages\AppStrings;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 
@@ -235,8 +236,10 @@ Route::middleware(['auth', 'dashboard.only'])->prefix('/admin')->group(function 
         Route::get('/language/panel/{id}', 'showPanel')->middleware('permission:language.update')->name('admin.language.panel');
         Route::post('/language/panel/update/{id}', 'updatePanel')->middleware('permission:language.update')->name('admin.language.panel.update');
 
-        Route::get('/language/mobile/{id}', 'showMobile')->middleware('permission:language.update')->name('admin.language.mobile');
-        Route::post('/language/mobile/update/{id}', 'updateMobile')->middleware('permission:language.update')->name('admin.language.mobile.update');
+        // Each app's own words, `{code}_app_{user|driver}.json` (AppStrings).
+        Route::get('/language/app/{id}/{app}', 'showApp')->whereIn('app', AppStrings::APPS)->middleware('permission:language.update')->name('admin.language.app');
+        Route::post('/language/app/update/{id}/{app}', 'updateApp')->whereIn('app', AppStrings::APPS)->middleware('permission:language.update')->name('admin.language.app.update');
+        Route::get('/language/app/download/{id}/{app}', 'downloadApp')->whereIn('app', AppStrings::APPS)->middleware('permission:language.view')->name('admin.language.app.download');
 
         Route::get('/language/web/{id}', 'showWeb')->middleware('permission:language.update')->name('admin.language.web');
         Route::post('/language/web/update/{id}', 'updateWeb')->middleware('permission:language.update')->name('admin.language.web.update');

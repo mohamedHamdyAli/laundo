@@ -2455,5 +2455,15 @@
     "The customer is told once, this many days before points expire. 0: no reminder.": "The customer is told once, this many days before points expire. 0: no reminder.",
     "Points balance": "Points balance",
     "Points movement": "Points movement",
-    "Not earned — the pieces counted are under the minimum": "Not earned — the pieces counted are under the minimum"
+    "Not earned — the pieces counted are under the minimum": "Not earned — the pieces counted are under the minimum",
+    "The app does not fill :tokens here — use only the placeholders the English text has.": "The app does not fill :tokens here — use only the placeholders the English text has.",
+    "Say which app is asking: app=user or app=driver.": "Say which app is asking: app=user or app=driver.",
+    "App texts updated": "App texts updated",
+    "Customer app texts": "Customer app texts",
+    "Driver app texts": "Driver app texts",
+    "Download JSON": "Download JSON",
+    "Words in braces, like {} or {name}, are filled in by the app — keep them.": "Words in braces, like {} or {name}, are filled in by the app — keep them.",
+    "New keys come from the app team with a new file.": "New keys come from the app team with a new file.",
+    "Filter texts...": "Filter texts...",
+    "The form arrived cut short and nothing was saved. Raise max_input_vars on the server.": "The form arrived cut short and nothing was saved. Raise max_input_vars on the server."
 }

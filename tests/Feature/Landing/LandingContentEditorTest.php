@@ -196,7 +196,7 @@ class LandingContentEditorTest extends TestCase
     #[Test]
     public function it_does_not_touch_the_panel_translation_file(): void
     {
-        $guarded = [lang_path('ar.json'), lang_path('en.json'), lang_path('ar_mobile.json')];
+        $guarded = [lang_path('ar.json'), lang_path('en.json'), lang_path('ar_app_user.json')];
         $before = [];
         foreach ($guarded as $file) {
             $before[$file] = File::exists($file) ? md5_file($file) : null;

@@ -1202,7 +1202,7 @@
             "api.v1.driver.tasks.fail"
         ],
         "node_count": 280,
-        "cohesion": 0.373
+        "cohesion": 0.372
     },
     {
         "slug": "authentication",
@@ -1277,7 +1277,7 @@
         "tables": [],
         "route_count": 0,
         "routes": [],
-        "node_count": 1719,
+        "node_count": 1721,
         "cohesion": 0.353,
         "inferred_modules": [
             "Address"
@@ -1297,7 +1297,7 @@
         "route_count": 0,
         "routes": [],
         "node_count": 36,
-        "cohesion": 0.233
+        "cohesion": 0.232
     },
     {
         "slug": "system",
@@ -1336,7 +1336,7 @@
             "notification_preferences",
             "settings"
         ],
-        "route_count": 67,
+        "route_count": 68,
         "routes": [
             "/up",
             "admin.activity_log.index",
@@ -1345,6 +1345,9 @@
             "admin.generalSetting.updatePrivacyAndTerms",
             "admin.generalSetting.viewGeneralSetting",
             "admin.generalSetting.viewPrivacyAndTerms",
+            "admin.language.app",
+            "admin.language.app.download",
+            "admin.language.app.update",
             "admin.language.create",
             "admin.language.delete",
             "admin.language.download",
@@ -1352,8 +1355,6 @@
             "admin.language.index",
             "admin.language.landing",
             "admin.language.landing.update",
-            "admin.language.mobile",
-            "admin.language.mobile.update",
             "admin.language.panel",
             "admin.language.panel.update",
             "admin.language.search",
@@ -1376,11 +1377,10 @@
             "admin.myNotifications.index",
             "admin.myNotifications.read",
             "admin.myNotifications.read-all",
-            "admin.myNotifications.unread",
-            "admin.notification.compose"
+            "admin.myNotifications.unread"
         ],
-        "node_count": 1119,
-        "cohesion": 0.431,
+        "node_count": 1129,
+        "cohesion": 0.432,
         "screens": [
             {
                 "key": "moderator",

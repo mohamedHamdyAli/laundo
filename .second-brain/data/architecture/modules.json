@@ -55,7 +55,7 @@
             "controller": 5
         },
         "files": 16,
-        "lines": 1718,
+        "lines": 1737,
         "classes": [
             {
                 "fqcn": "App\\Http\\Controllers\\Admin\\ActivityLogController",
@@ -99,6 +99,9 @@
         "routes": [
             "admin.activity_log.index",
             "admin.activity_log.search",
+            "admin.language.app",
+            "admin.language.app.download",
+            "admin.language.app.update",
             "admin.language.create",
             "admin.language.delete",
             "admin.language.download",
@@ -106,8 +109,6 @@
             "admin.language.index",
             "admin.language.landing",
             "admin.language.landing.update",
-            "admin.language.mobile",
-            "admin.language.mobile.update",
             "admin.language.panel",
             "admin.language.panel.update",
             "admin.language.search",
@@ -132,10 +133,10 @@
         ],
         "permissions": [
             "activity_log.view",
+            "language.update",
+            "language.view",
             "language.create",
             "language.delete",
-            "language.view",
-            "language.update",
             "role.view",
             "role.update",
             "role.create"
@@ -143,7 +144,7 @@
         "tests": [],
         "summary": "«سجل النشاط» — who changed what, across the platform.",
         "depends_on": {
-            "Platform": 36
+            "Platform": 37
         },
         "depended_on_by": {
             "Routing": 5,
@@ -159,7 +160,7 @@
             "api-controller": 24
         },
         "files": 24,
-        "lines": 5518,
+        "lines": 5538,
         "classes": [
             {
                 "fqcn": "App\\Http\\Controllers\\Api\\V1\\AddressController",
@@ -455,7 +456,7 @@
         "tests": [],
         "summary": "A customer's saved addresses.",
         "depends_on": {
-            "Platform": 71,
+            "Platform": 73,
             "Order": 57,
             "Payment": 17,
             "TimeSlot": 12,
@@ -1224,10 +1225,10 @@
         "community": "quality",
         "path": null,
         "layers": {
-            "doc": 15
+            "doc": 10
         },
-        "files": 15,
-        "lines": 11626,
+        "files": 10,
+        "lines": 11249,
         "classes": [],
         "models": [],
         "owns_tables": [],
@@ -2038,7 +2039,7 @@
             "view": 5
         },
         "files": 5,
-        "lines": 527,
+        "lines": 591,
         "classes": [],
         "models": [],
         "owns_tables": [],
@@ -3789,7 +3790,7 @@
             "support": 45,
             "config": 20,
             "request": 15,
-            "service": 9,
+            "service": 10,
             "middleware": 8,
             "controller": 5,
             "command": 4,
@@ -3800,8 +3801,8 @@
             "view-component": 3,
             "mail": 2
         },
-        "files": 188,
-        "lines": 19925,
+        "files": 189,
+        "lines": 20240,
         "classes": [
             {
                 "fqcn": "App\\Http\\Controllers\\Controller",
@@ -3874,6 +3875,12 @@
                 "layer": "service",
                 "path": "app/Services/ResponseService.php",
                 "summary": ""
+            },
+            {
+                "fqcn": "App\\Services\\languages\\AppStrings",
+                "layer": "service",
+                "path": "app/Services/languages/AppStrings.php",
+                "summary": "The words the two apps show — «نصوص تطبيق العميل» and «نصوص تطبيق المندوب»."
             },
             {
                 "fqcn": "App\\Services\\languages\\LanguageService",
@@ -4546,12 +4553,12 @@
             "LaundryZone": 1
         },
         "depended_on_by": {
-            "Tests": 100,
-            "Api": 71,
+            "Tests": 106,
+            "Api": 73,
             "Payment": 46,
             "Driver": 38,
+            "AdminShell": 37,
             "Order": 37,
-            "AdminShell": 36,
             "Zone": 22,
             "Laundry": 21,
             "LaundryService": 19,
@@ -4579,8 +4586,8 @@
             "Complaint": 7,
             "Setting": 6,
             "TimeSlot": 6,
+            "Routing": 5,
             "Pricing": 4,
-            "Routing": 4,
             "Rating": 2,
             "Recurrence": 2,
             "Landing": 1
@@ -4974,7 +4981,7 @@
             "routes": 3
         },
         "files": 9,
-        "lines": 2604,
+        "lines": 2607,
         "classes": [
             {
                 "fqcn": "App\\Services\\Routing\\Coordinate",
@@ -5025,8 +5032,8 @@
             "Driver": 6,
             "Payment": 6,
             "AdminShell": 5,
+            "Platform": 5,
             "Order": 5,
-            "Platform": 4,
             "LaundryService": 2,
             "Laundry": 2,
             "Notification": 2,
@@ -5239,11 +5246,11 @@
         "community": "quality",
         "path": null,
         "layers": {
-            "test": 136,
+            "test": 138,
             "browser-test": 26
         },
-        "files": 162,
-        "lines": 53074,
+        "files": 164,
+        "lines": 53699,
         "classes": [
             {
                 "fqcn": "Tests\\Feature\\Api\\AddressIdDisclosureTest",
@@ -5262,6 +5269,12 @@
                 "layer": "test",
                 "path": "tests/Feature/Api/ApiContractTest.php",
                 "summary": "P0 — the response envelope, locale resolution and error shapes that every later endpoint inherits."
+            },
+            {
+                "fqcn": "Tests\\Feature\\Api\\AppStringsTest",
+                "layer": "test",
+                "path": "tests/Feature/Api/AppStringsTest.php",
+                "summary": "`GET /translations/app?app=user|driver` — each app's own words."
             },
             {
                 "fqcn": "Tests\\Feature\\Api\\AppTaxTest",
@@ -5514,6 +5527,12 @@
                 "layer": "test",
                 "path": "tests/Feature/Dashboard/ActivityLogTest.php",
                 "summary": "«نعرف مين اللي عمل أي تغيير في أي أكشن» — the activity log, and the history on the order's screen that reads it."
+            },
+            {
+                "fqcn": "Tests\\Feature\\Dashboard\\AppStringsEditorTest",
+                "layer": "test",
+                "path": "tests/Feature/Dashboard/AppStringsEditorTest.php",
+                "summary": "«نصوص تطبيق العميل / المندوب» — each app's words, edited per language."
             },
             {
                 "fqcn": "Tests\\Feature\\Dashboard\\AssetCacheBustingTest",
@@ -6156,6 +6175,7 @@
             "tests/Feature/Api/AddressIdDisclosureTest.php",
             "tests/Feature/Api/AddressTest.php",
             "tests/Feature/Api/ApiContractTest.php",
+            "tests/Feature/Api/AppStringsTest.php",
             "tests/Feature/Api/AppTaxTest.php",
             "tests/Feature/Api/BookingWindowTest.php",
             "tests/Feature/Api/CashOnDeliveryTest.php",
@@ -6198,6 +6218,7 @@
             "tests/Feature/Console/CloseDriverBonusMonthTest.php",
             "tests/Feature/Console/WeeklyReportTest.php",
             "tests/Feature/Dashboard/ActivityLogTest.php",
+            "tests/Feature/Dashboard/AppStringsEditorTest.php",
             "tests/Feature/Dashboard/AssetCacheBustingTest.php",
             "tests/Feature/Dashboard/AutoAssignTest.php",
             "tests/Feature/Dashboard/CashCustodyTest.php",
@@ -6293,8 +6314,8 @@
         "summary": "",
         "depends_on": {
             "Order": 433,
-            "Platform": 100,
-            "User": 98,
+            "Platform": 106,
+            "User": 99,
             "Payment": 81,
             "Notification": 68,
             "Driver": 62,
@@ -6525,7 +6546,7 @@
             "Laundry": 1
         },
         "depended_on_by": {
-            "Tests": 98,
+            "Tests": 99,
             "Order": 25,
             "Notification": 23,
             "Payment": 13,

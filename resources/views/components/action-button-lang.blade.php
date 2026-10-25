@@ -30,8 +30,13 @@
                 </a>
             </li>
             <li>
-                <a class="dropdown-item" href="{{ route('admin.language.mobile', $row->id) }}">
-                    <i class="fa fa-file-code me-2"></i> {{ __('Edit Mobile Json') }}
+                <a class="dropdown-item" href="{{ route('admin.language.app', [$row->id, 'user']) }}">
+                    <i class="fa fa-mobile-alt me-2"></i> {{ __('Customer app texts') }}
+                </a>
+            </li>
+            <li>
+                <a class="dropdown-item" href="{{ route('admin.language.app', [$row->id, 'driver']) }}">
+                    <i class="fa fa-motorcycle me-2"></i> {{ __('Driver app texts') }}
                 </a>
             </li>
             <li>

@@ -35,7 +35,9 @@ and 521s, (at 1,662 tests, 2026-09-28) 575s, (at 1,814 tests, 2026-09-29,
 with another agent busy on the machine) 643s, (at 1,861 tests, 2026-09-30)
 317s, (at 1,863–1,877 tests, 2026-10-01/04) 596s, 747s and 785s, and (at
 1,922–1,936 tests, 2026-10-11/12) 424s, 584s, 624s and — with a review agent
-reading the tree alongside — 845s, so budget for the longest.
+reading the tree alongside — 845s, and (at 2,042 tests, 2026-10-25, with a
+headless browser and a dev server running beside it) 912s, so budget for the
+longest.
 When MySQL is down, `php artisan test` cannot boot at all (see the Second Brain
 note below) — run `vendor/bin/phpunit` directly, which reads `phpunit.xml`'s
 SQLite and needs no database server. Use
@@ -439,7 +441,12 @@ Translatable columns hold JSON `{"en":"…","ar":"…"}` in a **`text`** column,
 - `languages.default` and `languages.is_rtl` are **enum strings `'true'`/`'false'`** — `where('default', 'true')`.
 
 Translation files: `resources/lang/{code}.json` (the panel's own),
-`{code}_panel.json`, `{code}_mobile.json`, `{code}_web.json`. The public site's
+`{code}_panel.json`, `{code}_web.json`, and **each app's own words,
+`{code}_app_{user|driver}.json`** — the app teams' files, nested, never written
+at runtime; edits are laid over them from `storage/app/lang/`, English fills any
+missing key, and `GET /translations/app` **requires `?app=user|driver`**
+(`AppStrings`; the panel edits values only — keys come with the team's file).
+`{code}_mobile.json` is gone. The public site's
 copy is the Web File, read by `webText()`; add its keys with
 `php artisan laundo:sync-web-lang` — **never `LanguageHelper::generateJsonLanguageFiles()`**,
 which tips English into `ar.json` and reddens `TranslationCoverageTest`.
@@ -543,7 +550,7 @@ only**. `LandingController` reads route parameters off the request.
 
 `Helpers.php` (~44 functions) — `uploadOrUpdateImage($file, $dir, $existing = null)` (validates extension + 5MB cap, deletes the old file, returns the stored path, or returns `$existing` when `$file` is null), `DeleteImage()`, `getImageDashboardUrl()` (returns **raw HTML**, use `{!! !!}`), `canDo()`, `getLocalizedValue*()`, `getDefaultLanguage()`, `humanDate()`, `isoDate()`, `displayTimezone()`, `moneyFormat()`, `appCurrency()`, `phoneRegex()`, `getSettingValue()`, `realSetting()` / `isPlaceholderSetting()`, `assetVersion()`, `brandLogo()` / `brandPlaceholder()`, `webText()`, `panelIsRtl()`. **Grep before adding one** — duplicates get written by accident.
 
-`LanguageHelper.php` — generates `resources/lang/{code}{,_panel,_mobile,_web}.json` from the `storage/app/{panel,mobile,web}File.php` templates. `ApiResponse.php` — the API envelope.
+`LanguageHelper.php` — generates `resources/lang/{code}{,_panel,_web}.json` from the `storage/app/{panel,web}File.php` templates. `ApiResponse.php` — the API envelope.
 
 ### Caching (fragmented — check both systems)
 

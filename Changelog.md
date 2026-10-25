@@ -1,5 +1,22 @@
 # Changelog
 
+## 2026-10-25
+
+### Feature
+
+- **Each app's own words are served and edited from the panel** («دول 4 ملفات … وال api محتاج براميتر يقول اني ابلكيشين»). The four files the app teams sent ship as `resources/lang/{ar,en}_app_{user,driver}.json`, nested as the apps bundle them (sections, `{}` / `{name}` placeholders, plural maps). `GET /api/v1/translations/app` now **requires `?app=user|driver`** (422 `errors.app` otherwise) and serves that app's file nested; a key a language never translated is filled from English. `web` is unchanged (API / Service).
+- **«نصوص تطبيق العميل» / «نصوص تطبيق المندوب»** on the languages row's menu (`admin.language.app`, `language.update`): one box per key grouped by section, filter box, the shipped words as placeholders, multi-line messages in a textarea. Values only — keys come with the app team's file. Saved as overrides in `storage/app/lang/{code}_app_{app}.json` (`config('app.app_strings_overrides_path')`), never into the tracked files, so a new file from a team pulls cleanly; a blank box resets; a key the form did not send keeps its words; a placeholder English does not have (or an extra `{}`) refuses the save. Download of the merged file (`language.view`); each save is an activity-log row (`app_user.*` / `app_driver.*`) (Service / Controller / Blade / Config).
+
+### Refactor
+
+- **`{code}_mobile.json` is retired** — one flat override set both apps would have shared, empty in every language. Its editor screen and routes (`admin.language.mobile*`), its template `storage/app/mobileFile.php`, its generation for a new language and the «App File» upload on the language form are gone (`languages.app_file` stays, unused). Deleting a language removes what was typed for its apps; the shipped files stay (Service / Helper / Blade / Request).
+- Docs: Postman («Translations» takes `app`), `generate-reference.py` → `api-reference.html`, `docs/mobile-2026-10-25-app-strings.md` + `mobile-api-changes.md`, `architecture.md`, CLAUDE.md. Tests: `AppStringsTest` (API, 12), `AppStringsEditorTest` (21); `TranslationFileTest` moved to the web set.
+- `/code-review` (10 findings) fixed before release: a language whose code changes takes its typed app words with it; a form PHP cuts at `max_input_vars` is refused (a closing `complete` field) instead of half-saved; saves are serialised under a cache lock; the public endpoint is cached on the files' mtimes and a counter each save bumps; the «Default» shown includes English's edits; a regional code (`ar-EG`) is served its base language; a refused plain post lists its errors; the dead `getLanguageData()` / `updatelanguage()` that still wrote `_mobile` files are removed; stale `mobileFile.php` pointers in docs and `storage/app/.gitignore` (Service / Controller / Blade).
+
+### Fix
+
+- **`GET /translations/web?code=../…` could read a JSON file outside `resources/lang`** whose name ended in `_web.json` (found by `/security-review`, there before this change). `getTranslationFile()` now refuses any code that is not a language code (`ValidationOverrideLoader::isLocale()`) and returns nothing (Helper).
+
 ## 2026-10-12
 
 ### Improvement

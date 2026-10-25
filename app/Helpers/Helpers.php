@@ -3,6 +3,7 @@
 use App\Models\Language;
 use App\Models\Role;
 use App\Modules\Setting\Models\Setting;
+use App\Support\Translation\ValidationOverrideLoader;
 use Carbon\Carbon;
 use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Http\UploadedFile;
@@ -281,7 +282,6 @@ if (! function_exists('replaceLanguageFile')) {
 
         $map = [
             'panel_file' => "{$code}.json",
-            'app_file' => "{$code}_mobile.json",
             'web_file' => "{$code}_web.json",
         ];
 
@@ -498,12 +498,19 @@ if (! function_exists('getAllLanguageWithoutDefault')) {
 if (! function_exists('getTranslationFile')) {
     /**
      * Read a translation JSON file and cache its array content.
-     * $type: panel|app|web|default
+     * $type: panel|web|default
      * $code: language code like 'en', 'ar'
      */
     function getTranslationFile(string $type, string $code): array
     {
         $code = strtolower($code);
+
+        // The code becomes a file name, and `GET /translations/web` takes it
+        // straight off the query string: `../x` is not a language.
+        if (! ValidationOverrideLoader::isLocale($code)) {
+            return [];
+        }
+
         $cacheKey = "lang_file_{$code}_{$type}";
 
         return cache()->rememberForever($cacheKey, function () use ($type, $code) {
@@ -515,7 +522,6 @@ if (! function_exists('getTranslationFile')) {
             // yet only because the API refuses `panel` outright; the next caller
             // would have got the scaffold and no error.
             $fileName = match ($type) {
-                'app' => "{$code}_mobile.json",
                 'web' => "{$code}_web.json",
                 default => "{$code}.json",
             };
@@ -543,7 +549,6 @@ if (! function_exists('clearLanguageCache')) {
         if ($code) {
             cache()->forget("language_{$code}");
             cache()->forget("lang_file_{$code}_panel");
-            cache()->forget("lang_file_{$code}_app");
             cache()->forget("lang_file_{$code}_web");
             cache()->forget("lang_file_{$code}_default");
         }

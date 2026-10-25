@@ -176,14 +176,14 @@ class TranslationFileTest extends TestCase
     // ------------------------------------------------------------ serving it
 
     #[Test]
-    public function an_app_can_fetch_the_set_that_was_uploaded_for_it(): void
+    public function the_site_can_fetch_the_set_that_was_uploaded_for_it(): void
     {
-        $target = $this->track('zz_mobile.json');
+        $target = $this->track('zz_web.json');
         File::put($target, json_encode(['Welcome' => 'أهلاً بك'], JSON_UNESCAPED_UNICODE));
 
         Cache::flush();
 
-        $data = $this->getJson('/api/v1/translations/app?code=zz')->assertOk()->json('data');
+        $data = $this->getJson('/api/v1/translations/web?code=zz')->assertOk()->json('data');
 
         $this->assertSame('zz', $data['code']);
         $this->assertSame('أهلاً بك', $data['strings']['Welcome']);
@@ -200,6 +200,20 @@ class TranslationFileTest extends TestCase
     }
 
     #[Test]
+    public function a_code_that_walks_out_of_the_directory_reads_nothing(): void
+    {
+        // A JSON file one level above resources/lang, named the way the web
+        // set's files are. `code` comes straight off the query string.
+        $outside = resource_path('zz_web.json');
+        $this->written[] = $outside;
+        File::put($outside, json_encode(['secret' => 'outside'], JSON_UNESCAPED_UNICODE));
+
+        $this->getJson('/api/v1/translations/web?code='.urlencode('../zz'))
+            ->assertOk()
+            ->assertJsonPath('data.strings', []);
+    }
+
+    #[Test]
     public function the_panel_set_is_not_served_to_apps(): void
     {
         // `{code}.json` is the dashboard's own translation. No app has any use for
@@ -211,7 +225,8 @@ class TranslationFileTest extends TestCase
     #[Test]
     public function the_endpoint_is_public_because_an_app_needs_strings_before_signing_in(): void
     {
-        $this->getJson('/api/v1/translations/app')->assertOk();
+        $this->getJson('/api/v1/translations/app?app=user')->assertOk();
+        $this->getJson('/api/v1/translations/web')->assertOk();
     }
 
     #[Test]
@@ -223,21 +238,21 @@ class TranslationFileTest extends TestCase
             'app_scope' => 'user',
         ]);
 
-        $target = $this->track('zz_mobile.json');
+        $target = $this->track('zz_web.json');
         File::put($target, json_encode(['Welcome' => 'قديم'], JSON_UNESCAPED_UNICODE));
 
         // Read once so the for-ever cache is warm.
         $this->assertSame(
             'قديم',
-            $this->getJson('/api/v1/translations/app?code=zz')->assertOk()->json('data.strings.Welcome')
+            $this->getJson('/api/v1/translations/web?code=zz')->assertOk()->json('data.strings.Welcome')
         );
 
-        replaceLanguageFile($language, 'app_file', $this->upload(['Welcome' => 'جديد']));
+        replaceLanguageFile($language, 'web_file', $this->upload(['Welcome' => 'جديد']));
 
         // The reader caches for ever, so a stale copy would outlive the upload.
         $this->assertSame(
             'جديد',
-            $this->getJson('/api/v1/translations/app?code=zz')->assertOk()->json('data.strings.Welcome')
+            $this->getJson('/api/v1/translations/web?code=zz')->assertOk()->json('data.strings.Welcome')
         );
     }
 }

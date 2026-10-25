@@ -114,6 +114,15 @@ return [
     'validation_overrides_path' => storage_path('app/lang'),
 
     /*
+    | Where «نصوص تطبيق العميل / المندوب» keep what an operator typed —
+    | `{code}_app_{user|driver}.json`, laid over the app teams' shipped
+    | `resources/lang/{code}_app_{app}.json` by AppStrings. In `storage/` for
+    | the same reason: a new file from an app team then pulls cleanly, and the
+    | operator's words survive it.
+    */
+    'app_strings_overrides_path' => storage_path('app/lang'),
+
+    /*
     |--------------------------------------------------------------------------
     | Encryption Key
     |--------------------------------------------------------------------------

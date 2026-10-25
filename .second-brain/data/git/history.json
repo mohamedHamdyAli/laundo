@@ -1,8 +1,32 @@
 {
     "available": true,
-    "head": "fa6ddfcc0d90c3eae5b7e4c675209440183ddac2",
-    "commits_scanned": 139,
+    "head": "e4502939f1ec210177e1f3e44034fbce2d2a3222",
+    "commits_scanned": 143,
     "recent": [
+        {
+            "sha": "e4502939",
+            "date": "2026-10-12",
+            "subject": "Remove outdated loyalty points documentation for QC testing dated 2026-10-12",
+            "files": 1
+        },
+        {
+            "sha": "fdccb545",
+            "date": "2026-10-12",
+            "subject": "docs: remove outdated API documentation for complaints, social links, time slots, driver location, and loyalty points",
+            "files": 5
+        },
+        {
+            "sha": "c00a5481",
+            "date": "2026-10-12",
+            "subject": "docs: the points release is live",
+            "files": 1
+        },
+        {
+            "sha": "ca3e6827",
+            "date": "2026-10-12",
+            "subject": "feat: «النقاط» — customer points, earned per order and per hanger, spent as a discount",
+            "files": 61
+        },
         {
             "sha": "fa6ddfcc",
             "date": "2026-10-12",
@@ -68,72 +92,48 @@
             "date": "2026-10-07",
             "subject": "fix: an address keeps its zone while the zone is switched off",
             "files": 9
-        },
-        {
-            "sha": "170ac76b",
-            "date": "2026-10-07",
-            "subject": "feat: a zone switched off takes no orders",
-            "files": 17
-        },
-        {
-            "sha": "2ee444d7",
-            "date": "2026-10-07",
-            "subject": "docs: the complaints and coverage release is live",
-            "files": 1
-        },
-        {
-            "sha": "ec5a674c",
-            "date": "2026-10-07",
-            "subject": "feat: has_complaint, one complaint per order, and refusing an address in no zone",
-            "files": 35
-        },
-        {
-            "sha": "ea3cb16e",
-            "date": "2026-10-04",
-            "subject": "docs: fifteen mobile notes were removed, not fourteen",
-            "files": 1
         }
     ],
     "hottest_files": {
-        "routes/web.php": 28,
-        "docs/postman/Laundo API v1.postman_collection.json": 26,
-        "docs/mobile-api-changes.md": 20,
+        "routes/web.php": 29,
+        "docs/postman/Laundo API v1.postman_collection.json": 27,
+        "docs/mobile-api-changes.md": 22,
         "app/Helpers/Helpers.php": 19,
-        "config/menu.php": 17,
-        "resources/views/admin/setting/generalSetting/forms/formInput.blade.php": 17,
-        "app/Http/Controllers/Api/V1/OrderController.php": 14,
-        "app/Modules/Setting/Requests/GeneralSettingRequest.php": 14,
+        "config/menu.php": 18,
+        "resources/views/admin/setting/generalSetting/forms/formInput.blade.php": 18,
+        "app/Http/Controllers/Api/V1/OrderController.php": 15,
+        "app/Modules/Setting/Requests/GeneralSettingRequest.php": 15,
+        "app/Modules/Order/Services/OrderService.php": 14,
+        "config/dashboard.php": 14,
         "resources/views/layouts/footer_script.blade.php": 14,
-        "app/Modules/Order/Services/OrderService.php": 13,
-        "config/dashboard.php": 13,
         "app/Http/Controllers/Admin/LanguageController.php": 11,
         "app/Services/languages/LanguageService.php": 11,
+        "app/Modules/Order/Services/orderCrudService.php": 10,
+        "docs/architecture.md": 10,
+        "resources/views/admin/order/show.blade.php": 10,
         "database/seeders/SettingsSeeder.php": 10,
-        "docs/architecture.md": 9,
+        "app/Modules/Order/Models/Order.php": 9,
+        "routes/api.php": 9,
         "app/Modules/User/Models/User.php": 9,
-        "app/Modules/Order/Services/orderCrudService.php": 9,
-        "resources/views/admin/order/show.blade.php": 9,
         "app/Modules/Driver/Services/DriverCard.php": 9,
         "resources/views/layouts/topbar.blade.php": 9,
         "resources/views/layouts/sidebar.blade.php": 9,
+        "app/Modules/Order/Models/OrderTask.php": 8,
         "app/Http/Controllers/Api/V1/DriverController.php": 8,
-        "app/Modules/Order/Models/Order.php": 8,
         "resources/views/admin/home.blade.php": 8,
-        "routes/api.php": 8,
         "resources/views/admin/order/index.blade.php": 8,
         "resources/views/admin/banner/forms/formInput.blade.php": 8,
         "app/Services/CachingService.php": 8,
+        "app/Http/Controllers/Api/V1/DriverTaskController.php": 7,
+        "app/Http/Requests/Api/V1/OrderRequest.php": 7,
         "app/Modules/Order/Services/RecurrenceService.php": 7,
         "app/Services/MenuBadges.php": 7,
-        "app/Modules/Order/Models/OrderTask.php": 7,
         "app/Modules/Order/Repositories/OrderRepository.php": 7,
         "tests/Feature/Api/DriverTaskTest.php": 7,
         "app/Modules/City/Models/City.php": 7,
         "app/Modules/Pricing/Services/pricingService.php": 7,
         "app/Providers/AppServiceProvider.php": 7,
         "resources/views/admin/laundry/index.blade.php": 7,
-        "resources/views/admin/pricing/index.blade.php": 7,
-        "resources/views/admin/roles/index.blade.php": 7,
-        "resources/views/layouts/include.blade.php": 7
+        "resources/views/admin/pricing/index.blade.php": 7
     }
 }

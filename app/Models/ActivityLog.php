@@ -129,6 +129,15 @@ class ActivityLog extends Model
             return __('Validation message').' — '.substr($key, strlen('validation.'));
         }
 
+        // An app's own words, from «نصوص تطبيق العميل / المندوب» (AppStrings).
+        if (str_starts_with($key, 'app_user.')) {
+            return __('Customer app texts').' — '.substr($key, strlen('app_user.'));
+        }
+
+        if (str_starts_with($key, 'app_driver.')) {
+            return __('Driver app texts').' — '.substr($key, strlen('app_driver.'));
+        }
+
         $translated = trans('validation.attributes.'.$key);
 
         return $translated !== 'validation.attributes.'.$key ? $translated : Str::headline($key);

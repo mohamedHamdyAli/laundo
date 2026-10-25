@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
 use App\Models\Language;
+use App\Services\languages\AppStrings;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -35,11 +36,13 @@ class LanguageController extends Controller
     /**
      * The translation set an app ships its own strings from.
      *
-     * `replaceLanguageFile()` has always let an admin upload a mobile or web
-     * translation file from the languages screen, and `getTranslationFile()` has
-     * always been able to read one back — with **no caller anywhere**. So the
-     * upload wrote a file nothing served: the same shape as a column with no form
-     * field, from the other direction.
+     * `app` is each app's own words, and the caller says which app it is —
+     * `?app=user` (the customer app) or `?app=driver` — because the two bundle
+     * different files with different keys (`AppStrings`). Nested, as the app
+     * bundles it; a key the language has not translated comes back in English.
+     *
+     * `web` is the public site's Web File, flat, with no fallback: an empty
+     * object when nothing has been uploaded.
      *
      * Public, because an app needs its own strings before anybody signs in.
      */
@@ -51,14 +54,31 @@ class LanguageController extends Controller
             return failReturnNotFound(__('That translation set does not exist.'));
         }
 
-        $code = strtolower((string) ($request->get('code') ?: app()->getLocale()));
+        $asked = $request->query('code');
+        $code = strtolower(is_string($asked) && $asked !== '' ? $asked : app()->getLocale());
+
+        if ($type === 'web') {
+            return successReturnData([
+                'code' => $code,
+                'type' => $type,
+                'strings' => (object) getTranslationFile($type, $code),
+            ]);
+        }
+
+        $app = $request->query('app');
+
+        if (! AppStrings::isApp($app)) {
+            return failReturnValidation(
+                ['app' => [__('Say which app is asking: app=user or app=driver.')]],
+                __('Say which app is asking: app=user or app=driver.'),
+            );
+        }
 
         return successReturnData([
             'code' => $code,
             'type' => $type,
-            // An empty object when nothing has been uploaded — not an error. An
-            // app with no overrides falls back to its own bundled strings.
-            'strings' => (object) getTranslationFile($type, $code),
+            'app' => $app,
+            'strings' => (object) AppStrings::served($app, $code),
         ]);
     }
 }

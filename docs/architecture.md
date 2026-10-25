@@ -926,9 +926,9 @@ Adding a translatable field means touching four places: migration, `$fillable`, 
 
 `languages.default` and `languages.is_rtl` are **enum string `'true'`/`'false'`**, not booleans — `where('default', 'true')`.
 
-**The Web File — where the public site's copy lives.** Four JSON files per
+**The Web File — where the public site's copy lives.** Three JSON files per
 language: `{code}.json` (the panel's own, ~2,200 hand-authored entries),
-`{code}_panel.json`, `{code}_mobile.json` and `{code}_web.json`.
+`{code}_panel.json` and `{code}_web.json` (the apps' own files are below).
 
 ```
 storage/app/webFile.php         the key list + English defaults (~190 keys)
@@ -945,7 +945,7 @@ and the template default takes over — which is the behaviour you want from a
 "reset this string" box.
 
 **Never run `LanguageHelper::generateJsonLanguageFiles()` to add web keys to an
-existing language.** It merges panel + mobile + web into `{code}.json` too, and
+existing language.** It merges panel + web into `{code}.json` too, and
 `TranslationCoverageTest::no_arabic_value_is_left_in_english` fails the build on
 any `ar.json` value holding no Arabic — so it would tip a hundred English
 marketing strings into the panel's translation and redden the suite. That is why
@@ -954,6 +954,38 @@ asserts the six other files are byte-identical after a sync.
 
 `GET /api/v1/translations/web` serves the same file to the apps. The landing
 page is its second consumer, not a replacement.
+
+**The apps' own words — one file per app** (since 2026-10-25,
+`Services/languages/AppStrings`). The customer app and the driver app bundle
+different files with different keys, so `GET /api/v1/translations/app` takes
+**`?app=user|driver`, required** (422 `errors.app` otherwise) and serves that
+app's file **nested, as the app bundles it** — sections (`login.title`),
+`{}` / `{name}` placeholders, plural maps (`tasks.count.zero|one|other`, and
+Arabic's `two|few|many`). Two layers, like the validation messages:
+
+```
+resources/lang/{code}_app_{user|driver}.json   the app team's file — shipped, tracked, never written
+storage/app/lang/{code}_app_{app}.json         what an operator typed — flat dotted keys
+   -> served: en shipped < en typed < {code} shipped < {code} typed
+```
+
+- **English is the key list and the fallback**: a key a language never
+  translated reaches the app in English, never as a hole. A language may carry
+  keys English lacks (Arabic plurals) and they are editable.
+- **The app teams own the keys.** «نصوص تطبيق العميل» / «نصوص تطبيق المندوب»
+  (`admin.language.app`, `language.update`) edit values only; a new key comes
+  with a new file from the team, committed to `resources/lang`. A blank box is a
+  reset to the shipped words; a key the form did not send keeps its words (a
+  form cut at `max_input_vars` is not «reset the rest»).
+- **A placeholder the app will not fill is refused** (`unknownPlaceholders()`):
+  a named one English lacks, or more `{}` than English has. **Fewer is
+  allowed** — Arabic's dual («منذ دقيقتين») drops the number.
+- The download (`admin.language.app.download`, `language.view`) is the merged
+  file the app is served, for the team to bundle what is live. Each save is an
+  activity-log row against the language (`app_user.*` / `app_driver.*`).
+- It replaced `{code}_mobile.json`: one flat «override» set, empty in every
+  language, that both apps would have had to share. Its upload column
+  (`languages.app_file`) is no longer on the form; the column stays.
 
 **Two editors, one file.** «تعديل محتوى الصفحة التعريفية»
 (`admin.language.landing`) groups the `landing.*` keys by section in page order
@@ -1251,7 +1283,7 @@ five Playwright specs** — leave it alone.
 
 `Helpers.php` (~44 functions) — `uploadOrUpdateImage($file, $dir, $existing = null)` (validates extension + 5MB cap, deletes the old file, returns the stored path, or returns `$existing` when `$file` is null), `DeleteImage()`, `getImageDashboardUrl()` (returns **raw HTML**, use `{!! !!}`), `canDo()`, `getLocalizedValue*()`, `getDefaultLanguage()`, `humanDate()`, `isoDate()`, `displayTimezone()`, `moneyFormat()`, `appCurrency()`, `phoneRegex()`, `getSettingValue()`, `realSetting()` / `isPlaceholderSetting()` (the landing page's dev-data guard), `assetVersion()`, `brandLogo()` / `brandPlaceholder()`, `webText()`, `panelIsRtl()`. **Grep before adding one** — it is large enough that duplicates get written by accident.
 
-`LanguageHelper.php` — generates `resources/lang/{code}{,_panel,_mobile,_web}.json` from the `storage/app/{panel,mobile,web}File.php` templates.
+`LanguageHelper.php` — generates `resources/lang/{code}{,_panel,_web}.json` from the `storage/app/{panel,web}File.php` templates.
 
 `ApiResponse.php` — the API envelope (above).
 

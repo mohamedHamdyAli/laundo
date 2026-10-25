@@ -2455,5 +2455,15 @@
     "The customer is told once, this many days before points expire. 0: no reminder.": "يُبلَّغ العميل مرة واحدة قبل انتهاء النقاط بهذا العدد من الأيام. 0: بدون تنبيه.",
     "Points balance": "رصيد النقاط",
     "Points movement": "حركة نقاط",
-    "Not earned — the pieces counted are under the minimum": "لم تُكتسب — القطع المعدودة أقل من الحد الأدنى"
+    "Not earned — the pieces counted are under the minimum": "لم تُكتسب — القطع المعدودة أقل من الحد الأدنى",
+    "The app does not fill :tokens here — use only the placeholders the English text has.": "التطبيق مش هيملا :tokens هنا — استخدم بس الأقواس اللي في النص الإنجليزي.",
+    "Say which app is asking: app=user or app=driver.": "حدد التطبيق اللي بيطلب: app=user أو app=driver.",
+    "App texts updated": "تم حفظ نصوص التطبيق",
+    "Customer app texts": "نصوص تطبيق العميل",
+    "Driver app texts": "نصوص تطبيق المندوب",
+    "Download JSON": "تحميل JSON",
+    "Words in braces, like {} or {name}, are filled in by the app — keep them.": "الكلام اللي بين أقواس زي {} أو {name} التطبيق بيملاه بنفسه — سيبه زي ما هو.",
+    "New keys come from the app team with a new file.": "المفاتيح الجديدة بتيجي من فريق التطبيق في ملف جديد.",
+    "Filter texts...": "ابحث في النصوص...",
+    "The form arrived cut short and nothing was saved. Raise max_input_vars on the server.": "الفورم وصل ناقص ومفيش حاجة اتحفظت. لازم max_input_vars على السيرفر يتزوّد."
 }

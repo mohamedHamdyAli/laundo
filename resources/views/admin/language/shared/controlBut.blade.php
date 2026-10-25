@@ -37,16 +37,23 @@
                 </a>
             </li>
 
+            {{-- Each app's own words, served by GET /translations/app?app=… --}}
+            <li>
+                <a class="dropdown-item fw-semibold" href="{{ route('admin.language.app', [$row->id, 'user']) }}">
+                    <i class="fa fa-mobile-alt me-2"></i>{{ __('Customer app texts') }}
+                </a>
+            </li>
+            <li>
+                <a class="dropdown-item fw-semibold" href="{{ route('admin.language.app', [$row->id, 'driver']) }}">
+                    <i class="fa fa-motorcycle me-2"></i>{{ __('Driver app texts') }}
+                </a>
+            </li>
+
             <li><hr class="dropdown-divider"></li>
 
             <li>
                 <a class="dropdown-item" href="{{ route('admin.language.panel', $row->id) }}">
                     <i class="fa fa-file-code me-2"></i>{{ __('Edit Panel Json') }}
-                </a>
-            </li>
-            <li>
-                <a class="dropdown-item" href="{{ route('admin.language.mobile', $row->id) }}">
-                    <i class="fa fa-file-code me-2"></i>{{ __('Edit Mobile Json') }}
                 </a>
             </li>
             <li>

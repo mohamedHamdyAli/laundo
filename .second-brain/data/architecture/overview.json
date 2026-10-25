@@ -11,7 +11,7 @@
     "surfaces": {
         "panel": {
             "prefix": "/admin",
-            "routes": 328,
+            "routes": 329,
             "note": "Blade admin panel; laundry owners share it and are confined by the tenant scope"
         },
         "api": {
@@ -61,43 +61,43 @@
     "scale": {
         "communities": 17,
         "modules": 43,
-        "features": 465,
-        "routes": 461,
+        "features": 467,
+        "routes": 462,
         "tables": 75,
         "nodes_by_type": {
-            "class": 572,
+            "class": 575,
             "command": 11,
             "enum": 22,
-            "feature": 465,
-            "file": 1088,
+            "feature": 467,
+            "file": 1086,
             "integration": 5,
             "interface": 4,
-            "method": 3436,
+            "method": 3444,
             "module": 43,
             "permission": 242,
-            "route": 461,
+            "route": 462,
             "table": 75,
-            "test": 162,
+            "test": 164,
             "trait": 7,
             "view": 298
         },
         "edges_by_type": {
-            "contains": 5617,
-            "implemented_by": 4436,
-            "tested_by": 3290,
-            "imports": 2680,
-            "references": 2573,
-            "entry_point": 1499,
-            "depends_on": 1205,
-            "calls": 947,
-            "route_to": 891,
-            "touches": 611,
-            "guarded_by": 424,
+            "contains": 5628,
+            "implemented_by": 4480,
+            "tested_by": 3301,
+            "imports": 2696,
+            "references": 2578,
+            "entry_point": 1527,
+            "depends_on": 1208,
+            "calls": 950,
+            "route_to": 892,
+            "touches": 614,
+            "guarded_by": 425,
             "includes": 374,
-            "extends": 250,
+            "extends": 252,
             "renders": 180,
             "writes_table": 168,
-            "co_changes": 121,
+            "co_changes": 119,
             "foreign_key": 104,
             "uses_trait": 97,
             "belongs_to": 89,
@@ -243,7 +243,7 @@
                 "Api"
             ],
             "routes": 108,
-            "cohesion": 0.373
+            "cohesion": 0.372
         },
         {
             "slug": "authentication",
@@ -295,7 +295,7 @@
                 "Routing"
             ],
             "routes": 0,
-            "cohesion": 0.233
+            "cohesion": 0.232
         },
         {
             "slug": "system",
@@ -310,8 +310,8 @@
                 "Language",
                 "Roles"
             ],
-            "routes": 67,
-            "cohesion": 0.431
+            "routes": 68,
+            "cohesion": 0.432
         }
     ],
     "runtime": {
@@ -370,12 +370,7 @@
         "docs/api-change-notification-preferences.md",
         "docs/architecture.md",
         "docs/driver-app-backend-answers.md",
-        "docs/mobile-2026-10-07-complaints-and-coverage.md",
-        "docs/mobile-2026-10-11-social-links.md",
-        "docs/mobile-2026-10-11-time-slots-token.md",
-        "docs/mobile-2026-10-12-address-pin-reply.md",
-        "docs/mobile-2026-10-12-driver-location-always.md",
-        "docs/mobile-2026-10-12-loyalty-points.md",
+        "docs/mobile-2026-10-25-app-strings.md",
         "docs/mobile-api-changes.md",
         "docs/order-cycle-explained.md",
         "docs/order-lifecycle.md",

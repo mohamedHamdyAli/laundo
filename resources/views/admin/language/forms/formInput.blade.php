@@ -103,10 +103,11 @@
             </div>
         </div>
     </div>
-    {{-- app_file / panel_file / web_file --}}
+    {{-- panel_file / web_file. The apps' words are edited per app from the
+         row's menu (AppStrings), not uploaded here. --}}
     <div class="row g-3 mt-2">
-        @foreach (['app_file' => 'App File', 'panel_file' => 'Panel File', 'web_file' => 'Web File'] as $field => $label)
-            <div class="col-md-4">
+        @foreach (['panel_file' => 'Panel File', 'web_file' => 'Web File'] as $field => $label)
+            <div class="col-md-6">
                 <div class="mb-6">
                     <label class="form-label">{{ __($label) }}</label>
                     <div class="upload-field">

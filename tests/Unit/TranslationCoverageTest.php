@@ -375,12 +375,12 @@ class TranslationCoverageTest extends TestCase
     /**
      * An override file either overrides something or holds nothing.
      *
-     * `{code}_mobile.json` is served to the apps by `GET /translations/app` and
-     * exists so an operator can reword a string the app ships. Both languages
-     * held the same ten scaffold entries the file was generated with —
-     * «Dashboard» => «MobileDashboard» — so the Arabic file answered an Arabic
-     * request with English, and an app that actually read the endpoint would
-     * have had ten real strings replaced by placeholder text.
+     * `{code}_web.json` lets an operator reword the site. The retired
+     * `{code}_mobile.json` held the same ten scaffold entries in both languages
+     * — «Dashboard» => «MobileDashboard» — so the Arabic file answered an Arabic
+     * request with English. (The apps' own files, `{code}_app_{app}.json`, are
+     * the app teams' and hold hints like `name@email.com` on purpose; they are
+     * not override files and are not checked here.)
      *
      * Empty is the correct resting state, and the API says so: no overrides
      * means the app falls back to its own bundled strings. What is not correct
@@ -393,7 +393,7 @@ class TranslationCoverageTest extends TestCase
         $base = dirname(__DIR__, 2).'/resources/lang';
         $offenders = [];
 
-        foreach (['ar_mobile.json', 'ar_web.json'] as $name) {
+        foreach (['ar_web.json'] as $name) {
             $path = $base.'/'.$name;
 
             if (! file_exists($path)) {

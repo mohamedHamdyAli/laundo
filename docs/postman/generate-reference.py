@@ -22,10 +22,14 @@ GROUPS = [
 
 ("المحتوى والإعدادات", "Content &amp; settings", "عامة بلا توكن. كل اللي التطبيق محتاجه قبل ما حد يسجّل.", [
   ("GET", "/languages", None, "اللغات المفعّلة، والافتراضية معلّمة، والاتجاه RTL محدد.", [], []),
-  ("GET", "/translations/{type}", None, "نصوص مرفوعة من الداشبورد، عشان الكلام يتغيّر من غير إصدار جديد.",
+  ("GET", "/translations/{type}", None, "كلام التطبيق نفسه، بيتعدّل من الداشبورد من غير إصدار جديد.",
    [P("type", "path", "app | web", "مجموعة مقفولة. <code>panel</code> مرفوض — ده ملف الداشبورد نفسه بألف نص."),
+    P("app", "query", "user | driver", "<strong>إجباري مع <code>app</code>:</strong> <code>user</code> لتطبيق العميل و<code>driver</code> لتطبيق المندوب. لو ناقص أو غلط: 422 على <code>errors.app</code>."),
     P("code", "query", "string", "كود اللغة. لو مبعتّهوش بياخد لغة الطلب.")],
-   ["<code>strings</code> فاضية ده رد طبيعي مش خطأ: تطبيق مرفوعلوش نصوص بيرجع لنصوصه المدمجة."]),
+    ["مع <code>app</code>: <code>strings</code> متداخلة زي ملف التطبيق بالظبط (<code>login.title</code>، والجمع <code>tasks.count.zero|one|other</code>، و<code>{}</code> / <code>{name}</code>).",
+     "أي مفتاح ناقص في اللغة بيرجع بالإنجليزي، فكل مفاتيح الملف الإنجليزي موجودة دايمًا.",
+     "بيتعدّل من اللوحة: اللغات ← «نصوص تطبيق العميل» / «نصوص تطبيق المندوب».",
+     "مع <code>web</code>: ملف الموقع، مسطّح، و<code>strings</code> فاضية رد طبيعي مش خطأ."]),
   ("GET", "/banners", None, "الكاروسيل الكبير فوق في الهوم.", [],
    ["كل بانر معاه <code>target_type</code> (<code>none</code> | <code>service</code> | <code>coupon</code>) و<code>target_value</code>. الاتنين دول اللي بيخلّوا الكارت قابل للضغط؛ بانر بلا وجهة يبقى صورة.",
     "مرتّب بـ<code>sort_order</code> ثم <code>id</code>. كان <code>latest('id')</code>، يعني الأحدث دايمًا الأول ومفيش طريقة تترتب من اللوحة."]),

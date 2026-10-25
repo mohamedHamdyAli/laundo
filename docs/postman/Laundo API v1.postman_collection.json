@@ -201,7 +201,7 @@
                   }
                 ],
                 "url": {
-                  "raw": "{{base_url}}/api/v1/translations/app",
+                  "raw": "{{base_url}}/api/v1/translations/app?app=user",
                   "host": [
                     "{{base_url}}"
                   ],
@@ -213,6 +213,11 @@
                   ],
                   "query": [
                     {
+                      "key": "app",
+                      "value": "user",
+                      "description": "Required for `app`: `user` (the customer app) or `driver` (the driver app). Missing or anything else → 422 `errors.app`. Ignored for `web`."
+                    },
+                    {
                       "key": "code",
                       "value": "ar",
                       "description": "Language code. Defaults to the locale resolved from the `lang` header.",
@@ -220,7 +225,7 @@
                     }
                   ]
                 },
-                "description": "The translation set an app ships its own strings from.\n\nThe path segment is the type: **app** or **web**. `panel` is deliberately rejected — that file is the dashboard's own translation and no app has a use for it.\n\n`strings` is an empty object when nothing has been uploaded. That is not an error: an app with no overrides falls back to its bundled strings.",
+                "description": "The words an app shows, served so the copy can change without a store release.\n\nThe path segment is the type: **app** or **web**. `panel` is deliberately rejected — that file is the dashboard's own translation and no app has a use for it.\n\n**`app`** — each app's own file, and the caller says which app it is: `?app=user` or `?app=driver` (required; 422 `errors.app` otherwise). `strings` is nested exactly as the app bundles it (`login.title`, plural maps like `tasks.count.zero|one|other`, `{}` / `{name}` placeholders). A key the language has not translated comes back in English, so every key of the English file is always present. Edited from the panel: languages → «نصوص تطبيق العميل» / «نصوص تطبيق المندوب».\n\n**`web`** — the public site's Web File, flat. An empty object when nothing has been uploaded; not an error.",
                 "auth": {
                   "type": "noauth"
                 }

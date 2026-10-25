@@ -108,7 +108,7 @@ class LanguageService
                 );
             }
 
-            $fileFields = ['panel_file', 'app_file', 'web_file'];
+            $fileFields = ['panel_file', 'web_file'];
             foreach ($fileFields as $field) {
                 if (request()->hasFile($field)) {
                     replaceLanguageFile($existingLanguage, $field, request()->file($field));
@@ -125,6 +125,7 @@ class LanguageService
         });
 
         $this->moveValidationMessages($previousCode, (string) $language->code);
+        AppStrings::moveOverrides($previousCode, (string) $language->code);
 
         clearLanguageCache($language->code);
         rebuildLanguageCache();
@@ -145,133 +146,6 @@ class LanguageService
         }
 
         return $data;
-    }
-
-    public function getLanguageData($id = null, $type = null)
-    {
-        return DB::transaction(function () use ($id, $type) {
-            $data = [];
-            if ($id != null) {
-                $language = Language::findOrFail($id);
-                $data['row'] = $language;
-
-                if ($type != null) {
-                    $languageCode = $language->code ?? 'en';
-
-                    // determine fileName & defaultFile
-                    switch ($type) {
-                        case 'panel':
-                            $fileName = $language->panel_file ?: "{$languageCode}_panel.json";
-                            $defaultFile = base_path('resources/lang/en_panel.json');
-                            break;
-                        case 'app':
-                            $fileName = $language->app_file ?: "{$languageCode}_mobile.json";
-                            $defaultFile = base_path('resources/lang/en_mobile.json');
-                            break;
-                        case 'web':
-                            $fileName = $language->web_file ?: "{$languageCode}_web.json";
-                            $defaultFile = base_path('resources/lang/en_web.json');
-                            break;
-                        default:
-                            $fileName = "{$languageCode}.json";
-                            $defaultFile = base_path('resources/lang/en.json');
-                            break;
-                    }
-
-                    $fileName = basename($fileName);
-                    $jsonFile = base_path("resources/lang/{$fileName}");
-
-                    // ensure file exists - if not, copy default
-                    if (! File::exists($jsonFile)) {
-                        $defaultContent = (File::exists($defaultFile)) ? File::get($defaultFile) : json_encode([]);
-                        File::put($jsonFile, $defaultContent);
-
-                        // save filename to language row if missing
-                        switch ($type) {
-                            case 'panel':
-                                $language->panel_file = $fileName;
-                                break;
-                            case 'app':
-                                $language->app_file = $fileName;
-                                break;
-                            case 'web':
-                                $language->web_file = $fileName;
-                                break;
-                        }
-                        $language->save();
-
-                        // clear language cache (we changed model)
-                        clearLanguageCache($language->code);
-                        rebuildLanguageCache();
-                    }
-
-                    // Read default and target content
-                    $enContent = File::exists($defaultFile) ? json_decode(File::get($defaultFile), true) : [];
-                    $targetContent = File::exists($jsonFile) ? json_decode(File::get($jsonFile), true) : [];
-
-                    // merge missing keys from default EN content
-                    foreach ($enContent as $key => $value) {
-                        if (! array_key_exists($key, $targetContent)) {
-                            $targetContent[$key] = $value;
-                        }
-                    }
-
-                    // Save merged content back to file (pretty)
-                    File::put($jsonFile, json_encode($targetContent, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
-
-                    // Update cache for this translation file
-                    $cacheKey = "lang_file_{$languageCode}_{$type}";
-                    cache()->put($cacheKey, $targetContent);
-
-                    // set response content (use updated content)
-                    $data['enLabels'] = $targetContent;
-                    $data['type'] = $type;
-                }
-            }
-
-            return $data;
-        });
-    }
-
-    public function updatelanguage($id, $type, $updatedLabels)
-    {
-        return DB::transaction(function () use ($id, $type, $updatedLabels) {
-            $language = Language::findOrFail($id);
-
-            $jsonFile = match ($type) {
-                'panel' => base_path('resources/lang/'.basename((string) $language->panel_file)),
-                'app' => base_path('resources/lang/'.basename((string) $language->app_file)),
-                'web' => base_path('resources/lang/'.basename($language->web_file ?? '')),
-                default => base_path('resources/lang/'.($language->code.'.json')),
-            };
-
-            $directory = dirname($jsonFile);
-            if (! File::exists($directory)) {
-                File::makeDirectory($directory, 0755, true);
-            }
-
-            if (! File::exists($jsonFile)) {
-                File::put($jsonFile, json_encode([], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
-            }
-
-            $jsonContent = File::get($jsonFile);
-            $enLabels = json_decode($jsonContent, true) ?? [];
-
-            // update labels
-            foreach ($updatedLabels as $key => $value) {
-                $enLabels[$key] = $value;
-            }
-
-            // save back to file
-            File::put($jsonFile, json_encode($enLabels, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
-
-            // refresh cache for this language file
-            $code = $language->code ?? 'en';
-            $cacheKey = "lang_file_{$code}_{$type}";
-            cache()->put($cacheKey, $enLabels);
-
-            return true;
-        });
     }
 
     /**
@@ -310,7 +184,6 @@ class LanguageService
 
             $files = [
                 base_path("resources/lang/{$languageCode}_panel.json"),
-                base_path("resources/lang/{$languageCode}_mobile.json"),
                 base_path("resources/lang/{$languageCode}_web.json"),
                 base_path("resources/lang/{$languageCode}.json"),
             ];
@@ -321,7 +194,13 @@ class LanguageService
                 $files[] = ValidationOverrideLoader::pathFor($languageCode);
             }
 
-            foreach ($files as $file) {
+            // What an operator typed for each app. The shipped files are the
+            // app teams' and stay.
+            foreach (AppStrings::APPS as $app) {
+                $files[] = AppStrings::overridesPath($app, (string) $languageCode);
+            }
+
+            foreach (array_filter($files) as $file) {
                 if (File::exists($file)) {
                     File::delete($file);
                 }

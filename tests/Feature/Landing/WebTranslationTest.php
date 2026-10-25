@@ -242,8 +242,10 @@ class WebTranslationTest extends TestCase
             lang_path('ar.json'),
             lang_path('en_panel.json'),
             lang_path('ar_panel.json'),
-            lang_path('en_mobile.json'),
-            lang_path('ar_mobile.json'),
+            lang_path('en_app_user.json'),
+            lang_path('ar_app_user.json'),
+            lang_path('en_app_driver.json'),
+            lang_path('ar_app_driver.json'),
         ];
 
         $before = [];

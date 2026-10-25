@@ -1,3 +1,54 @@
+# The apps' own strings — one set per app (asked 2026-10-25) — built, under review
+
+«دول 4 ملفات يامعلم محتاجين نظبطها وال api محتاج براميتر يقول اني ابلكيشين».
+Four files from the app teams: `driver_ar/en.json` (driver app) and
+`user_ar/en.json` (customer app). Nested JSON, `{}` placeholders, plural maps
+(`tasks.count.zero|one|two|few|many|other`) — the shape a Flutter
+easy_localization bundle reads.
+
+Today: `GET /api/v1/translations/app?code=` serves **one flat**
+`{code}_mobile.json`, empty on every language; the «Edit Mobile Json» screen
+lists flat key → value pairs only, so a nested file would render as `Array`.
+
+Plan:
+- [x] Ship the four files as `resources/lang/{code}_app_user.json` and
+      `{code}_app_driver.json`, the teams' content (re-indented only).
+- [x] `GET /translations/app?app=user|driver&code=ar` serves the app's own
+      file, nested, as-is. `getTranslationFile()` + `LanguageHelper::filePath()`
+      learn the two sets; `clearLanguageCache()` forgets both.
+- [x] Fallback per key: a key missing in the asked language is filled from the
+      English file (`array_replace_recursive`), so a half-translated language
+      never hands an app a hole.
+- [x] Panel: «Edit Mobile Json» becomes «نصوص تطبيق العميل» and «نصوص تطبيق
+      المندوب». Keys flattened with dots for display (`login.title`), unflattened
+      on save; the key list is the English file's, values only are edited;
+      blank = back to the shipped value. Download per app.
+- [x] Tests: `AppStringsTest` + `AppStringsEditorTest` (both apps, missing/unknown `app`, nested
+      shape, fallback, cache cleared on save) + an editor test (round trip keeps
+      nesting and plurals).
+- [x] Docs: Postman request + `generate-reference.py`, `docs/architecture.md`
+      (Web File section), a `docs/mobile-2026-10-25-app-strings.md` note +
+      `mobile-api-changes.md`, CLAUDE.md line, Changelog.
+- [x] Full suite 2,042 green (912s). `/code-review` (10 findings) all fixed with tests; `/security-review`: nothing new met the bar — one older finding (`?code=../` on `/translations/web`) fixed with a test. Endpoint and screen driven.
+
+Noticed: `driver_ar.json` still has `card.qr_title` / `card.qr_subtitle` in English.
+
+Answers (2026-10-25): `app=user|driver` required (422 otherwise); a missing key
+is served in English; the panel edits values only.
+
+Changed during the build: the panel's edits are **overrides in
+`storage/app/lang/`**, not writes into the tracked files — the same reason the
+validation messages live there (a tracked file the server writes blocks
+`git pull`), and it lets a new file from the app team pull cleanly. The old
+`{code}_mobile.json` set, its screen, template and upload field are retired.
+
+Review: 28 new tests; the endpoint driven on the dev server (driver/ar nested,
+422 in Arabic without `app`, user/en); the screen driven in Chromium (347 boxes,
+filter, a refused placeholder painted beside its box, nothing written).
+PHPStan: no finding in the changed files.
+
+---
+
 # Loyalty points «النقاط» (asked 2026-10-12) — built, under review
 
 «هتكون عبارة عن نقاط و يقدر يستخدمها لعمل خصم على الأوردر بحيث يكون مقابل كل

@@ -40,7 +40,6 @@ class LanguageRequest extends FormRequest
                 'default' => 'required|in:true,false',
                 'icon' => 'nullable|image|mimes:jpg,png,jpeg,gif,svg|max:2048',
                 'panel_file' => 'nullable|file|mimes:json,txt',
-                'app_file' => 'nullable|file|mimes:json,txt',
                 'app_scope' => 'nullable|string',
             ];
         } else {
@@ -53,7 +52,6 @@ class LanguageRequest extends FormRequest
                 'default' => 'required|in:true,false',
                 'icon' => 'nullable|image|mimes:jpg,png,jpeg,gif,svg|max:2048',
                 'panel_file' => 'nullable|file|mimes:json,txt',
-                'app_file' => 'nullable|file|mimes:json,txt',
                 'app_scope' => 'nullable|string',
             ];
         }

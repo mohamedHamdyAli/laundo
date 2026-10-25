@@ -6,11 +6,13 @@ use App\Helpers\LanguageHelper;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\LanguageRequest;
 use App\Models\Language;
+use App\Services\languages\AppStrings;
 use App\Services\languages\LanguageService;
 use App\Services\languages\ValidationMessages;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Session;
+use Illuminate\Validation\ValidationException;
 
 class LanguageController extends Controller
 {
@@ -155,47 +157,56 @@ class LanguageController extends Controller
         return redirect()->back()->with('success', __('Updated Successfully'));
     }
 
-    public function showMobile($id)
+    /**
+     * One app's words in one language — «نصوص تطبيق العميل» / «نصوص تطبيق
+     * المندوب». Values only: the keys are the app team's (`AppStrings`).
+     */
+    public function showApp($id, string $app, AppStrings $strings)
     {
         $language = Language::findOrFail($id);
 
-        $filePath = lang_path("{$language->code}_mobile.json");
-
-        if (! File::exists($filePath)) {
-            $translations = [];
-        } else {
-            $jsonContent = File::get($filePath);
-            $translations = json_decode($jsonContent, true);
-        }
-
-        return view('admin.language.mobile', compact('language', 'translations'));
+        return view('admin.language.app', [
+            'language' => $language,
+            'app' => $app,
+            'groups' => $strings->groups($app, (string) $language->code),
+        ]);
     }
 
-    public function updateMobile(Request $request, $id)
+    public function updateApp(Request $request, $id, string $app, AppStrings $strings)
     {
         $language = Language::findOrFail($id);
+        $submitted = $request->input('strings', []);
 
-        $filePath = lang_path("{$language->code}_mobile.json");
-
-        $translations = $request->input('translations', []);
-        $newKeys = $request->input('new_key', []);
-        $newValues = $request->input('new_value', []);
-
-        if (! empty($newKeys)) {
-            foreach ($newKeys as $index => $key) {
-                if (! empty($key) && isset($newValues[$index])) {
-                    $translations[trim((string) $key)] = trim($newValues[$index]);
-                }
-            }
+        // The form's last field. PHP stops reading a request at
+        // `max_input_vars` without a word, so a form longer than that arrives
+        // without it — and without the boxes after the cut.
+        if (! $request->has('complete')) {
+            throw ValidationException::withMessages([
+                'strings' => __('The form arrived cut short and nothing was saved. Raise max_input_vars on the server.'),
+            ]);
         }
 
-        $filteredTranslations = array_filter($translations);
-        ksort($filteredTranslations);
-        $jsonContent = json_encode($filteredTranslations, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
+        $strings->save($language, $app, is_array($submitted) ? $submitted : []);
 
-        File::put($filePath, $jsonContent);
+        return redirect()
+            ->route('admin.language.app', [$language->id, $app])
+            ->with('success', __('App texts updated'));
+    }
 
-        return redirect()->back()->with('success', 'Mobile Language File Updated Successfully!');
+    /**
+     * The file as the app receives it — shipped words with every edit laid
+     * over them, nested — so the app team can bundle what is live.
+     */
+    public function downloadApp($id, string $app)
+    {
+        $language = Language::findOrFail($id);
+        $name = "{$language->code}_app_{$app}.json";
+
+        return response()->streamDownload(
+            fn () => print (json_encode(AppStrings::served($app, (string) $language->code), JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES).PHP_EOL),
+            basename($name),
+            ['Content-Type' => 'application/json; charset=UTF-8'],
+        );
     }
 
     public function showWeb($id)
