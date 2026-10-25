@@ -16,6 +16,7 @@
 ### Fix
 
 - **`GET /translations/web?code=../…` could read a JSON file outside `resources/lang`** whose name ended in `_web.json` (found by `/security-review`, there before this change). `getTranslationFile()` now refuses any code that is not a language code (`ValidationOverrideLoader::isLocale()`) and returns nothing (Helper).
+- Released to live on 2026-10-25 (`209725e`): no migration, `resources/lang` backed up, `git pull --ff-only`, the four clears. Checked there — the three `admin.language.app*` routes; `/translations/app?app=driver&code=ar` nested Arabic, `app=user&code=en`, `code=ar-EG` → Arabic, no `app` → 422, `/translations/web?code=../../.env` → empty; no ERROR in the day's log. `docs/mobile-2026-10-25-app-strings.md` marked live.
 
 ## 2026-10-12
 
