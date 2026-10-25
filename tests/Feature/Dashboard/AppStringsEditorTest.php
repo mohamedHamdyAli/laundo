@@ -131,6 +131,8 @@ class AppStringsEditorTest extends TestCase
             ->assertOk()
             ->assertSee('name="strings[login.title]"', false)
             ->assertSee('value="دخول المندوب"', false)
+            // A box nobody edited holds what the app is served, ready to edit.
+            ->assertSee('value="الرئيسية"', false)
             ->assertSee('placeholder="تسجيل دخول السائق"', false)
             // Arabic's own plural forms are editable too.
             ->assertSee('name="strings[tasks.count.two]"', false)

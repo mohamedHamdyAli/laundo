@@ -3,10 +3,11 @@
 
     The app team's `resources/lang/{code}_app_{app}.json` is the shipped
     wording and is never written; what is saved here is laid over it
-    (AppStrings) and served nested by `GET /translations/app?app=…`. So, as on
-    the validation screen, every box starts empty with the shipped wording as
-    its placeholder, and a box emptied again is a reset to it. The keys are the
-    app team's: this screen edits values only.
+    (AppStrings) and served nested by `GET /translations/app?app=…`. Every box
+    holds the words the app is served now, so they are edited in place; words
+    left as shipped store nothing, and a box emptied is a reset to the shipped
+    wording (its placeholder). The keys are the app team's: this screen edits
+    values only.
 
     Two things the page says on its face, because each is the obvious wrong guess:
     - `{}` and `{name}` are filled in by the app, and a placeholder English
@@ -121,7 +122,7 @@
                                             {{-- Once a box holds its own words the placeholder is
                                                  gone, and with it the only sight of what a reset
                                                  would bring back. --}}
-                                            @if ($value !== '')
+                                            @if ($value !== '' && $value !== $row['default'])
                                                 <div class="form-text" dir="auto">{{ __('Default') }}: {{ $row['default'] }}</div>
                                             @endif
                                         </div>

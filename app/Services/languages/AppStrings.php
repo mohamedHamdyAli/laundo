@@ -145,7 +145,9 @@ class AppStrings
         $groups = [];
 
         foreach ($defaults as $key => $default) {
-            $value = $overrides[$key] ?? '';
+            // The words the app is served now, so the box can be edited in place;
+            // saving them unchanged stores nothing (see save()).
+            $value = $overrides[$key] ?? $default;
             $section = strstr($key, '.', true) ?: $key;
 
             $groups[$section]['label'] = $section;
