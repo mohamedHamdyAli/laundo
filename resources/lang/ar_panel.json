@@ -2465,5 +2465,8 @@
     "Words in braces, like {} or {name}, are filled in by the app — keep them.": "الكلام اللي بين أقواس زي {} أو {name} التطبيق بيملاه بنفسه — سيبه زي ما هو.",
     "New keys come from the app team with a new file.": "المفاتيح الجديدة بتيجي من فريق التطبيق في ملف جديد.",
     "Filter texts...": "ابحث في النصوص...",
-    "The form arrived cut short and nothing was saved. Raise max_input_vars on the server.": "الفورم وصل ناقص ومفيش حاجة اتحفظت. لازم max_input_vars على السيرفر يتزوّد."
+    "The form arrived cut short and nothing was saved. Raise max_input_vars on the server.": "الفورم وصل ناقص ومفيش حاجة اتحفظت. لازم max_input_vars على السيرفر يتزوّد.",
+    "This order has no laundry yet. Operations will assign one before it can move.": "الطلب ده لسه مالوش مغسلة. الإدارة هتحدد مغسلة الأول وبعدين يتحرك.",
+    "Assign a laundry to this order before recording its count.": "حدد مغسلة للطلب ده الأول قبل ما تسجّل عدّ القطع.",
+    "Assign a laundry to this order before giving its legs to a driver.": "حدد مغسلة للطلب ده الأول قبل ما تدّي رحلاته لمندوب."
 }

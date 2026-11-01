@@ -598,7 +598,7 @@
                      laundry with its distance and how full it is, which is a
                      competitor's book handed to the one party that must not
                      have it. --}}
-                @if (canDo('order.update') && \App\Support\LaundryContext::currentId() === null && ! $row->status->isInCustody())
+                @if (canDo('order.update') && \App\Support\LaundryContext::currentId() === null && (! $row->status->isInCustody() || $row->laundry_id === null))
                     <div class="card">
                         <div class="card-header d-flex justify-content-between align-items-center">
                             <h6 class="mb-0">{{ __('Assign to laundry') }}</h6>

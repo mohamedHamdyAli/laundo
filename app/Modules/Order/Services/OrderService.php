@@ -404,16 +404,25 @@ class OrderService
      * Assign — or reassign — a laundry.
      *
      * Reprices delivery, because the fee is measured from the laundry and an
-     * unassigned order was stored with 0. Only ever called before pickup, so no
+     * unassigned order was stored with 0 — but only before pickup, so no
      * agreed-and-collected order can have its total moved underneath it.
+     *
+     * **A first laundry may be set after pickup.** Reassigning in custody stays
+     * refused: the pieces are somewhere. But an order collected with *no*
+     * laundry (order 85 on live, 2026-11-01) has nowhere to go, and its trip to
+     * a laundry is held until one is set (`OrderTask::needsLaundry()`) — so
+     * refusing here as well would freeze it with somebody's clothes in a van.
+     * Its prices are left as they are.
      */
     public function assignLaundry(Order $order, int $laundryId, ?User $actor = null): Order
     {
-        if ($order->status->isInCustody()) {
+        $inCustody = $order->status->isInCustody();
+
+        if ($inCustody && $order->laundry_id !== null) {
             throw new RuntimeException('already_in_custody');
         }
 
-        return DB::transaction(function () use ($order, $laundryId, $actor) {
+        return DB::transaction(function () use ($order, $laundryId, $actor, $inCustody) {
             $hadNoLaundry = $order->laundry_id === null;
             $order->laundry_id = $laundryId;
             $order->save();
@@ -427,7 +436,9 @@ class OrderService
 
             // An empty basket: only the delivery leg is being repriced. The
             // pieces were priced when the order was placed and stay untouched.
-            $fee = $this->pricing->deliveryFeeFor($laundry, $pickup, $order->deliveryAddress);
+            $fee = $inCustody
+                ? ['fee' => null]
+                : $this->pricing->deliveryFeeFor($laundry, $pickup, $order->deliveryAddress);
 
             if ($fee['fee'] !== null) {
                 // The points re-capped on the new fee, the review's rule: a

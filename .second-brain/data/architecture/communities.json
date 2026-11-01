@@ -435,7 +435,7 @@
             "admin.driver_bonus_rule.toggleStatus",
             "admin.driver_bonus_rule.update"
         ],
-        "node_count": 1109,
+        "node_count": 1111,
         "cohesion": 0.445,
         "screens": [
             {
@@ -788,7 +788,7 @@
             "admin.refund.approve",
             "admin.refund.index"
         ],
-        "node_count": 785,
+        "node_count": 787,
         "cohesion": 0.392,
         "screens": [
             {
@@ -893,7 +893,7 @@
             "admin.time_slot.toggleStatus",
             "admin.time_slot.update"
         ],
-        "node_count": 587,
+        "node_count": 589,
         "cohesion": 0.363,
         "screens": [
             {
@@ -1277,7 +1277,7 @@
         "tables": [],
         "route_count": 0,
         "routes": [],
-        "node_count": 1721,
+        "node_count": 1722,
         "cohesion": 0.353,
         "inferred_modules": [
             "Address"

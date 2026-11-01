@@ -2465,5 +2465,8 @@
     "Words in braces, like {} or {name}, are filled in by the app — keep them.": "Words in braces, like {} or {name}, are filled in by the app — keep them.",
     "New keys come from the app team with a new file.": "New keys come from the app team with a new file.",
     "Filter texts...": "Filter texts...",
-    "The form arrived cut short and nothing was saved. Raise max_input_vars on the server.": "The form arrived cut short and nothing was saved. Raise max_input_vars on the server."
+    "The form arrived cut short and nothing was saved. Raise max_input_vars on the server.": "The form arrived cut short and nothing was saved. Raise max_input_vars on the server.",
+    "This order has no laundry yet. Operations will assign one before it can move.": "This order has no laundry yet. Operations will assign one before it can move.",
+    "Assign a laundry to this order before recording its count.": "Assign a laundry to this order before recording its count.",
+    "Assign a laundry to this order before giving its legs to a driver.": "Assign a laundry to this order before giving its legs to a driver."
 }

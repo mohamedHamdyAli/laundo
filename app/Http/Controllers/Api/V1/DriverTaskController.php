@@ -520,10 +520,18 @@ class DriverTaskController extends Controller
             'status' => $task->status->value,
             'status_label' => __($task->status->label()),
             'is_late' => $task->isLate(),
-            'can_start' => $task->status->isStartable() && $task->predecessorComplete() && $task->orderAllows(),
-            // Why a collection from the laundry cannot start yet — the order is
-            // still waiting for its price. Null when nothing is in the way.
-            'blocked_reason' => $task->status->isOpen() && ! $task->orderAllows() ? $this->notReady() : null,
+            'can_start' => $task->status->isStartable() && $task->predecessorComplete() && $task->blockedReason() === null,
+            // Why this leg cannot start yet, in words for the driver: the order
+            // has no laundry (the pickup and the trip to the laundry, since
+            // 2026-11-01), or a collection from the laundry is still waiting for
+            // its price. Null when nothing is in the way.
+            'blocked_reason' => $task->status->isOpen()
+                ? match ($task->blockedReason()) {
+                    'order_has_no_laundry' => $this->noLaundry(),
+                    'order_not_ready' => $this->notReady(),
+                    default => null,
+                }
+                : null,
             // What `GET /driver/orders/{id}` takes — the code is for reading.
             'order_id' => $task->order_id,
             'order_code' => $order?->code,
@@ -848,6 +856,11 @@ class DriverTaskController extends Controller
         ];
     }
 
+    private function noLaundry(): string
+    {
+        return __('This order has no laundry yet. Operations will assign one before it can move.');
+    }
+
     private function notReady(): string
     {
         return __("This order is still waiting for the laundry's review and the customer's price confirmation.");
@@ -870,6 +883,7 @@ class DriverTaskController extends Controller
             ),
             'task_finished' => failReturnMsg(__('This task is already finished.')),
             'order_not_ready' => failReturnMsg($this->notReady()),
+            'order_has_no_laundry' => failReturnMsg($this->noLaundry()),
             'collected_amount_required' => failReturnValidation(
                 ['collected_amount' => [__('Enter the amount you collected from the customer (0 if nothing was paid).')]],
                 __('Enter the amount you collected from the customer (0 if nothing was paid).')

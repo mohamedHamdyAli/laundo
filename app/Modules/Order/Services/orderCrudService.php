@@ -85,17 +85,21 @@ class orderCrudService
             // Only offered while the order can still be moved, and only for the
             // laundries that actually cover it — an operator should not be able to
             // hand an order to a laundry that does not serve the zone.
-            $data['assignable'] = $row->status->isInCustody()
-                ? []
-                : $this->assignableFor($row);
+            // In custody only an order that has no laundry at all may be given
+            // one (OrderService::assignLaundry()); a reassignment stays closed.
+            $canAssign = ! $row->status->isInCustody() || $row->laundry_id === null;
+
+            $data['assignable'] = $canAssign
+                ? $this->assignableFor($row)
+                : [];
 
             // The same decision the assigner took, with its reasoning kept: what
             // each candidate measured, how full it is, and what it would cost.
             // An operator overriding the automatic choice should be disagreeing
             // with something they can read.
-            $data['assignment'] = $row->status->isInCustody()
-                ? null
-                : $this->assignmentPanel($row);
+            $data['assignment'] = $canAssign
+                ? $this->assignmentPanel($row)
+                : null;
 
             // Only built when the form will actually render — it costs a query
             // over the whole price matrix for the service.

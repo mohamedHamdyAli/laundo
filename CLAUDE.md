@@ -161,6 +161,12 @@ The domain core. Status table and requests in **`docs/order-lifecycle.md`**
   (`OrderTask::orderAllows()`: `collect_from_laundry` waits for `cleaning`).
   Confirming the price with the pieces already at the laundry moves the order to
   `cleaning` (`OrderReviewService::confirm()`); both sides lock the order row.
+- **Nothing goes towards a laundry that is not set** (`OrderTask::needsLaundry()`,
+  since 2026-11-01): the pickup and the trip to the laundry do not *start*, a
+  driver cannot be *assigned* them, and the count is refused — but a leg already
+  under way always finishes. A first laundry may be set after pickup (prices
+  untouched); a reassignment in custody stays refused. `blockedReason()` is the
+  one reason (`order_has_no_laundry` / `order_not_ready`).
 - **Every count of an order's pieces is checked** (`Order/Services/PieceCheck`):
   a disagreement is one `PieceDiscrepancy` row, **nothing is ever refused**, and
   only the platform closes it. The driver app is not shown an expected count

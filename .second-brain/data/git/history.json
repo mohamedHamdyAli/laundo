@@ -1,8 +1,26 @@
 {
     "available": true,
-    "head": "e4502939f1ec210177e1f3e44034fbce2d2a3222",
-    "commits_scanned": 143,
+    "head": "079477463b28c57909f7477fe43a65802bd59e63",
+    "commits_scanned": 146,
     "recent": [
+        {
+            "sha": "07947746",
+            "date": "2026-10-25",
+            "subject": "fix: the app-text screens open with the current words in each box",
+            "files": 3
+        },
+        {
+            "sha": "c81af31e",
+            "date": "2026-10-25",
+            "subject": "docs: the app strings release is live",
+            "files": 1
+        },
+        {
+            "sha": "209725ea",
+            "date": "2026-10-25",
+            "subject": "feat: each app's own words, served per app and edited from the panel",
+            "files": 25
+        },
         {
             "sha": "e4502939",
             "date": "2026-10-12",
@@ -74,31 +92,13 @@
             "date": "2026-10-11",
             "subject": "fix: GET /time-slots measures only the caller's own address",
             "files": 7
-        },
-        {
-            "sha": "17c256ef",
-            "date": "2026-10-07",
-            "subject": "docs: tick the zone placement release",
-            "files": 0
-        },
-        {
-            "sha": "42c58804",
-            "date": "2026-10-07",
-            "subject": "docs: the zone switch releases are live",
-            "files": 0
-        },
-        {
-            "sha": "3dd9edeb",
-            "date": "2026-10-07",
-            "subject": "fix: an address keeps its zone while the zone is switched off",
-            "files": 9
         }
     ],
     "hottest_files": {
-        "routes/web.php": 29,
-        "docs/postman/Laundo API v1.postman_collection.json": 27,
-        "docs/mobile-api-changes.md": 22,
-        "app/Helpers/Helpers.php": 19,
+        "routes/web.php": 30,
+        "docs/postman/Laundo API v1.postman_collection.json": 28,
+        "docs/mobile-api-changes.md": 23,
+        "app/Helpers/Helpers.php": 20,
         "config/menu.php": 18,
         "resources/views/admin/setting/generalSetting/forms/formInput.blade.php": 18,
         "app/Http/Controllers/Api/V1/OrderController.php": 15,
@@ -106,10 +106,10 @@
         "app/Modules/Order/Services/OrderService.php": 14,
         "config/dashboard.php": 14,
         "resources/views/layouts/footer_script.blade.php": 14,
-        "app/Http/Controllers/Admin/LanguageController.php": 11,
-        "app/Services/languages/LanguageService.php": 11,
+        "app/Http/Controllers/Admin/LanguageController.php": 12,
+        "app/Services/languages/LanguageService.php": 12,
+        "docs/architecture.md": 11,
         "app/Modules/Order/Services/orderCrudService.php": 10,
-        "docs/architecture.md": 10,
         "resources/views/admin/order/show.blade.php": 10,
         "database/seeders/SettingsSeeder.php": 10,
         "app/Modules/Order/Models/Order.php": 9,
@@ -124,6 +124,8 @@
         "resources/views/admin/order/index.blade.php": 8,
         "resources/views/admin/banner/forms/formInput.blade.php": 8,
         "app/Services/CachingService.php": 8,
+        "app/Helpers/LanguageHelper.php": 7,
+        "resources/views/admin/language/forms/formInput.blade.php": 7,
         "app/Http/Controllers/Api/V1/DriverTaskController.php": 7,
         "app/Http/Requests/Api/V1/OrderRequest.php": 7,
         "app/Modules/Order/Services/RecurrenceService.php": 7,
@@ -132,8 +134,6 @@
         "tests/Feature/Api/DriverTaskTest.php": 7,
         "app/Modules/City/Models/City.php": 7,
         "app/Modules/Pricing/Services/pricingService.php": 7,
-        "app/Providers/AppServiceProvider.php": 7,
-        "resources/views/admin/laundry/index.blade.php": 7,
-        "resources/views/admin/pricing/index.blade.php": 7
+        "app/Providers/AppServiceProvider.php": 7
     }
 }

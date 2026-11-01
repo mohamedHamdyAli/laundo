@@ -55,6 +55,20 @@ from the code) and **`docs/order-cycle-explained.md`**; the rules that bind code
   (`TaskService::advanceOrder()` re-reads it under `lockForUpdate`), so a
   confirmation and a handover at the same moment cannot miss each other, and
   `2026_10_01_100200_…` released the orders the old way had stranded.
+- **Nothing goes towards a laundry that is not set** (2026-11-01). Order 85 on
+  live was placed with no laundry, given a driver by hand, and taken through
+  count, cleaning and delivery to `completed` — its settlement stuck pending
+  with nobody to divide with. `OrderTask::needsLaundry()` holds the two legs
+  that take the pieces *to* a laundry (`pickup_from_customer`,
+  `deliver_to_laundry`) **at the start only** — never at the finish, so a
+  driver already holding somebody's clothes can always hand them over. One
+  reason per leg, `OrderTask::blockedReason()` (`order_has_no_laundry` /
+  `order_not_ready`), drives `TaskService::start()`, the API's `can_start` /
+  `blocked_reason`, and `DriverDispatcher::assign()`, which refuses to give
+  such a leg to a driver. The count refuses too (`OrderReviewService::review()`).
+  **A first laundry may be set after pickup** (`OrderService::assignLaundry()`;
+  a *re*assignment in custody stays refused), with the prices left as agreed —
+  otherwise the held trip would freeze the order with the pieces in a van.
 - **Every count of an order's pieces is checked** (`Order/Services/PieceCheck`,
   2026-09-28/29). Legs 1–3 require `piece_count`, and the laundry counts at its
   review; each is measured against the last number somebody stood behind — the

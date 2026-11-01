@@ -291,11 +291,41 @@ class OrderTask extends Model
     }
 
     /**
+     * Whether this leg is held for want of a laundry.
+     *
+     * Only the two legs that take the pieces *to* a laundry: with none set they
+     * have nowhere to go. A driver assigned by hand to an unassigned order took
+     * its pieces through the whole cycle to `completed` with nobody to count
+     * them or be paid — order 85 on live, 2026-11-01, its settlement stuck
+     * pending. Held at the start only, never at the finish: a driver already
+     * holding somebody's clothes must always be able to hand them over.
+     * `OrderService::assignLaundry()` releases it, in custody too.
+     */
+    public function needsLaundry(): bool
+    {
+        return $this->order !== null
+            && $this->order->laundry_id === null
+            && in_array($this->type, [TaskType::PickupFromCustomer, TaskType::DeliverToLaundry], true);
+    }
+
+    /**
+     * Why this leg cannot start yet — the refusal's key — or null.
+     */
+    public function blockedReason(): ?string
+    {
+        if ($this->needsLaundry()) {
+            return 'order_has_no_laundry';
+        }
+
+        return $this->orderAllows() ? null : 'order_not_ready';
+    }
+
+    /**
      * Whether a driver may act on this now.
      */
     public function isActionable(): bool
     {
-        return $this->status->isOpen() && $this->predecessorComplete() && $this->orderAllows();
+        return $this->status->isOpen() && $this->predecessorComplete() && $this->blockedReason() === null;
     }
 
     /**

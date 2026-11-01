@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-11-01
+
+### Fix
+
+- **An order with no laundry could go round the whole cycle** (live log: `[settlement] no laundry share set, left pending {"order":85,"laundry":null}`). Order 85 was placed with no laundry, given a driver by hand, counted, cleaned, delivered and completed — its settlement left pending with nobody to divide with; one more was `delivered` and one `awaiting_pickup` the same way. Now `OrderTask::needsLaundry()` holds the pickup and the trip to the laundry **at the start** (`order_has_no_laundry`) until a laundry is set, never at the finish, so a driver holding pieces can always hand them over; `DriverDispatcher::assign()` refuses to give such a leg to a driver; the count is refused (`OrderReviewService::review()`). One reason per leg, `OrderTask::blockedReason()`, drives `start()`, `can_start` and `blocked_reason`. **A first laundry may now be set after pickup** (`OrderService::assignLaundry()`, prices untouched; a reassignment in custody stays refused), and the order screen offers it (Model / Service / API / Blade).
+- Docs: `docs/mobile-2026-11-01-no-laundry-hold.md` + `mobile-api-changes.md` (driver app: `blocked_reason` can now appear on any leg, `POST /start` 400), `architecture.md`, CLAUDE.md. Tests: five in `OrderLifecycleCompletionTest`. The FCM 404 `UNREGISTERED` lines in the same log are an uninstalled app's handset being removed, as designed. Order 85 itself still needs its laundry set and its settlement paid — the owner's call.
+
 ## 2026-10-25
 
 ### Feature

@@ -52,6 +52,7 @@ class OrderTaskController extends Controller
             return back()->with('error', match ($e->getMessage()) {
                 'driver_not_eligible' => __('This driver does not serve the area, is unavailable, or is at capacity.'),
                 'task_completed' => __('This leg is already completed and cannot be reassigned.'),
+                'order_has_no_laundry' => __('Assign a laundry to this order before giving its legs to a driver.'),
                 default => __('Could not assign the task.'),
             });
         }

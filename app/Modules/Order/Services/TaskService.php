@@ -65,9 +65,10 @@ class TaskService
             throw new RuntimeException('previous_leg_incomplete');
         }
 
-        if (! $task->orderAllows()) {
-            // Nothing leaves the laundry before its price is agreed.
-            throw new RuntimeException('order_not_ready');
+        // Nowhere to take the pieces (no laundry yet), or nothing leaves the
+        // laundry before its price is agreed.
+        if (($reason = $task->blockedReason()) !== null) {
+            throw new RuntimeException($reason);
         }
 
         $task->update(['status' => TaskStatus::Started, 'started_at' => now()]);

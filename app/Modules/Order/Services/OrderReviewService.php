@@ -69,6 +69,12 @@ class OrderReviewService
             throw new RuntimeException('not_reviewable');
         }
 
+        // A count is the laundry's: with none set there is nobody whose count
+        // it is, and no settlement to divide afterwards (order 85, 2026-11-01).
+        if ($order->laundry_id === null) {
+            throw new RuntimeException('order_has_no_laundry');
+        }
+
         $service = $order->service;
 
         if (! $service) {

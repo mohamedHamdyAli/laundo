@@ -7,6 +7,7 @@ use App\Modules\Order\Enums\TaskStatus;
 use App\Modules\Order\Enums\TaskType;
 use App\Modules\Order\Models\Order;
 use App\Modules\Order\Models\OrderTask;
+use App\Modules\Order\Services\OrderReviewService;
 use App\Modules\Order\Services\OrderStateMachine;
 use App\Modules\Order\Services\TaskService;
 use App\Modules\Payment\Models\OrderSettlement;
@@ -317,6 +318,161 @@ class OrderLifecycleCompletionTest extends TestCase
         }
 
         $this->assertNotSame(TaskStatus::Completed, $leg->fresh()->status);
+        $this->assertSame(OrderStatus::PickedUp, $order->fresh()->status);
+    }
+
+    /**
+     * Order 85 on live (2026-11-01): placed with no laundry, a driver assigned
+     * by hand, and the pieces taken through count, cleaning and delivery to
+     * `completed` with nobody to take them to or pay. Its settlement sat
+     * pending with no laundry to divide with.
+     */
+    #[Test]
+    public function a_pickup_does_not_start_while_the_order_has_no_laundry(): void
+    {
+        $order = $this->order('awaiting_pickup');
+        $order->forceFill(['laundry_id' => null])->save();
+
+        $pickup = $this->openLeg($order, TaskType::PickupFromCustomer, 1, TaskStatus::Assigned);
+
+        try {
+            app(TaskService::class)->start($pickup, $this->driver);
+            $this->fail('A pickup started on an order with no laundry.');
+        } catch (RuntimeException $e) {
+            $this->assertSame('order_has_no_laundry', $e->getMessage());
+        }
+
+        $this->assertSame(TaskStatus::Assigned, $pickup->fresh()->status);
+        $this->assertSame(OrderStatus::AwaitingPickup, $order->fresh()->status);
+    }
+
+    #[Test]
+    public function a_driver_already_holding_the_pieces_can_always_hand_them_over(): void
+    {
+        // Held at the start, never at the finish: a pickup under way when the
+        // rule arrived must not leave somebody's clothes in a van.
+        $order = $this->order('driver_on_way');
+        $order->forceFill(['laundry_id' => null])->save();
+
+        $pickup = $this->openLeg($order, TaskType::PickupFromCustomer, 1, TaskStatus::Started);
+        $pickup->forceFill(['signature_path' => 'signatures/test.png'])->save();
+
+        $this->finish($pickup->fresh());
+
+        $this->assertSame(TaskStatus::Completed, $pickup->fresh()->status);
+        $this->assertSame(OrderStatus::PickedUp, $order->fresh()->status);
+    }
+
+    #[Test]
+    public function a_collected_order_with_no_laundry_waits_for_one_and_then_moves(): void
+    {
+        $order = $this->order('picked_up');
+        $order->forceFill(['laundry_id' => null])->save();
+        $laundryId = Order::withoutGlobalScopes()->whereNotNull('laundry_id')->value('laundry_id')
+            ?? $this->laundryWithOwner('B', '+201011110003', '+201011110004')['laundry']->id;
+
+        $this->leg($order, TaskType::DeliverToLaundry, 2);
+        $toLaundry = $order->tasks()->where('sequence', 2)->first();
+        $toLaundry->forceFill(['status' => TaskStatus::Assigned->value])->save();
+
+        try {
+            app(TaskService::class)->start($toLaundry->fresh(), $this->driver);
+            $this->fail('A trip to the laundry started with no laundry set.');
+        } catch (RuntimeException $e) {
+            $this->assertSame('order_has_no_laundry', $e->getMessage());
+        }
+
+        // Operations set one — allowed in custody when there was none — and
+        // the agreed figures stay as they were.
+        $before = $order->fresh()->only(['delivery_fee', 'estimated_total']);
+        app(\App\Modules\Order\Services\OrderService::class)->assignLaundry($order->fresh(), $laundryId);
+
+        $this->assertSame($laundryId, $order->fresh()->laundry_id);
+        $this->assertEquals($before, $order->fresh()->only(['delivery_fee', 'estimated_total']));
+
+        app(TaskService::class)->start($toLaundry->fresh(), $this->driver);
+        $this->assertSame(TaskStatus::Started, $toLaundry->fresh()->status);
+    }
+
+    #[Test]
+    public function a_collected_order_keeps_the_laundry_it_has(): void
+    {
+        $order = $this->order('picked_up');
+        $other = $this->laundryWithOwner('B', '+201011110003', '+201011110004')['laundry'];
+
+        try {
+            app(\App\Modules\Order\Services\OrderService::class)->assignLaundry($order, $other->id);
+            $this->fail('A collected order was moved to another laundry.');
+        } catch (RuntimeException $e) {
+            $this->assertSame('already_in_custody', $e->getMessage());
+        }
+    }
+
+    #[Test]
+    public function the_panel_will_not_give_a_driver_a_leg_with_nowhere_to_go(): void
+    {
+        $order = $this->order('awaiting_pickup');
+        $order->forceFill(['laundry_id' => null])->save();
+
+        $pickup = $this->openLeg($order, TaskType::PickupFromCustomer, 1, TaskStatus::Pending);
+        $pickup->forceFill(['driver_id' => null])->save();
+
+        try {
+            app(\App\Modules\Order\Services\DriverDispatcher::class)->assign($pickup->fresh(), $this->driver);
+            $this->fail('A driver was given a pickup with no laundry set.');
+        } catch (RuntimeException $e) {
+            $this->assertSame('order_has_no_laundry', $e->getMessage());
+        }
+
+        $this->assertNull($pickup->fresh()->driver_id);
+    }
+
+    private function openLeg(Order $order, TaskType $type, int $sequence, TaskStatus $status): OrderTask
+    {
+        return OrderTask::create([
+            'order_id' => $order->id,
+            'type' => $type->value,
+            'sequence' => $sequence,
+            'status' => $status->value,
+            'driver_id' => $this->driver->id,
+        ])->fresh();
+    }
+
+    #[Test]
+    public function the_driver_app_is_told_the_order_waits_for_a_laundry(): void
+    {
+        $order = $this->order('awaiting_pickup');
+        $order->forceFill(['laundry_id' => null])->save();
+
+        $pickup = $this->openLeg($order, TaskType::PickupFromCustomer, 1, TaskStatus::Assigned);
+
+        $this->actingAs($this->driver, 'sanctum')
+            ->getJson("/api/v1/driver/tasks/{$pickup->id}", $this->apiHeaders('en'))
+            ->assertOk()
+            ->assertJsonPath('data.can_start', false)
+            ->assertJsonPath('data.blocked_reason', __('This order has no laundry yet. Operations will assign one before it can move.'));
+
+        $this->actingAs($this->driver, 'sanctum')
+            ->postJson("/api/v1/driver/tasks/{$pickup->id}/start", [], $this->apiHeaders('en'))
+            ->assertStatus(400)
+            ->assertJsonPath('msg', __('This order has no laundry yet. Operations will assign one before it can move.'));
+    }
+
+    #[Test]
+    public function an_order_with_no_laundry_cannot_be_counted(): void
+    {
+        $order = $this->order('picked_up');
+        $order->forceFill(['laundry_id' => null])->save();
+
+        try {
+            app(OrderReviewService::class)->review($order->fresh(), [
+                ['item_id' => $this->catalog['items'][0]->id, 'qty' => 2],
+            ]);
+            $this->fail('An order with no laundry was counted.');
+        } catch (RuntimeException $e) {
+            $this->assertSame('order_has_no_laundry', $e->getMessage());
+        }
+
         $this->assertSame(OrderStatus::PickedUp, $order->fresh()->status);
     }
 }

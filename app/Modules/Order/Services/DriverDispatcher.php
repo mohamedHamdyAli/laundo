@@ -128,6 +128,13 @@ class DriverDispatcher
             throw new RuntimeException('task_completed');
         }
 
+        // A driver given a leg with nowhere to take the pieces holds a task that
+        // cannot start, against their cap — and on live it was how order 85 went
+        // round the whole cycle with no laundry (2026-11-01).
+        if ($task->needsLaundry()) {
+            throw new RuntimeException('order_has_no_laundry');
+        }
+
         if (! $this->isEligible($driver, $task)) {
             throw new RuntimeException('driver_not_eligible');
         }

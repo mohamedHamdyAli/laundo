@@ -84,6 +84,7 @@ class OrderReviewController extends Controller
             'not_reviewable' => __('This order cannot be reviewed at its current stage.'),
             'empty_review' => __('Please enter at least one piece.'),
             'service_not_found' => __('This order has no service.'),
+            'order_has_no_laundry' => __('Assign a laundry to this order before recording its count.'),
             default => __('Could not save the review.'),
         };
     }
