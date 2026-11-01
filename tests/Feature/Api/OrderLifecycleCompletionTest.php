@@ -475,4 +475,28 @@ class OrderLifecycleCompletionTest extends TestCase
 
         $this->assertSame(OrderStatus::PickedUp, $order->fresh()->status);
     }
+
+    #[Test]
+    public function the_customer_app_always_gets_the_laundry_as_a_string(): void
+    {
+        // `"laundry": null` on an order with no laundry broke `GET /orders` in
+        // the customer app, which parses the field as a string (2026-11-01).
+        $order = $this->order('awaiting_pickup');
+        $order->forceFill(['laundry_id' => null])->save();
+
+        $row = $this->actingAs($this->buyer, 'sanctum')
+            ->getJson('/api/v1/orders?tab=all&per_page=15&page=1', $this->apiHeaders('ar'))
+            ->assertOk()
+            ->json('data.0');
+
+        $this->assertIsString($row['laundry']);
+        $this->assertSame('لسه متسندتش', $row['laundry']);
+        $this->assertFalse($row['laundry_assigned']);
+
+        $this->actingAs($this->buyer, 'sanctum')
+            ->getJson("/api/v1/orders/{$order->id}", $this->apiHeaders('en'))
+            ->assertOk()
+            ->assertJsonPath('data.laundry', 'Not assigned yet')
+            ->assertJsonPath('data.laundry_assigned', false);
+    }
 }

@@ -483,7 +483,11 @@ class OrderController extends Controller
             'is_active' => $order->status->isActive(),
             'can_cancel' => $order->status->isCancellable(),
             'service' => $order->service ? getLocalizedValue($order->service, 'name') : null,
-            'laundry' => $order->laundry ? getLocalizedValue($order->laundry, 'name') : null,
+            // Always a string: the apps parse it as one, and `null` for an order
+            // no laundry has been set on broke `GET /orders` for that customer
+            // (2026-11-01). `laundry_assigned` says which of the two it is.
+            'laundry' => $order->laundry ? getLocalizedValue($order->laundry, 'name') : __('Not assigned yet'),
+            'laundry_assigned' => $order->laundry !== null,
             'items_count' => $order->final_items_count ?? $order->estimated_items_count,
             'total' => $order->payableTotal(),
             'pickup_date' => $order->pickup_date?->toDateString(),
