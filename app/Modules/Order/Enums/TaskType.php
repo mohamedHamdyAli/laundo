@@ -115,6 +115,17 @@ enum TaskType: string
     }
 
     /**
+     * Whether the driver counts the hangers the clothes come out on — the
+     * collection from the laundry, against what the laundry wrote at
+     * «خلص الغسيل» (`orders.hangers_sent`; the owner, 2026-11-09). A different
+     * figure waits for the platform, like a different piece count.
+     */
+    public function countsHangers(): bool
+    {
+        return $this === self::CollectFromLaundry;
+    }
+
+    /**
      * Whether money may change hands here — the two legs at the customer's door.
      *
      * The delivery collects what is still owed; since «رسوم المشوار»

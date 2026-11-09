@@ -260,6 +260,8 @@ return [
         'collected_amount' => 'Amount collected',
         'up_to' => 'last collection shown',
         'piece_count' => 'Piece count',
+        'hangers_sent' => 'Hangers',
+        'hanger_count' => 'Hanger count',
         'pieces' => 'Pieces',
         'max_pieces' => 'Most pieces to collect',
         'expected_piece_count' => 'Expected piece count',

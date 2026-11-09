@@ -110,7 +110,7 @@ class TaskService
     /**
      * «تأكيد» — the leg is done.
      *
-     * @param  array{piece_count?: int|null, receiver_name?: string|null, collected_amount?: float|null, hangers_returned?: int|null, note?: string|null}  $data
+     * @param  array{piece_count?: int|null, hanger_count?: int|null, receiver_name?: string|null, collected_amount?: float|null, hangers_returned?: int|null, note?: string|null}  $data
      * @param  array<int, UploadedFile>  $photos
      */
     public function complete(
@@ -178,6 +178,7 @@ class TaskService
         if (($need = $this->holds->needed($task, $data)) !== null) {
             throw new TaskHeld($this->holds->raise($task, $driver, $need, [
                 'piece_count' => $data['piece_count'] ?? null,
+                'hanger_count' => $data['hanger_count'] ?? null,
                 'receiver_name' => $data['receiver_name'] ?? null,
                 'collected_amount' => $data['collected_amount'] ?? null,
                 'note' => $data['note'] ?? null,
@@ -222,7 +223,7 @@ class TaskService
         $completed = $this->finish(
             $task,
             $driver,
-            array_intersect_key($payload, array_flip(['piece_count', 'receiver_name', 'collected_amount', 'note'])),
+            array_intersect_key($payload, array_flip(['piece_count', 'hanger_count', 'receiver_name', 'collected_amount', 'note'])),
             $payload['hangers_returned'] ?? null,
             (array) ($payload['photos'] ?? []),
             $payload['signature'] ?? null,
@@ -328,6 +329,11 @@ class TaskService
 
             if ($type === TaskType::DeliverToLaundry) {
                 $update['receiver_name'] = $data['receiver_name'] ?? null;
+            }
+
+            // The hangers the clothes came out on (item 11, 2026-11-09).
+            if ($type->countsHangers() && isset($data['hanger_count'])) {
+                $update['hangers_collected'] = (int) $data['hanger_count'];
             }
 
             if ($signaturePath) {

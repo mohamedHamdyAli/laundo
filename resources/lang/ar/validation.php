@@ -209,6 +209,8 @@ return [
         'collected_amount' => 'المبلغ المحصّل',
         'up_to' => 'آخر تحصيل ظاهر',
         'piece_count' => 'عدد القطع',
+        'hangers_sent' => 'عدد الشماعات',
+        'hanger_count' => 'عدد الشماعات',
         'pieces' => 'عدد القطع',
         'max_pieces' => 'أقصى عدد قطع في الميعاد',
         'expected_piece_count' => 'عدد القطع المتوقع',

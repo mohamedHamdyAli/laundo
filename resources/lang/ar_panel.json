@@ -2615,5 +2615,11 @@
     "Most pieces in one order": "أقصى عدد قطع في الطلب",
     "An order with more pieces is refused, in the app and in the panel. Blank is no limit. Each pickup window can also have its own limit, on the windows screen.": "الطلب اللي قطعه أكتر من كده بيترفض، في التطبيق وفي اللوحة. فاضي يعني من غير حد. وكل ميعاد استلام ممكن يبقى له حد خاص بيه من شاشة المواعيد.",
     "Order :code is ready at the laundry — you can collect it now.": "طلب :code جاهز في المغسلة — تقدر تستلمه دلوقتي.",
-    "Washing not marked finished, its collection is due": "الغسيل ماتعلّمش إنه خلص وميعاد استلامه من المغسلة جه"
+    "Washing not marked finished, its collection is due": "الغسيل ماتعلّمش إنه خلص وميعاد استلامه من المغسلة جه",
+    "Received :reported hangers at the laundry against the :expected it wrote.": "استلم :reported شماعة من المغسلة، والمغسلة كاتبة :expected.",
+    "The hangers do not match what the laundry wrote. It was sent to the management for approval — wait for their answer.": "عدد الشماعات مش مطابق للي المغسلة كتبته. اتبعت للإدارة توافق عليه — استنى ردها.",
+    "The hangers do not match what the laundry wrote.": "عدد الشماعات مش مطابق للي المغسلة كتبته.",
+    "Waiting for your approval — the hangers from the laundry": "مستني موافقتك — الشماعات من المغسلة",
+    "Hangers the clothes go out on": "عدد الشماعات اللي الهدوم طالعة عليها",
+    "Hangers: the laundry :sent · the driver :collected": "الشماعات: المغسلة :sent · المندوب :collected"
 }

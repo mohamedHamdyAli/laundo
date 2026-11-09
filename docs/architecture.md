@@ -188,6 +188,17 @@ refused**.
   counting other than the laundry's own count (`PieceCheck::expectedFor()`), or
   cash at the door other than what the leg takes (`OrderTask::toCollect()` —
   less **or more**; `collected_amount_too_high` is gone).
+- **And the hangers out of the laundry** (the owner, 2026-11-09, on item 11:
+  «المندوب لما يستلم من المغسلة يأكد إنه استلم نفس العدد اللي أكدته المغسلة»).
+  «خلص الغسيل» requires the hangers the clothes go out on (`hangers_sent`, 0
+  allowed, stored on the order); the collection's driver sends `hanger_count`
+  (`TaskType::countsHangers()`), stamped `order_tasks.hangers_collected`. A
+  different figure is a `hanger_count` hold, its laundry figure withheld from
+  the driver like a piece count's. Pieces and hangers both wrong is **one**
+  `piece_count` hold carrying the hangers in `payload.hanger_mismatch` — one
+  approval accepts the whole confirmation. **Optional to send**: an app that
+  does not ask yet keeps completing collections, and an order finished before
+  this (null `hangers_sent`) is not checked.
 - `TaskService::complete()` stores the files first, then `raise()`s a
   `task_holds` row (one pending per leg — a second wrong figure replaces it)
   with the confirmation as `payload`, and throws `TaskHeld`. The driver API
@@ -848,7 +859,11 @@ it happens):
   leg already paid as confirmed with its own count. Waiting legs count in the
   orders badge and the list's «شماعات مستنية تأكيد المغسلة» filter
   (`Order::withHangersToConfirm()`). The count is recorded with the programme
-  off; only the points wait on the switch.
+  off; only the points wait on the switch. Both apps see the laundry's count:
+  `points.hangers_confirmed` / `hangers_awaiting_laundry` on the customer's
+  order, `hangers_confirmed` on the driver's leg. These are the hangers coming
+  **back**; the hangers the clothes go **out** on are counted at the
+  collection (the held-confirmation section above).
 - Notifications (`PointsNotifier`, `points_earned`) go **after the commit**
   (`DB::afterCommit`), so a rolled-back completion never announced points.
 

@@ -437,7 +437,7 @@
             "admin.driver_bonus_rule.toggleStatus",
             "admin.driver_bonus_rule.update"
         ],
-        "node_count": 1227,
+        "node_count": 1228,
         "cohesion": 0.442,
         "screens": [
             {
@@ -793,7 +793,7 @@
             "admin.order.store",
             "admin.order.tasks.assign"
         ],
-        "node_count": 903,
+        "node_count": 904,
         "cohesion": 0.395,
         "screens": [
             {
@@ -910,7 +910,7 @@
             "admin.time_slot.show",
             "admin.time_slot.store"
         ],
-        "node_count": 704,
+        "node_count": 705,
         "cohesion": 0.372,
         "screens": [
             {
@@ -1219,7 +1219,7 @@
             "api.v1.driver.tasks.fail"
         ],
         "node_count": 281,
-        "cohesion": 0.36
+        "cohesion": 0.359
     },
     {
         "slug": "authentication",
@@ -1260,8 +1260,8 @@
         "tables": [],
         "route_count": 0,
         "routes": [],
-        "node_count": 236,
-        "cohesion": 0.448
+        "node_count": 237,
+        "cohesion": 0.449
     },
     {
         "slug": "public_site",
@@ -1293,8 +1293,8 @@
         "tables": [],
         "route_count": 0,
         "routes": [],
-        "node_count": 1798,
-        "cohesion": 0.34
+        "node_count": 1799,
+        "cohesion": 0.341
     },
     {
         "slug": "routing_and_distance",

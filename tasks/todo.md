@@ -68,6 +68,10 @@ Review (2026-11-09)
       collection bodies, the QC note for the deploy, committing (not asked).
 
 Answers (2026-11-08, the owner's picks — Arabic as asked):
+- **11, added 2026-11-09** «المندوب لما يستلم من المغسلة يأكد إنه استلم نفس العدد
+  اللي أكدته المغسلة»: the laundry writes the hangers the clothes go out on at
+  «خلص الغسيل»; the driver at the collection sends his count; different →
+  held for the platform, like a piece count.
 - **1** Existing customers only (picked on the screen; address from their saved
   ones or a new pin on the map, saved to them). Payment **exactly as the app**:
   every method, coupon, offer, points. **Platform only** — new `order.create`,

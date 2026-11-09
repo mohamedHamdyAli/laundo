@@ -167,7 +167,7 @@
             "api-controller": 24
         },
         "files": 24,
-        "lines": 5645,
+        "lines": 5691,
         "classes": [
             {
                 "fqcn": "App\\Http\\Controllers\\Api\\V1\\AddressController",
@@ -328,6 +328,7 @@
             "offers",
             "orders",
             "order_tasks",
+            "task_holds",
             "driver_earnings",
             "cities",
             "services",
@@ -346,7 +347,6 @@
             "settings",
             "driver_profiles",
             "driver_record_submissions",
-            "task_holds",
             "order_ratings"
         ],
         "routes": [
@@ -464,7 +464,7 @@
         "summary": "A customer's saved addresses.",
         "depends_on": {
             "Platform": 73,
-            "Order": 67,
+            "Order": 69,
             "Payment": 18,
             "Loyalty": 13,
             "TimeSlot": 12,
@@ -1099,11 +1099,11 @@
         "community": "database",
         "path": null,
         "layers": {
-            "migration": 125,
+            "migration": 126,
             "seeder": 11
         },
-        "files": 136,
-        "lines": 8130,
+        "files": 137,
+        "lines": 8173,
         "classes": [
             {
                 "fqcn": "Database\\Seeders\\AdminUserSeeder",
@@ -1235,7 +1235,7 @@
             "doc": 12
         },
         "files": 12,
-        "lines": 11606,
+        "lines": 11629,
         "classes": [],
         "models": [],
         "owns_tables": [],
@@ -3038,7 +3038,7 @@
             "repository": 1
         },
         "files": 79,
-        "lines": 16632,
+        "lines": 16726,
         "classes": [
             {
                 "fqcn": "App\\Modules\\Order\\Controllers\\DispatchController",
@@ -3535,8 +3535,8 @@
             "Complaint": 1
         },
         "depended_on_by": {
-            "Tests": 537,
-            "Api": 67,
+            "Tests": 538,
+            "Api": 69,
             "Report": 40,
             "Driver": 34,
             "Payment": 27,
@@ -5363,7 +5363,7 @@
             "browser-test": 26
         },
         "files": 173,
-        "lines": 56989,
+        "lines": 57153,
         "classes": [
             {
                 "fqcn": "Tests\\Feature\\Api\\AddressIdDisclosureTest",
@@ -6490,7 +6490,7 @@
         ],
         "summary": "",
         "depends_on": {
-            "Order": 537,
+            "Order": 538,
             "Platform": 115,
             "User": 108,
             "Payment": 89,

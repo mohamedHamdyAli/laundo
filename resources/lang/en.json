@@ -2615,5 +2615,11 @@
     "Most pieces in one order": "Most pieces in one order",
     "An order with more pieces is refused, in the app and in the panel. Blank is no limit. Each pickup window can also have its own limit, on the windows screen.": "An order with more pieces is refused, in the app and in the panel. Blank is no limit. Each pickup window can also have its own limit, on the windows screen.",
     "Order :code is ready at the laundry — you can collect it now.": "Order :code is ready at the laundry — you can collect it now.",
-    "Washing not marked finished, its collection is due": "Washing not marked finished, its collection is due"
+    "Washing not marked finished, its collection is due": "Washing not marked finished, its collection is due",
+    "Received :reported hangers at the laundry against the :expected it wrote.": "Received :reported hangers at the laundry against the :expected it wrote.",
+    "The hangers do not match what the laundry wrote. It was sent to the management for approval — wait for their answer.": "The hangers do not match what the laundry wrote. It was sent to the management for approval — wait for their answer.",
+    "The hangers do not match what the laundry wrote.": "The hangers do not match what the laundry wrote.",
+    "Waiting for your approval — the hangers from the laundry": "Waiting for your approval — the hangers from the laundry",
+    "Hangers the clothes go out on": "Hangers the clothes go out on",
+    "Hangers: the laundry :sent · the driver :collected": "Hangers: the laundry :sent · the driver :collected"
 }

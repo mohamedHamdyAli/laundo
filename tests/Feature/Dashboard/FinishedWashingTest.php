@@ -9,6 +9,7 @@ use App\Modules\Order\Enums\TaskStatus;
 use App\Modules\Order\Enums\TaskType;
 use App\Modules\Order\Models\Order;
 use App\Modules\Order\Models\OrderTask;
+use App\Modules\Order\Models\TaskHold;
 use App\Modules\Order\Repositories\OrderRepository;
 use App\Modules\Order\Services\DriverDispatcher;
 use App\Modules\Order\Services\FinishedWashing;
@@ -109,7 +110,7 @@ class FinishedWashingTest extends TestCase
             ->assertOk()
             ->assertSee(route('admin.order.finish_washing', $order->id));
 
-        $this->actingAs($staff)->post(route('admin.order.finish_washing', $order->id))
+        $this->actingAs($staff)->post(route('admin.order.finish_washing', $order->id), ['hangers_sent' => 6])
             ->assertRedirect()
             ->assertSessionHas('success');
 
@@ -198,16 +199,16 @@ class FinishedWashingTest extends TestCase
         $this->actingAs($viewer)->get(route('admin.order.show', $order->id))
             ->assertOk()
             ->assertDontSee(route('admin.order.finish_washing', $order->id));
-        $this->actingAs($viewer)->post(route('admin.order.finish_washing', $order->id))->assertForbidden();
+        $this->actingAs($viewer)->post(route('admin.order.finish_washing', $order->id), ['hangers_sent' => 6])->assertForbidden();
 
         // Another laundry: not its order.
         $other = $this->laundryWithOwner('B', '+201022220001', '+201022220002');
-        $this->actingAs($other['owner'])->post(route('admin.order.finish_washing', $order->id))->assertNotFound();
+        $this->actingAs($other['owner'])->post(route('admin.order.finish_washing', $order->id), ['hangers_sent' => 6])->assertNotFound();
 
         $this->assertSame(OrderStatus::Cleaning, $order->fresh()->status);
 
         // The platform with `order.update` presses it on the laundry's behalf.
-        $this->actingAs($this->superAdmin())->post(route('admin.order.finish_washing', $order->id))
+        $this->actingAs($this->superAdmin())->post(route('admin.order.finish_washing', $order->id), ['hangers_sent' => 6])
             ->assertSessionHas('success');
         $this->assertSame(OrderStatus::Finished, $order->fresh()->status);
         $this->assertDatabaseHas('order_status_logs', ['order_id' => $order->id, 'to_status' => 'finished', 'actor_type' => 'admin']);
@@ -218,7 +219,7 @@ class FinishedWashingTest extends TestCase
     {
         $order = $this->placed();
 
-        $this->actingAs($this->tenant['owner'])->post(route('admin.order.finish_washing', $order->id))
+        $this->actingAs($this->tenant['owner'])->post(route('admin.order.finish_washing', $order->id), ['hangers_sent' => 6])
             ->assertSessionHas('error', __('Only an order being cleaned can be marked finished.'));
         $this->assertSame(OrderStatus::AwaitingPickup, $order->fresh()->status);
     }
@@ -300,6 +301,134 @@ class FinishedWashingTest extends TestCase
 
         $row = collect(app(LaundryReport::class)->performance(DateRange::lastDays(7)))->first();
         $this->assertEqualsWithDelta(6, (float) $row['average_turnaround_hours'], 0.1);
+    }
+
+    // ------------------- the hangers out of the laundry (item 11, 2026-11-09)
+
+    #[Test]
+    public function the_laundry_says_how_many_hangers_the_clothes_go_out_on(): void
+    {
+        $order = $this->beingCleaned();
+
+        $this->actingAs($this->tenant['owner'])->get(route('admin.order.show', $order->id))
+            ->assertOk()->assertSee('name="hangers_sent"', false);
+
+        // Not said: refused beside the field, nothing moves.
+        $this->actingAs($this->tenant['owner'])->post(route('admin.order.finish_washing', $order->id))
+            ->assertSessionHasErrors('hangers_sent');
+        $this->assertSame(OrderStatus::Cleaning, $order->fresh()->status);
+
+        $this->actingAs($this->tenant['owner'])->post(route('admin.order.finish_washing', $order->id), ['hangers_sent' => 6])
+            ->assertSessionHas('success');
+        $this->assertSame(OrderStatus::Finished, $order->fresh()->status);
+        $this->assertSame(6, $order->fresh()->hangers_sent);
+    }
+
+    #[Test]
+    public function the_driver_counts_the_hangers_and_a_different_count_waits_for_the_platform(): void
+    {
+        $leg = $this->collectionStarted(hangers: 6);
+
+        Sanctum::actingAs($this->driver);
+        $this->getJson("/api/v1/driver/tasks/{$leg->id}", $this->apiHeaders())
+            ->assertOk()
+            ->assertJsonPath('data.requires_hanger_count', true)
+            ->assertJsonPath('data.hanger_count', null);
+
+        // Five against six: held, and the laundry's figure is not given away.
+        $this->complete($leg, ['piece_count' => 2, 'hanger_count' => 5])
+            ->assertStatus(409)
+            ->assertJsonPath('key', 'awaiting_approval')
+            ->assertJsonPath('msg', __('The hangers do not match what the laundry wrote. It was sent to the management for approval — wait for their answer.'))
+            ->assertJsonPath('data.hold.kind', 'hanger_count')
+            ->assertJsonPath('data.hold.expected', null);
+        $this->assertSame(TaskStatus::Started, $leg->fresh()->status);
+
+        $hold = TaskHold::firstOrFail();
+        $this->actingAs($this->superAdmin())->get(route('admin.order.show', $leg->order_id))
+            ->assertOk()
+            ->assertSee(__('Waiting for your approval — the hangers from the laundry'))
+            ->assertSee(__('Received :reported hangers at the laundry against the :expected it wrote.', ['reported' => 5, 'expected' => 6]));
+
+        $this->actingAs($this->superAdmin())->post(route('admin.order.hold.approve', $hold->id))->assertRedirect();
+
+        $leg->refresh();
+        $this->assertSame(TaskStatus::Completed, $leg->status);
+        $this->assertSame(5, $leg->hangers_collected);
+        $this->assertSame(OrderStatus::ReadyForDelivery, $leg->order->fresh()->status);
+    }
+
+    #[Test]
+    public function the_same_hangers_complete_at_once(): void
+    {
+        $leg = $this->collectionStarted(hangers: 6);
+
+        $this->complete($leg, ['piece_count' => 2, 'hanger_count' => 6])->assertOk();
+
+        $this->assertSame(6, $leg->fresh()->hangers_collected);
+        $this->assertSame(0, TaskHold::count());
+    }
+
+    #[Test]
+    public function pieces_and_hangers_both_wrong_is_one_question_with_both_figures(): void
+    {
+        $leg = $this->collectionStarted(hangers: 6);
+
+        $this->complete($leg, ['piece_count' => 3, 'hanger_count' => 5])->assertStatus(409);
+
+        $hold = TaskHold::sole();
+        $this->assertSame('piece_count', $hold->kind);
+        $this->assertStringContainsString(
+            __('Received :reported hangers at the laundry against the :expected it wrote.', ['reported' => 5, 'expected' => 6]),
+            $hold->describe(),
+        );
+
+        // One approval accepts the whole confirmation.
+        app(TaskService::class)->approveHold($hold, $this->platformOperator());
+        $this->assertSame([3, 5], [$leg->fresh()->piece_count, $leg->fresh()->hangers_collected]);
+    }
+
+    #[Test]
+    public function an_app_that_does_not_ask_yet_keeps_completing_collections(): void
+    {
+        $leg = $this->collectionStarted(hangers: 6);
+
+        $this->complete($leg, ['piece_count' => 2])->assertOk();
+        $this->assertNull($leg->fresh()->hangers_collected);
+    }
+
+    #[Test]
+    public function an_order_finished_without_a_figure_is_not_checked(): void
+    {
+        $leg = $this->collectionStarted(hangers: null);
+
+        Sanctum::actingAs($this->driver);
+        $this->getJson("/api/v1/driver/tasks/{$leg->id}", $this->apiHeaders())
+            ->assertOk()->assertJsonPath('data.requires_hanger_count', false);
+        $this->complete($leg, ['piece_count' => 2, 'hanger_count' => 9])->assertOk();
+    }
+
+    /**
+     * Washed with `$hangers` written, the collection given to the driver and
+     * started.
+     */
+    private function collectionStarted(?int $hangers): OrderTask
+    {
+        $order = $this->beingCleaned();
+        app(FinishedWashing::class)->mark($order->fresh(), $this->tenant['owner'], $hangers);
+
+        $leg = $this->leg($order, TaskType::CollectFromLaundry);
+        $this->assertSame($this->driver->id, $leg->driver_id);
+
+        return app(TaskService::class)->start($leg, $this->driver);
+    }
+
+    private function complete(OrderTask $leg, array $data)
+    {
+        $this->app['auth']->forgetGuards();
+        Sanctum::actingAs($this->driver);
+
+        return $this->postJson("/api/v1/driver/tasks/{$leg->id}/complete", $data, $this->apiHeaders());
     }
 
     #[Test]

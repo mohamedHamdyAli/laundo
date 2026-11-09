@@ -278,6 +278,10 @@ class DriverTaskController extends Controller
             // ceiling a visit may be credited for is the service's to enforce
             // (`Max_Hangers_Per_Visit`), with its own message.
             'hangers_returned' => ['nullable', 'integer', 'min:0', 'max:999'],
+            // The hangers the clothes came out on — the collection from the
+            // laundry only (item 11, 2026-11-09). Optional to send, so an app
+            // that does not ask yet keeps completing collections.
+            'hanger_count' => ['nullable', 'integer', 'min:0', 'max:999'],
             'note' => ['nullable', 'string', 'max:1000'],
             'signature' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
             'photos' => ['nullable', 'array', 'max:5'],
@@ -288,7 +292,7 @@ class DriverTaskController extends Controller
             $task = $this->tasks->complete(
                 $task,
                 $this->driver($request),
-                $request->only(['piece_count', 'receiver_name', 'collected_amount', 'hangers_returned', 'note']),
+                $request->only(['piece_count', 'hanger_count', 'receiver_name', 'collected_amount', 'hangers_returned', 'note']),
                 (array) $request->file('photos', []),
                 $request->file('signature'),
             );
@@ -297,9 +301,11 @@ class DriverTaskController extends Controller
             // driver's and still started. A 409 with its own key, never a 2xx —
             // an app that predates this must not read it as «done» and move on;
             // it shows `msg`, which says what is happening.
-            return apiEnvelope('awaiting_approval', 409, $held->hold->isMoney()
-                ? __('The amount is not what this order owes. It was sent to the management for approval — wait for their answer.')
-                : __('The count does not match what the laundry counted. It was sent to the management for approval — wait for their answer.'),
+            return apiEnvelope('awaiting_approval', 409, match (true) {
+                $held->hold->isMoney() => __('The amount is not what this order owes. It was sent to the management for approval — wait for their answer.'),
+                $held->hold->kind === TaskHold::HANGER_COUNT => __('The hangers do not match what the laundry wrote. It was sent to the management for approval — wait for their answer.'),
+                default => __('The count does not match what the laundry counted. It was sent to the management for approval — wait for their answer.'),
+            },
                 ['data' => $this->detail($task->fresh())]);
         } catch (RuntimeException $e) {
             return $this->translate($e);
@@ -647,13 +653,22 @@ class DriverTaskController extends Controller
             // what became of it (items 9 and 10). Null on a leg never held.
             'hold' => $this->presentHold($this->holds->latestFor($task)),
             'requires_piece_count' => $type->countsPieces(),
+            // «عدد الشماعات» at the collection from the laundry, when the laundry
+            // wrote one at «خلص الغسيل» (item 11, 2026-11-09). Its figure is not
+            // shown: a driver shown it could type it back. A different count
+            // waits for the platform (409, like a piece count).
+            'requires_hanger_count' => $type->countsHangers() && $order?->hangers_sent !== null,
+            'hanger_count' => $task->hangers_collected,
             'collects_payment' => $this->showsPayment($task),
             // «شماعات راجعة (اختياري)» — asked at the customer's door while the
-            // points programme is on; each hanger earns the customer points.
+            // points programme is on. The customer's points follow the count
+            // the laundry confirms (item 11, 2026-11-08), not this one.
             'accepts_hangers' => $type->takesHangers() && $this->points->enabled() && $this->points->maxHangersPerVisit() > 0,
             // Always the integer ceiling — a setting, not a property of the leg.
             'max_hangers' => $this->points->maxHangersPerVisit(),
             'hangers_returned' => $task->hangers_returned,
+            // What the laundry confirmed of them — null until it does.
+            'hangers_confirmed' => $task->hangers_confirmed_at !== null ? (int) $task->hangers_confirmed : null,
 
             'service' => $order?->service ? getLocalizedValue($order->service, 'name') : null,
             'contact' => $atCustomer
@@ -905,7 +920,7 @@ class DriverTaskController extends Controller
 
         return [
             'id' => $hold->id,
-            // `piece_count` | `collected_amount`
+            // `piece_count` | `hanger_count` | `collected_amount`
             'kind' => $hold->kind,
             'reported' => (float) $hold->reported,
             'expected' => ! $secret && $hold->expected !== null ? (float) $hold->expected : null,
@@ -913,7 +928,11 @@ class DriverTaskController extends Controller
             // (recount / collect again — `note` says why) | `withdrawn`.
             'status' => $hold->status,
             'note' => $hold->note,
-            'message' => $secret ? __('The count does not match what the laundry counted.') : $hold->describe(),
+            'message' => $secret
+                ? ($hold->kind === TaskHold::HANGER_COUNT
+                    ? __('The hangers do not match what the laundry wrote.')
+                    : __('The count does not match what the laundry counted.'))
+                : $hold->describe(),
             'decided_at_iso' => isoDate($hold->decided_at),
         ];
     }

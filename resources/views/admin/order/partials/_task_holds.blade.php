@@ -26,7 +26,8 @@
             <i class="fa fa-hand-paper fa-lg mt-1"></i>
             <div class="flex-grow-1">
                 <strong class="d-block">
-                    {{ $hold->isMoney() ? __('Waiting for your approval — the amount collected') : __('Waiting for your approval — the count at the laundry') }}
+                    {{ $hold->isMoney() ? __('Waiting for your approval — the amount collected')
+                        : ($hold->kind === \App\Modules\Order\Models\TaskHold::HANGER_COUNT ? __('Waiting for your approval — the hangers from the laundry') : __('Waiting for your approval — the count at the laundry')) }}
                 </strong>
                 <div>{{ $hold->describe() }}</div>
                 <small class="d-block text-muted mt-1">

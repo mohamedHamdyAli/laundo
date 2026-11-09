@@ -10,6 +10,7 @@ use App\Modules\Order\Services\OrderService;
 use App\Modules\Setting\Models\Setting;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
+use Laravel\Sanctum\Sanctum;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
@@ -124,6 +125,40 @@ class HangerReceiptTest extends TestCase
             ->post(route('admin.order.tasks.hangers', $leg->id), ['hangers_confirmed' => 2]);
 
         $this->assertStringNotContainsString('#'.$order->code, $listed());
+    }
+
+    #[Test]
+    public function both_apps_are_told_what_the_laundry_confirmed(): void
+    {
+        // The apps had the driver's count only, so neither could say why the
+        // customer's points were not there yet, or were fewer.
+        [$order, $leg] = $this->withHangers(5);
+        $driver = $this->driverUser('+201044440001');
+        $leg->forceFill(['driver_id' => $driver->id])->save();
+
+        $customerSees = function () use ($order) {
+            $this->app['auth']->forgetGuards();
+            Sanctum::actingAs($order->customer);
+
+            return $this->getJson("/api/v1/orders/{$order->id}", $this->apiHeaders())->assertOk()->json('data.points');
+        };
+        $driverSees = function () use ($driver, $leg) {
+            $this->app['auth']->forgetGuards();
+            Sanctum::actingAs($driver);
+
+            return $this->getJson("/api/v1/driver/tasks/{$leg->id}", $this->apiHeaders())->assertOk()->json('data');
+        };
+
+        $points = $customerSees();
+        $this->assertSame([5, 0, 5], [$points['hangers_returned'], $points['hangers_confirmed'], $points['hangers_awaiting_laundry']]);
+        $this->assertNull($driverSees()['hangers_confirmed']);
+
+        $this->actingAs($this->tenant['owner'])
+            ->post(route('admin.order.tasks.hangers', $leg->id), ['hangers_confirmed' => 3]);
+
+        $points = $customerSees();
+        $this->assertSame([5, 3, 0], [$points['hangers_returned'], $points['hangers_confirmed'], $points['hangers_awaiting_laundry']]);
+        $this->assertSame(3, $driverSees()['hangers_confirmed']);
     }
 
     /**

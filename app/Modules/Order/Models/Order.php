@@ -73,6 +73,7 @@ use Illuminate\Support\Str;
  * @property string|null $final_tax
  * @property string|null $review_note
  * @property int $review_round
+ * @property int|null $hangers_sent the hangers the clothes leave the laundry on, written at «خلص الغسيل» (item 11, 2026-11-09)
  * @property Carbon|null $reviewed_at
  * @property Carbon|null $confirmed_at
  * @property Carbon|null $review_terms_accepted_at
@@ -120,6 +121,7 @@ class Order extends Model
         'tax_rate', 'estimated_tax', 'estimated_total',
         'final_items_count', 'final_subtotal', 'final_tax', 'final_total', 'review_note', 'reviewed_at',
         'review_sent_round', 'review_sent_at', 'review_sent_by',
+        'hangers_sent',
         'review_round', 'confirmed_at',
         'coupon_code', 'payment_method', 'payment_status', 'paid_at',
         'qr_token', 'recurrence_id',
@@ -133,6 +135,7 @@ class Order extends Model
             'delivery_date' => 'date',
             'reviewed_at' => 'datetime',
             'review_sent_round' => 'integer',
+            'hangers_sent' => 'integer',
             'review_sent_at' => 'datetime',
             'confirmed_at' => 'datetime',
             'review_terms_accepted_at' => 'datetime',

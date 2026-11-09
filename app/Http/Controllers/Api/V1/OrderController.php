@@ -10,6 +10,7 @@ use App\Modules\Address\Models\Address;
 use App\Modules\Driver\Services\DriverCard;
 use App\Modules\Loyalty\Services\OrderPoints;
 use App\Modules\Order\Enums\OrderStatus;
+use App\Modules\Order\Enums\TaskStatus;
 use App\Modules\Order\Enums\TaskType;
 use App\Modules\Order\Models\Order;
 use App\Modules\Order\Models\RecurrencePrompt;
@@ -557,9 +558,35 @@ class OrderController extends Controller
                 'earned' => app(OrderPoints::class)->earnedOn($order),
                 // Asked rather than eager-loaded: `find()` also serves cancel,
                 // which walks the legs, and half-loaded legs there would be a
-                // trap. One sum, on the detail only.
-                'hangers_returned' => (int) $order->tasks()->sum('hangers_returned'),
+                // trap. The driver's count, the laundry's, and what still
+                // waits for the laundry — hanger points are paid on its count
+                // (item 11, 2026-11-08).
+                ...$this->hangers($order),
             ],
+        ];
+    }
+
+    /**
+     * The hangers handed back on this order's legs (the client's sheet, item
+     * 11, 2026-11-08): what the driver recorded, what the laundry confirmed —
+     * the points follow that — and what is still waiting for the laundry.
+     * One query, on the detail only.
+     *
+     * @return array{hangers_returned: int, hangers_confirmed: int, hangers_awaiting_laundry: int}
+     */
+    private function hangers(Order $order): array
+    {
+        $row = $order->tasks()->toBase()->selectRaw(
+            'coalesce(sum(hangers_returned), 0) as returned, '
+            .'coalesce(sum(case when hangers_confirmed_at is not null then hangers_confirmed else 0 end), 0) as confirmed, '
+            .'coalesce(sum(case when hangers_confirmed_at is null and status = ? then hangers_returned else 0 end), 0) as waiting',
+            [TaskStatus::Completed->value],
+        )->first();
+
+        return [
+            'hangers_returned' => (int) ($row->returned ?? 0),
+            'hangers_confirmed' => (int) ($row->confirmed ?? 0),
+            'hangers_awaiting_laundry' => (int) ($row->waiting ?? 0),
         ];
     }
 

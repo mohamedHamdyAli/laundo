@@ -50,16 +50,32 @@ class TaskHolds
      * Whether this confirmation must wait for the platform.
      *
      * @param  array<string, mixed>  $data  as validated, after `paymentAtTheDoor()`
-     * @return array{kind: string, reported: float, expected: float}|null
+     * @return array{kind: string, reported: float, expected: float, hangers?: array{reported: int, expected: int}|null}|null
      */
     public function needed(OrderTask $task, array $data): ?array
     {
+        // The hangers the clothes came out on, against what the laundry wrote
+        // at «خلص الغسيل» (item 11, 2026-11-09). Only when both were said: an
+        // order finished before this, or an app that does not ask yet, is not
+        // checked.
+        $hangers = null;
+
+        if ($task->type->countsHangers() && isset($data['hanger_count']) && $task->order?->hangers_sent !== null
+            && (int) $data['hanger_count'] !== (int) $task->order->hangers_sent) {
+            $hangers = ['reported' => (int) $data['hanger_count'], 'expected' => (int) $task->order->hangers_sent];
+        }
+
         if ($task->type === TaskType::CollectFromLaundry && isset($data['piece_count'])) {
             [$expected] = $this->pieceCheck->expectedFor($task);
 
             if ($expected !== null && (int) $data['piece_count'] !== (int) $expected) {
-                return ['kind' => TaskHold::PIECE_COUNT, 'reported' => (float) (int) $data['piece_count'], 'expected' => (float) $expected];
+                // Both wrong: one question carrying both figures.
+                return ['kind' => TaskHold::PIECE_COUNT, 'reported' => (float) (int) $data['piece_count'], 'expected' => (float) $expected, 'hangers' => $hangers];
             }
+        }
+
+        if ($hangers !== null) {
+            return ['kind' => TaskHold::HANGER_COUNT, 'reported' => (float) $hangers['reported'], 'expected' => (float) $hangers['expected']];
         }
 
         $collected = $data['collected_amount'] ?? null;
@@ -106,7 +122,8 @@ class TaskHolds
                 'kind' => $need['kind'],
                 'reported' => $need['reported'],
                 'expected' => $need['expected'],
-                'payload' => $payload,
+                // The hangers disagreeing beside a piece count (item 11).
+                'payload' => $payload + ['hanger_mismatch' => $need['hangers'] ?? null],
                 'raised_by' => $driver->id,
             ];
 

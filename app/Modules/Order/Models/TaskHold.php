@@ -30,6 +30,9 @@ class TaskHold extends Model
 
     public const COLLECTED_AMOUNT = 'collected_amount';
 
+    /** The hangers at the collection from the laundry (item 11, 2026-11-09). */
+    public const HANGER_COUNT = 'hanger_count';
+
     public const PENDING = 'pending';
 
     public const APPROVED = 'approved';
@@ -94,14 +97,36 @@ class TaskHold extends Model
      */
     public function describe(): string
     {
-        return $this->isMoney()
-            ? __('Collected :reported against :expected to collect.', [
+        if ($this->isMoney()) {
+            return __('Collected :reported against :expected to collect.', [
                 'reported' => moneyFormat((float) $this->reported),
                 'expected' => moneyFormat((float) $this->expected),
-            ])
-            : __('Counted :reported pieces at the laundry against its count of :expected.', [
-                'reported' => (int) $this->reported,
-                'expected' => (int) $this->expected,
             ]);
+        }
+
+        if ($this->kind === self::HANGER_COUNT) {
+            return $this->hangersSentence((int) $this->reported, (int) $this->expected);
+        }
+
+        $pieces = __('Counted :reported pieces at the laundry against its count of :expected.', [
+            'reported' => (int) $this->reported,
+            'expected' => (int) $this->expected,
+        ]);
+
+        // The hangers disagreed in the same confirmation: one question, both
+        // figures — an approval accepts the whole of it.
+        $hangers = $this->payload['hanger_mismatch'] ?? null;
+
+        return is_array($hangers)
+            ? $pieces.' '.$this->hangersSentence((int) $hangers['reported'], (int) $hangers['expected'])
+            : $pieces;
+    }
+
+    private function hangersSentence(int $reported, int $expected): string
+    {
+        return __('Received :reported hangers at the laundry against the :expected it wrote.', [
+            'reported' => $reported,
+            'expected' => $expected,
+        ]);
     }
 }

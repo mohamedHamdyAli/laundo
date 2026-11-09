@@ -36,6 +36,7 @@ use Illuminate\Support\Carbon;
  * @property int|null $piece_count
  * @property int|null $hangers_returned
  * @property int|null $hangers_confirmed what the laundry says reached it (item 11, 2026-11-08)
+ * @property int|null $hangers_collected the hangers the driver received at the collection from the laundry (item 11, 2026-11-09)
  * @property Carbon|null $hangers_confirmed_at
  * @property int|null $hangers_confirmed_by
  * @property int|null $expected_piece_count
@@ -86,6 +87,7 @@ class OrderTask extends Model
         'collected_amount', 'failure_reason', 'failure_note', 'attempts', 'note',
         'expected_piece_count', 'expected_piece_source', 'hangers_returned',
         'hangers_confirmed', 'hangers_confirmed_at', 'hangers_confirmed_by',
+        'hangers_collected',
     ];
 
     protected function casts(): array
@@ -102,6 +104,7 @@ class OrderTask extends Model
             'collected_amount' => 'decimal:2',
             'hangers_returned' => 'integer',
             'hangers_confirmed' => 'integer',
+            'hangers_collected' => 'integer',
             'hangers_confirmed_at' => 'datetime',
         ];
     }

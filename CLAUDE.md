@@ -183,8 +183,11 @@ The domain core. Status table and requests in **`docs/order-lifecycle.md`**
   a disagreement is one `PieceDiscrepancy` row, **nothing is ever refused**, and
   only the platform closes it. The driver app is not shown an expected count
   before it could copy it (`DriverTaskController::countsRevealed()`).
-- **Except two figures, which are held** (since 2026-11-08, `Order/Services/TaskHolds`):
-  the collection from the laundry counting other than the laundry's count, and
+- **Except three figures, which are held** (since 2026-11-08, `Order/Services/TaskHolds`):
+  the collection from the laundry counting other than the laundry's count, or
+  receiving other than the hangers the laundry wrote at «خلص الغسيل»
+  (`orders.hangers_sent` → `order_tasks.hangers_collected`, `hanger_count`,
+  since 2026-11-09 — optional to send; both wrong is one question), and
   cash at the door other than `OrderTask::toCollect()` (less or more). The leg
   stays started, the driver API answers **409 `awaiting_approval`**, and the
   platform approves (`TaskService::approveHold()` completes it with the held

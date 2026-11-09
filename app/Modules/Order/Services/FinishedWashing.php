@@ -33,11 +33,15 @@ class FinishedWashing
     ) {}
 
     /**
+     * `$hangers` is what the clothes go out on — the driver collecting them is
+     * held to it (item 11, 2026-11-09). The screen always sends it; null, from
+     * a caller that has no figure, leaves the collection unchecked.
+     *
      * @throws RuntimeException `not_cleaning` when the order is anywhere but `cleaning`
      */
-    public function mark(Order $order, User $by): Order
+    public function mark(Order $order, User $by, ?int $hangers = null): Order
     {
-        $order = DB::transaction(function () use ($order, $by) {
+        $order = DB::transaction(function () use ($order, $by, $hangers) {
             // Locked, like every move of an order: two people pressing at once
             // finish it once.
             $locked = Order::whereKey($order->id)->lockForUpdate()->firstOrFail();
@@ -45,6 +49,9 @@ class FinishedWashing
             if ($locked->status !== OrderStatus::Cleaning) {
                 throw new RuntimeException('not_cleaning');
             }
+
+            // Through the model, so the activity log has who wrote it.
+            $locked->update(['hangers_sent' => $hangers]);
 
             return $this->machine->transition(
                 $locked,
