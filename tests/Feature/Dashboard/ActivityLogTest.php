@@ -168,6 +168,7 @@ class ActivityLogTest extends TestCase
         app(OrderReviewService::class)->review(
             $order->fresh(), [['item_id' => $this->catalog['items'][0]->id, 'qty' => 5]], null, $this->tenant['owner']
         );
+        $this->sendReview($order);
 
         $history = collect(app(OrderHistory::class)->for($order->fresh()));
 

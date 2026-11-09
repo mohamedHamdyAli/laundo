@@ -172,13 +172,15 @@ class OrderMoneyCycleTest extends TestCase
         $tasks = app(TaskService::class);
         $tasks->start($task->fresh(), $driver);
 
-        $tasks->complete(
+        // Held and approved when the figures do not match (`TaskHolds`): these
+        // tests are about the money after the leg, not the hold.
+        $this->completeLeg(
             $task->fresh(),
             $driver,
             // The delivery on an unpaid order says what was collected: nothing
             // here — these tests settle the money by hand.
             ($type->countsPieces() ? ['piece_count' => 3] : [])
-                + ($type->collectsPayment() ? ['collected_amount' => 0] : []),
+                + ($type === TaskType::DeliverToCustomer ? ['collected_amount' => 0] : []),
             [],
             $type->requiresSignature() ? UploadedFile::fake()->image('sig.png') : null,
         );
@@ -228,6 +230,7 @@ class OrderMoneyCycleTest extends TestCase
             $owner,
         );
 
+        $this->sendReview($order);
         $order = $reviews->confirm($order->fresh(), $this->customer)->fresh();
 
         // The final total obeys the same arithmetic as the estimate, surcharge
@@ -249,6 +252,7 @@ class OrderMoneyCycleTest extends TestCase
 
         // ------------------------------------------------------- cleaned, out
         $machine->transition($order->fresh(), OrderStatus::Cleaning, 'laundry');
+        $machine->transition($order->fresh(), OrderStatus::Finished, 'laundry');
         $machine->transition($order->fresh(), OrderStatus::ReadyForDelivery, 'laundry');
         $this->walk($order->fresh(), TaskType::CollectFromLaundry, $driver);
         $this->walk($order->fresh(), TaskType::DeliverToCustomer, $driver);
@@ -445,6 +449,7 @@ class OrderMoneyCycleTest extends TestCase
             null,
             $this->tenant['owner'],
         );
+        $this->sendReview($order);
         $machine->transition($order->fresh(), OrderStatus::Returned, 'admin');
 
         // A driver's pending bonus evaporates rather than being paid for work
@@ -551,9 +556,12 @@ class OrderMoneyCycleTest extends TestCase
             null,
             $this->tenant['owner'],
         );
+        $this->sendReview($order);
         $reviews->confirm($order->fresh(), $this->customer);
 
         $machine->transition($order->fresh(), OrderStatus::Cleaning, 'laundry');
+
+        $machine->transition($order->fresh(), OrderStatus::Finished, 'laundry');
         $machine->transition($order->fresh(), OrderStatus::ReadyForDelivery, 'laundry');
         $this->walk($order->fresh(), TaskType::CollectFromLaundry, $driver);
         $this->walk($order->fresh(), TaskType::DeliverToCustomer, $driver);

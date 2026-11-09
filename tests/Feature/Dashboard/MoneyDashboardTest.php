@@ -505,6 +505,7 @@ class MoneyDashboardTest extends TestCase
 
         $reviews = app(OrderReviewService::class);
         $reviews->review($order, [['item_id' => $this->catalog['items'][0]->id, 'qty' => 2]], null, $this->tenant['owner']);
+        $this->sendReview($order);
         $reviews->confirm($order->fresh(), $customer);
 
         $order->fresh()->update(['payment_status' => 'paid', 'paid_at' => now(), 'payment_method' => 'cash']);

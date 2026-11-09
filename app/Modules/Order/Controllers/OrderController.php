@@ -10,8 +10,10 @@ use RuntimeException;
 /**
  * Orders in the dashboard.
  *
- * No create. An order is a customer's agreement; an operator reads it, and —
- * while it is still assignable — hands it to a laundry. Everything else about an
+ * No create here. An order is a customer's agreement; an operator reads it,
+ * and — while it is still assignable — hands it to a laundry. Taking one *for*
+ * a customer over the phone is `OrderPlacementController` («إنشاء طلب»,
+ * 2026-11-08), the app's own checkout behind it. Everything else about an
  * order's life happens through the state machine, from the driver app (P8) and
  * the laundry's review screen (P7).
  *

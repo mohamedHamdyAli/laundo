@@ -41,6 +41,7 @@ class TimeSlotSheet extends Sheet
             Column::make('end_time'),
             Column::make('applies_to'),
             Column::make('capacity'),
+            Column::make('max_pieces'),
             Column::readOnly('booked_today', fn (TimeSlot $slot) => app(SlotCapacity::class)->booked($slot, now())),
             Column::readOnly('booked_tomorrow', fn (TimeSlot $slot) => app(SlotCapacity::class)->booked($slot, now()->addDay())),
             Column::make('sort_order'),

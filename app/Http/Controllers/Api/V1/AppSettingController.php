@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
+use App\Modules\Order\Services\PieceLimits;
 use App\Modules\Setting\Models\Setting;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -157,6 +158,11 @@ class AppSettingController extends Controller
         $payload['app_logo_light'] = brandLogo('light');
 
         $payload['pages'] = array_keys(self::PAGES);
+
+        // «أقصى عدد قطع في الطلب» (the client's sheet, item 19, 2026-11-08):
+        // the basket stops here, null for no limit. The order is refused
+        // above it either way.
+        $payload['max_pieces_per_order'] = app(PieceLimits::class)->perOrder();
 
         return successReturnData($payload);
     }

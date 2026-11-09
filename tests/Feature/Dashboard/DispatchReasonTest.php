@@ -287,6 +287,20 @@ class DispatchReasonTest extends TestCase
 
         $order = $this->order();
 
+        $response = $this->actingAs($this->superAdmin())
+            ->get(route('admin.order.show', $order->id))
+            ->assertOk()
+            ->assertSee('Choose a driver');
+
+        // One leg nobody can take yet: the collection from the laundry, which
+        // waits for «خلص الغسيل» (item 18, 2026-11-08) — and it says that, not
+        // «No eligible driver», which reads as a staffing problem.
+        $response->assertDontSee('No eligible driver')
+            ->assertSee('No driver is sent to collect it until the laundry marks it finished.');
+
+        // Once the laundry has finished, somebody can take every leg: no reason anywhere.
+        $order->forceFill(['status' => OrderStatus::Finished->value])->save();
+
         $this->actingAs($this->superAdmin())
             ->get(route('admin.order.show', $order->id))
             ->assertOk()
@@ -392,10 +406,12 @@ class DispatchReasonTest extends TestCase
 
         $fresh = $order->fresh(['tasks']);
 
+        // Every leg but the collection from the laundry, which is nobody's
+        // before «خلص الغسيل» (item 18, 2026-11-08).
         $this->assertSame(4, $fresh->tasks->count());
         $this->assertSame(
-            [$driver->id, $driver->id, $driver->id, $driver->id],
-            $fresh->tasks->pluck('driver_id')->all()
+            [$driver->id, $driver->id, null, $driver->id],
+            $fresh->tasks->sortBy('sequence')->pluck('driver_id')->values()->all()
         );
     }
 
@@ -444,8 +460,10 @@ class DispatchReasonTest extends TestCase
 
         $fresh = $order->fresh(['tasks']);
 
-        // Three taken, the delivery leg left in the queue and named.
-        $this->assertSame(3, $fresh->tasks->whereNotNull('driver_id')->count());
+        // Two taken — the collection from the laundry is nobody's before
+        // «خلص الغسيل» (item 18, 2026-11-08) — the delivery leg left in the
+        // queue and named.
+        $this->assertSame(2, $fresh->tasks->whereNotNull('driver_id')->count());
         $this->assertNull($fresh->tasks->firstWhere('type', 'deliver_to_customer')->driver_id);
 
         $message = $response->getSession()->get('success');
@@ -472,7 +490,8 @@ class DispatchReasonTest extends TestCase
             ->post(route('admin.order.tasks.dispatch', $order->id))
             ->assertRedirect();
 
-        $this->assertSame(4, $order->fresh(['tasks'])->tasks->whereNotNull('driver_id')->count());
+        // Three: the collection from the laundry is nobody's before «خلص الغسيل» (item 18, 2026-11-08).
+        $this->assertSame(3, $order->fresh(['tasks'])->tasks->whereNotNull('driver_id')->count());
     }
 
     #[Test]

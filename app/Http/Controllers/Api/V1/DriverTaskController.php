@@ -11,8 +11,12 @@ use App\Modules\Order\Enums\TaskStatus;
 use App\Modules\Order\Enums\TaskType;
 use App\Modules\Order\Models\Order;
 use App\Modules\Order\Models\OrderTask;
+use App\Modules\Order\Models\TaskHold;
+use App\Modules\Order\Services\TaskHeld;
+use App\Modules\Order\Services\TaskHolds;
 use App\Modules\Order\Services\TaskService;
 use App\Modules\Payment\Models\DriverEarning;
+use App\Modules\Payment\Services\CashCustody;
 use App\Modules\Payment\Services\EarningService;
 use App\Modules\Wallet\Services\WalletService;
 use Carbon\Carbon;
@@ -35,6 +39,7 @@ class DriverTaskController extends Controller
     public function __construct(
         private readonly TaskService $tasks,
         private readonly PointsPolicy $points,
+        private readonly TaskHolds $holds,
     ) {}
 
     /**
@@ -95,6 +100,10 @@ class DriverTaskController extends Controller
                     ->where('completed_at', '>=', $today)->count(),
                 'late' => (clone $base())->late()->count(),
             ],
+            // «إجمالي التحصيل الكاش اليومي» (the client's sheet, item 17): cash
+            // taken at doors today (the business's day), and what is still
+            // with the driver until the office receives it.
+            'cash' => app(CashCustody::class)->forDriver($driver->id) + ['currency' => appCurrency()],
             'current_task' => $current ? $this->summary($current) : null,
         ]);
     }
@@ -283,6 +292,15 @@ class DriverTaskController extends Controller
                 (array) $request->file('photos', []),
                 $request->file('signature'),
             );
+        } catch (TaskHeld $held) {
+            // Recorded, not completed (items 9 and 10): the leg is still the
+            // driver's and still started. A 409 with its own key, never a 2xx —
+            // an app that predates this must not read it as «done» and move on;
+            // it shows `msg`, which says what is happening.
+            return apiEnvelope('awaiting_approval', 409, $held->hold->isMoney()
+                ? __('The amount is not what this order owes. It was sent to the management for approval — wait for their answer.')
+                : __('The count does not match what the laundry counted. It was sent to the management for approval — wait for their answer.'),
+                ['data' => $this->detail($task->fresh())]);
         } catch (RuntimeException $e) {
             return $this->translate($e);
         }
@@ -524,7 +542,7 @@ class DriverTaskController extends Controller
             // Why this leg cannot start yet, in words for the driver: the order
             // has no laundry (the pickup and the trip to the laundry, since
             // 2026-11-01), or a collection from the laundry is still waiting for
-            // its price. Null when nothing is in the way.
+            // the laundry to finish (item 18). Null when nothing is in the way.
             'blocked_reason' => $task->status->isOpen()
                 ? match ($task->blockedReason()) {
                     'order_has_no_laundry' => $this->noLaundry(),
@@ -621,8 +639,15 @@ class DriverTaskController extends Controller
             // What the screen has to render, driven by the leg rather than by the
             // app guessing from the type string.
             'requires_signature' => $type->requiresSignature(),
+            // «مسح الكود» — false on the collection from the laundry (the
+            // client's sheet, item 6). The server never required it; the app
+            // reads this instead of deciding by the type string.
+            'requires_scan' => $type->requiresScan(),
+            // «بانتظار موافقة الإدارة» — the latest time this leg was held, and
+            // what became of it (items 9 and 10). Null on a leg never held.
+            'hold' => $this->presentHold($this->holds->latestFor($task)),
             'requires_piece_count' => $type->countsPieces(),
-            'collects_payment' => $type->collectsPayment(),
+            'collects_payment' => $this->showsPayment($task),
             // «شماعات راجعة (اختياري)» — asked at the customer's door while the
             // points programme is on; each hanger earns the customer points.
             'accepts_hangers' => $type->takesHangers() && $this->points->enabled() && $this->points->maxHangersPerVisit() > 0,
@@ -659,8 +684,8 @@ class DriverTaskController extends Controller
             'laundry_note' => $order?->review_note,
             'piece_count' => $task->piece_count,
 
-            // «تفاصيل الدفع» on the final leg.
-            'payment' => $type->collectsPayment() ? $this->payment($order) + [
+            // «تفاصيل الدفع» on a leg at the door that takes money.
+            'payment' => $this->showsPayment($task) ? $this->payment($order, $task) + [
                 'collected' => $task->collected_amount !== null ? (float) $task->collected_amount : null,
             ] : null,
 
@@ -835,25 +860,71 @@ class DriverTaskController extends Controller
     }
 
     /**
-     * «تفاصيل الدفع» — what the delivery leg collects.
+     * «تفاصيل الدفع» — what a leg at the door collects.
+     *
+     * With a leg, its own figure (`OrderTask::toCollect()`): the pickup trip's
+     * fee at the pickup of a cash order («رسوم المشوار», 2026-11-08), what is
+     * still owed at the delivery. Without one (the order screen), the delivery's.
      *
      * @return array<string, mixed>
      */
-    private function payment(Order $order): array
+    private function payment(Order $order, ?OrderTask $leg = null): array
     {
         $paid = $order->payment_status === 'paid';
 
         return [
             'amount_due' => $order->payableTotal(),
+            // Taken already — the pickup's trip fee, on a cash order.
+            'paid_so_far' => $order->paidSoFar(),
             'method' => $order->payment_method,
             'status' => $order->payment_status,
-            // What changes hands at the door: nothing on an order already paid,
-            // the whole bill on one that is not. `amount_due` alone told the
-            // driver to collect a card-paid order again.
-            'to_collect' => $paid ? 0.0 : $order->payableTotal(),
+            // What changes hands at the door on this leg: nothing on an order
+            // already paid. `amount_due` alone told the driver to collect a
+            // card-paid order again.
+            'to_collect' => $leg ? $leg->toCollect() : ($paid ? 0.0 : $order->stillOwed()),
             // Whether «تأكيد» needs `collected_amount` (0 when nothing was paid).
-            'collect_required' => ! $paid,
+            'collect_required' => $leg ? $leg->requiresCollectedAmount() : ! $paid,
         ];
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    private function presentHold(?TaskHold $hold): ?array
+    {
+        if (! $hold) {
+            return null;
+        }
+
+        // The laundry's count is the number the driver is held to, and a
+        // driver shown it can type it straight back and walk the hold away —
+        // the same reason `expected_pieces` is withheld (`countsRevealed()`).
+        // So on a held count it stays out until the platform has decided for
+        // it; cash is different — the amount owed is `payment.to_collect`.
+        $secret = ! $hold->isMoney() && $hold->status !== TaskHold::APPROVED;
+
+        return [
+            'id' => $hold->id,
+            // `piece_count` | `collected_amount`
+            'kind' => $hold->kind,
+            'reported' => (float) $hold->reported,
+            'expected' => ! $secret && $hold->expected !== null ? (float) $hold->expected : null,
+            // `pending` (wait) | `approved` (the leg is complete) | `rejected`
+            // (recount / collect again — `note` says why) | `withdrawn`.
+            'status' => $hold->status,
+            'note' => $hold->note,
+            'message' => $secret ? __('The count does not match what the laundry counted.') : $hold->describe(),
+            'decided_at_iso' => isoDate($hold->decided_at),
+        ];
+    }
+
+    /**
+     * Whether this leg shows «تفاصيل الدفع»: the delivery always (it says
+     * «paid» too), the pickup only when it has a trip fee to take.
+     */
+    private function showsPayment(OrderTask $task): bool
+    {
+        return $task->type === TaskType::DeliverToCustomer || $task->toCollect() > 0;
     }
 
     private function noLaundry(): string
@@ -861,9 +932,14 @@ class DriverTaskController extends Controller
         return __('This order has no laundry yet. Operations will assign one before it can move.');
     }
 
+    /**
+     * Why a collection from the laundry cannot start: the laundry has not
+     * pressed «خلص الغسيل» (item 18, 2026-11-08) — before that the price was
+     * not agreed either, and the driver is told the same thing either way.
+     */
     private function notReady(): string
     {
-        return __("This order is still waiting for the laundry's review and the customer's price confirmation.");
+        return __('The laundry has not finished this order yet — collect it once the laundry marks it finished.');
     }
 
     private function translate(RuntimeException $e): JsonResponse
@@ -892,10 +968,8 @@ class DriverTaskController extends Controller
                 ['hangers_returned' => [__('One visit can record up to :max hangers.', ['max' => $this->points->maxHangersPerVisit()])]],
                 __('One visit can record up to :max hangers.', ['max' => $this->points->maxHangersPerVisit()])
             ),
-            'collected_amount_too_high' => failReturnValidation(
-                ['collected_amount' => [__('The amount is more than the customer owes.')]],
-                __('The amount is more than the customer owes.')
-            ),
+            // `collected_amount_too_high` is gone (2026-11-08): more than is
+            // owed is held for the platform's approval (`TaskHeld`), not refused.
             default => failReturnMsg(__('We could not complete that.')),
         };
     }

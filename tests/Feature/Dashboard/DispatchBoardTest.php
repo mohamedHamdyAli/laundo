@@ -94,13 +94,14 @@ class DispatchBoardTest extends TestCase
             ->get(route('admin.dispatch.index'))
             ->assertOk();
 
-        // All four legs of the one order, each on its own row — which is the
-        // point: they are legs, not orders.
+        // Every leg of the one order that needs a person, each on its own row —
+        // which is the point: they are legs, not orders.
         $response->assertSee('#'.$order->code, false);
         $response->assertSee(__('Pick up from customer'), false);
         $response->assertSee(__('Deliver to customer'), false);
 
-        $this->assertSame(4, $response->viewData('counts')['waiting']);
+        // Three: the collection from the laundry is nobody's before «خلص الغسيل» (item 18, 2026-11-08).
+        $this->assertSame(3, $response->viewData('counts')['waiting']);
         $this->assertSame(1, $response->viewData('counts')['orders']);
     }
 
@@ -118,7 +119,8 @@ class DispatchBoardTest extends TestCase
             ->assertOk()
             ->viewData('counts');
 
-        $this->assertSame(3, $counts['waiting']);
+        // Two, not three: the collection from the laundry is nobody's before «خلص الغسيل» (item 18, 2026-11-08).
+        $this->assertSame(2, $counts['waiting']);
     }
 
     #[Test]
@@ -132,7 +134,8 @@ class DispatchBoardTest extends TestCase
             ->assertOk()
             ->viewData('counts');
 
-        $this->assertSame(3, $counts['waiting']);
+        // Two, not three: the collection from the laundry is nobody's before «خلص الغسيل» (item 18, 2026-11-08).
+        $this->assertSame(2, $counts['waiting']);
     }
 
     #[Test]
@@ -149,8 +152,9 @@ class DispatchBoardTest extends TestCase
             ->assertOk()
             ->viewData('counts');
 
-        $this->assertSame(4, $counts['waiting']);
-        $this->assertSame(3, $counts['never_taken']);
+        // Three and two: the collection from the laundry is nobody's before «خلص الغسيل» (item 18, 2026-11-08).
+        $this->assertSame(3, $counts['waiting']);
+        $this->assertSame(2, $counts['never_taken']);
         $this->assertSame(1, $counts['failed']);
     }
 
@@ -207,7 +211,8 @@ class DispatchBoardTest extends TestCase
             ->assertOk()
             ->viewData('counts');
 
-        $this->assertSame(3, $counts['waiting']);
+        // Two, not three: the collection from the laundry is nobody's before «خلص الغسيل» (item 18, 2026-11-08).
+        $this->assertSame(2, $counts['waiting']);
     }
 
     #[Test]
@@ -342,7 +347,8 @@ class DispatchBoardTest extends TestCase
 
         $response->assertSee('#'.$mine->code, false);
         $response->assertDontSee('#'.$theirs->code, false);
-        $this->assertSame(4, $response->viewData('counts')['waiting']);
+        // Three: the collection from the laundry is nobody's before «خلص الغسيل» (item 18, 2026-11-08).
+        $this->assertSame(3, $response->viewData('counts')['waiting']);
     }
 
     #[Test]

@@ -102,9 +102,12 @@ class TrackReturnLegTest extends TestCase
             null,
             $this->tenant['owner'],
         );
+        $this->sendReview($order);
         $reviews->confirm($order->fresh(), $this->customer);
 
         $machine->transition($order->fresh(), OrderStatus::Cleaning, 'laundry');
+
+        $machine->transition($order->fresh(), OrderStatus::Finished, 'laundry');
         $machine->transition($order->fresh(), OrderStatus::ReadyForDelivery, 'laundry');
 
         return $order->fresh();
@@ -241,9 +244,9 @@ class TrackReturnLegTest extends TestCase
 
         $steps = collect($data['steps'])->keyBy('status');
 
-        // Eight, not the landing page's six: the two «on the way» states are
-        // what the tracking screen adds.
-        $this->assertCount(8, $data['steps']);
+        // Nine, not the landing page's six: the two «on the way» states are
+        // what the tracking screen adds, and «خلص الغسيل» (item 18).
+        $this->assertCount(9, $data['steps']);
 
         $this->assertTrue($steps[OrderStatus::ReadyForDelivery->value]['reached']);
         $this->assertFalse($steps[OrderStatus::Delivered->value]['reached']);

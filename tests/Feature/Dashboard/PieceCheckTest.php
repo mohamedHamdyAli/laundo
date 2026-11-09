@@ -6,18 +6,20 @@ use App\Models\ActivityLog;
 use App\Models\Language;
 use App\Models\Role;
 use App\Modules\Driver\Models\Driver;
+use App\Modules\Notification\Services\PieceCountNotifier;
 use App\Modules\Order\Enums\OrderStatus;
 use App\Modules\Order\Enums\PieceCheckStep;
 use App\Modules\Order\Enums\PieceCountSource;
+use App\Modules\Order\Enums\TaskStatus;
 use App\Modules\Order\Enums\TaskType;
 use App\Modules\Order\Models\Order;
 use App\Modules\Order\Models\OrderTask;
 use App\Modules\Order\Models\PieceDiscrepancy;
+use App\Modules\Order\Models\TaskHold;
 use App\Modules\Order\Repositories\OrderRepository;
 use App\Modules\Order\Services\DriverDispatcher;
 use App\Modules\Order\Services\OrderReviewService;
 use App\Modules\Order\Services\OrderService;
-use App\Modules\Order\Services\OrderStateMachine;
 use App\Modules\Order\Services\PieceCheck;
 use App\Modules\Order\Services\TaskService;
 use App\Modules\Report\Services\DashboardSummary;
@@ -28,21 +30,26 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Notification;
+use Illuminate\Testing\TestResponse;
 use Laravel\Sanctum\Sanctum;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 /**
- * «عدد القطع المستلمة», checked against the count before it.
+ * «عدد القطع المستلمة», checked.
  *
- * The count was stored and compared with nothing — a customer ordering one
- * piece and a driver counting two raised no flag anywhere. The owner's rules:
- * each count is measured against the last number somebody stood behind (the
- * customer's order, the handover before, what was handed to the laundry, the
- * laundry's review); the platform and the order's laundry are both told; it
- * stays open until somebody at the platform reviews it with a note and the
- * real count; the handover is never refused; and the driver is not shown the
- * expected number until they have counted.
+ * Since 2026-11-08 (the client's sheet, items 9 and 12) the laundry's count is
+ * the one that stands: the driver counts only when taking the pieces back out
+ * of the laundry, a count sent at the doorstep or at the laundry's door is
+ * ignored, and a collection that disagrees with the laundry is held for the
+ * platform rather than completed — approved, its difference is recorded
+ * already closed by whoever approved it.
+ *
+ * Open differences still exist — orders counted under the old rule carry them
+ * — so the surfaces stay: the bell (platform and the order's laundry, in the
+ * panel's language), the order screen, the badge, the queues, the filter, and
+ * «تمت المراجعة», which only the platform may press, with a note and the real
+ * count.
  */
 class PieceCheckTest extends TestCase
 {
@@ -87,303 +94,159 @@ class PieceCheckTest extends TestCase
     // ------------------------------------------------------------ the rule
 
     #[Test]
-    public function counts_that_agree_raise_nothing_and_record_what_they_were_held_to(): void
+    public function a_count_sent_at_the_pickup_or_the_handover_is_ignored_and_raises_nothing(): void
     {
         Notification::fake();
-        $order = $this->placedOrder(qty: 2);
+        $order = $this->placedOrder(qty: 1);
 
+        // The owner's screenshot — one ordered, two counted at the door — and
+        // three at the laundry's door, from an app that still asks. Neither is
+        // the driver's to count any more, so neither is stored or compared.
         $this->walk($order, TaskType::PickupFromCustomer, 2, signed: true);
-        $this->walk($order, TaskType::DeliverToLaundry, 2);
+        $this->walk($order, TaskType::DeliverToLaundry, 3);
 
-        $pickup = $this->leg($order, TaskType::PickupFromCustomer);
-        $handover = $this->leg($order, TaskType::DeliverToLaundry);
-
-        $this->assertSame(2, $pickup->expected_piece_count);
-        $this->assertSame(PieceCountSource::CustomerOrder, $pickup->expected_piece_source);
-        $this->assertSame(2, $handover->expected_piece_count);
-        $this->assertSame(PieceCountSource::PreviousLeg, $handover->expected_piece_source);
+        foreach ([TaskType::PickupFromCustomer, TaskType::DeliverToLaundry] as $type) {
+            $leg = $this->leg($order, $type);
+            $this->assertSame(TaskStatus::Completed, $leg->status);
+            $this->assertNull($leg->piece_count);
+            $this->assertNull($leg->expected_piece_count);
+            $this->assertNull($leg->expected_piece_source);
+        }
 
         $this->assertSame(0, PieceDiscrepancy::count());
+        $this->assertSame(0, TaskHold::count());
         $this->assertSame(0, $this->pieceNotices());
+
+        // Nor do they reach what the collection will be held to: with no
+        // review yet, that is the customer's own list, not a driver's number.
+        $collection = $this->leg($order->fresh(), TaskType::CollectFromLaundry);
+        $this->assertSame([1, PieceCountSource::CustomerOrder], app(PieceCheck::class)->expectedFor($collection));
     }
 
     #[Test]
-    public function the_screenshot_case_one_ordered_two_counted_is_raised_with_the_platform_and_the_laundry(): void
+    public function the_laundrys_review_has_no_handover_count_to_be_held_to_and_raises_nothing(): void
     {
         Notification::fake();
-        $other = $this->laundryWithOwner('B', '+201011110003', '+201011110004');
-        $order = $this->placedOrder(qty: 1);
+        $order = $this->atTheLaundry(ordered: 5);
 
-        $this->walk($order, TaskType::PickupFromCustomer, 2, signed: true);
-
-        $discrepancy = $this->leg($order, TaskType::PickupFromCustomer)->discrepancy;
-        $this->assertNotNull($discrepancy);
-        $this->assertTrue($discrepancy->open);
-        $this->assertSame(PieceCheckStep::PickupFromCustomer, $discrepancy->step);
-        $this->assertSame([2, 1], [$discrepancy->counted, $discrepancy->expected]);
-        $this->assertSame($this->driver->id, $discrepancy->counted_by);
-
-        $this->assertSame(1, $this->pieceNotices($this->superAdmin(), (string) $order->code));
-        $this->assertSame(1, $this->pieceNotices($this->tenant['owner'], (string) $order->code));
-        // Another laundry never hears about this one's pieces.
-        $this->assertSame(0, $this->pieceNotices($other['owner']));
-        // Nor does the driver who counted, or the customer.
-        $this->assertSame(0, $this->pieceNotices($this->driver));
-        $this->assertSame(0, $this->pieceNotices($this->customer));
-    }
-
-    #[Test]
-    public function the_handover_to_the_laundry_is_measured_against_the_pickup_not_the_order(): void
-    {
-        Notification::fake();
-        $order = $this->placedOrder(qty: 1);
-
-        // Collected three against one ordered: raised once, at the pickup.
-        $this->walk($order, TaskType::PickupFromCustomer, 3, signed: true);
-        $this->assertSame(2, $this->pieceNotices()); // super admin + owner
-
-        // Three handed over: the same pieces, nothing new to say.
-        $this->walk($order, TaskType::DeliverToLaundry, 3);
-        $this->assertSame(2, $this->pieceNotices());
-
-        $handover = $this->leg($order, TaskType::DeliverToLaundry);
-        $this->assertSame(3, $handover->expected_piece_count);
-        $this->assertNull($handover->discrepancy);
-    }
-
-    #[Test]
-    public function a_piece_lost_between_the_doorstep_and_the_laundry_is_named_at_that_step(): void
-    {
-        $order = $this->placedOrder(qty: 3);
-
-        $this->walk($order, TaskType::PickupFromCustomer, 3, signed: true);
-        $this->walk($order, TaskType::DeliverToLaundry, 2);
-
-        $discrepancy = $this->leg($order, TaskType::DeliverToLaundry)->discrepancy;
-        $this->assertSame(PieceCheckStep::DeliverToLaundry, $discrepancy->step);
-        $this->assertSame([2, 3], [$discrepancy->counted, $discrepancy->expected]);
-        $this->assertSame(PieceCountSource::PreviousLeg, $discrepancy->expected_source);
-        $this->assertNull($this->leg($order, TaskType::PickupFromCustomer)->discrepancy);
-    }
-
-    #[Test]
-    public function a_count_the_review_corrected_is_what_the_next_handover_is_held_to(): void
-    {
-        Notification::fake();
-        $order = $this->placedOrder(qty: 2);
-
-        // A typo at the doorstep: three typed, two collected.
-        $this->walk($order, TaskType::PickupFromCustomer, 3, signed: true);
-        $discrepancy = $this->leg($order, TaskType::PickupFromCustomer)->discrepancy;
-        app(PieceCheck::class)->resolve($discrepancy, $this->superAdmin(), 'called the customer — two pieces, the driver mistyped', 2);
-        $this->assertSame(2, $this->pieceNotices());
-
-        // Two handed over is right, and says nothing new.
-        $this->walk($order, TaskType::DeliverToLaundry, 2);
-
-        $handover = $this->leg($order, TaskType::DeliverToLaundry);
-        $this->assertSame(2, $handover->expected_piece_count);
-        $this->assertNull($handover->discrepancy);
-        $this->assertSame(2, $this->pieceNotices());
-    }
-
-    #[Test]
-    public function the_laundry_counting_fewer_than_it_was_handed_is_raised_at_the_review(): void
-    {
-        Notification::fake();
-        $order = $this->placedOrder(qty: 5);
-        $this->walk($order, TaskType::PickupFromCustomer, 5, signed: true);
-        $this->walk($order, TaskType::DeliverToLaundry, 5);
-
-        // Five handed over, four found on the counting table.
+        // Five ordered, four on the counting table: the laundry's count is the
+        // one that stands, and there is no driver's count to set against it.
         $this->review($order, 4);
 
-        $discrepancy = PieceDiscrepancy::where('order_id', $order->id)->sole();
-        $this->assertSame(PieceCheckStep::LaundryReview, $discrepancy->step);
-        $this->assertNull($discrepancy->order_task_id);
-        $this->assertSame([4, 5], [$discrepancy->counted, $discrepancy->expected]);
-        $this->assertSame($this->tenant['owner']->id, $discrepancy->counted_by);
-        $this->assertTrue($discrepancy->open);
-
-        $this->assertSame(1, $this->pieceNotices($this->superAdmin(), (string) $order->code));
-        $this->assertSame(1, $this->pieceNotices($this->tenant['owner'], (string) $order->code));
-    }
-
-    #[Test]
-    public function a_review_that_agrees_with_the_handover_raises_nothing(): void
-    {
-        Notification::fake();
-        $order = $this->placedOrder(qty: 2);
-        $this->walk($order, TaskType::PickupFromCustomer, 3, signed: true);
-        $this->walk($order, TaskType::DeliverToLaundry, 3);
-
-        // The customer said two, the drivers carried three, the laundry counts
-        // three: the disagreement was at the doorstep, and only there.
-        $this->review($order, 3);
-
-        $this->assertSame(1, PieceDiscrepancy::where('order_id', $order->id)->count());
-        $this->assertSame(PieceCheckStep::PickupFromCustomer, PieceDiscrepancy::where('order_id', $order->id)->sole()->step);
-    }
-
-    #[Test]
-    public function a_second_review_that_finds_the_piece_closes_it(): void
-    {
-        $order = $this->placedOrder(qty: 5);
-        $this->walk($order, TaskType::PickupFromCustomer, 5, signed: true);
-        $this->walk($order, TaskType::DeliverToLaundry, 5);
-        $this->review($order, 4);
-
-        // The customer disputed the count, the laundry recounted and found it.
-        app(OrderReviewService::class)->dispute($order->fresh(), $this->customer, 'there were five');
-        $this->review($order, 5);
-
-        $discrepancy = PieceDiscrepancy::where('order_id', $order->id)->sole();
-        $this->assertFalse($discrepancy->open);
-        $this->assertSame(5, $discrepancy->confirmed_count);
-        $this->assertNull($discrepancy->resolved_by);
+        $this->assertSame(0, PieceDiscrepancy::where('order_id', $order->id)->count());
         $this->assertSame(0, Order::withOpenPieceCheck()->count());
+        $this->assertSame(0, $this->pieceNotices());
     }
 
     #[Test]
     public function the_collection_from_the_laundry_is_measured_against_its_review(): void
     {
-        $order = $this->placedOrder(qty: 2);
-        $this->walk($order, TaskType::PickupFromCustomer, 2, signed: true);
-        $this->walk($order, TaskType::DeliverToLaundry, 2);
+        $order = $this->atTheLaundry(ordered: 2);
 
-        // The laundry found three — a discrepancy at the review — and the
-        // customer agreed.
+        // The laundry found three against the two ordered, and the customer agreed.
         $this->review($order, 3);
-        app(OrderReviewService::class)->confirm($order->fresh(), $this->customer);
-        $machine = app(OrderStateMachine::class);
-        $machine->transition($order->fresh(), OrderStatus::Cleaning, 'laundry');
-        $machine->transition($order->fresh(), OrderStatus::ReadyForDelivery, 'laundry');
+        $order = $this->agreed($order);
 
-        // Three collected: the review's number, so nothing new to raise.
-        $this->walk($order->fresh(), TaskType::CollectFromLaundry, 3);
+        // Three collected: the review's number, so it completes at once.
+        $this->walk($order, TaskType::CollectFromLaundry, 3);
 
         $collection = $this->leg($order, TaskType::CollectFromLaundry);
         $this->assertSame(3, $collection->expected_piece_count);
         $this->assertSame(PieceCountSource::LaundryReview, $collection->expected_piece_source);
         $this->assertNull($collection->discrepancy);
+        $this->assertSame(0, TaskHold::count());
     }
 
     #[Test]
-    public function the_collection_falls_back_to_the_handover_when_the_laundry_has_not_reviewed(): void
-    {
-        $order = $this->placedOrder(qty: 2);
-        $this->walk($order, TaskType::PickupFromCustomer, 2, signed: true);
-        $this->walk($order, TaskType::DeliverToLaundry, 2);
-
-        $collection = $this->leg($order->fresh(), TaskType::CollectFromLaundry);
-        $this->assertNull($collection->order->final_items_count);
-
-        $this->assertSame([2, PieceCountSource::PreviousLeg], app(PieceCheck::class)->expectedFor($collection));
-    }
-
-    #[Test]
-    public function a_service_priced_after_inspection_has_nothing_to_hold_the_first_count_to(): void
+    public function a_collection_that_disagrees_with_the_laundry_is_held_and_once_approved_leaves_one_closed_difference(): void
     {
         Notification::fake();
-        $order = $this->placedOrder(qty: 1);
-        // No pieces listed: the pickup count is the first number anybody has.
-        $order->forceFill(['estimated_items_count' => 0])->save();
+        $order = $this->atTheLaundry(ordered: 2);
+        $this->review($order, 2);
+        $order = $this->agreed($order);
+        $collection = $this->startedLeg($order, TaskType::CollectFromLaundry);
 
-        $this->walk($order, TaskType::PickupFromCustomer, 7, signed: true);
+        // Three taken out against the laundry's two: held, not completed — and
+        // nothing recorded yet, because nobody has looked at it.
+        $this->confirmLeg($collection, ['piece_count' => 3])
+            ->assertStatus(409)
+            ->assertJsonPath('key', 'awaiting_approval');
 
-        $pickup = $this->leg($order, TaskType::PickupFromCustomer);
-        $this->assertNull($pickup->expected_piece_count);
-        $this->assertNull($pickup->discrepancy);
-        $this->assertSame(0, $this->pieceNotices());
-    }
+        $this->assertSame(TaskStatus::Started, $collection->fresh()->status);
+        $this->assertSame(0, PieceDiscrepancy::count());
 
-    #[Test]
-    public function a_review_entered_before_the_handover_is_confirmed_is_checked_when_it_is(): void
-    {
-        Notification::fake();
-        $order = $this->placedOrder(qty: 5);
-        $this->walk($order, TaskType::PickupFromCustomer, 5, signed: true);
+        $operator = $this->platformOperator();
+        app(TaskService::class)->approveHold(TaskHold::sole(), $operator, 'a sock was inside a shirt at the review');
 
-        // The laundry counts the bag while the driver is still on the app:
-        // nothing handed over yet to hold the review to.
-        $this->review($order, 4);
-        $this->assertSame(0, PieceDiscrepancy::where('order_id', $order->id)->count());
+        $collection->refresh();
+        $this->assertSame(TaskStatus::Completed, $collection->status);
+        $this->assertSame(3, $collection->piece_count);
+        $this->assertSame(2, $collection->expected_piece_count);
 
-        // Five handed over — the handover agrees with the pickup, the review
-        // does not agree with the handover.
-        $this->walk($order->fresh(), TaskType::DeliverToLaundry, 5);
-
+        // Recorded and closed in the same step, by whoever approved it.
         $discrepancy = PieceDiscrepancy::where('order_id', $order->id)->sole();
-        $this->assertSame(PieceCheckStep::LaundryReview, $discrepancy->step);
-        $this->assertSame([4, 5], [$discrepancy->counted, $discrepancy->expected]);
-        $this->assertSame(2, $this->pieceNotices());
+        $this->assertSame($collection->id, $discrepancy->order_task_id);
+        $this->assertSame(PieceCheckStep::CollectFromLaundry, $discrepancy->step);
+        $this->assertSame([3, 2], [$discrepancy->counted, $discrepancy->expected]);
+        $this->assertFalse($discrepancy->open);
+        $this->assertSame(3, $discrepancy->confirmed_count);
+        $this->assertSame($operator->id, $discrepancy->resolved_by);
+        $this->assertSame('a sock was inside a shirt at the review', $discrepancy->note);
+
+        // Already looked at: no bell asking somebody to look, nothing in the
+        // badge or the filter, and the order screen lists it as reviewed.
+        $this->assertSame(0, $this->pieceNotices());
+        $this->assertSame(0, Order::withOpenPieceCheck()->count());
+
+        $this->actingAs($this->superAdmin())
+            ->get(route('admin.order.show', $order->id))
+            ->assertOk()
+            ->assertDontSee(__('The piece count does not match'))
+            ->assertSee(__('Piece count differences reviewed'))
+            ->assertSee('a sock was inside a shirt at the review');
+
+        // Approved twice is refused rather than recording it twice.
+        try {
+            app(TaskService::class)->approveHold(TaskHold::sole(), $operator);
+            $this->fail('A hold was approved twice.');
+        } catch (\RuntimeException $e) {
+            $this->assertSame('nothing_to_decide', $e->getMessage());
+        }
+
+        $this->assertSame(1, PieceDiscrepancy::where('order_id', $order->id)->count());
     }
 
     #[Test]
     public function the_collection_is_held_to_what_the_platform_found_at_the_review(): void
     {
         Notification::fake();
-        $order = $this->placedOrder(qty: 5);
-        $this->walk($order, TaskType::PickupFromCustomer, 5, signed: true);
-        $this->walk($order, TaskType::DeliverToLaundry, 5);
+        $order = $this->atTheLaundry(ordered: 5);
         $this->review($order, 4);
 
-        // The platform looked: the laundry missed one, there are five.
-        app(PieceCheck::class)->resolve($this->openDiscrepancy($order), $this->superAdmin(), 'found the fifth on the rack', 5);
+        // A difference at the review, as orders counted under the old rule
+        // carry, and the platform looked: the laundry missed one, there are five.
+        $discrepancy = PieceDiscrepancy::create([
+            'order_id' => $order->id,
+            'order_task_id' => null,
+            'step' => PieceCheckStep::LaundryReview,
+            'counted' => 4,
+            'expected' => 5,
+            'expected_source' => PieceCountSource::PreviousLeg,
+            'counted_by' => $this->tenant['owner']->id,
+        ]);
+        app(PieceCheck::class)->resolve($discrepancy, $this->superAdmin(), 'found the fifth on the rack', 5);
 
-        app(OrderReviewService::class)->confirm($order->fresh(), $this->customer);
-        $machine = app(OrderStateMachine::class);
-        $machine->transition($order->fresh(), OrderStatus::Cleaning, 'laundry');
-        $machine->transition($order->fresh(), OrderStatus::ReadyForDelivery, 'laundry');
+        $order = $this->agreed($order);
 
-        // Five collected is right — not a second alert against the review's four.
-        $this->walk($order->fresh(), TaskType::CollectFromLaundry, 5);
+        // Five collected is right — not held against the review's four.
+        $this->walk($order, TaskType::CollectFromLaundry, 5);
 
         $collection = $this->leg($order, TaskType::CollectFromLaundry);
         $this->assertSame(5, $collection->expected_piece_count);
         $this->assertSame(PieceCountSource::Settled, $collection->expected_piece_source);
         $this->assertNull($collection->discrepancy);
-        $this->assertSame(2, $this->pieceNotices());
-    }
-
-    #[Test]
-    public function a_second_review_is_held_to_what_the_platform_settled(): void
-    {
-        Notification::fake();
-        $order = $this->placedOrder(qty: 5);
-        $this->walk($order, TaskType::PickupFromCustomer, 5, signed: true);
-        $this->walk($order, TaskType::DeliverToLaundry, 5);
-        $this->review($order, 4);
-
-        // The platform: really four, the driver miscounted.
-        app(PieceCheck::class)->resolve($this->openDiscrepancy($order), $this->superAdmin(), 'driver miscounted', 4);
-
-        // The customer disputes and the laundry recounts four again: settled,
-        // nothing new to raise.
-        app(OrderReviewService::class)->dispute($order->fresh(), $this->customer, 'check again');
-        $this->review($order, 4);
-
-        $this->assertSame(1, PieceDiscrepancy::where('order_id', $order->id)->count());
-        $this->assertSame(0, Order::withOpenPieceCheck()->count());
-        $this->assertSame(2, $this->pieceNotices());
-    }
-
-    #[Test]
-    public function the_same_handover_confirmed_twice_is_completed_once(): void
-    {
-        Notification::fake();
-        $order = $this->placedOrder(qty: 1);
-        $this->walk($order, TaskType::PickupFromCustomer, 2, signed: true);
-
-        $pickup = $this->leg($order, TaskType::PickupFromCustomer);
-        Sanctum::actingAs($this->driver);
-
-        // A retry of the same «تأكيد» after it went through.
-        $this->postJson("/api/v1/driver/tasks/{$pickup->id}/complete", ['piece_count' => 2], $this->apiHeaders())
-            ->assertStatus(400);
-
-        $this->assertSame(1, PieceDiscrepancy::where('order_id', $order->id)->count());
-        $this->assertSame(2, $this->pieceNotices());
+        $this->assertSame(0, TaskHold::count());
+        $this->assertSame(0, $this->pieceNotices());
     }
 
     // ------------------------------------------------------------ who hears
@@ -398,11 +261,19 @@ class PieceCheckTest extends TestCase
         Role::create(['name' => 'Support', 'slug' => 'support', 'type' => 'dashboard']);
         $this->grant('support', ['order.view']);
         $support = $this->platformUser('+201000000072', 'support');
+        $other = $this->laundryWithOwner('B', '+201011110003', '+201011110004');
 
         $order = $this->mismatched();
+        $this->announce($order);
 
         $this->assertSame(1, $this->pieceNotices($moderator, (string) $order->code));
         $this->assertSame(0, $this->pieceNotices($support));
+        // The order's laundry hears — they are its pieces — and no other.
+        $this->assertSame(1, $this->pieceNotices($this->tenant['owner'], (string) $order->code));
+        $this->assertSame(0, $this->pieceNotices($other['owner']));
+        // Nor the driver who counted, or the customer.
+        $this->assertSame(0, $this->pieceNotices($this->driver));
+        $this->assertSame(0, $this->pieceNotices($this->customer));
 
         $discrepancy = $this->openDiscrepancy($order);
         $this->actingAs($moderator)
@@ -416,12 +287,15 @@ class PieceCheckTest extends TestCase
     public function the_platform_is_told_in_the_panels_language_not_the_drivers(): void
     {
         Notification::fake();
-        // The panel runs in Arabic; the driver's phone asks in English.
+        // The panel runs in Arabic; the request that raised it asked in English,
+        // as a driver's phone does.
         Language::query()->update(['default' => 'false']);
         Language::where('code', 'ar')->update(['default' => 'true']);
         Cache::flush();
 
         $order = $this->mismatched();
+        app()->setLocale('en');
+        $this->announce($order);
 
         $titles = Notification::sent($this->superAdmin(), AdminNotification::class)
             ->map(fn (AdminNotification $n) => (string) ($n->toArray($this->superAdmin())['title'] ?? ''))
@@ -566,10 +440,18 @@ class PieceCheckTest extends TestCase
     #[Test]
     public function an_order_with_two_open_disagreements_is_one_order_to_look_at(): void
     {
-        $order = $this->placedOrder(qty: 1);
-        // Two counted against one ordered, then three against the two collected.
-        $this->walk($order, TaskType::PickupFromCustomer, 2, signed: true);
-        $this->walk($order, TaskType::DeliverToLaundry, 3);
+        // Two counted at the doorstep against one ordered, and the laundry
+        // finding three against those two.
+        $order = $this->mismatched();
+        PieceDiscrepancy::create([
+            'order_id' => $order->id,
+            'order_task_id' => null,
+            'step' => PieceCheckStep::LaundryReview,
+            'counted' => 3,
+            'expected' => 2,
+            'expected_source' => PieceCountSource::PreviousLeg,
+            'counted_by' => $this->tenant['owner']->id,
+        ]);
         $this->assertSame(2, PieceDiscrepancy::open()->where('order_id', $order->id)->count());
 
         $this->actingAs($this->superAdmin());
@@ -619,57 +501,63 @@ class PieceCheckTest extends TestCase
     // ------------------------------------------------------------ the driver app
 
     #[Test]
+    public function the_app_is_asked_for_a_count_only_at_the_collection_from_the_laundry(): void
+    {
+        // Walked to «خلص الغسيل» (item 18, 2026-11-08) and the collection given
+        // to the driver: before it, that leg is nobody's to open.
+        $order = $this->atTheLaundry(ordered: 1);
+        $this->review($order, 1);
+        $order = $this->agreed($order);
+        app(DriverDispatcher::class)->assign($this->leg($order, TaskType::CollectFromLaundry), $this->driver);
+
+        foreach ([
+            TaskType::PickupFromCustomer->value => false,
+            TaskType::DeliverToLaundry->value => false,
+            TaskType::CollectFromLaundry->value => true,
+            TaskType::DeliverToCustomer->value => false,
+        ] as $type => $asked) {
+            $this->taskScreen($this->leg($order, TaskType::from($type)))
+                ->assertJsonPath('data.requires_piece_count', $asked);
+        }
+    }
+
+    #[Test]
     public function the_driver_is_not_shown_the_expected_number_until_they_have_counted(): void
     {
-        $order = $this->placedOrder(qty: 1);
-        $pickup = $this->leg($order, TaskType::PickupFromCustomer);
+        $order = $this->atTheLaundry(ordered: 2);
+        $this->review($order, 2);
+        $order = $this->agreed($order);
+        $collection = $this->startedLeg($order, TaskType::CollectFromLaundry);
 
-        $this->app['auth']->forgetGuards();
-        Sanctum::actingAs($this->driver);
+        // Shown the laundry's number first, a driver copies it instead of counting.
+        $this->taskScreen($collection)->assertJsonPath('data.expected_pieces', null);
 
-        // Shown the number first, a driver copies it instead of counting.
-        $this->getJson("/api/v1/driver/tasks/{$pickup->id}", $this->apiHeaders())
-            ->assertOk()
-            ->assertJsonPath('data.expected_pieces', null);
+        $this->confirmLeg($collection, ['piece_count' => 3])->assertStatus(409);
+        app(TaskService::class)->approveHold(TaskHold::sole(), $this->platformOperator());
 
-        $this->walk($order, TaskType::PickupFromCustomer, 3, signed: true);
-
-        // Once it is in, the app can say the office has been told.
-        Sanctum::actingAs($this->driver);
-        $this->getJson("/api/v1/driver/tasks/{$pickup->id}", $this->apiHeaders())
-            ->assertOk()
-            ->assertJsonPath('data.expected_pieces', 1)
+        // Once it is in, the app can say what it was held to.
+        $this->taskScreen($collection)
+            ->assertJsonPath('data.expected_pieces', 2)
             ->assertJsonPath('data.piece_count', 3);
-
-        // The next leg, not yet counted, is held back too.
-        $handover = $this->leg($order, TaskType::DeliverToLaundry);
-        $this->getJson("/api/v1/driver/tasks/{$handover->id}", $this->apiHeaders())
-            ->assertOk()
-            ->assertJsonPath('data.expected_pieces', null);
     }
 
     #[Test]
     public function the_delivery_leg_does_not_give_the_count_away_before_the_laundry_hands_it_back(): void
     {
         // One driver holds all four legs; the delivery's count before then is
-        // exactly what the pickup is held to.
+        // exactly what the collection is held to.
         $order = $this->placedOrder(qty: 1);
         $delivery = $this->leg($order, TaskType::DeliverToCustomer);
 
-        $this->app['auth']->forgetGuards();
-        Sanctum::actingAs($this->driver);
-
-        $this->getJson("/api/v1/driver/tasks/{$delivery->id}", $this->apiHeaders())
-            ->assertOk()
-            ->assertJsonPath('data.expected_pieces', null);
+        $this->taskScreen($delivery)->assertJsonPath('data.expected_pieces', null);
     }
 
     // ------------------------------------------------------------ helpers
 
     /**
      * Piece-count notices sent — to one person, or to anybody. Other panel
-     * notices go out along the way (an order placed, a leg assigned), so these
-     * are picked out by their title.
+     * notices go out along the way (an order placed, a leg assigned, a hold),
+     * so these are picked out by their title.
      */
     private function pieceNotices(?object $to = null, ?string $code = null): int
     {
@@ -689,14 +577,37 @@ class PieceCheckTest extends TestCase
     }
 
     /**
-     * One ordered, two counted at the doorstep — the owner's screenshot.
+     * An open difference of the kind orders counted before 2026-11-08 carry —
+     * one ordered, two counted at the doorstep (the owner's screenshot). Made
+     * directly: no count raises an open one any more, since the collection's
+     * is held and closed by whoever approves it.
      */
     private function mismatched(): Order
     {
         $order = $this->placedOrder(qty: 1);
-        $this->walk($order, TaskType::PickupFromCustomer, 2, signed: true);
+        $pickup = $this->leg($order, TaskType::PickupFromCustomer);
+        $pickup->forceFill(['piece_count' => 2])->save();
+
+        PieceDiscrepancy::create([
+            'order_id' => $order->id,
+            'order_task_id' => $pickup->id,
+            'step' => PieceCheckStep::PickupFromCustomer,
+            'counted' => 2,
+            'expected' => 1,
+            'expected_source' => PieceCountSource::CustomerOrder,
+            'counted_by' => $this->driver->id,
+        ]);
 
         return $order->fresh();
+    }
+
+    /**
+     * The bell, rung for the order's open difference the way the review rings
+     * it after its transaction commits.
+     */
+    private function announce(Order $order): void
+    {
+        app(PieceCountNotifier::class)->mismatch($this->openDiscrepancy($order));
     }
 
     private function openDiscrepancy(Order $order): PieceDiscrepancy
@@ -723,6 +634,33 @@ class PieceCheckTest extends TestCase
         ]);
     }
 
+    /**
+     * Collected and handed to the laundry, as the app does it now — no count.
+     */
+    private function atTheLaundry(int $ordered): Order
+    {
+        $order = $this->placedOrder(qty: $ordered);
+        $this->walk($order, TaskType::PickupFromCustomer, signed: true);
+        $this->walk($order, TaskType::DeliverToLaundry);
+
+        return $order->fresh();
+    }
+
+    /**
+     * The laundry's count sent on by the platform and agreed by the customer —
+     * with the pieces already at the laundry, straight to cleaning — and the
+     * laundry's «خلص الغسيل» (item 18, 2026-11-08), which is when the
+     * collection may start.
+     */
+    private function agreed(Order $order): Order
+    {
+        $this->sendReview($order);
+        app(OrderReviewService::class)->confirm($order->fresh(), $this->customer);
+        $this->assertSame(OrderStatus::Cleaning, $order->fresh()->status);
+
+        return $this->finishWashing($order);
+    }
+
     private function review(Order $order, int $qty): void
     {
         app(OrderReviewService::class)->review(
@@ -738,7 +676,7 @@ class PieceCheckTest extends TestCase
         return OrderTask::where('order_id', $order->id)->where('type', $type->value)->firstOrFail();
     }
 
-    private function walk(Order $order, TaskType $type, int $pieces, bool $signed = false): void
+    private function startedLeg(Order $order, TaskType $type): OrderTask
     {
         $task = $this->leg($order, $type);
 
@@ -747,20 +685,47 @@ class PieceCheckTest extends TestCase
             $task->refresh();
         }
 
-        app(TaskService::class)->start($task, $this->driver);
+        return app(TaskService::class)->start($task, $this->driver);
+    }
 
-        $data = ['piece_count' => $pieces];
+    /**
+     * Start a leg and confirm it through the driver API, expecting it done.
+     */
+    private function walk(Order $order, TaskType $type, ?int $pieces = null, bool $signed = false): void
+    {
+        $task = $this->startedLeg($order, $type);
+
+        $data = $pieces === null ? [] : ['piece_count' => $pieces];
 
         if ($signed) {
             $data['signature'] = UploadedFile::fake()->image('sig.png');
         }
 
+        $this->confirmLeg($task, $data)->assertOk();
+    }
+
+    /**
+     * «تأكيد», as the driver app sends it.
+     *
+     * @param  array<string, mixed>  $data
+     */
+    private function confirmLeg(OrderTask $task, array $data): TestResponse
+    {
         $this->app['auth']->forgetGuards();
         Sanctum::actingAs($this->driver);
 
-        $this->postJson("/api/v1/driver/tasks/{$task->id}/complete", $data, $this->apiHeaders())
-            ->assertOk();
+        $response = $this->postJson("/api/v1/driver/tasks/{$task->id}/complete", $data, $this->apiHeaders());
 
         $this->app['auth']->forgetGuards();
+
+        return $response;
+    }
+
+    private function taskScreen(OrderTask $task): TestResponse
+    {
+        $this->app['auth']->forgetGuards();
+        Sanctum::actingAs($this->driver);
+
+        return $this->getJson("/api/v1/driver/tasks/{$task->id}", $this->apiHeaders())->assertOk();
     }
 }

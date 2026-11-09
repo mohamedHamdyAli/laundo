@@ -43,6 +43,9 @@ class PointsController extends Controller
             // the nightly write-off last ran.
             'balance' => $balance,
             'balance_value' => round($balance * $this->policy->pointValue(), 2),
+            // Spent on orders, less what came back (item 15, 2026-11-08) — the
+            // same figure as the profile's `points_used`.
+            'used' => $this->points->used($customer),
             'currency' => appCurrency(),
             // «30 نقطة تنتهي يوم 12 نوفمبر» — null when nothing is due to lapse.
             'next_expiry' => $next ? [

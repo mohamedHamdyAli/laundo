@@ -57,8 +57,16 @@
                                         'today' => $usage[$slot->id]['today'] ?? 0,
                                         'tomorrow' => $usage[$slot->id]['tomorrow'] ?? 0,
                                     ];
-                                    $fullToday = $capped && $usage_['today'] >= (int) $slot->capacity;
-                                    $fullTomorrow = $capped && $usage_['tomorrow'] >= (int) $slot->capacity;
+                                    // The pieces collected in it, beside its limit (item 19).
+                                    $pieces_ = [
+                                        'today' => $usage[$slot->id]['pieces_today'] ?? 0,
+                                        'tomorrow' => $usage[$slot->id]['pieces_tomorrow'] ?? 0,
+                                    ];
+                                    $piecesCapped = $slot->max_pieces !== null;
+                                    $fullToday = ($capped && $usage_['today'] >= (int) $slot->capacity)
+                                        || ($piecesCapped && $pieces_['today'] >= (int) $slot->max_pieces);
+                                    $fullTomorrow = ($capped && $usage_['tomorrow'] >= (int) $slot->capacity)
+                                        || ($piecesCapped && $pieces_['tomorrow'] >= (int) $slot->max_pieces);
                                 @endphp
                                 <div class="stack-row {{ $fullToday || $fullTomorrow ? 'tone-bad' : '' }}">
                                     <div>
@@ -86,6 +94,9 @@
                                                 @else
                                                     <span class="row-sub">{{ (int) $slot->capacity - $usage_[$day] }} {{ __('left') }}</span>
                                                 @endif
+                                            @endif
+                                            @if ($piecesCapped)
+                                                <span class="row-sub">{{ __(':booked / :max pieces', ['booked' => $pieces_[$day], 'max' => $slot->max_pieces]) }}</span>
                                             @endif
                                         </div>
                                     @endforeach

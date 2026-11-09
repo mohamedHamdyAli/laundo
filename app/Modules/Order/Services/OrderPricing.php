@@ -27,10 +27,12 @@ class OrderPricing
         private readonly PlatformFee $platformFee,
         private readonly PriceIncrease $priceIncrease,
         private readonly PointsPolicy $points,
+        private readonly TripFees $trips,
     ) {}
 
     /**
-     * The delivery leg alone.
+     * The delivery leg alone, measured by distance — **orders placed before
+     * the trip fee only** (`pickup_fee` null, 2026-11-08).
      *
      * Needed when a laundry is assigned after the fact: the pieces were priced
      * when the order was placed and must not be re-read, but the fee is measured
@@ -52,7 +54,12 @@ class OrderPricing
      * the customer chose, so the app can offer «استخدم 45 نقطة», and
      * `points_used` only when they did.
      *
+     * `$tripFees` is the journey as `TripFees::forOrder()` priced it for this
+     * customer — a visit another of their orders already pays is free. Without
+     * it (a caller that has no customer), both trips at the set fee.
+     *
      * @param  array<int, array{item_id: int, qty: int}>  $items
+     * @param  array{pickup: float, return: float, total: float}|null  $tripFees
      * @return array{
      *     lines: array<int, array{item_id: int, qty: int, unit_price: float, base_unit_price: float, line_total: float}>,
      *     items_count: int,
@@ -88,6 +95,7 @@ class OrderPricing
         int $pointsAvailable = 0,
         bool $usePoints = false,
         bool $discountCoversDelivery = false,
+        ?array $tripFees = null,
     ): array {
         [
             'lines' => $lines,
@@ -97,7 +105,14 @@ class OrderPricing
             'items_count' => $count,
         ] = $this->lines($service, $items);
 
-        $fee = $this->deliveryFee->calculate($laundry, $pickup, $delivery);
+        // «رسوم المشوار» — a fee per trip to the customer, not the distance
+        // (the client's sheet, items 3–4). Always known: no laundry needed.
+        $tripFees ??= [
+            'pickup' => $this->trips->perTrip(),
+            'return' => $this->trips->perTrip(),
+            'total' => round($this->trips->perTrip() * 2, 2),
+        ];
+        $fee = ['fee' => $tripFees['total'], 'distance_km' => null, 'reason' => null, 'distance_source' => null];
 
         // A discount cannot exceed what is being discounted.
         $discount = round(min(max($discount, 0.0), $subtotal), 2);
@@ -129,6 +144,10 @@ class OrderPricing
             'items_count' => $count,
             'subtotal' => $subtotal,
             'delivery_fee' => $fee['fee'],
+            // The two trips it is made of; a visit shared with another order
+            // of the customer's is 0.
+            'pickup_fee' => $tripFees['pickup'],
+            'return_fee' => $tripFees['return'],
             'delivery_distance_km' => $fee['distance_km'],
             'delivery_fee_reason' => $fee['reason'],
             // Which measurement produced the fee. Carried through so a screen

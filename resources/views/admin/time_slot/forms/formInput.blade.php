@@ -41,6 +41,17 @@
         </div>
     </div>
 
+    {{-- «أقصى عدد قطع في الميعاد» (the client's sheet, item 19, 2026-11-08). --}}
+    <div class="col-lg-3">
+        <div class="mb-3">
+            <label class="form-label">{{ __('Most pieces to collect') }}</label>
+            <input type="number" min="1" name="max_pieces" class="form-control"
+                placeholder="{{ __('Leave empty for unlimited') }}"
+                value="{{ old('max_pieces', $row->max_pieces ?? '') }}" {{ Route::is('*.show') ? 'readonly' : '' }}>
+            <div class="form-text">{{ __('Pieces a pickup in this window may collect in a day, every order together. A window with no room left is shown full and the order is refused. Empty means no limit.') }}</div>
+        </div>
+    </div>
+
     <div class="col-lg-3">
         <div class="mb-3">
             <label class="form-label">{{ __('Display Order') }}</label>

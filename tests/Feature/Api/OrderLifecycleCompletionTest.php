@@ -7,8 +7,11 @@ use App\Modules\Order\Enums\TaskStatus;
 use App\Modules\Order\Enums\TaskType;
 use App\Modules\Order\Models\Order;
 use App\Modules\Order\Models\OrderTask;
+use App\Modules\Order\Services\DriverDispatcher;
 use App\Modules\Order\Services\OrderReviewService;
+use App\Modules\Order\Services\OrderService;
 use App\Modules\Order\Services\OrderStateMachine;
+use App\Modules\Order\Services\TaskHeld;
 use App\Modules\Order\Services\TaskService;
 use App\Modules\Payment\Models\OrderSettlement;
 use App\Modules\User\Models\User;
@@ -149,6 +152,21 @@ class OrderLifecycleCompletionTest extends TestCase
         app(TaskService::class)->complete($task, $this->driver, $data);
     }
 
+    /**
+     * Cash that is not what the leg takes waits for the platform since
+     * 2026-11-08 (`TaskHolds`, the client's sheet, item 10): held, then
+     * approved, which is the path a short collection now takes to completion.
+     */
+    private function finishApproved(OrderTask $task, array $data): void
+    {
+        try {
+            $this->finish($task, $data);
+            $this->fail('A collection that differs from what is owed should be held.');
+        } catch (TaskHeld $held) {
+            app(TaskService::class)->approveHold($held->hold, $this->superAdmin());
+        }
+    }
+
     // ------------------------------------------------- the edges that were missing
 
     #[Test]
@@ -194,7 +212,7 @@ class OrderLifecycleCompletionTest extends TestCase
         $order = $this->order('ready_for_delivery');
 
         // Nothing changed hands, and the driver says so.
-        $this->finish($this->leg($order, TaskType::DeliverToCustomer, 4), ['collected_amount' => 0]);
+        $this->finishApproved($this->leg($order, TaskType::DeliverToCustomer, 4), ['collected_amount' => 0]);
 
         $this->assertSame(OrderStatus::Delivered, $order->fresh()->status);
     }
@@ -204,7 +222,7 @@ class OrderLifecycleCompletionTest extends TestCase
     {
         $order = $this->order('ready_for_delivery', 100);
 
-        $this->finish($this->leg($order, TaskType::DeliverToCustomer, 4), [
+        $this->finishApproved($this->leg($order, TaskType::DeliverToCustomer, 4), [
             'collected_amount' => 60,
         ]);
 
@@ -221,7 +239,7 @@ class OrderLifecycleCompletionTest extends TestCase
         // payment lands later. Either event may be last, so both ask.
         $order = $this->order('ready_for_delivery');
 
-        $this->finish($this->leg($order, TaskType::DeliverToCustomer, 4), ['collected_amount' => 0]);
+        $this->finishApproved($this->leg($order, TaskType::DeliverToCustomer, 4), ['collected_amount' => 0]);
         $this->assertSame(OrderStatus::Delivered, $order->fresh()->status);
 
         $order->fresh()->update(['payment_status' => 'paid', 'paid_at' => now()]);
@@ -385,7 +403,7 @@ class OrderLifecycleCompletionTest extends TestCase
         // Operations set one — allowed in custody when there was none — and
         // the agreed figures stay as they were.
         $before = $order->fresh()->only(['delivery_fee', 'estimated_total']);
-        app(\App\Modules\Order\Services\OrderService::class)->assignLaundry($order->fresh(), $laundryId);
+        app(OrderService::class)->assignLaundry($order->fresh(), $laundryId);
 
         $this->assertSame($laundryId, $order->fresh()->laundry_id);
         $this->assertEquals($before, $order->fresh()->only(['delivery_fee', 'estimated_total']));
@@ -401,7 +419,7 @@ class OrderLifecycleCompletionTest extends TestCase
         $other = $this->laundryWithOwner('B', '+201011110003', '+201011110004')['laundry'];
 
         try {
-            app(\App\Modules\Order\Services\OrderService::class)->assignLaundry($order, $other->id);
+            app(OrderService::class)->assignLaundry($order, $other->id);
             $this->fail('A collected order was moved to another laundry.');
         } catch (RuntimeException $e) {
             $this->assertSame('already_in_custody', $e->getMessage());
@@ -418,7 +436,7 @@ class OrderLifecycleCompletionTest extends TestCase
         $pickup->forceFill(['driver_id' => null])->save();
 
         try {
-            app(\App\Modules\Order\Services\DriverDispatcher::class)->assign($pickup->fresh(), $this->driver);
+            app(DriverDispatcher::class)->assign($pickup->fresh(), $this->driver);
             $this->fail('A driver was given a pickup with no laundry set.');
         } catch (RuntimeException $e) {
             $this->assertSame('order_has_no_laundry', $e->getMessage());

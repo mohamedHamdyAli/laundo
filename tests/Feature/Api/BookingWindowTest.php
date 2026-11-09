@@ -120,11 +120,13 @@ class BookingWindowTest extends TestCase
     // ---------------------------------------------------------------- offered
 
     #[Test]
-    public function todays_window_that_ends_within_the_hour_is_marked_closed(): void
+    public function todays_window_that_has_started_is_marked_closed(): void
     {
         $today = $this->windows(self::TODAY);
 
-        // 08:00–10:00 closed at 09:00 with the default hour; it is 09:26.
+        // 08:00–10:00 closed at 07:45 — a quarter hour before it STARTS, the
+        // client's rule since 2026-11-08 (before: an hour before it ended).
+        // It is 09:26.
         $this->assertTrue($today[$this->morning->id]['closed']);
         $this->assertFalse($today[$this->noon->id]['closed']);
         $this->assertFalse($today[$this->evening->id]['closed']);
@@ -136,18 +138,36 @@ class BookingWindowTest extends TestCase
     #[Test]
     public function the_cut_off_is_a_setting(): void
     {
-        // 0: open until it ends — 08:00–10:00 is still bookable at 09:26.
+        // 0: open until it starts — 12:00–15:00 is bookable at 09:26, and
+        // 08:00–10:00, which has started, is not.
         Setting::updateOrCreate(['key' => 'Slot_Booking_Cutoff_Minutes'], ['value' => '0']);
         Cache::flush();
-        $this->assertFalse($this->windows(self::TODAY)[$this->morning->id]['closed']);
+        $this->assertFalse($this->windows(self::TODAY)[$this->noon->id]['closed']);
+        $this->assertTrue($this->windows(self::TODAY)[$this->morning->id]['closed']);
 
-        // Two hours: 12:00–15:00 closes at 13:00.
+        // Two hours: 12:00–15:00 closes at 10:00.
         Setting::updateOrCreate(['key' => 'Slot_Booking_Cutoff_Minutes'], ['value' => '120']);
         Cache::flush();
         $this->assertFalse($this->windows(self::TODAY)[$this->noon->id]['closed']);
 
-        $this->travelTo(Carbon::parse(self::TODAY.' 10:30:00', 'UTC')); // 13:30 Cairo
+        $this->travelTo(Carbon::parse(self::TODAY.' 07:30:00', 'UTC')); // 10:30 Cairo
         $this->assertTrue($this->windows(self::TODAY)[$this->noon->id]['closed']);
+    }
+
+    #[Test]
+    public function by_default_a_window_closes_a_quarter_hour_before_it_starts(): void
+    {
+        // The client's sheet, item 8 (2026-11-08). 12:00–15:00 today:
+        // bookable at 11:44 Cairo, not at 11:45.
+        $this->travelTo(Carbon::parse(self::TODAY.' 08:44:00', 'UTC'));
+        $this->assertFalse($this->windows(self::TODAY)[$this->noon->id]['closed']);
+
+        $this->travelTo(Carbon::parse(self::TODAY.' 08:45:00', 'UTC'));
+        $this->assertTrue($this->windows(self::TODAY)[$this->noon->id]['closed']);
+        $this->assertSame(
+            Carbon::parse(self::TODAY.' 08:45:00', 'UTC')->toIso8601String(),
+            Carbon::parse($this->windows(self::TODAY)[$this->noon->id]['closes_at'])->utc()->toIso8601String(),
+        );
     }
 
     // ---------------------------------------------------------------- booked
@@ -193,7 +213,7 @@ class BookingWindowTest extends TestCase
         // The order would be refused for it; the sheet must say so first.
         $this->assertFalse($answer['chosen']['valid']);
         $this->assertSame('closed', $answer['chosen']['reason']);
-        $this->assertSame(__('This delivery window has ended or is about to. Please choose a later one.'), $answer['chosen']['message']);
+        $this->assertSame(__('This delivery window starts too soon to book. Please choose a later one.'), $answer['chosen']['message']);
     }
 
     #[Test]

@@ -132,8 +132,12 @@ class LaundryReport
         }
 
         $logs = OrderStatusLog::whereIn('order_id', $orderIds)
+            // Ends at «خلص الغسيل» since 2026-11-08 — the laundry's own word,
+            // not the driver's collection, which can come hours later — and at
+            // the collection for an order finished before it existed.
             ->whereIn('to_status', [
                 OrderStatus::PickedUp->value,
+                OrderStatus::Finished->value,
                 OrderStatus::ReadyForDelivery->value,
             ])
             ->orderBy('id')

@@ -205,7 +205,7 @@ class Turnaround
     public function message(Service $service, string $problem, mixed $pickupDate, ?TimeSlot $pickupSlot): string
     {
         if ($problem === self::CLOSED) {
-            return __('This delivery window has ended or is about to. Please choose a later one.');
+            return __('This delivery window starts too soon to book. Please choose a later one.');
         }
 
         if ($problem === self::TOO_LATE) {
@@ -242,7 +242,7 @@ class Turnaround
             ? $this->problem($service, $pickupDate, $pickupSlot, $deliveryDate, $deliverySlot)
             : null;
 
-        // Today's delivery window that has ended or is about to: the order is
+        // Today's delivery window too close to its start to book (`SlotClock`): the order is
         // refused for it (`WindowStillOpen`), so «valid» here would send the
         // customer on to a 422 the sheet exists to prevent.
         if ($problem === null && $deliveryDate !== null && $deliverySlot !== null

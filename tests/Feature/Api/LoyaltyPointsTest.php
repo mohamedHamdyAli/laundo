@@ -16,6 +16,8 @@ use App\Modules\Order\Enums\TaskStatus;
 use App\Modules\Order\Enums\TaskType;
 use App\Modules\Order\Models\Order;
 use App\Modules\Order\Models\OrderTask;
+use App\Modules\Order\Services\HangerReceipt;
+use App\Modules\Order\Services\orderCrudService;
 use App\Modules\Order\Services\OrderReviewService;
 use App\Modules\Order\Services\OrderService;
 use App\Modules\Order\Services\OrderStateMachine;
@@ -481,7 +483,7 @@ class LoyaltyPointsTest extends TestCase
         $order = $this->place($customer, $address, ['use_points' => true]);
         $this->assertSame(0, $this->points->available($customer));
 
-        app(\App\Modules\Order\Services\orderCrudService::class)->deleteRecord($order->id);
+        app(orderCrudService::class)->deleteRecord($order->id);
 
         $this->assertNull(Order::withoutGlobalScopes()->find($order->id));
         $this->assertSame(30, $this->points->available($customer));
@@ -713,8 +715,11 @@ class LoyaltyPointsTest extends TestCase
     // ------------------------------------------------------------ hangers
 
     #[Test]
-    public function hangers_handed_back_at_pickup_earn_points_at_once(): void
+    public function hangers_earn_points_once_the_laundry_confirms_them_on_its_count(): void
     {
+        // The client's sheet, item 11 (2026-11-08): the driver's count is
+        // recorded, the laundry confirms what reached it, and the points follow
+        // the laundry's count. They used to be paid at once on the driver's.
         [$customer, $address] = $this->customerWithAddress();
         $order = $this->place($customer, $address);
         [$driver, $task] = $this->startedLeg($order, TaskType::PickupFromCustomer);
@@ -726,10 +731,19 @@ class LoyaltyPointsTest extends TestCase
         ], $this->apiHeaders())->assertOk()->assertJsonPath('data.hangers_returned', 4);
 
         $this->assertSame(4, $task->fresh()->hangers_returned);
-        $this->assertSame(4, $this->points->available($customer));
+        $this->assertSame(0, $this->points->available($customer));
+
+        // Three reached the laundry.
+        app(HangerReceipt::class)->confirm($task->fresh(), 3, $this->superAdmin());
+
+        $this->assertSame(3, $this->points->available($customer));
         $this->assertDatabaseHas('point_transactions', [
             'user_id' => $customer->id, 'reason' => 'hangers_returned', 'dedupe_key' => 'hangers:'.$task->id,
         ]);
+
+        // Once per leg.
+        $this->expectException(RuntimeException::class);
+        app(HangerReceipt::class)->confirm($task->fresh(), 4, $this->superAdmin());
     }
 
     #[Test]
@@ -744,6 +758,8 @@ class LoyaltyPointsTest extends TestCase
         $this->postJson("/api/v1/driver/tasks/{$task->id}/complete", [
             'piece_count' => 3, 'hangers_returned' => 2,
         ], $this->apiHeaders())->assertOk();
+
+        app(HangerReceipt::class)->confirm($task->fresh(), 2, $this->superAdmin());
 
         $this->assertSame(6, $this->points->available($customer));
     }

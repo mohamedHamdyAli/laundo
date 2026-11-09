@@ -157,10 +157,22 @@ The domain core. Status table and requests in **`docs/order-lifecycle.md`**
   counts an attempt and returns the leg to the queue with `driver_id` nulled; a
   cancellation keeps its driver. **An order that stops closes its open legs**
   (`OrderStateMachine::standDownTasks()`, same transaction); completed legs stay.
-- **Nothing leaves the laundry before its price is agreed**
-  (`OrderTask::orderAllows()`: `collect_from_laundry` waits for `cleaning`).
+- **Nothing leaves the laundry before the laundry says it finished** (since
+  2026-11-08; before, the price agreed was enough): `cleaning → finished` is
+  «خلص الغسيل» on the order screen (`Order/Services/FinishedWashing` — the
+  laundry's staff with `order.view`, the platform with `order.update`), and
+  `collect_from_laundry` is not offered, assigned, swept or started before it
+  (`OrderTask::orderAllows()` / `awaitsWashing()` / `scopeOfferable()`). A
+  collection already under way at `cleaning` still finishes, through `finished`.
   Confirming the price with the pieces already at the laundry moves the order to
   `cleaning` (`OrderReviewService::confirm()`); both sides lock the order row.
+- **The laundry's count is a draft until the platform sends it** (since
+  2026-11-08): `review()` saves it without moving the order; `send()` (platform
+  only, `admin.order.review.send`) makes it «reviewed» and asks the customer.
+  `Order::hasReviewToSend()` / `customerSeesFinal()` — by `review_round` against
+  `review_sent_round`, never by timestamps; the customer API shows no `final_*`
+  of an unsent draft. **The driver counts only at the collection from the
+  laundry** (`TaskType::countsPieces()`); a count sent on another leg is ignored.
 - **Nothing goes towards a laundry that is not set** (`OrderTask::needsLaundry()`,
   since 2026-11-01): the pickup and the trip to the laundry do not *start*, a
   driver cannot be *assigned* them, and the count is refused — but a leg already
@@ -171,8 +183,21 @@ The domain core. Status table and requests in **`docs/order-lifecycle.md`**
   a disagreement is one `PieceDiscrepancy` row, **nothing is ever refused**, and
   only the platform closes it. The driver app is not shown an expected count
   before it could copy it (`DriverTaskController::countsRevealed()`).
-- `cleaning`, `ready_for_delivery`, `completed` and `returned` have **no endpoint
-  driving them** — a known gap, not something to paper over.
+- **Except two figures, which are held** (since 2026-11-08, `Order/Services/TaskHolds`):
+  the collection from the laundry counting other than the laundry's count, and
+  cash at the door other than `OrderTask::toCollect()` (less or more). The leg
+  stays started, the driver API answers **409 `awaiting_approval`**, and the
+  platform approves (`TaskService::approveHold()` completes it with the held
+  payload; extra cash → wallet, short → owed) or refuses with a note. Refused
+  inside a laundry; cash also needs `payment.update`. There is **one** completion
+  path, `TaskService::finish()`.
+- `ready_for_delivery`, `completed` and `returned` have **no endpoint driving
+  them** — a known gap, not something to paper over.
+- **An order can be placed from the panel** («إنشاء طلب», `Order/Services/PanelOrders`,
+  since 2026-11-08): an existing customer only, through `OrderService::place()`
+  with the operator as `$placedBy` (the opening log is `admin`). `order.create`,
+  **refused inside a laundry by the service**. Its requests extend the app's —
+  add a checkout rule to `OrderRequest` and the panel has it too.
 
 ### What a driver may change about themselves
 
@@ -235,7 +260,12 @@ requires a note; `GET /driver/profile` carries `pending_review`.
 - **The delivery leaves the service its time** (`Order/Services/Turnaround`,
   the one source of the check and its words); `Delivery_Window_Days` is the far
   end, for new bookings only.
-- **Nothing refuses an order at checkout**: `Slot_Overflow_Behavior` decides.
+- **Nothing refuses an order at checkout**: `Slot_Overflow_Behavior` decides —
+  **except pieces** (since 2026-11-08, `Order/Services/PieceLimits`):
+  `Max_Pieces_Per_Order` per order and `time_slots.max_pieces` per pickup window
+  per day (blank = none) refuse the order, in `OrderRequest` and again under the
+  window's lock in `place()`; `GET /time-slots` reports `pieces_left` and takes
+  the basket as `pieces`.
   **Automatic assignment can be switched off** (`AutoAssign`); an automatic path
   goes through `DriverDispatcher::automatically()`, never `dispatch()`, and an
   order with no laundry is never dispatched automatically.
@@ -258,8 +288,18 @@ The full account is long and every rule in it was set by an incident — read
   overdraft). A code on some pieces never discounts the delivery fee.
 - **A catalogue-wide price rise** is `Pricing/Services/PriceIncrease`, stamped
   on the order as `price_increase_rate`; a permanent one can be undone.
-- **Cash at the door is a payment.** The delivery leg on an unpaid order requires
-  `collected_amount` (0 allowed, never above `payableTotal()`); anything above 0
+- **The delivery fee is «رسوم المشوار»** (since 2026-11-08, `Order/Services/TripFees`):
+  one `Trip_Fee` setting (blank = 25) per trip, `orders.pickup_fee` +
+  `return_fee`, `delivery_fee` = their sum (so settlement, coupons and the bonus
+  are unchanged). A trip another live order of the customer already pays (same
+  address, day, window, trip kind) is 0; a cancelled carrier hands its fee on
+  (`OrderService::handOverTripFees()`). `pickup_fee` null = an order priced by
+  distance before the change — only those are re-measured on reassignment.
+- **Cash at the door is a payment.** What a leg takes is `OrderTask::toCollect()`:
+  a cash order's pickup takes its trip fee (optional to report — an older driver
+  app sends nothing and the delivery takes it), the delivery takes
+  `Order::stillOwed()`. The delivery leg on an unpaid order requires
+  `collected_amount` (0 allowed, never above what is owed); anything above 0
   is a captured `cash` payment with `collected_by`, «with the driver» until
   `Payment/Services/CashCustody::receive()` (up to `up_to`, `payment.update`,
   refused inside a laundry). A cash payment refunds to the wallet only. **No
@@ -316,8 +356,10 @@ settings screen's «النقاط» tab); the switch is off until the owner turns
   `place()` (spend, under the lock — `points_changed` refuses the order),
   `OrderReviewService` (capped at the counted washing, the rest given back,
   never grown), `settleMoney()` (earn at `Completed`, give everything back at
-  `Cancelled`/`Returned`), `TaskService::complete()` (hangers, on
-  `TaskType::takesHangers()` legs, paid at once). Automatic credits are keyed
+  `Cancelled`/`Returned`), `Order/Services/HangerReceipt::confirm()` (hangers:
+  the driver records them on `TaskType::takesHangers()` legs, the **laundry
+  confirms** what reached it and the points follow **its** count — since
+  2026-11-08; they were paid at once). Automatic credits are keyed
   (`dedupe_key`), so a replay pays nothing.
 - **The points discount is the platform's, all of it** (the owner's call):
   `orders.points_discount` beside `discount_total`, its own argument to
@@ -550,7 +592,7 @@ only**. `LandingController` reads route parameters off the request.
 - `appCurrency()` / `moneyFormat()` — Arabic renders **Western digits**.
 - `phoneRegex()` is **E.164**; stored numbers are normalised to it.
 - **One discount per order**: `coupon_code` and `offer_id` are exclusive, the offer wins, a code beside it is refused with a message.
-- **Timestamps are stored UTC and shifted only at render** (`humanDate()`; `isoDate()` for API payloads). Two other legitimate conversions: `DriverTaskController::applyDay()` (filtering by the driver's day) and **`TimeSlot/Services/SlotClock`**, the one place a window becomes an instant — every leg's `due_at`, the arrival estimate, and «can today's window still be booked» (closes `Slot_Booking_Cutoff_Minutes` before its end).
+- **Timestamps are stored UTC and shifted only at render** (`humanDate()`; `isoDate()` for API payloads). Two other legitimate conversions: `DriverTaskController::applyDay()` (filtering by the driver's day) and **`TimeSlot/Services/SlotClock`**, the one place a window becomes an instant — every leg's `due_at`, the arrival estimate, and «can a window still be booked» (closes `Slot_Booking_Cutoff_Minutes` — 15 — before its **start**, since 2026-11-08).
 
 ### Helpers (`app/Helpers/`, auto-loaded via composer `files`)
 

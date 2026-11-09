@@ -14,12 +14,14 @@ use App\Modules\Order\Enums\OrderStatus;
 use App\Modules\Order\Enums\TaskStatus;
 use App\Modules\Order\Models\Order;
 use App\Modules\Order\Models\OrderItem;
+use App\Modules\Order\Models\OrderMedia;
 use App\Modules\Payment\Enums\PaymentMethod;
 use App\Modules\Service\Models\Service;
 use App\Modules\TimeSlot\Models\TimeSlot;
 use App\Modules\TimeSlot\Services\SlotCapacity;
 use App\Modules\TimeSlot\Services\SlotClock;
 use App\Modules\User\Models\User;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use RuntimeException;
@@ -50,6 +52,7 @@ class OrderService
         private readonly Turnaround $turnaround,
         private readonly SlotClock $clock,
         private readonly OrderPoints $points,
+        private readonly TripFees $trips,
     ) {}
 
     /**
@@ -74,6 +77,8 @@ class OrderService
             $data['pickup_date'] ?? null,
         );
 
+        $trips = $this->tripsFor($customer, $pickup, $delivery, $data);
+
         // Validated, not redeemed: most baskets a code is checked against are
         // never ordered, and consuming one here would spend a customer's single
         // use of a welcome code on a screen they walked away from.
@@ -85,6 +90,7 @@ class OrderService
             $pickup,
             $delivery,
             $laundry,
+            $trips,
         );
 
         $available = $this->points->availableFor($customer);
@@ -106,6 +112,7 @@ class OrderService
             $available,
             ! empty($data['use_points']),
             $coupon !== null && $discount > 0 && $coupon->coversDeliveryFee(),
+            $trips,
         );
 
         return $quote + [
@@ -142,9 +149,14 @@ class OrderService
     /**
      * Create the order.
      *
+     * `$placedBy` is the panel operator who took it for the customer
+     * («إنشاء طلب», 2026-11-08) — null when the customer placed it themselves.
+     * It changes only who the history says opened it; the order is the
+     * customer's either way, and every rule below applies to both.
+     *
      * @param  array<string, mixed>  $data
      */
-    public function place(User $customer, array $data, bool $enforceSlotCapacity = true): Order
+    public function place(User $customer, array $data, bool $enforceSlotCapacity = true, ?User $placedBy = null): Order
     {
         [$service, $pickup, $delivery] = $this->resolveContext($customer, $data);
 
@@ -160,6 +172,8 @@ class OrderService
             $data['pickup_date'] ?? null,
         );
 
+        $trips = $this->tripsFor($customer, $pickup, $delivery, $data);
+
         [$coupon, $discount] = $this->resolveCoupon(
             $this->discountCode($data),
             $customer,
@@ -168,6 +182,7 @@ class OrderService
             $pickup,
             $delivery,
             $laundry,
+            $trips,
         );
 
         // Same pricing pass as quote(), same payment method — so the total the
@@ -188,6 +203,7 @@ class OrderService
             ! empty($data['use_points']) ? $this->points->availableFor($customer) : 0,
             ! empty($data['use_points']),
             $coupon !== null && $discount > 0 && $coupon->coversDeliveryFee(),
+            $trips,
         );
 
         // The delivery leaves the service its time and is inside the booking
@@ -211,11 +227,11 @@ class OrderService
         // OrderRequest refuses it first (`WindowStillOpen`); this is the
         // backstop — a leg booked into it is «late» the moment it exists.
         if ($pickupSlot && ! empty($data['pickup_date']) && $this->clock->isClosed($data['pickup_date'], $pickupSlot)) {
-            throw new RuntimeException('pickup_slot_id:'.__('This pickup window has ended or is about to. Please choose a later one.'));
+            throw new RuntimeException('pickup_slot_id:'.__('This pickup window starts too soon to book. Please choose a later one.'));
         }
 
         if ($deliverySlot && ! empty($data['delivery_date']) && $this->clock->isClosed($data['delivery_date'], $deliverySlot)) {
-            throw new RuntimeException('delivery_slot_id:'.__('This delivery window has ended or is about to. Please choose a later one.'));
+            throw new RuntimeException('delivery_slot_id:'.__('This delivery window starts too soon to book. Please choose a later one.'));
         }
 
         // A basket containing a piece this service is not priced for would
@@ -228,12 +244,19 @@ class OrderService
             throw new RuntimeException('empty_basket');
         }
 
-        return DB::transaction(function () use ($customer, $service, $pickup, $delivery, $laundry, $quote, $data, $coupon, $enforceSlotCapacity) {
+        // «التحكم في عدد القطع» (the client's sheet, item 19, 2026-11-08): no
+        // more pieces in one order than the platform allows. OrderRequest says
+        // it first, beside the basket; this is the backstop.
+        app(PieceLimits::class)->assertOrderFits((int) $quote['items_count']);
+
+        return DB::transaction(function () use ($customer, $service, $pickup, $delivery, $laundry, $quote, $data, $coupon, $enforceSlotCapacity, $placedBy) {
             // Inside the transaction and before the insert: a window checked
             // before the write is a window two customers can both pass.
             if ($enforceSlotCapacity) {
                 $this->slots->claim($data['pickup_slot_id'] ?? null, $data['pickup_date'] ?? null);
                 $this->slots->claim($data['delivery_slot_id'] ?? null, $data['delivery_date'] ?? null);
+                // And the pieces the pickup window may still collect (item 19).
+                app(PieceLimits::class)->claimWindow($data['pickup_slot_id'] ?? null, $data['pickup_date'] ?? null, (int) $quote['items_count']);
             }
 
             $order = Order::create([
@@ -268,6 +291,10 @@ class OrderService
                 // An unknowable fee is stored as 0 and re-derived on assignment;
                 // the customer is shown the reason rather than a false figure.
                 'delivery_fee' => $quote['delivery_fee'] ?? 0,
+                // «رسوم المشوار»: what the journey above is made of — a visit
+                // another of the customer's orders already pays is 0 here.
+                'pickup_fee' => $quote['pickup_fee'],
+                'return_fee' => $quote['return_fee'],
                 'discount_total' => $quote['discount'],
                 // Who pays for that discount, copied off the coupon now and never
                 // re-read — the same rule as the tax rate. A coupon edited next
@@ -341,7 +368,15 @@ class OrderService
             // paid for.
             $this->points->spend($order, $customer);
 
-            $this->machine->open($order, 'customer', $customer);
+            // Taken for the customer from the panel: said on the opening row, so
+            // a customer asking «I never ordered that», or about points and a
+            // code spent on it, is answered by the order's own history.
+            $this->machine->open(
+                $order,
+                $placedBy ? 'admin' : 'customer',
+                $placedBy ?? $customer,
+                $placedBy ? __('Placed from the panel for the customer.') : null,
+            );
 
             // The four journeys exist from the moment the order does. The first
             // thing that has to happen to a new order is somebody going to
@@ -377,6 +412,43 @@ class OrderService
     }
 
     /**
+     * «أضف صوراً للبقع الصعبة» — stain photos, attached once the order exists so
+     * they carry its id. The app's checkout and the panel's «إنشاء طلب» both.
+     *
+     * **Never fails the order.** It is already placed when this runs: a photo
+     * that cannot be stored is logged and skipped, because an error here would
+     * read as «not placed» — and the panel's form, given anything but a 422,
+     * posts itself again and places it twice (code review, 2026-11-08).
+     *
+     * @param  array<int, UploadedFile>  $photos  validated by the request
+     * @return int how many were attached
+     */
+    public function attachStainPhotos(Order $order, array $photos, User $uploadedBy): int
+    {
+        $attached = 0;
+
+        foreach ($photos as $photo) {
+            try {
+                $path = uploadOrUpdateImage($photo, 'images/orders/stains');
+
+                if ($path) {
+                    OrderMedia::create([
+                        'order_id' => $order->id,
+                        'type' => 'stain',
+                        'path' => $path,
+                        'uploaded_by' => $uploadedBy->id,
+                    ]);
+                    $attached++;
+                }
+            } catch (\Throwable $e) {
+                Log::warning('[orders] stain photo not stored', ['order' => $order->id, 'error' => $e->getMessage()]);
+            }
+        }
+
+        return $attached;
+    }
+
+    /**
      * Cancel, if the clothes are not with us yet.
      *
      * The window closes at pickup — that was the decision, and OrderStatus is
@@ -397,7 +469,116 @@ class OrderService
         // the customer's one use of a welcome code.
         $this->coupons->release($cancelled);
 
+        // The visit it paid for may still be made for another of the
+        // customer's orders, which rode free on it.
+        $this->handOverTripFees($cancelled);
+
         return $cancelled;
+    }
+
+    /**
+     * «رسوم المشوار» moves with the visit (the client's sheet, item 4; the
+     * owner's answer: the fee moves to the other order). A cancelled order
+     * that carried a trip another of the customer's orders shares hands the
+     * fee to that order — unpaid, still waiting for the trip — and the
+     * customer is told its new total. Otherwise two orders and a cancellation
+     * would be a free visit.
+     */
+    public function handOverTripFees(Order $cancelled, array $trips = ['pickup', 'return'], bool $wasCancelled = true): void
+    {
+        $moved = DB::transaction(function () use ($cancelled, $trips, $wasCancelled) {
+            $moves = $this->trips->handOverFrom($cancelled, $trips);
+
+            foreach ($moves as $move) {
+                // Read again: the same order can inherit both trips, and the
+                // copy taken for the second move predates the first one's write
+                // — repricing from it would drop the pickup it just received.
+                /** @var Order $heir */
+                $heir = $move['order']->refresh();
+                $column = $this->trips->column($move['trip']);
+
+                $heir->forceFill([$column => $move['fee']]);
+                $this->repriceJourney($heir, round((float) $heir->pickup_fee + (float) $heir->return_fee, 2));
+
+                $this->machine->note(
+                    $heir,
+                    $wasCancelled
+                        ? __('Trip fee moved here from cancelled order #:code.', ['code' => $cancelled->code])
+                        : __('Trip fee moved here from order #:code, which moved to another time.', ['code' => $cancelled->code]),
+                    'system'
+                );
+            }
+
+            return array_map(fn (array $move) => $move['order'], $moves);
+        });
+
+        foreach ($moved as $heir) {
+            try {
+                app(OrderNotifier::class)->tripFeeMoved($heir->refresh(), $cancelled, $wasCancelled);
+            } catch (\Throwable $e) {
+                Log::warning('[notifications] trip fee moved', ['order' => $heir->id, 'error' => $e->getMessage()]);
+            }
+        }
+    }
+
+    /**
+     * Put a new delivery fee on an order and carry everything that follows
+     * from it: the points re-capped (a coupon that also covers the delivery
+     * leaves a different share of the washing), the estimate and — if the
+     * pieces were counted — the final total, through the one assembler at the
+     * order's OWN stored rates. The laundry reassignment (an order priced by
+     * distance) and a trip fee handed over on a cancellation both come here.
+     */
+    private function repriceJourney(Order $order, float $fee): void
+    {
+        // The points re-capped on the new fee, the review's rule: points that
+        // no longer fit go back now rather than at the count.
+        $order->delivery_fee = $fee;
+        $points = $this->points->capAfterReview(
+            $order,
+            (float) ($order->hasFinalPrice() ? $order->final_subtotal : $order->estimated_subtotal),
+            (float) $order->discount_total,
+        );
+        $order->forceFill(['points_used' => $points['points'], 'points_discount' => $points['discount']]);
+
+        // Through the one assembler, at the order's OWN stored rate. Adding the
+        // fee by hand is how the cash surcharge came to be dropped from a
+        // reassigned order's total, and re-reading the tax setting would retax
+        // an agreed order at today's rate.
+        $money = $this->pricing->compose(
+            (float) $order->estimated_subtotal,
+            $fee,
+            (float) $order->discount_total,
+            (float) $order->cash_surcharge,
+            $order->taxRate(),
+            (float) $order->points_discount,
+        );
+
+        $order->forceFill([
+            'delivery_fee' => $fee,
+            'estimated_tax' => $money['tax'],
+            'estimated_total' => $money['total'],
+        ]);
+
+        // The final figure, if the pieces have already been counted, moves with
+        // the same fee.
+        if ($order->hasFinalPrice()) {
+            $final = $this->pricing->compose(
+                (float) $order->final_subtotal,
+                $fee,
+                (float) $order->discount_total,
+                (float) $order->cash_surcharge,
+                $order->taxRate(),
+                (float) $order->points_discount,
+            );
+
+            $order->forceFill([
+                'final_tax' => $final['tax'],
+                'final_total' => $final['total'],
+            ]);
+        }
+
+        $order->save();
     }
 
     /**
@@ -436,59 +617,15 @@ class OrderService
 
             // An empty basket: only the delivery leg is being repriced. The
             // pieces were priced when the order was placed and stay untouched.
-            $fee = $inCustody
+            // A trip-priced order («رسوم المشوار», `pickup_fee` set) costs the
+            // same whichever laundry takes it: only an order priced by distance
+            // before 2026-11-08 is measured again from the new laundry.
+            $fee = $inCustody || $order->pickup_fee !== null
                 ? ['fee' => null]
                 : $this->pricing->deliveryFeeFor($laundry, $pickup, $order->deliveryAddress);
 
             if ($fee['fee'] !== null) {
-                // The points re-capped on the new fee, the review's rule: a
-                // coupon that also covers the delivery fee leaves a different
-                // share of the washing once the fee moves, and points that no
-                // longer fit go back now rather than at the count.
-                $order->delivery_fee = $fee['fee'];
-                $points = $this->points->capAfterReview(
-                    $order,
-                    (float) ($order->hasFinalPrice() ? $order->final_subtotal : $order->estimated_subtotal),
-                    (float) $order->discount_total,
-                );
-                $order->forceFill(['points_used' => $points['points'], 'points_discount' => $points['discount']]);
-
-                // Through the one assembler, at the order's OWN stored rate.
-                // Adding the fee by hand here is how the cash surcharge came to
-                // be dropped from a reassigned order's total, and re-reading the
-                // tax setting would retax an agreed order at today's rate.
-                $money = $this->pricing->compose(
-                    (float) $order->estimated_subtotal,
-                    (float) $fee['fee'],
-                    (float) $order->discount_total,
-                    (float) $order->cash_surcharge,
-                    $order->taxRate(),
-                    (float) $order->points_discount,
-                );
-
-                $order->update([
-                    'delivery_fee' => $fee['fee'],
-                    'estimated_tax' => $money['tax'],
-                    'estimated_total' => $money['total'],
-                ]);
-
-                // The final figure, if the pieces have already been counted, is
-                // measured from the same fee and moves with it.
-                if ($order->hasFinalPrice()) {
-                    $final = $this->pricing->compose(
-                        (float) $order->final_subtotal,
-                        (float) $fee['fee'],
-                        (float) $order->discount_total,
-                        (float) $order->cash_surcharge,
-                        $order->taxRate(),
-                        (float) $order->points_discount,
-                    );
-
-                    $order->update([
-                        'final_tax' => $final['tax'],
-                        'final_total' => $final['total'],
-                    ]);
-                }
+                $this->repriceJourney($order, (float) $fee['fee']);
             }
 
             $this->machine->note($order, "Assigned to laundry #{$laundryId}.", 'admin', $actor);
@@ -503,7 +640,8 @@ class OrderService
                 ->where('status', TaskStatus::Pending->value)
                 ->get()
                 ->each(fn ($task) => $this->dispatcher->automatically($task->setRelation('order', $order), announce: false))
-                ->filter(fn ($task) => $task->fresh()?->driver_id === null);
+                // A collection waiting for «خلص الغسيل» is nobody's yet (item 18).
+                ->filter(fn ($task) => $task->fresh()?->driver_id === null && ! $task->awaitsWashing());
 
             // With drivers assigned by hand, this is the moment the legs become
             // somebody's to assign — the placement said nothing while there was
@@ -805,13 +943,14 @@ class OrderService
         Address $pickup,
         ?Address $delivery,
         ?Laundry $laundry,
+        ?array $trips = null,
     ): array {
         if (! $code) {
             return [null, 0.0, null];
         }
 
         // Priced once without a discount, to know what the discount applies to.
-        $base = $this->pricing->quote($service, $items, $pickup, $delivery, $laundry);
+        $base = $this->pricing->quote($service, $items, $pickup, $delivery, $laundry, tripFees: $trips);
 
         try {
             $result = $this->coupons->validate(
@@ -829,6 +968,26 @@ class OrderService
         }
 
         return [$result['coupon'], $result['discount'], null];
+    }
+
+    /**
+     * The order's two trips, for this customer: a visit they already pay for
+     * with another order is free (`TripFees`).
+     *
+     * @param  array<string, mixed>  $data
+     * @return array{pickup: float, return: float, total: float}
+     */
+    private function tripsFor(User $customer, Address $pickup, Address $delivery, array $data): array
+    {
+        return $this->trips->forOrder(
+            $customer->id,
+            $pickup->id,
+            $delivery->id,
+            $data['pickup_date'] ?? null,
+            isset($data['pickup_slot_id']) ? (int) $data['pickup_slot_id'] : null,
+            $data['delivery_date'] ?? null,
+            isset($data['delivery_slot_id']) ? (int) $data['delivery_slot_id'] : null,
+        );
     }
 
     /**

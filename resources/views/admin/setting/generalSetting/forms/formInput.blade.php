@@ -766,6 +766,25 @@
     </div>
 
 
+    {{-- «رسوم المشوار» (2026-11-08): each trip to the customer — the pickup
+         and the return — at this figure; a cash order pays the pickup's at the
+         pickup. Blank is 25, 0 makes trips free. Orders already placed keep
+         what they were placed with. --}}
+    <div class="col-md-6">
+        <div class="form-group">
+            <label for="setting-trip-fee" class="form-label">{{ __('Trip fee') }}</label>
+            <div class="input-group">
+                <input type="number" step="0.01" min="0" max="1000" name="Trip_Fee" id="setting-trip-fee"
+                    class="form-control" placeholder="25"
+                    value="{{ getSettingValue('Trip_Fee') }}">
+                <span class="input-group-text">{{ appCurrency() }}</span>
+            </div>
+            <div class="form-text">
+                {{ __('Charged for each trip to the customer: once for the pickup and once for the return. Two orders on the same address, day and window share one trip.') }}
+            </div>
+        </div>
+    </div>
+
     {{-- Validated and read at checkout for the life of the panel, and never
          drawn — so it could only be set in the database. --}}
     <div class="col-md-6">
@@ -1156,7 +1175,7 @@
          default hour. Read on the business's clock (Cairo). --}}
     <div class="col-md-6">
         <div class="form-group">
-            <label for="setting-slot-cutoff" class="form-label">{{ __('Last booking before a window ends') }}</label>
+            <label for="setting-slot-cutoff" class="form-label">{{ __('Last booking before a window starts') }}</label>
             <div class="input-group">
                 <input type="number" step="1" min="0" max="720" name="Slot_Booking_Cutoff_Minutes"
                     id="setting-slot-cutoff" class="form-control"
@@ -1165,7 +1184,25 @@
                 <span class="input-group-text">{{ __('minutes') }}</span>
             </div>
             <div class="form-text">
-                {{ __('A window of today stops being offered this long before it ends, so nobody books a time a driver cannot reach. Blank is 60; 0 keeps it open until it ends.') }}
+                {{ __('A window stops being offered this long before it starts, so every booking is known before the driver sets out. Blank is 15; 0 keeps it open until it starts.') }}
+            </div>
+        </div>
+    </div>
+
+    {{-- «أقصى عدد قطع في الطلب» (the client's sheet, item 19, 2026-11-08) —
+         PieceLimits. Each pickup window's own limit is on the windows screen. --}}
+    <div class="col-md-6">
+        <div class="form-group">
+            <label for="setting-max-pieces" class="form-label">{{ __('Most pieces in one order') }}</label>
+            <div class="input-group">
+                <input type="number" step="1" min="1" max="100000" name="Max_Pieces_Per_Order"
+                    id="setting-max-pieces" class="form-control"
+                    placeholder="{{ __('No limit') }}"
+                    value="{{ getSettingValue('Max_Pieces_Per_Order') }}">
+                <span class="input-group-text">{{ __('pieces') }}</span>
+            </div>
+            <div class="form-text">
+                {{ __('An order with more pieces is refused, in the app and in the panel. Blank is no limit. Each pickup window can also have its own limit, on the windows screen.') }}
             </div>
         </div>
     </div>

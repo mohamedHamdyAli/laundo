@@ -9,6 +9,7 @@ use App\Modules\Order\Enums\TaskStatus;
 use App\Modules\Order\Models\Order;
 use App\Modules\Order\Models\OrderStatusLog;
 use App\Modules\Order\Models\OrderTask;
+use App\Modules\Order\Models\TaskHold;
 use App\Modules\Payment\Services\EarningService;
 use App\Modules\Payment\Services\SettlementService;
 use App\Modules\User\Models\User;
@@ -111,7 +112,7 @@ class OrderStateMachine
      * A separate method because there is no `from`, and forcing the caller through
      * transition() would mean inventing a fake previous status.
      */
-    public function open(Order $order, string $actorType = 'customer', ?User $actor = null): void
+    public function open(Order $order, string $actorType = 'customer', ?User $actor = null, ?string $note = null): void
     {
         OrderStatusLog::create([
             'order_id' => $order->id,
@@ -119,6 +120,7 @@ class OrderStateMachine
             'to_status' => $order->status->value,
             'actor_type' => $actorType,
             'actor_id' => $actor?->id,
+            'note' => $note,
         ]);
     }
 
@@ -143,6 +145,7 @@ class OrderStateMachine
                 // The one the order actually stops for.
                 OrderStatus::Reviewed => $notifier->finalPriceReady($order),
                 OrderStatus::Confirmed => $notifier->priceConfirmed($order),
+                OrderStatus::Finished => $notifier->washingFinished($order),
                 OrderStatus::ReadyForDelivery => $notifier->readyForDelivery($order),
                 OrderStatus::Delivered => $notifier->delivered($order),
                 default => null,
@@ -245,6 +248,14 @@ class OrderStateMachine
         // `UPDATE ... ORDER BY`, and the suite runs on SQLite.
         OrderTask::where('order_id', $order->id)->open()->update([
             'status' => TaskStatus::Cancelled->value,
+        ]);
+
+        // A confirmation held for the platform on a leg that no longer runs
+        // has nothing left to decide — withdrawn with it, or it would sit in
+        // the badge for ever (code review, 2026-11-08).
+        TaskHold::where('order_id', $order->id)->pending()->update([
+            'status' => TaskHold::WITHDRAWN,
+            'updated_at' => now(),
         ]);
     }
 

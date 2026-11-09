@@ -6,9 +6,13 @@ use App\Modules\Notification\Data\NotificationMessage;
 use App\Modules\Notification\Enums\NotificationEvent;
 use App\Modules\Notification\Models\NotificationLog;
 use App\Modules\Notification\Services\NotificationDispatcher;
+use App\Modules\Order\Enums\OrderStatus;
+use App\Modules\Order\Enums\TaskType;
+use App\Modules\Order\Models\OrderStatusLog;
 use App\Modules\Order\Models\OrderTask;
 use App\Modules\User\Models\User;
 use Illuminate\Console\Command;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 
 /**
@@ -35,9 +39,24 @@ class AlertStuckTasks extends Command
         $cutoff = now()->subHours($hours);
 
         $stuck = OrderTask::queued()
+            ->offerable()
             ->with('order:id,code')
             ->where('created_at', '<=', $cutoff)
             ->get();
+
+        // A collection is offered only once the laundry says «خلص الغسيل»
+        // (2026-11-08), so it has waited since then, not since the order was
+        // placed — measured from the creation it was raised the minute the
+        // button was pressed (code review).
+        $finishedAt = OrderStatusLog::whereIn('order_id', $stuck->where('type', TaskType::CollectFromLaundry)->pluck('order_id'))
+            ->where('to_status', OrderStatus::Finished->value)
+            ->selectRaw('order_id, max(created_at) as finished_at')
+            ->groupBy('order_id')
+            ->pluck('finished_at', 'order_id');
+
+        $stuck = $stuck->reject(fn (OrderTask $task) => $task->type === TaskType::CollectFromLaundry
+            && isset($finishedAt[$task->order_id])
+            && Carbon::parse($finishedAt[$task->order_id])->gt($cutoff));
 
         if ($stuck->isEmpty()) {
             $this->info('No task has been waiting longer than '.$hours.'h.');

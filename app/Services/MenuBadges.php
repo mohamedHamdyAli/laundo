@@ -14,6 +14,7 @@ use App\Modules\Order\Models\OrderPriceQuery;
 use App\Modules\Order\Models\OrderTask;
 use App\Modules\Payment\Models\Refund;
 use App\Modules\Zone\Models\CoverageRequest;
+use App\Support\LaundryContext;
 
 /**
  * The counts the sidebar puts beside a menu item.
@@ -75,7 +76,23 @@ class MenuBadges
             'order' => Order::unassigned()->active()->count()
                 + Order::where('status', OrderStatus::Reviewed->value)->count()
                 + OrderPriceQuery::open()->whereIn('order_id', Order::query()->select('id'))->count()
-                + Order::withOpenPieceCheck()->count(),
+                + Order::withOpenPieceCheck()->count()
+                // Hangers waiting for the laundry to say how many reached it
+                // (item 11) — the customer's points wait on it; the laundry and
+                // the platform can both confirm.
+                + Order::withHangersToConfirm()->count()
+                // Being cleaned past the time its collection was due: the
+                // laundry has not pressed «خلص الغسيل» (item 18) — both the
+                // laundry and the platform can.
+                + Order::washingOverdue()->count()
+                // Only the platform decides these two, so only the platform is
+                // shown them — a badge a laundry can do nothing about is noise
+                // (code review, 2026-11-08): a driver's «تأكيد» held for
+                // approval (items 9–10), and the laundry's count waiting to be
+                // sent to the customer (item 12).
+                + (LaundryContext::currentId() === null
+                    ? Order::withPendingHold()->count() + Order::withReviewToSend()->count()
+                    : 0),
 
             // Journeys with nobody on them: unplaced, and ones that failed
             // their way back out of the pool.

@@ -111,7 +111,9 @@ class PaymentController extends Controller
 
         return successReturnData([
             'order_code' => $order->code,
-            'amount_due' => $order->payableTotal(),
+            // What is still owed — the pickup's trip fee may be paid in cash
+            // already («رسوم المشوار», 2026-11-08).
+            'amount_due' => $order->stillOwed(),
             'paid' => $order->payment_status === 'paid',
             'payment_status' => $order->payment_status,
             'captured_total' => $this->payments->capturedTotal($order),

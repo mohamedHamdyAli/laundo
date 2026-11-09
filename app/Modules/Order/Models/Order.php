@@ -8,6 +8,8 @@ use App\Modules\Coupon\Services\ReferralService;
 use App\Modules\Laundry\Models\Laundry;
 use App\Modules\Offer\Models\Offer;
 use App\Modules\Order\Enums\OrderStatus;
+use App\Modules\Order\Enums\TaskType;
+use App\Modules\Payment\Enums\PaymentStatus;
 use App\Modules\Payment\Models\OrderSettlement;
 use App\Modules\Payment\Models\Payment;
 use App\Modules\Service\Models\Service;
@@ -52,6 +54,8 @@ use Illuminate\Support\Str;
  * @property int $estimated_items_count
  * @property string $estimated_subtotal
  * @property string $delivery_fee
+ * @property string|null $pickup_fee the pickup trip's share of it — null on an order priced by distance
+ * @property string|null $return_fee the return trip's share of it
  * @property string $discount_total
  * @property string|null $discount_laundry_share
  * @property bool $discount_covers_delivery
@@ -91,6 +95,10 @@ use Illuminate\Support\Str;
  * @method static Builder<static>|Order active()
  * @method static Builder<static>|Order unassigned()
  * @method static Builder<static>|Order withOpenPieceCheck()
+ * @method static Builder<static>|Order withPendingHold()
+ * @method static Builder<static>|Order withHangersToConfirm()
+ * @method static Builder<static>|Order washingOverdue()
+ * @method static Builder<static>|Order withReviewToSend()
  * @method static Builder<static>|Order search(?string $search, array $columns = [])
  */
 class Order extends Model
@@ -105,12 +113,13 @@ class Order extends Model
         'pickup_slot_id', 'delivery_slot_id', 'pickup_date', 'delivery_date',
         'delivery_method', 'pickup_method', 'offer_id',
         'driver_note', 'special_instructions', 'review_terms_accepted_at',
-        'estimated_items_count', 'estimated_subtotal', 'delivery_fee',
+        'estimated_items_count', 'estimated_subtotal', 'delivery_fee', 'pickup_fee', 'return_fee',
         'discount_total', 'discount_laundry_share', 'discount_covers_delivery', 'discount_scope',
         'points_used', 'points_discount', 'points_to_earn', 'points_terms',
         'cash_surcharge', 'platform_fee', 'platform_fee_rate', 'price_increase_rate',
         'tax_rate', 'estimated_tax', 'estimated_total',
         'final_items_count', 'final_subtotal', 'final_tax', 'final_total', 'review_note', 'reviewed_at',
+        'review_sent_round', 'review_sent_at', 'review_sent_by',
         'review_round', 'confirmed_at',
         'coupon_code', 'payment_method', 'payment_status', 'paid_at',
         'qr_token', 'recurrence_id',
@@ -123,11 +132,15 @@ class Order extends Model
             'pickup_date' => 'date',
             'delivery_date' => 'date',
             'reviewed_at' => 'datetime',
+            'review_sent_round' => 'integer',
+            'review_sent_at' => 'datetime',
             'confirmed_at' => 'datetime',
             'review_terms_accepted_at' => 'datetime',
             'paid_at' => 'datetime',
             'estimated_subtotal' => 'decimal:2',
             'delivery_fee' => 'decimal:2',
+            'pickup_fee' => 'decimal:2',
+            'return_fee' => 'decimal:2',
             'discount_total' => 'decimal:2',
             'discount_laundry_share' => 'decimal:2',
             'discount_covers_delivery' => 'boolean',
@@ -310,6 +323,26 @@ class Order extends Model
     }
 
     /**
+     * What has been taken for this order so far: its captured payments.
+     *
+     * Since «رسوم المشوار» (2026-11-08) a cash order is paid in two parts —
+     * the pickup trip's fee at the pickup, the rest at the delivery — so «is
+     * it paid» is no longer one payment against the total.
+     */
+    public function paidSoFar(): float
+    {
+        return round((float) $this->payments()->where('status', PaymentStatus::Captured->value)->sum('amount'), 2);
+    }
+
+    /**
+     * What is still owed: the bill that applies, less what was taken.
+     */
+    public function stillOwed(): float
+    {
+        return round(max(0.0, $this->payableTotal() - $this->paidSoFar()), 2);
+    }
+
+    /**
      * How this order was divided between the platform and the laundry.
      *
      * A hasOne rather than a hasMany: the unique key on `order_settlements
@@ -403,6 +436,58 @@ class Order extends Model
     }
 
     /**
+     * Orders with a driver's «تأكيد» held for the platform (`TaskHolds`) — the
+     * list's «بانتظار موافقة الإدارة» filter and the menu badge, one definition.
+     */
+    public function scopeWithPendingHold(Builder $query): Builder
+    {
+        return $query->whereIn($query->qualifyColumn('id'), TaskHold::query()->pending()->select('order_id'));
+    }
+
+    /**
+     * Orders whose laundry count waits for the platform to send it to the
+     * customer (item 12) — `hasReviewToSend()` in SQL, for the list filter and
+     * the badge.
+     */
+    public function scopeWithReviewToSend(Builder $query): Builder
+    {
+        return $query
+            ->whereIn($query->qualifyColumn('status'), [OrderStatus::PickedUp->value, OrderStatus::ReviewDisputed->value])
+            ->whereNotNull($query->qualifyColumn('final_total'))
+            ->whereRaw('COALESCE('.$query->qualifyColumn('review_sent_round').', 0) < '.$query->qualifyColumn('review_round'));
+    }
+
+    /**
+     * Orders with hangers a driver collected that the laundry has not
+     * confirmed yet (item 11) — the list filter and the badge, one definition.
+     * Only completed legs: until the leg is done the hangers are still on the van.
+     */
+    /**
+     * Being cleaned, and its collection from the laundry is already due — the
+     * laundry has not pressed «خلص الغسيل» in time (code review of item 18,
+     * 2026-11-08). Until then the collection is offered to nobody and sits on
+     * no board, so without this an order a laundry forgot would stop unseen.
+     * The list filter and the badge, one definition.
+     */
+    public function scopeWashingOverdue(Builder $query): Builder
+    {
+        return $query->where($query->qualifyColumn('status'), OrderStatus::Cleaning->value)
+            ->whereIn($query->qualifyColumn('id'), OrderTask::query()
+                ->late()
+                ->where('type', TaskType::CollectFromLaundry->value)
+                ->select('order_id'));
+    }
+
+    public function scopeWithHangersToConfirm(Builder $query): Builder
+    {
+        return $query->whereIn($query->qualifyColumn('id'), OrderTask::query()
+            ->where('hangers_returned', '>', 0)
+            ->whereNull('hangers_confirmed_at')
+            ->where('status', 'completed')
+            ->select('order_id'));
+    }
+
+    /**
      * Every time two counts of this order's pieces disagreed — at a handover or
      * at the laundry's review — open or reviewed.
      *
@@ -411,6 +496,18 @@ class Order extends Model
     public function pieceDiscrepancies(): HasMany
     {
         return $this->hasMany(PieceDiscrepancy::class, 'order_id')->orderBy('id');
+    }
+
+    /**
+     * Every time a driver's «تأكيد» on this order was held for the platform —
+     * a count at the laundry or cash at the door that did not match
+     * (`TaskHolds`, 2026-11-08).
+     *
+     * @return HasMany<TaskHold, $this>
+     */
+    public function taskHolds(): HasMany
+    {
+        return $this->hasMany(TaskHold::class, 'order_id')->orderBy('id');
     }
 
     /**
@@ -613,7 +710,15 @@ class Order extends Model
 
         $rows = [
             ['key' => 'subtotal', 'label' => __('Subtotal'), 'amount' => $subtotal, 'note' => null, 'kind' => 'line'],
-            ['key' => 'delivery_fee', 'label' => __('Delivery fee'), 'amount' => $delivery, 'note' => null, 'kind' => 'line'],
+            ['key' => 'delivery_fee', 'label' => __('Delivery fee'), 'amount' => $delivery,
+                // «رسوم المشوار»: which trips it is — a visit shared with another
+                // of the customer's orders reads 0 here, and that is the answer
+                // to «why is this one cheaper».
+                'note' => $this->pickup_fee === null ? null : __('Pickup :pickup + return :return', [
+                    'pickup' => moneyFormat((float) $this->pickup_fee),
+                    'return' => moneyFormat((float) $this->return_fee),
+                ]),
+                'kind' => 'line'],
         ];
 
         if ($discount > 0) {
@@ -675,6 +780,33 @@ class Order extends Model
     public function hasFinalPrice(): bool
     {
         return $this->final_total !== null;
+    }
+
+    /**
+     * Whether the customer is shown the laundry's count as their order — the
+     * one predicate the order screen, its piece count and the price review
+     * read (`OrderPieces`, 2026-11-08), so the three cannot disagree about
+     * which pieces are «the order».
+     */
+    public function customerSeesFinal(): bool
+    {
+        // The laundry's count reaches the customer when the platform sends it
+        // (the client's sheet, item 12, 2026-11-08) — a review saved after the
+        // last sending is a draft nobody outside the panel sees.
+        return $this->hasFinalPrice() && $this->review_sent_round !== null && ! $this->hasReviewToSend();
+    }
+
+    /**
+     * The laundry has counted and priced, and the platform has not sent it to
+     * the customer yet — a first review, or a recount after a dispute. By
+     * round, not by time: a recount in the same second as the last sending is
+     * still a new draft.
+     */
+    public function hasReviewToSend(): bool
+    {
+        return $this->hasFinalPrice()
+            && $this->status->isReviewable()
+            && (int) ($this->review_sent_round ?? 0) < (int) $this->review_round;
     }
 
     /**

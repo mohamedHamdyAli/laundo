@@ -2554,3 +2554,32 @@ locking read, and the write is made from the row the lock returned — never
 `refresh()`, never a plain re-read. (`WalletService::move()` was already right:
 it decides on `$locked`.) A race on MySQL is proved on MySQL — two connections,
 one with its snapshot fixed first — not on the suite.
+
+## 2026-11-08 — seeding a scratch database rewrote the tracked language files
+
+To drive a page on a machine with no dev database I pointed `.env` at a
+throwaway SQLite file and ran `db:seed` (`DatabaseSeeder`). Its
+`LanguageSeeder` regenerates `resources/lang/*.json` — English tipped into
+`ar.json`, both `*_web.json` reshuffled — and the next full run failed two
+`TranslationCoverageTest` checks that had nothing to do with the change. The
+diff looked like mine because my own keys were in the same files.
+
+**Rule:** a local database for driving pages is seeded with the data seeders
+only (`PermissionSeeder`, `RoleSeeder`, `AdminUserSeeder`, `SettingsSeeder`,
+`GeoSeeder`, `CatalogSeeder`, `TimeSlotSeeder`, `DevFixturesSeeder`) — never
+`DatabaseSeeder` or `LanguageSeeder` on a working tree with lang changes. After
+any seed, `git diff --stat resources/lang` before trusting a red translation test.
+
+## 2026-11-08 — a failed preg_replace wrote two test files empty
+
+A one-liner `$s = preg_replace(...); file_put_contents($f, $s);` with a regex
+that did not compile: `preg_replace()` returned **null**, and `file_put_contents`
+wrote it — `RefundAndEarningTest.php` and `OrderMoneyCycleTest.php` became 0
+bytes. They held only a few lines of mine, so `git show HEAD:<file>` plus the
+same insert script put them back exactly; with more uncommitted work in them it
+would have been lost.
+
+**Rule:** a script that rewrites a file checks the result before writing —
+`if (! is_string($r) || $r === '') exit(1);` — and counts its anchors
+(`substr_count === 1`). Prefer the Edit tool for anything in `tests/` or `app/`;
+reach for a script only for the language files' appends, which it already guards.

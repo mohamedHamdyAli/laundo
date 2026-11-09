@@ -113,6 +113,7 @@ class OperationsReport
     public function queuedTasks(): array
     {
         $tasks = OrderTask::queued()
+            ->offerable()
             ->with('order:id,code')
             ->orderBy('created_at')
             ->limit(50)

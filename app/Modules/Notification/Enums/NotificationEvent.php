@@ -21,6 +21,8 @@ enum NotificationEvent: string
     case FinalPriceReady = 'final_price_ready';
     case PriceConfirmed = 'price_confirmed';
     case OrderReadyForDelivery = 'order_ready_for_delivery';
+    // «خلص الغسيل» — the laundry finished (the client's sheet, item 18, 2026-11-08).
+    case OrderWashingFinished = 'order_washing_finished';
     case OrderDelivered = 'order_delivered';
     case RecurrencePrompt = 'recurrence_prompt';
     case TaskAssigned = 'task_assigned';
@@ -136,6 +138,20 @@ enum NotificationEvent: string
     case PointsExpiring = 'points_expiring';
 
     /**
+     * «رسوم المشوار» moved onto this order: another of the customer's orders
+     * on the same visit was cancelled, and this one now pays for the trip
+     * (2026-11-08). Transactional — the total they agreed to just went up.
+     */
+    case TripFeeMoved = 'trip_fee_moved';
+
+    /**
+     * The platform approved or refused a driver's held «تأكيد» (a count at the
+     * laundry or cash at the door that did not match, 2026-11-08).
+     * Transactional — a refused one leaves the driver with a leg to redo.
+     */
+    case TaskHoldDecided = 'task_hold_decided';
+
+    /**
      * Whether silence would stall something.
      */
     public function isTransactional(): bool
@@ -162,6 +178,10 @@ enum NotificationEvent: string
             self::RescheduleNeeded,
             // A laundry that does not know it has an order does not clean it.
             self::OrderAssignedToLaundry,
+            // A total that rose with nobody told is a dispute at the door.
+            self::TripFeeMoved,
+            // A driver waiting on the answer cannot finish the leg without it.
+            self::TaskHoldDecided,
         ], true);
     }
 
@@ -186,6 +206,7 @@ enum NotificationEvent: string
             self::FinalPriceReady => 'Final price ready',
             self::PriceConfirmed => 'Price confirmed',
             self::OrderReadyForDelivery => 'Order ready for delivery',
+            self::OrderWashingFinished => 'Washing finished',
             self::OrderDelivered => 'Order delivered',
             self::RecurrencePrompt => 'Wash reminder',
             self::TaskAssigned => 'Task assigned',
@@ -202,6 +223,8 @@ enum NotificationEvent: string
             self::DriverRecordRejected => 'Driver details refused',
             self::PointsEarned => 'Points earned',
             self::PointsExpiring => 'Points about to expire',
+            self::TripFeeMoved => 'Trip fee moved to another order',
+            self::TaskHoldDecided => 'Held confirmation decided',
         };
     }
 

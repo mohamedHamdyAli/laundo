@@ -1,0 +1,482 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>تعديلات شيت العميل — للاختبار</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&family=Readex+Pro:wght@500;600&display=swap">
+<style>
+/* نفس ألوان وخطوط «دليل اختبار لوحة Laundo» عشان الملفين يتقروا كعيلة واحدة. */
+:root {
+  --ground: #F4F6F9; --surface: #FFFFFF; --surface-2: #EDF1F6;
+  --ink: #101A26; --ink-2: #35455A; --muted: #667A93;
+  --line: #DBE3ED; --line-strong: #C2CFDE;
+  --brand: #0E4C75; --brand-soft: #E4EEF6; --brand-ink: #0A3855;
+  --good: #146B47; --good-soft: #E1F1E9;
+  --warn: #8A5A00; --warn-soft: #FAEEDA;
+  --crit: #A32218; --crit-soft: #FBE6E4;
+  --radius: 10px;
+  --f-body: "IBM Plex Sans Arabic", "Segoe UI", Tahoma, sans-serif;
+  --f-disp: "Readex Pro", "IBM Plex Sans Arabic", "Segoe UI", sans-serif;
+  --f-mono: "IBM Plex Mono", ui-monospace, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --ground: #0B121B; --surface: #121C28; --surface-2: #182533;
+    --ink: #E8EEF5; --ink-2: #BCCBDB; --muted: #8699AF;
+    --line: #243447; --line-strong: #2E4257;
+    --brand: #6FB3DE; --brand-soft: #16293A; --brand-ink: #A8D2ED;
+    --good: #63C296; --good-soft: #12261D;
+    --warn: #DFAE5E; --warn-soft: #2A2113;
+    --crit: #F08279; --crit-soft: #2B1614;
+  }
+}
+:root[data-theme="dark"] {
+  --ground: #0B121B; --surface: #121C28; --surface-2: #182533;
+  --ink: #E8EEF5; --ink-2: #BCCBDB; --muted: #8699AF;
+  --line: #243447; --line-strong: #2E4257;
+  --brand: #6FB3DE; --brand-soft: #16293A; --brand-ink: #A8D2ED;
+  --good: #63C296; --good-soft: #12261D;
+  --warn: #DFAE5E; --warn-soft: #2A2113;
+  --crit: #F08279; --crit-soft: #2B1614;
+}
+
+* { box-sizing: border-box; }
+html { direction: rtl; }
+body {
+  margin: 0; direction: rtl;
+  background: var(--ground); color: var(--ink);
+  font-family: var(--f-body); font-size: 15px; line-height: 1.75;
+  -webkit-font-smoothing: antialiased;
+}
+.page { max-width: 980px; margin: 0 auto; padding: 0 16px 80px; }
+
+/* الترويسة */
+.masthead { background: var(--surface); border-bottom: 1px solid var(--line-strong); margin-bottom: 36px; }
+.masthead .in { max-width: 980px; margin: 0 auto; padding: 36px 16px 28px; }
+.eyebrow { font-family: var(--f-mono); font-size: 11.5px; letter-spacing: .14em; color: var(--brand); margin: 0 0 10px; direction: ltr; text-align: right; }
+h1 { font-family: var(--f-disp); font-weight: 600; font-size: clamp(28px, 4.4vw, 40px); line-height: 1.3; margin: 0 0 12px; text-wrap: balance; }
+.lede { font-size: 16.5px; color: var(--ink-2); max-width: 64ch; margin: 0; }
+.stamp { margin-top: 22px; display: flex; flex-wrap: wrap; gap: 6px 26px; font-size: 13px; color: var(--muted); }
+.stamp b { color: var(--ink-2); font-weight: 600; }
+
+/* الفهرس */
+.toc { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 18px 22px; margin-bottom: 44px; columns: 2; column-gap: 36px; }
+.toc h2 { column-span: all; font-size: 13px; color: var(--muted); font-weight: 500; margin: 0 0 8px; }
+.toc ol { list-style: none; margin: 0; padding: 0; }
+.toc li { break-inside: avoid; margin: 0 0 2px; }
+.toc a { color: var(--ink-2); text-decoration: none; font-size: 14px; }
+.toc a:hover { color: var(--brand); text-decoration: underline; }
+.toc .part { font-weight: 600; color: var(--ink); margin-top: 10px; display: block; font-size: 13px; }
+.toc .n { font-family: var(--f-mono); color: var(--brand); font-size: 12px; margin-inline-end: 6px; }
+@media (max-width: 700px) { .toc { columns: 1; } }
+
+/* الأقسام */
+.part-title { font-family: var(--f-disp); font-weight: 600; font-size: 14px; color: var(--brand); letter-spacing: .02em; margin: 56px 0 6px; padding-bottom: 6px; border-bottom: 1px solid var(--line-strong); }
+section { margin-bottom: 44px; scroll-margin-top: 16px; }
+h2 { font-family: var(--f-disp); font-weight: 600; font-size: 23px; line-height: 1.4; margin: 18px 0 8px; text-wrap: balance; }
+h2 .n { font-family: var(--f-mono); font-size: 14px; color: var(--brand); margin-inline-end: 8px; vertical-align: 2px; }
+h3 { font-size: 15.5px; font-weight: 600; margin: 20px 0 8px; }
+p { margin: 0 0 12px; max-width: 74ch; }
+ul { margin: 0 0 12px; padding-right: 20px; }
+li { margin-bottom: 5px; }
+strong { font-weight: 600; }
+a { color: var(--brand); }
+td small { color: var(--muted); }
+.names { list-style: none; padding: 0; margin: 0; }
+.names li { margin: 0; }
+code { font-family: var(--f-mono); font-size: .86em; direction: ltr; unicode-bidi: isolate; background: var(--surface-2); border: 1px solid var(--line); border-radius: 4px; padding: 0 5px; white-space: nowrap; }
+
+/* فين / الصلاحية / التطبيق */
+.meta { display: grid; grid-template-columns: max-content 1fr; gap: 6px 16px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 12px 16px; margin: 0 0 14px; font-size: 14px; }
+.meta dt { color: var(--muted); font-weight: 500; }
+.meta dd { margin: 0; color: var(--ink-2); }
+@media (max-width: 560px) { .meta { grid-template-columns: 1fr; } .meta dd { margin-bottom: 6px; } }
+
+/* جداول */
+.tbl { overflow-x: auto; margin: 0 0 14px; }
+table { width: 100%; border-collapse: collapse; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); font-size: 14px; }
+th, td { text-align: right; vertical-align: top; padding: 9px 12px; border-bottom: 1px solid var(--line); }
+th { background: var(--surface-2); font-weight: 600; color: var(--ink-2); font-size: 13px; }
+tr:last-child td { border-bottom: 0; }
+td.num { font-family: var(--f-mono); color: var(--brand); width: 34px; text-align: center; }
+td.chk, th.chk { width: 46px; text-align: center; }
+td.chk::before { content: ""; display: inline-block; width: 16px; height: 16px; border: 1.5px solid var(--line-strong); border-radius: 4px; vertical-align: -3px; }
+table.steps td:nth-child(2) { width: 44%; }
+
+/* صناديق */
+.box { border-radius: var(--radius); padding: 12px 16px; margin: 0 0 14px; font-size: 14.5px; border: 1px solid; }
+.box > :last-child { margin-bottom: 0; }
+.box h3 { margin: 0 0 6px; font-size: 14.5px; }
+.box.crit { background: var(--crit-soft); border-color: color-mix(in srgb, var(--crit) 35%, transparent); }
+.box.crit h3 { color: var(--crit); }
+.box.warn { background: var(--warn-soft); border-color: color-mix(in srgb, var(--warn) 35%, transparent); }
+.box.warn h3 { color: var(--warn); }
+.box.traps { background: var(--surface); border-color: var(--line); border-inline-start: 4px solid var(--good); }
+.box.traps h3 { color: var(--good); }
+.box.info { background: var(--brand-soft); border-color: color-mix(in srgb, var(--brand) 25%, transparent); }
+.box.info h3 { color: var(--brand-ink); }
+
+.foot { margin-top: 56px; padding-top: 14px; border-top: 1px solid var(--line-strong); color: var(--muted); font-size: 13px; }
+
+/* الطباعة: فاتح دايماً، والجداول ماتتقطعش من نص السطر */
+@page { size: A4; margin: 14mm 12mm 16mm; }
+@media print {
+  :root, :root:not([data-theme="light"]), :root[data-theme="dark"] {
+    --ground: #FFFFFF; --surface: #FFFFFF; --surface-2: #EDF1F6;
+    --ink: #101A26; --ink-2: #35455A; --muted: #667A93;
+    --line: #DBE3ED; --line-strong: #C2CFDE;
+    --brand: #0E4C75; --brand-soft: #E4EEF6; --brand-ink: #0A3855;
+    --good: #146B47; --good-soft: #E1F1E9;
+    --warn: #8A5A00; --warn-soft: #FAEEDA;
+    --crit: #A32218; --crit-soft: #FBE6E4;
+  }
+  * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  body { font-size: 13px; }
+  .masthead .in { padding-top: 8px; }
+  .page { padding-bottom: 0; }
+  tr, .box, .meta { break-inside: avoid; }
+  h2, h3, .part-title { break-after: avoid; }
+  .toc a { color: var(--ink-2); }
+}
+</style>
+</head>
+<body>
+
+<header class="masthead">
+  <div class="in">
+    <p class="eyebrow">LAUNDO · CLIENT SHEET · 2026-11 · FOR QC</p>
+    <h1>تعديلات شيت العميل — للاختبار من اللوحة</h1>
+    <p class="lede">كل اللي اتغيّر في لوحة التحكم من شيت العميل (19 بند). لكل تعديل: فين تلاقيه، تجرّبه إزاي، والمفروض يحصل إيه. التعديلات اللي بتتشاف من التطبيقات بس في آخر الملف.</p>
+    <div class="stamp">
+      <span>الحالة <b>لسه متنشرش على laundo.nahrdev.net</b></span>
+      <span>اتكتب <b>9/11/2026</b></span>
+      <span><b>10</b> أقسام في اللوحة + جدول للتطبيقات</span>
+      <span>تفاصيل كل شاشة: <b>دليل اختبار لوحة Laundo</b></span>
+    </div>
+  </div>
+</header>
+
+<main class="page">
+
+<nav class="toc" aria-label="الفهرس">
+  <h2>المحتوى</h2>
+  <ol>
+    <li><a href="#before"><span class="n">!</span>قبل ما تبدأ — مهم</a></li>
+    <li><a href="#apps"><span class="n">!</span>التطبيقات: إيه اللي هيبان دلوقتي</a></li>
+    <li><span class="part">الطلبات من اللوحة</span></li>
+    <li><a href="#create"><span class="n">1</span>إنشاء طلب لعميل</a></li>
+    <li><span class="part">فحص القطع</span></li>
+    <li><a href="#review"><span class="n">2</span>الفحص بيستنى الإدارة تبعته للعميل</a></li>
+    <li><a href="#count-hold"><span class="n">3</span>عدد مختلف في الاستلام من المغسلة</a></li>
+    <li><a href="#hangers"><span class="n">4</span>المغسلة بتأكد الشماعات</a></li>
+    <li><span class="part">المغسلة</span></li>
+    <li><a href="#finished"><span class="n">5</span>«خلص الغسيل»</a></li>
+    <li><span class="part">الفلوس</span></li>
+    <li><a href="#trip-fee"><span class="n">6</span>رسوم المشوار 25</a></li>
+    <li><a href="#cash-hold"><span class="n">7</span>مبلغ مختلف عند الباب</a></li>
+    <li><span class="part">المواعيد</span></li>
+    <li><a href="#cutoff"><span class="n">8</span>آخر حجز قبل بداية الفترة</a></li>
+    <li><a href="#pieces"><span class="n">9</span>حد عدد القطع</a></li>
+    <li><a href="#absent"><span class="n">10</span>العميل مش موجود وقت الاستلام</a></li>
+    <li><a href="#apps-only"><span class="n">+</span>تعديلات بتتشاف من التطبيقات بس</a></li>
+  </ol>
+</nav>
+
+<!-- ============================================================ -->
+<section id="before">
+  <h2><span class="n">!</span>قبل ما تبدأ — مهم</h2>
+
+  <div class="box crit">
+    <h3>ده سيرفر لايف، عليه عملاء ومغاسل حقيقيين</h3>
+    <ul>
+      <li><strong>«إنشاء طلب لعميل»</strong> بيعمل طلب حقيقي، والعميل بيوصله إشعار. جرّب على <strong>حساب عميل تجربة</strong> بس، والغي الطلب بعدها.</li>
+      <li><strong>«رسوم المشوار» و«أقصى عدد قطع في الطلب» و«أقصى عدد قطع يتستلم»</strong> بيأثروا على كل العملاء في نفس اللحظة. رجّع كل قيمة زي ما كانت أول ما تخلص.</li>
+      <li><strong>«موافقة»</strong> على مبلغ أكتر من المطلوب بتحط الفرق في محفظة العميل.</li>
+      <li><strong>«خلص الغسيل»</strong> على طلب حقيقي بيبعت مندوب للمغسلة.</li>
+    </ul>
+  </div>
+
+  <div class="box warn">
+    <h3>الطلبات اللي في «جاري التنظيف» وقت النشر</h3>
+    <p>رحلة «استلام من المغسلة» بقت تستنى المغسلة تدوس «خلص الغسيل». يعني أي طلب كان في التنظيف لحظة النشر مش هيتحرك لحد ما المغسلة (أو الإدارة) تدوس الزرار. ده مقصود، مش باج.</p>
+  </div>
+
+  <h3>الوضع بعد النشر</h3>
+  <div class="tbl"><table>
+    <thead><tr><th>الحاجة</th><th>القيمة</th><th>يعني إيه</th></tr></thead>
+    <tbody>
+      <tr><td>رسوم المشوار</td><td>25</td><td>مرة على الاستلام ومرة على التسليم، للطلبات الجديدة بس.</td></tr>
+      <tr><td>آخر حجز قبل بداية الفترة</td><td>15 دقيقة</td><td>كان قبل نهاية الفترة بساعة.</td></tr>
+      <tr><td>أقصى عدد قطع في الطلب</td><td>فاضي</td><td>مفيش حد لحد ما حد يكتب رقم.</td></tr>
+      <tr><td>أقصى عدد قطع يتستلم (لكل فترة)</td><td>فاضي في كل الفترات</td><td>مفيش حد.</td></tr>
+      <tr><td>الطلبات اللي المغسلة فحصتها قبل النشر</td><td>متعلّمة «اتبعتت للعميل»</td><td>مش هتظهر في فلتر «فحص مستني يتبعت للعميل».</td></tr>
+      <tr><td>الشماعات اللي اتسجلت قبل النشر</td><td>متعلّمة «متأكدة»</td><td>نقاطها اتحسبت قبل كده، ومش هتظهر في فلتر الشماعات.</td></tr>
+      <tr><td>صلاحية <code>order.create</code></td><td>السوبر أدمن بس</td><td>أي رول تاني محتاج يتدّيله الصلاحية من «الأدوار» عشان يشوف «إنشاء طلب لعميل».</td></tr>
+      <tr><td>كود OTP</td><td><code>123456</code></td><td>ثابت لحد ما خدمة الرسايل تتربط.</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section id="apps">
+  <h2><span class="n">!</span>التطبيقات: إيه اللي هيبان دلوقتي</h2>
+  <p>السيرفر بيطبّق القواعد الجديدة من لحظة النشر، وتطبيقات الموبايل لسه متحدّثتش. فلو جرّبت من التطبيق الحالي، الحاجات اللي في العمود الأوسط متوقعة ومش باج.</p>
+  <div class="tbl"><table>
+    <thead><tr><th>التعديل</th><th>التطبيق الحالي (قبل التحديث)</th><th>بعد ما فريق الموبايل يحدّث</th></tr></thead>
+    <tbody>
+      <tr><td><a href="#count-hold">عدد / مبلغ مختلف</a><br><small>تطبيق المندوب</small></td><td>«تأكيد» بيرجع رسالة «بانتظار موافقة الإدارة»، والتطبيق ممكن يعرضها كخطأ. الرحلة ماكملتش، وده المطلوب. اتأكد منها من اللوحة.</td><td>حالة «بانتظار موافقة الإدارة» واضحة، وبتتحدّث لما الإدارة توافق أو ترفض.</td></tr>
+      <tr><td><a href="#trip-fee">رسم الاستلام كاش</a><br><small>تطبيق المندوب</small></td><td>التطبيق مش بيبعت المبلغ في الاستلام، فالـ25 بتتحصّل مع الباقي في التسليم.</td><td>«حصّل رسوم المشوار: 25» في الاستلام.</td></tr>
+      <tr><td><a href="#finished">خلص الغسيل</a><br><small>التطبيقين</small></td><td>المندوب: رحلة الاستلام من المغسلة مش هتوصله قبل الزرار، ولو معاه واحدة قديمة هتظهر مقفولة برسالة «المغسلة لسه ماخلصتش…». العميل: الحالة بتيجي من السيرفر «خلص الغسيل»، بس ممكن تظهر من غير لون أو أيقونة.</td><td>الحالة بلونها وخطوتها في التتبع.</td></tr>
+      <tr><td><a href="#pieces">حد القطع</a><br><small>تطبيق العميل</small></td><td>السلة مش بتقف عند الحد، والطلب بيترفض عند التأكيد برسالة.</td><td>السلة تقف عند الحد، والفترة المليانة تظهر «ممتلئة».</td></tr>
+      <tr><td>التوقيع والـ QR<br><small>تطبيق المندوب</small></td><td>التطبيق ممكن لسه يطلب توقيع في الاستلام وQR في الاستلام من المغسلة. السيرفر مش محتاجهم هناك.</td><td>التوقيع في التسليم بس، ومفيش QR في الاستلام من المغسلة.</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<!-- ============================================================ -->
+<div class="part-title">الطلبات من اللوحة</div>
+
+<section id="create">
+  <h2><span class="n">1</span>إنشاء طلب لعميل</h2>
+  <p>الإدارة تقدر تعمل طلب لعميل مسجّل من اللوحة، بنفس قواعد التطبيق بالظبط: الدفع والعروض والكوبونات والنقاط، والتغطية، والمواعيد، وتعيين المغسلة.</p>
+  <dl class="meta">
+    <dt>فين</dt><dd>الطلبات ← زرار «إنشاء طلب لعميل»</dd>
+    <dt>الصلاحية</dt><dd><code>order.create</code>، والمغسلة مالهاش الشاشة دي حتى لو اتدّتلها الصلاحية</dd>
+  </dl>
+  <div class="tbl"><table class="steps">
+    <thead><tr><th>#</th><th>جرّب</th><th>المفروض يحصل</th><th class="chk">✓</th></tr></thead>
+    <tbody>
+      <tr><td class="num">1</td><td>افتح «الطلبات» كسوبر أدمن</td><td>زرار «إنشاء طلب لعميل» ظاهر.</td><td class="chk"></td></tr>
+      <tr><td class="num">2</td><td>ادخل كصاحب مغسلة وافتح «الطلبات»، وبعدين افتح <code>/admin/order/create</code> بإيدك</td><td>الزرار مش ظاهر، والرابط ممنوع.</td><td class="chk"></td></tr>
+      <tr><td class="num">3</td><td>في «العميل» اكتب جزء من اسم أو موبايل عميل التجربة</td><td>العميل يظهر في القايمة. عميل مش مسجّل مايظهرش.</td><td class="chk"></td></tr>
+      <tr><td class="num">4</td><td>اختار العميل</td><td>عناوينه المحفوظة تظهر في «عنوان الاستلام» و«عنوان التسليم». أي عنوان برا التغطية مكتوب جنبه «خارج التغطية».</td><td class="chk"></td></tr>
+      <tr><td class="num">5</td><td>«إضافة عنوان جديد على الخريطة»: حط الدبوس جوه منطقة شغالة واحفظ</td><td>العنوان يتحفظ للعميل ويتختار على طول. ودبوس برا المناطق يترفض برسالة جنب الخانة.</td><td class="chk"></td></tr>
+      <tr><td class="num">6</td><td>اختار خدمة بالقطعة وزوّد قطع</td><td>«السعر» يتحسب لوحده مع كل تغيير، وفيه رسوم التوصيل (مشوارين × 25).</td><td class="chk"></td></tr>
+      <tr><td class="num">7</td><td>اختار تاريخ النهارده في «تاريخ الاستلام»</td><td>الفترات اللي بدأت، أو فاضل على بدايتها أقل من ربع ساعة، مكتوب جنبها «مقفولة» ومش بتتختار.</td><td class="chk"></td></tr>
+      <tr><td class="num">8</td><td>اختار عرض واكتب كود خصم مع بعض</td><td>رسالة إن الخصم واحد بس للطلب.</td><td class="chk"></td></tr>
+      <tr><td class="num">9</td><td>سيب «الخدمة» فاضية ودوس «إنشاء الطلب»</td><td>الخطأ يظهر جنب الخانة، واللي كتبته يفضل زي ما هو.</td><td class="chk"></td></tr>
+      <tr><td class="num">10</td><td>كمّل كل الخانات ودوس «إنشاء الطلب»</td><td>صفحة الطلب تفتح فيها الرحلات الأربعة، و«رسوم التوصيل» مكتوب تحتها «استلام 25 + تسليم 25». أول سطر في سجله «اتعمل من الداشبورد بالنيابة عن العميل.»، والعميل يوصله إشعار.</td><td class="chk"></td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<!-- ============================================================ -->
+<div class="part-title">فحص القطع</div>
+
+<section id="review">
+  <h2><span class="n">2</span>الفحص بيستنى الإدارة تبعته للعميل</h2>
+  <p>فحص المغسلة (العدد والسعر) بقى مسودة: العميل مش بيشوفه غير لما الإدارة تدوس «إرسال للعميل». والمندوب مبقاش يعدّ القطع غير في الاستلام من المغسلة.</p>
+  <dl class="meta">
+    <dt>فين</dt><dd>صفحة الطلب · الطلبات ← فلتر «فحص مستني يتبعت للعميل»</dd>
+    <dt>الصلاحية</dt><dd>الفحص للمغسلة بـ <code>order.update</code>. «إرسال للعميل» للمنصة بس</dd>
+  </dl>
+  <div class="tbl"><table class="steps">
+    <thead><tr><th>#</th><th>جرّب</th><th>المفروض يحصل</th><th class="chk">✓</th></tr></thead>
+    <tbody>
+      <tr><td class="num">1</td><td>كصاحب مغسلة، افتح طلب في «تم استلام الطلب» واحفظ الفحص</td><td>رسالة «العدّ والسعر اتحفظوا — مستنيين الإدارة تبعتهم للعميل»، والحالة فضلت زي ما هي.</td><td class="chk"></td></tr>
+      <tr><td class="num">2</td><td>افتح الطلب من تطبيق العميل</td><td>لسه شايف طلبه هو والسعر التقديري، ومفيش سعر نهائي.</td><td class="chk"></td></tr>
+      <tr><td class="num">3</td><td>افتح الطلب كسوبر أدمن</td><td>فوق صندوق «المغسلة فحصت الطلب ده وسعّرته» فيه زرار «إرسال للعميل». الطلب ظاهر في فلتر «فحص مستني يتبعت للعميل»، والرقم على «الطلبات» في القايمة الجانبية زاد.</td><td class="chk"></td></tr>
+      <tr><td class="num">4</td><td>افتحه تاني كصاحب المغسلة</td><td>نفس الصندوق من غير زرار، ومكتوب «اتبعت للإدارة — هي اللي هتبعته للعميل.» والرقم الجانبي مش بيعدّه.</td><td class="chk"></td></tr>
+      <tr><td class="num">5</td><td>كسوبر أدمن دوس «إرسال للعميل»</td><td>«تم إرسال السعر النهائي للعميل للتأكيد.»، والحالة «تمت مراجعة القطع»، والعميل يوصله إشعار بالسعر.</td><td class="chk"></td></tr>
+      <tr><td class="num">6</td><td>من تطبيق العميل افتح الطلب</td><td>القطع قايمة واحدة بعدّ المغسلة (مش طلبه وعدّ المغسلة مع بعض).</td><td class="chk"></td></tr>
+      <tr><td class="num">7</td><td>العميل يطلب مراجعة تانية، والمغسلة تفحص تاني</td><td>يرجع يستنى «إرسال للعميل» تاني.</td><td class="chk"></td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section id="count-hold">
+  <h2><span class="n">3</span>عدد مختلف في الاستلام من المغسلة</h2>
+  <p>لو المندوب عدّ في الاستلام من المغسلة رقم مختلف عن عدّ المغسلة، الرحلة مش بتكمل وبتستنى موافقة الإدارة.</p>
+  <dl class="meta">
+    <dt>فين</dt><dd>صفحة الطلب (صندوق فوق) · الطلبات ← فلتر «بانتظار موافقة الإدارة»</dd>
+    <dt>الصلاحية</dt><dd>المنصة بـ <code>order.update</code>. المغسلة بتشوف السؤال من غير زراير</dd>
+    <dt>محتاج</dt><dd>طلب عدّى «خلص الغسيل» (<a href="#finished">قسم 5</a>)، ومندوب على رحلة «استلام من المغسلة»</dd>
+  </dl>
+  <div class="tbl"><table class="steps">
+    <thead><tr><th>#</th><th>جرّب</th><th>المفروض يحصل</th><th class="chk">✓</th></tr></thead>
+    <tbody>
+      <tr><td class="num">1</td><td>المندوب يبدأ الرحلة ويأكد بعدد مختلف عن عدّ المغسلة</td><td>الرحلة ماتكملش ولسه «بدأت». التطبيق بيقول إن العدد مش مطابق لعدّ المغسلة واتبعت للإدارة، ومش بيقول عدّ المغسلة كام.</td><td class="chk"></td></tr>
+      <tr><td class="num">2</td><td>افتح الطلب كسوبر أدمن</td><td>صندوق «مستني موافقتك — العدد في المغسلة» مكتوب فيه «عدّ X قطعة في المغسلة، وعدّ المغسلة Y»، وزرارين «موافقة» و«رفض». الطلب في فلتر «بانتظار موافقة الإدارة».</td><td class="chk"></td></tr>
+      <tr><td class="num">3</td><td>افتحه كصاحب المغسلة</td><td>نفس الصندوق، مكتوب «إدارة المنصة بتراجع الموضوع.» ومن غير زراير.</td><td class="chk"></td></tr>
+      <tr><td class="num">4</td><td>دوس «رفض» والملاحظة فاضية</td><td>مرفوض: الملاحظة لازمة في الرفض.</td><td class="chk"></td></tr>
+      <tr><td class="num">5</td><td>اكتب ملاحظة ودوس «رفض»</td><td>المندوب يوصله إشعار بالملاحظة، والرحلة لسه مبدوءة عشان يعدّ تاني.</td><td class="chk"></td></tr>
+      <tr><td class="num">6</td><td>المندوب يأكد المرة دي بنفس عدّ المغسلة</td><td>الرحلة تكمل على طول من غير موافقة، والصندوق يختفي.</td><td class="chk"></td></tr>
+      <tr><td class="num">7</td><td>في طلب تاني: عدد مختلف، وبعدين «موافقة»</td><td>الرحلة تكمل بالعدد اللي المندوب بعته، والطلب «جاهز للتوصيل»، والاختلاف يتسجل ويتقفل.</td><td class="chk"></td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section id="hangers">
+  <h2><span class="n">4</span>المغسلة بتأكد الشماعات</h2>
+  <p>المندوب بيسجل الشماعات اللي العميل رجّعها، بس نقاط الشماعات مبقتش بتتحسب على طول. بتتحسب لما المغسلة تأكد كام شماعة وصلتها فعلاً، وعلى رقم المغسلة.</p>
+  <dl class="meta">
+    <dt>فين</dt><dd>صفحة الطلب ← جدول الرحلات · الطلبات ← فلتر «شماعات مستنية تأكيد المغسلة»</dd>
+    <dt>الصلاحية</dt><dd><code>order.update</code>، المغسلة على طلباتها والمنصة كمان</dd>
+  </dl>
+  <div class="tbl"><table class="steps">
+    <thead><tr><th>#</th><th>جرّب</th><th>المفروض يحصل</th><th class="chk">✓</th></tr></thead>
+    <tbody>
+      <tr><td class="num">1</td><td>المندوب يكمّل «استلام من العميل» أو «تسليم للعميل» ويسجّل 3 شماعات</td><td>نقاط العميل ماتتغيرش لسه.</td><td class="chk"></td></tr>
+      <tr><td class="num">2</td><td>افتح الطلب كصاحب المغسلة</td><td>تحت الرحلة: «الشماعات اللي وصلت المغسلة» وزرار «تأكيد الشماعات». الطلب في فلتر «شماعات مستنية تأكيد المغسلة».</td><td class="chk"></td></tr>
+      <tr><td class="num">3</td><td>اكتب 4 (أكتر من اللي المندوب سجّله) وأكّد</td><td>مرفوض.</td><td class="chk"></td></tr>
+      <tr><td class="num">4</td><td>اكتب 2 وأكّد</td><td>مكتوب «المغسلة أكدت 2»، والزرار اختفى. ولو النقاط شغالة، العميل خد نقاط شماعتين بس.</td><td class="chk"></td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<!-- ============================================================ -->
+<div class="part-title">المغسلة</div>
+
+<section id="finished">
+  <h2><span class="n">5</span>«خلص الغسيل»</h2>
+  <p>حالة جديدة بين «جاري التنظيف» و«جاهز للتوصيل». رحلة «استلام من المغسلة» مش بتتدّي لمندوب ولا بتبدأ غير لما المغسلة تدوس «خلص الغسيل». بعد الزرار بتتوزّع لوحدها، والعميل بيوصله إشعار.</p>
+  <dl class="meta">
+    <dt>فين</dt><dd>صفحة الطلب (صندوق فوق وهو في التنظيف) · الطلبات ← فلتر «الغسيل ماتعلّمش إنه خلص وميعاد استلامه من المغسلة جه»</dd>
+    <dt>الصلاحية</dt><dd>أي حد في المغسلة يقدر يفتح الطلب، حتى الموظف اللي صلاحيته عرض بس. من المنصة لازم <code>order.update</code></dd>
+  </dl>
+  <div class="tbl"><table class="steps">
+    <thead><tr><th>#</th><th>جرّب</th><th>المفروض يحصل</th><th class="chk">✓</th></tr></thead>
+    <tbody>
+      <tr><td class="num">1</td><td>افتح طلب في «جاري التنظيف»</td><td>فوق صندوق «جاري التنظيف — مفيش مندوب هيتبعت يستلمه غير لما المغسلة تعلّم إن الغسيل خلص.» وزرار «خلص الغسيل».</td><td class="chk"></td></tr>
+      <tr><td class="num">2</td><td>بص على رحلة «استلام من المغسلة» في جدول الرحلات</td><td>مالهاش مندوب، ومفيش قايمة مناديب تختار منها. مكتوب مكانها نفس الجملة، مش «مفيش مندوب مؤهل».</td><td class="chk"></td></tr>
+      <tr><td class="num">3</td><td>افتح «التوزيع» من القايمة الجانبية</td><td>رحلة الاستلام من المغسلة بتاعة الطلب ده مش موجودة ومش داخلة في العدد.</td><td class="chk"></td></tr>
+      <tr><td class="num">4</td><td>ادخل كموظف مغسلة (صلاحيته عرض الطلبات بس)، وبعدين كمشرف منصة صلاحيته عرض بس</td><td>الموظف شايف الزرار. المشرف مش شايفه.</td><td class="chk"></td></tr>
+      <tr><td class="num">5</td><td>دوس «خلص الغسيل»</td><td>«اتعلّم إن الغسيل خلص — هيتبعت مندوب يستلمه.»، والحالة «خلص الغسيل». لو التعيين التلقائي شغال وفيه مندوب متاح، رحلة الاستلام من المغسلة اتدّتله.</td><td class="chk"></td></tr>
+      <tr><td class="num">6</td><td>بص على سجل الطلب، وعلى إشعارات العميل</td><td>سطر «خلص الغسيل» باسم اللي داس. والعميل وصله «المغسلة خلصت طلب … مندوب هيستلمه منها ويرجّعهولك.»</td><td class="chk"></td></tr>
+      <tr><td class="num">7</td><td>طلب في «جاري التنظيف» وميعاد رحلة الاستلام من المغسلة فات</td><td>يظهر في فلتر «الغسيل ماتعلّمش إنه خلص وميعاد استلامه من المغسلة جه»، والرقم على «الطلبات» زاد، للمغسلة وللمنصة. بعد «خلص الغسيل» يختفي.</td><td class="chk"></td></tr>
+      <tr><td class="num">8</td><td>الرئيسية (كصاحب مغسلة)</td><td>«في التنظيف» تحتها «دوس «خلص الغسيل» لما تخلص — وساعتها يتبعت مندوب يستلمه». و«جاهز وبانتظار مندوب» بتعدّ الطلبات اللي خلص غسيلها.</td><td class="chk"></td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<!-- ============================================================ -->
+<div class="part-title">الفلوس</div>
+
+<section id="trip-fee">
+  <h2><span class="n">6</span>رسوم المشوار 25</h2>
+  <p>رسوم التوصيل مبقتش بالكيلو. كل مشوار للعميل (الاستلام والتسليم) عليه «رسوم المشوار» (25). الكاش بيدفع رسم الاستلام للمندوب وقت الاستلام والباقي وقت التسليم، والأونلاين بيدفع الاتنين مع الطلب. طلبين لنفس العميل في نفس المشوار بيدفعوا مرة واحدة.</p>
+  <dl class="meta">
+    <dt>فين</dt><dd>الإعدادات ← المالية ← «رسوم المشوار» · صفحة الطلب ← الفلوس</dd>
+    <dt>الصلاحية</dt><dd><code>setting.update</code></dd>
+  </dl>
+  <div class="tbl"><table class="steps">
+    <thead><tr><th>#</th><th>جرّب</th><th>المفروض يحصل</th><th class="chk">✓</th></tr></thead>
+    <tbody>
+      <tr><td class="num">1</td><td>افتح الإعدادات ← المالية</td><td>«رسوم المشوار» = 25.</td><td class="chk"></td></tr>
+      <tr><td class="num">2</td><td>اعمل طلب كاش لعميل التجربة (من اللوحة أو التطبيق) وافتحه</td><td>«رسوم التوصيل» 50، وتحتها «استلام 25 + تسليم 25».</td><td class="chk"></td></tr>
+      <tr><td class="num">3</td><td>اعمل طلب تاني لنفس العميل: نفس العنوان، نفس يوم الاستلام ونفس الفترة</td><td>رسم الاستلام 0 («استلام 0 + تسليم 25»). ولو نفس ميعاد التسليم كمان، التسليم 0.</td><td class="chk"></td></tr>
+      <tr><td class="num">4</td><td>الغي الطلب الأول (اللي شايل الرسم)</td><td>الطلب التاني بقى عليه الرسم، وفي سجله ملاحظة بكده، والعميل وصله «إجمالي طلبك اتغيّر».</td><td class="chk"></td></tr>
+      <tr><td class="num">5</td><td>غيّر «رسوم المشوار» لـ 30 واعمل طلب جديد</td><td>الطلب الجديد بـ 30 للمشوار، والطلبات القديمة زي ما هي. <strong>رجّعها 25.</strong></td><td class="chk"></td></tr>
+      <tr><td class="num">6</td><td>افتح طلب قديم من قبل النشر</td><td>رسوم توصيله زي ما كانت (بالكيلو)، ومن غير «استلام + تسليم».</td><td class="chk"></td></tr>
+      <tr><td class="num">7</td><td>افتح تعديل أي منطقة</td><td>خانات السعر بالكيلو مبقتش موجودة.</td><td class="chk"></td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section id="cash-hold">
+  <h2><span class="n">7</span>مبلغ مختلف عند الباب</h2>
+  <p>لو المندوب حصّل أقل أو أكتر من المطلوب (في الاستلام أو التسليم)، الرحلة مش بتكمل وبتستنى موافقة الإدارة. لو اتوافق على الأكتر، الفرق بيروح محفظة العميل. ولو على الأقل، الباقي بيفضل على العميل. وفي إصلاح كمان: الكاش اللي بيتحصّل وقت الاستلام مبقاش يعلّم الطلب «مدفوع» قبل ما المغسلة تعدّ.</p>
+  <dl class="meta">
+    <dt>فين</dt><dd>صفحة الطلب (صندوق فوق) · الطلبات ← فلتر «بانتظار موافقة الإدارة» · المدفوعات ← «الكاش مع المناديب»</dd>
+    <dt>الصلاحية</dt><dd><code>order.update</code> و <code>payment.update</code> مع بعض، والمغسلة لأ</dd>
+  </dl>
+  <div class="tbl"><table class="steps">
+    <thead><tr><th>#</th><th>جرّب</th><th>المفروض يحصل</th><th class="chk">✓</th></tr></thead>
+    <tbody>
+      <tr><td class="num">1</td><td>طلب كاش: المندوب يكمّل «استلام من العميل» ويبعت 25</td><td>الرحلة تكمل، والـ25 ظاهرة في «الكاش مع المناديب» باسم المندوب.</td><td class="chk"></td></tr>
+      <tr><td class="num">2</td><td>طلب تاني: المندوب يبعت 20 بدل 25 في الاستلام</td><td>الرحلة ماتكملش. في الطلب: «مستني موافقتك — المبلغ المحصّل» و«حصّل 20 والمفروض يتحصّل 25».</td><td class="chk"></td></tr>
+      <tr><td class="num">3</td><td>افتحه بحساب عنده <code>order.update</code> بس، من غير <code>payment.update</code></td><td>مش شايف زرار «موافقة».</td><td class="chk"></td></tr>
+      <tr><td class="num">4</td><td>كسوبر أدمن دوس «موافقة»</td><td>الرحلة تكملت، والـ5 الناقصين بيتحصّلوا في التسليم.</td><td class="chk"></td></tr>
+      <tr><td class="num">5</td><td>في التسليم: المندوب يبعت 15 أكتر من المطلوب، وبعدين «موافقة»</td><td>الطلب «مدفوع» و«مكتمل»، و15 دخلت محفظة العميل.</td><td class="chk"></td></tr>
+      <tr><td class="num">6</td><td><strong>الإصلاح:</strong> في الاستلام المندوب يبعت مبلغ أكبر من السعر التقديري كله، وبعدين «موافقة». المغسلة بعدها تعدّ قطع أكتر وتطلع سعر أعلى</td><td>الطلب <strong>مش</strong> «مدفوع» بعد الاستلام، وفي التسليم المندوب مطلوب يحصّل الفرق. ولو السعر النهائي طلع أقل من اللي اتحصّل، الفرق يروح المحفظة وقت التسليم.</td><td class="chk"></td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<!-- ============================================================ -->
+<div class="part-title">المواعيد</div>
+
+<section id="cutoff">
+  <h2><span class="n">8</span>آخر حجز قبل بداية الفترة</h2>
+  <p>الفترة بتقفل قبل <strong>بدايتها</strong> بربع ساعة، وكانت بتقفل قبل نهايتها بساعة. يعني فترة شغالة دلوقتي مبقتش تتحجز.</p>
+  <dl class="meta">
+    <dt>فين</dt><dd>الإعدادات ← العمليات ← «آخر حجز قبل بداية الفترة»</dd>
+    <dt>الصلاحية</dt><dd><code>setting.update</code></dd>
+  </dl>
+  <div class="tbl"><table class="steps">
+    <thead><tr><th>#</th><th>جرّب</th><th>المفروض يحصل</th><th class="chk">✓</th></tr></thead>
+    <tbody>
+      <tr><td class="num">1</td><td>افتح الإعدادات ← العمليات</td><td>القيمة 15 دقيقة.</td><td class="chk"></td></tr>
+      <tr><td class="num">2</td><td>من «إنشاء طلب لعميل» أو التطبيق، اختار النهارده وفترة بدأت بالفعل</td><td>مقفولة، ولو اتبعتت الطلب يترفض.</td><td class="chk"></td></tr>
+      <tr><td class="num">3</td><td>فترة فاضل على بدايتها 10 دقايق</td><td>مقفولة.</td><td class="chk"></td></tr>
+      <tr><td class="num">4</td><td>غيّر القيمة لـ 0 وجرّب نفس الفترة</td><td>بتتحجز لحد ما تبدأ. <strong>رجّعها 15.</strong></td><td class="chk"></td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section id="pieces">
+  <h2><span class="n">9</span>حد عدد القطع</h2>
+  <p>حدّين، والاتنين فاضيين يعني مفيش حد: أقصى عدد قطع في الطلب الواحد، وأقصى عدد قطع تتستلم في فترة استلام في اليوم (كل الطلبات مع بعض). لو الطلب عدّى أي حد منهم بيترفض، والفترة اللي مفيهاش مكان بتظهر «مليانة».</p>
+  <dl class="meta">
+    <dt>فين</dt><dd>الإعدادات ← العمليات ← «أقصى عدد قطع في الطلب» · المواعيد ← تعديل فترة ← «أقصى عدد قطع يتستلم»</dd>
+    <dt>الصلاحية</dt><dd><code>setting.update</code> للأول، و <code>time_slot.update</code> للتاني</dd>
+  </dl>
+  <div class="tbl"><table class="steps">
+    <thead><tr><th>#</th><th>جرّب</th><th>المفروض يحصل</th><th class="chk">✓</th></tr></thead>
+    <tbody>
+      <tr><td class="num">1</td><td>اكتب 5 في «أقصى عدد قطع في الطلب» واحفظ</td><td>اتحفظ.</td><td class="chk"></td></tr>
+      <tr><td class="num">2</td><td>«إنشاء طلب لعميل» بـ 6 قطع (خدمة بالقطعة)</td><td>يترفض جنب القطع: «الطلب الواحد مايزيدش عن 5 قطعة.» ونفس الكلام من التطبيق.</td><td class="chk"></td></tr>
+      <tr><td class="num">3</td><td>نفس الطلب بـ 5 قطع</td><td>يتعمل.</td><td class="chk"></td></tr>
+      <tr><td class="num">4</td><td>فضّي «أقصى عدد قطع في الطلب» واحفظ</td><td>مفيش حد تاني.</td><td class="chk"></td></tr>
+      <tr><td class="num">5</td><td>المواعيد ← فترة ← «أقصى عدد قطع يتستلم» = 10 واحفظ</td><td>في قايمة المواعيد تحت المحجوز «0 / 10 قطعة».</td><td class="chk"></td></tr>
+      <tr><td class="num">6</td><td>اعمل طلب بـ 8 قطع في الفترة دي بكره</td><td>القايمة بتقول «8 / 10 قطعة» تحت بكره.</td><td class="chk"></td></tr>
+      <tr><td class="num">7</td><td>«إنشاء طلب لعميل» بـ 3 قطع، نفس اليوم ونفس الفترة</td><td>الفترة مكتوب جنبها «مليانة». ولو اتبعتت من التطبيق: «ميعاد الاستلام ده فاضل فيه مكان لـ 2 قطعة بس. اختار ميعاد تاني.»</td><td class="chk"></td></tr>
+      <tr><td class="num">8</td><td>الغي طلب الـ 8 قطع</td><td>المكان رجع («0 / 10 قطعة»).</td><td class="chk"></td></tr>
+      <tr><td class="num">9</td><td>طلب بخدمة بتتسعّر بعد المعاينة في نفس الفترة</td><td>مش داخل في الحد، لأن مفيش قطع وقت الحجز.</td><td class="chk"></td></tr>
+      <tr><td class="num">10</td><td>فضّي «أقصى عدد قطع يتستلم» واحفظ</td><td>مفيش حد. <strong>اتأكد إن الخانتين فاضيين وانت خارج.</strong></td><td class="chk"></td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section id="absent">
+  <h2><span class="n">10</span>العميل مش موجود وقت الاستلام</h2>
+  <p>لو المندوب ماقدرش يلاقي العميل وقت الاستلام، الطلب بيقف من أول مرة والعميل بيختار ميعاد استلام جديد. قبل كده كانت الرحلة بترجع لمندوب تاني، ومكانتش بتوصل لحد غير بعد محاولتين.</p>
+  <dl class="meta">
+    <dt>فين</dt><dd>صفحة الطلب ← السجل والرحلات</dd>
+  </dl>
+  <div class="tbl"><table class="steps">
+    <thead><tr><th>#</th><th>جرّب</th><th>المفروض يحصل</th><th class="chk">✓</th></tr></thead>
+    <tbody>
+      <tr><td class="num">1</td><td>مندوب يفشّل «استلام من العميل» بسبب «العميل غير متاح»</td><td>الرحلة وقفت (مارجعتش لمندوب). سجل الطلب: «العميل ماكانش موجود وقت الاستلام. مستنيين يختار ميعاد جديد.» والعميل وصله «المندوب ماقدرش يلاقيك عشان يستلم الطلب … اختار ميعاد استلام جديد.»</td><td class="chk"></td></tr>
+      <tr><td class="num">2</td><td>العميل يختار ميعاد استلام جديد من التطبيق</td><td>الاستلام رجع لمندوب في الميعاد الجديد. الخدمة زي ما هي، ورسوم المشوار ماتزدتش. ميعاد التسليم بيتغير لوحده بس لو بقى قبل ما الخدمة تخلص.</td><td class="chk"></td></tr>
+      <tr><td class="num">3</td><td>نفس السبب في رحلة «تسليم للعميل»</td><td>زي الأول: الرحلة بترجع للمحاولة.</td><td class="chk"></td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<!-- ============================================================ -->
+<section id="apps-only">
+  <h2><span class="n">+</span>تعديلات بتتشاف من التطبيقات بس</h2>
+  <p>دي جاهزة في السيرفر ومحتاجة تحديث التطبيق عشان تبان. اتأكد منها بعد ما فريق الموبايل يبعت النسخة الجديدة.</p>
+  <div class="tbl"><table>
+    <thead><tr><th>البند</th><th>فين في التطبيق</th><th>المفروض يحصل</th></tr></thead>
+    <tbody>
+      <tr><td>أعداد القطع للعميل</td><td>تطبيق العميل ← تفاصيل الطلب</td><td>قايمة قطع واحدة، والقطعة الزيادة متعلّمة «مضافة» مش «غير مطابق».</td></tr>
+      <tr><td>التوقيع</td><td>تطبيق المندوب ← الاستلام</td><td>مفيش توقيع في الاستلام، التوقيع في التسليم بس.</td></tr>
+      <tr><td>QR</td><td>تطبيق المندوب ← الاستلام من المغسلة</td><td>مفيش مسح QR.</td></tr>
+      <tr><td>طلبات المندوب المكتملة</td><td>تطبيق المندوب ← البروفايل</td><td>«طلبات مكتملة» (الطلبات المكتملة اللي خلّص فيها رحلة على الأقل) و«رحلات مكتملة».</td></tr>
+      <tr><td>طلبات العميل المكتملة</td><td>تطبيق العميل ← البروفايل</td><td>عدد الطلبات اللي وصلت «مكتمل».</td></tr>
+      <tr><td>النقاط</td><td>تطبيق العميل ← البروفايل</td><td>النقاط المستخدمة (المصروفة ناقص اللي رجعت) والنقاط المتبقية.</td></tr>
+      <tr><td>عنوان تسليم مختلف</td><td>تطبيق العميل ← تأكيد الطلب</td><td>العميل يختار عنوان تسليم غير عنوان الاستلام، ورسوم المشوار والتغطية بتتحسب عليه.</td></tr>
+      <tr><td>كاش المندوب اليومي</td><td>تطبيق المندوب ← الملخص</td><td>اللي حصّله النهارده بتوقيت القاهرة، واللي لسه معاه لحد ما المكتب يستلمه. لازم يطابق «الكاش مع المناديب» في اللوحة.</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<p class="foot">أي حاجة مش زي المكتوب: صوّرها وابعت رقم القسم ورقم الخطوة (مثلاً «5 / خطوة 2»). كل حاجة مكتوبة هنا متجرّبة في التستات الأوتوماتيك (2145 تست)، ومتجرّبة على اللوحة محليًا.</p>
+
+</main>
+</body>
+</html>

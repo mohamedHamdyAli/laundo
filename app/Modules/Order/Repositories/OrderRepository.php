@@ -10,6 +10,7 @@ use App\Modules\Order\Models\Order;
 use App\Modules\Order\Models\OrderPriceQuery;
 use App\Modules\Order\Models\OrderTask;
 use App\Modules\Order\Models\PieceDiscrepancy;
+use App\Modules\Order\Models\TaskHold;
 use App\Modules\Payment\Enums\PaymentStatus;
 use App\Modules\Payment\Models\DriverEarning;
 use App\Modules\Payment\Models\OrderSettlement;
@@ -71,6 +72,19 @@ class OrderRepository
     // A driver's piece count that did not match and nobody has reviewed.
     public const PIECE_MISMATCH = 'piece_mismatch';
 
+    // A driver's «تأكيد» held for the platform's approval (`TaskHolds`).
+    public const AWAITING_APPROVAL = 'awaiting_approval';
+
+    // Hangers a driver collected that the laundry has not confirmed (item 11).
+    public const HANGERS_TO_CONFIRM = 'hangers_to_confirm';
+
+    // The laundry's count waiting for the platform to send it on (item 12).
+    public const REVIEW_TO_SEND = 'review_to_send';
+
+    // Being cleaned past the time its collection was due — «خلص الغسيل» not
+    // pressed (item 18).
+    public const WASHING_OVERDUE = 'washing_overdue';
+
     public function search(?string $query, ?string $status = null, int $perPage = 15): LengthAwarePaginator
     {
         return Order::with(self::EAGER)
@@ -102,7 +116,7 @@ class OrderRepository
                      * definition of "no driver", stays typed, and compiles to a
                      * single `IN (subquery)` instead of a correlated EXISTS.
                      */
-                    self::NEEDS_DRIVER => $q->whereIn('id', OrderTask::queued()->select('order_id')),
+                    self::NEEDS_DRIVER => $q->whereIn('id', OrderTask::queued()->offerable()->select('order_id')),
                     self::NEEDS_LAUNDRY => $q->unassigned()->active(),
                     // A leg that failed its way out of the pool. Somebody has to
                     // release it and hand it to a driver, and both of those live
@@ -112,6 +126,10 @@ class OrderRepository
                         ->select('order_id')),
                     self::NEEDS_PRICE_ANSWER => $q->whereIn('id', OrderPriceQuery::open()->select('order_id')),
                     self::PIECE_MISMATCH => $q->withOpenPieceCheck(),
+                    self::AWAITING_APPROVAL => $q->withPendingHold(),
+                    self::HANGERS_TO_CONFIRM => $q->withHangersToConfirm(),
+                    self::REVIEW_TO_SEND => $q->withReviewToSend(),
+                    self::WASHING_OVERDUE => $q->washingOverdue(),
                     default => $q->where('status', $status),
                 };
             })
@@ -254,6 +272,45 @@ class OrderRepository
     }
 
     /**
+     * The customer's other live orders on the same visit — same address, day
+     * and window — for one kind of trip, the ones still waiting for it.
+     *
+     * `pickup`: orders not collected yet. `return`: orders not delivered yet.
+     * Unscoped on purpose: a customer's orders at two laundries still share
+     * one driver's visit, and this runs only for a customer, never a tenant.
+     *
+     * @param  'pickup'|'return'  $trip
+     * @return Collection<int, Order>
+     */
+    public function sharingVisit(
+        string $trip,
+        int $customerId,
+        int $addressId,
+        string $date,
+        int $slotId,
+        ?int $exceptOrderId = null,
+        bool $lock = false,
+    ) {
+        [$addressColumn, $dateColumn, $slotColumn, $waiting] = $trip === 'pickup'
+            ? ['pickup_address_id', 'pickup_date', 'pickup_slot_id', [OrderStatus::AwaitingPickup, OrderStatus::DriverOnWay]]
+            : ['delivery_address_id', 'delivery_date', 'delivery_slot_id', array_filter(
+                OrderStatus::cases(),
+                fn (OrderStatus $s) => ! in_array($s, [OrderStatus::Delivered, OrderStatus::Completed, OrderStatus::Cancelled, OrderStatus::Returned], true)
+            )];
+
+        return Order::withoutGlobalScopes()
+            ->where('user_id', $customerId)
+            ->where($addressColumn, $addressId)
+            ->whereDate($dateColumn, $date)
+            ->where($slotColumn, $slotId)
+            ->whereIn('status', array_map(fn (OrderStatus $s) => $s->value, array_values($waiting)))
+            ->when($exceptOrderId !== null, fn ($q) => $q->whereKeyNot($exceptOrderId))
+            ->when($lock, fn ($q) => $q->lockForUpdate())
+            ->orderBy('id')
+            ->get();
+    }
+
+    /**
      * A leg re-read under a row lock, inside the caller's transaction — so the
      * same handover confirmed twice at once is completed once.
      */
@@ -271,6 +328,32 @@ class OrderRepository
         return PieceDiscrepancy::query()
             ->whereIn('order_id', Order::query()->select('id'))
             ->findOrFail($id);
+    }
+
+    /**
+     * A held «تأكيد» by id, through the tenant-scoped `Order` the same way —
+     * `task_holds` carries no `laundry_id`.
+     */
+    public function findHold(int|string $id): TaskHold
+    {
+        return TaskHold::query()
+            ->whereIn('order_id', Order::query()->select('id'))
+            ->findOrFail($id);
+    }
+
+    /**
+     * The held confirmations waiting on the platform, for one order's screen.
+     *
+     * @return Collection<int, TaskHold>
+     */
+    public function pendingHolds(Order $order): Collection
+    {
+        return TaskHold::query()
+            ->where('order_id', $order->id)
+            ->pending()
+            ->with(['task', 'raisedBy:id,name'])
+            ->orderBy('id')
+            ->get();
     }
 
     /**

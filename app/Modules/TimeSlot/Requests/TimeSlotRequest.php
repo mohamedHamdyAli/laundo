@@ -26,6 +26,10 @@ class TimeSlotRequest extends FormRequest
             // Null means unlimited. Zero would mean "never bookable", which is
             // what the status flag already expresses.
             'capacity' => 'nullable|integer|min:1|max:100000',
+            // «أقصى عدد قطع في الميعاد» (item 19, 2026-11-08): the pieces a pickup
+            // in this window may collect in a day, all orders together. Null is
+            // no limit; zero would mean «no pickups», which the status says.
+            'max_pieces' => 'nullable|integer|min:1|max:100000',
             'sort_order' => 'nullable|integer|min:0',
             'status' => $isUpdate ? 'nullable|in:active,inactive' : 'required|in:active,inactive',
         ];
@@ -39,6 +43,7 @@ class TimeSlotRequest extends FormRequest
         return [
             'end_time.after' => __('The end time must be after the start time.'),
             'capacity.min' => __('Leave capacity empty for unlimited, or enter at least 1.'),
+            'max_pieces.min' => __('Leave the pieces empty for no limit, or enter at least 1.'),
         ];
     }
 }

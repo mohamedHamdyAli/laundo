@@ -372,7 +372,8 @@ class DriverMapTest extends TestCase
 
         $this->assertCount(1, $waiting);
         $this->assertSame($order->code, $waiting[0]['order_code']);
-        $this->assertSame(4, $waiting[0]['legs_waiting']);
+        // Three: the collection from the laundry is nobody's before «خلص الغسيل» (item 18, 2026-11-08).
+        $this->assertSame(3, $waiting[0]['legs_waiting']);
         $this->assertSame(['lat' => 30.0333, 'lng' => 31.2444], $waiting[0]['point']);
         $this->assertSame($this->geo['zones'][0]->id, $waiting[0]['zone_id']);
     }

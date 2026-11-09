@@ -201,6 +201,12 @@ class RefundService
             $captured = $order->payableTotal();
         }
 
+        // Never more than the bill: cash taken over it at the door went to the
+        // customer's wallet when the platform approved it
+        // (`TransactionReason::OverCollected`, 2026-11-08) — refunding the whole
+        // capture would pay that excess out twice.
+        $captured = min($captured, $order->payableTotal());
+
         $alreadyRefunded = (float) Refund::where('order_id', $order->id)
             ->whereIn('status', [Refund::APPROVED, Refund::SETTLED])
             ->sum('amount');

@@ -57,6 +57,11 @@ class SettingsSeeder extends Seeder
          * contracts, so nothing is deducted until they enter it.
          */
         $this->create_new_config('Commission_Rate', 0);
+        // «رسوم المشوار» — each trip to the customer, the figure the client named
+        // (2026-11-08). The migration that introduced it inserts the same row.
+        $this->create_new_config('Trip_Fee', 25);
+        // «أقصى عدد قطع في الطلب» (item 19, 2026-11-08) — blank, no limit.
+        $this->create_new_config('Max_Pieces_Per_Order', null);
         // EGP rather than USD, which is what `moneyFormat()` used to default to
         // — a laundry in Cairo was quoting dollars on every screen.
         $this->create_new_config('Currency', 'EGP');

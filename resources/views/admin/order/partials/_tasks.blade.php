@@ -124,12 +124,33 @@
                                     @else
                                         {{ $task->piece_count ?? '—' }}
                                     @endif
-                                    {{-- «شماعات راجعة» — counted at the customer's door,
-                                         and each one earned the customer points. --}}
+                                    {{-- «شماعات راجعة» — counted by the driver at the
+                                         customer's door, confirmed by the laundry they
+                                         reach; the customer's points follow the laundry's
+                                         count (the client's sheet, item 11). --}}
                                     @if ($task->hangers_returned)
                                         <small class="d-block text-muted">
                                             {{ trans_choice(':count hanger returned|:count hangers returned', $task->hangers_returned, ['count' => $task->hangers_returned]) }}
                                         </small>
+                                        @if ($task->hangers_confirmed_at)
+                                            <small class="d-block text-success" data-hangers-confirmed="{{ $task->id }}">
+                                                {{ __('The laundry confirmed :count', ['count' => (int) $task->hangers_confirmed]) }}
+                                            </small>
+                                        @elseif (canDo('order.update'))
+                                            <form method="POST" action="{{ route('admin.order.tasks.hangers', $task->id) }}"
+                                                class="d-flex gap-1 align-items-center mt-1" data-hangers-form="{{ $task->id }}">
+                                                @csrf
+                                                <input type="number" name="hangers_confirmed" class="form-control form-control-sm"
+                                                    style="width: 4.5rem" min="0" max="{{ $task->hangers_returned }}" required
+                                                    value="{{ $task->hangers_returned }}"
+                                                    aria-label="{{ __('Hangers that reached the laundry') }}">
+                                                <button type="submit" class="btn btn-sm btn-outline-success text-nowrap">
+                                                    {{ __('Confirm hangers') }}
+                                                </button>
+                                            </form>
+                                        @else
+                                            <small class="d-block text-warning">{{ __('Waiting for the laundry to confirm') }}</small>
+                                        @endif
                                     @endif
                                 </td>
                                 <td class="text-end">
@@ -194,8 +215,14 @@
                                                  each has a different remedy. The operator cannot see which
                                                  from an empty dropdown, so the reason is spelled out. --}}
                                             @php $blocker = $taskBlockers[$task->id] ?? null; @endphp
+                                            @if ($task->awaitsWashing())
+                                                {{-- Not a staffing problem: nobody is given the collection
+                                                     before «خلص الغسيل» (item 18, 2026-11-08). --}}
+                                                <small class="d-block text-muted" style="max-width: 22rem">{{ __('No driver is sent to collect it until the laundry marks it finished.') }}</small>
+                                            @else
                                             <small class="d-block text-muted">{{ __('No eligible driver') }}</small>
-                                            @if ($blocker)
+                                            @endif
+                                            @if ($blocker && ! $task->awaitsWashing())
                                                 <small class="d-block text-attention" style="max-width: 22rem">
                                                     {{ __($blocker['reason'], $blocker['params']) }}
                                                 </small>

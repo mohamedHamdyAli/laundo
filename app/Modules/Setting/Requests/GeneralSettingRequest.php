@@ -111,6 +111,8 @@ class GeneralSettingRequest extends FormRequest
                 // «قد يتم تطبيق رسوم إضافية» is permissive, so the default is
                 // none and this is what turns it on.
                 'Cash_Surcharge' => 'nullable|numeric|min:0|max:1000',
+                // «رسوم المشوار» — each trip to the customer (`TripFees`).
+                'Trip_Fee' => 'nullable|numeric|min:0|max:1000',
                 // «ادعُ أصدقاءك». Off until somebody sets a value — the size of
                 // a discount is a business decision and not a default.
                 'Referral_Reward_Type' => 'nullable|in:percentage,fixed',
@@ -152,8 +154,10 @@ class GeneralSettingRequest extends FormRequest
                 // Days after the earliest delivery a delivery may still be booked
                 // (Turnaround). Blank is the default, 14.
                 'Delivery_Window_Days' => 'nullable|integer|min:1|max:365',
-                // SlotClock: minutes before a window's end it stops being bookable.
+                // SlotClock: minutes before a window's start it stops being bookable.
                 'Slot_Booking_Cutoff_Minutes' => 'nullable|integer|min:0|max:720',
+                // «أقصى عدد قطع في الطلب» (PieceLimits, item 19). Blank is no limit.
+                'Max_Pieces_Per_Order' => 'nullable|integer|min:1|max:100000',
 
                 /*
                  * «النقاط» — every figure of the points programme, read by

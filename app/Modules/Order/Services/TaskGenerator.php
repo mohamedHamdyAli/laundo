@@ -69,7 +69,9 @@ class TaskGenerator
             // are not assignable, and OrderService::assignLaundry() announces
             // them when they become so.
             if (! $this->dispatcher->assignsAutomatically() && $order->laundry_id !== null) {
-                $this->dispatcher->announceWaiting($order, count($tasks));
+                // Not the collection from the laundry: nobody can take it before
+                // «خلص الغسيل» (item 18), which announces it then.
+                $this->dispatcher->announceWaiting($order, count(array_filter($tasks, fn (OrderTask $task) => ! $task->awaitsWashing())));
             }
 
             return $tasks;

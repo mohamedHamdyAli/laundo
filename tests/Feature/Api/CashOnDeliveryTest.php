@@ -4,9 +4,11 @@ namespace Tests\Feature\Api;
 
 use App\Modules\Driver\Models\Driver;
 use App\Modules\Order\Enums\OrderStatus;
+use App\Modules\Order\Enums\TaskStatus;
 use App\Modules\Order\Enums\TaskType;
 use App\Modules\Order\Models\Order;
 use App\Modules\Order\Models\OrderTask;
+use App\Modules\Order\Models\TaskHold;
 use App\Modules\Order\Services\DriverDispatcher;
 use App\Modules\Order\Services\OrderReviewService;
 use App\Modules\Order\Services\OrderService;
@@ -98,16 +100,20 @@ class CashOnDeliveryTest extends TestCase
         $reviews = app(OrderReviewService::class);
         $reviews->review($order->fresh(), [['item_id' => $this->catalog['items'][0]->id, 'qty' => 2]], null, $this->tenant['owner']);
 
+        $this->sendReview($order);
+
         return $reviews->confirm($order->fresh(), $this->customer);
     }
 
-    /** Collected, priced, agreed and back from the laundry: the door is next. */
+    /** Collected, priced, agreed, washed and back from the laundry: the door is next. */
     private function atTheDoor(): Order
     {
         $order = $this->place();
         $this->walk($order, TaskType::PickupFromCustomer);
         $this->walk($order->fresh(), TaskType::DeliverToLaundry);
         $this->priced($order);
+        // «خلص الغسيل» (item 18, 2026-11-08): nobody collects before it.
+        $this->finishWashing($order);
         $this->walk($order->fresh(), TaskType::CollectFromLaundry);
 
         $delivery = $this->leg($order, TaskType::DeliverToCustomer);
@@ -143,13 +149,17 @@ class CashOnDeliveryTest extends TestCase
         $this->walk($order, TaskType::PickupFromCustomer);
         $this->walk($order->fresh(), TaskType::DeliverToLaundry);
         $collect = $this->leg($order, TaskType::CollectFromLaundry);
+        // Nobody is sent for it before «خلص الغسيل» (item 18, 2026-11-08), so
+        // it is put in this driver's list by hand — as a leg assigned before
+        // that rule was — to see what the app is told.
+        $collect->forceFill(['driver_id' => $this->driver->id, 'status' => TaskStatus::Assigned])->save();
 
         // At the laundry, not yet priced: the app is told why it cannot start.
         $this->assertSame(OrderStatus::PickedUp, $order->fresh()->status);
         $row = $this->row($collect);
         $this->assertFalse($row['can_start']);
         $this->assertSame(
-            __("This order is still waiting for the laundry's review and the customer's price confirmation."),
+            __('The laundry has not finished this order yet — collect it once the laundry marks it finished.'),
             $row['blocked_reason']
         );
         $this->postJson("/api/v1/driver/tasks/{$collect->id}/start", [], $this->apiHeaders())
@@ -159,6 +169,17 @@ class CashOnDeliveryTest extends TestCase
         // Priced and agreed with the pieces already there: the work starts at
         // once, which is what nothing used to do.
         $this->assertSame(OrderStatus::Cleaning, $this->priced($order)->status);
+
+        // Being washed is not washed: still not to be collected.
+        $row = $this->row($collect);
+        $this->assertFalse($row['can_start']);
+        $this->assertSame(
+            __('The laundry has not finished this order yet — collect it once the laundry marks it finished.'),
+            $row['blocked_reason']
+        );
+
+        // The laundry marks it finished: now the driver may go.
+        $this->finishWashing($order);
 
         $row = $this->row($collect);
         $this->assertTrue($row['can_start']);
@@ -193,7 +214,9 @@ class CashOnDeliveryTest extends TestCase
         $this->assertEquals($due, $payment['to_collect']);
 
         $this->deliver($order, [])->assertStatus(422)->assertJsonValidationErrors('collected_amount');
-        $this->deliver($order, ['collected_amount' => $due + 200])->assertStatus(422)->assertJsonValidationErrors('collected_amount');
+        // More than is owed: held for the platform since 2026-11-08 (item 10),
+        // no longer a 422 — and nothing recorded as paid meanwhile.
+        $this->deliver($order, ['collected_amount' => $due + 200])->assertStatus(409)->assertJsonPath('key', 'awaiting_approval');
         $this->assertSame(0, Payment::count());
 
         $this->deliver($order, ['collected_amount' => $due])->assertOk();
@@ -213,7 +236,10 @@ class CashOnDeliveryTest extends TestCase
     {
         $order = $this->atTheDoor();
 
-        $this->deliver($order, ['collected_amount' => 0])->assertOk();
+        // Nothing taken is not what is owed: the platform approves it first
+        // (item 10, 2026-11-08), then it stands as exactly that.
+        $this->deliver($order, ['collected_amount' => 0])->assertStatus(409);
+        app(TaskService::class)->approveHold(TaskHold::firstOrFail(), $this->superAdmin());
 
         // Delivered, unpaid, and no cash invented.
         $this->assertSame(OrderStatus::Delivered, $order->fresh()->status);

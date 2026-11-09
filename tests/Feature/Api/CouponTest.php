@@ -170,9 +170,9 @@ class CouponTest extends TestCase
 
         $order = Order::withoutGlobalScopes()->firstOrFail();
 
-        // 2 x 17 = 34, plus 20 delivery, minus 10.
+        // 2 x 17 = 34, plus two trips at 25 («رسوم المشوار»), minus 10.
         $this->assertSame('10.00', $order->discount_total);
-        $this->assertSame('44.00', $order->estimated_total);
+        $this->assertSame('74.00', $order->estimated_total);
         $this->assertSame('WELCOME10', $order->coupon_code);
 
         $this->assertSame(1, $coupon->fresh()->redemptions_count);

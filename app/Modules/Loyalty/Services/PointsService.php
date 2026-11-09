@@ -62,6 +62,23 @@ class PointsService
     }
 
     /**
+     * Every point the customer has spent on orders, less what came back from
+     * an order that was cancelled or counted lower — «النقاط المستخدمة» (the
+     * client's sheet, item 15, 2026-11-08). Lapsed points were not used and an
+     * operator's adjustment is not spending: neither is in it.
+     */
+    public function used(User $user): int
+    {
+        $sums = PointTransaction::where('user_id', $user->id)
+            ->whereIn('reason', [PointReason::Redeemed->value, PointReason::RedemptionReturned->value])
+            ->selectRaw('reason, coalesce(sum(points), 0) as total')
+            ->groupBy('reason')
+            ->pluck('total', 'reason');
+
+        return max(0, (int) ($sums[PointReason::Redeemed->value] ?? 0) - (int) ($sums[PointReason::RedemptionReturned->value] ?? 0));
+    }
+
+    /**
      * The soonest points to lapse, and how many: «30 نقطة تنتهي يوم 12 نوفمبر».
      *
      * @return array{points: int, expires_at: Carbon}|null

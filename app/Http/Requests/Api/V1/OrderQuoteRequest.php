@@ -41,6 +41,15 @@ class OrderQuoteRequest extends FormRequest
             // OrderService (see OrderRequest).
             'pickup_address_id' => ['required', 'integer', 'min:1'],
             'delivery_address_id' => ['nullable', 'integer', 'min:1'],
+            // The two visits, when the app has them by the summary step: the
+            // laundry is chosen on the pickup window's load, and «رسوم المشوار»
+            // is 0 for a visit another of the customer's orders already pays
+            // (2026-11-08). Optional — without them both trips are charged, and
+            // the order itself is priced on what it is placed with.
+            'pickup_date' => ['nullable', 'date'],
+            'pickup_slot_id' => ['nullable', 'integer', 'min:1'],
+            'delivery_date' => ['nullable', 'date'],
+            'delivery_slot_id' => ['nullable', 'integer', 'min:1'],
             // «تطبيق» sits on this very screen. Without the field here the code
             // was validated away before the service could look at it.
             'coupon_code' => ['nullable', 'string', 'max:50'],

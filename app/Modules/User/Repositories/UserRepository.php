@@ -3,6 +3,7 @@
 namespace App\Modules\User\Repositories;
 
 use App\Modules\User\Models\User;
+use Illuminate\Database\Eloquent\Collection;
 
 class UserRepository
 {
@@ -22,6 +23,33 @@ class UserRepository
         return User::availableUsers()
             ->search($query, ['name', 'phone', 'customer_reference'])
             ->paginate($perPage);
+    }
+
+    /**
+     * The customer picker on «إنشاء طلب» — active customers only, matched on
+     * what an operator on the phone has: a name, a number, or the reference on
+     * the bag. An account that is switched off cannot sign in to its own
+     * order, so it is not offered one.
+     *
+     * @return Collection<int, User>
+     */
+    public function activeCustomersMatching(?string $term, int $limit = 20)
+    {
+        return User::availableUsers()
+            ->where('status', 'active')
+            ->search($term, ['name', 'phone', 'customer_reference'])
+            ->limit($limit)
+            ->get(['id', 'name', 'phone', 'customer_reference']);
+    }
+
+    /**
+     * One active customer, or null — the same set the picker offers, so an id
+     * that is a moderator's, a driver's or a switched-off account's is simply
+     * not a customer here.
+     */
+    public function findActiveCustomer(int $id): ?User
+    {
+        return User::availableUsers()->where('status', 'active')->find($id);
     }
 
     /**

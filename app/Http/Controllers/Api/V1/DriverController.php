@@ -9,7 +9,9 @@ use App\Modules\Driver\Models\Driver;
 use App\Modules\Driver\Models\DriverProfile;
 use App\Modules\Driver\Models\DriverRecordSubmission;
 use App\Modules\Driver\Services\DriverRecordReview;
+use App\Modules\Order\Enums\OrderStatus;
 use App\Modules\Order\Enums\TaskStatus;
+use App\Modules\Order\Models\OrderTask;
 use App\Services\Auth\OtpService;
 use App\Services\Auth\PasswordResetTicket;
 use Illuminate\Http\JsonResponse;
@@ -603,6 +605,17 @@ class DriverController extends Controller
             // «قيد المراجعة» is the difference between a slow answer and no
             // answer. Null when there is nothing waiting.
             'pending_review' => $this->pendingReview($driver),
+            // The client's sheet, item 13 (2026-11-08): the orders this driver
+            // took part in that went all the way — any leg of theirs completed —
+            // and the legs they completed.
+            'completed_orders_count' => OrderTask::where('driver_id', $driver->id)
+                ->where('status', TaskStatus::Completed->value)
+                ->whereHas('order', fn ($order) => $order->where('status', OrderStatus::Completed->value))
+                ->distinct()
+                ->count('order_id'),
+            'completed_trips_count' => OrderTask::where('driver_id', $driver->id)
+                ->where('status', TaskStatus::Completed->value)
+                ->count(),
             'zones' => $driver->zones->map(fn ($zone) => [
                 'id' => $zone->id,
                 'name' => getLocalizedValue($zone, 'name'),

@@ -507,8 +507,13 @@ class LandingPageTest extends TestCase
         // seedCatalog puts both items in one category and the example takes one
         // item per category, so the basket is 3 shirts at 17 and the laundry
         // finds a fourth.
-        $this->assertStringContainsString(moneyFormat(51), $html, 'the estimate subtotal');
-        $this->assertStringContainsString(moneyFormat(68), $html, 'the counted subtotal');
+        // The card prints totals: the pieces plus the journey, two trips at
+        // «رسوم المشوار» (blank setting: 25 each). Before 2026-11-08 the journey
+        // was an area's per-km floor, absent here, so the totals equalled the
+        // subtotals.
+        $this->assertStringContainsString(moneyFormat(51 + 50), $html, 'the estimate total');
+        $this->assertStringContainsString(moneyFormat(68 + 50), $html, 'the counted total');
+        $this->assertStringContainsString(moneyFormat(50), $html, 'the two trips');
         $this->assertStringContainsString(moneyFormat(17), $html, 'the difference');
 
         // And the markup carries the final figures, so a reduced-motion reader

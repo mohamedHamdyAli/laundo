@@ -52,9 +52,10 @@ class PaymentService
             throw new RuntimeException('already_paid');
         }
 
-        if (! $order->hasFinalPrice()) {
+        if (! $order->customerSeesFinal()) {
             // Paying an estimate would bind the customer to a figure the laundry
-            // has not agreed to either.
+            // has not agreed to either — and a count the platform has not sent
+            // on yet (a draft, since 2026-11-08) is not the customer's to pay.
             throw new RuntimeException('no_final_price');
         }
 
@@ -66,7 +67,9 @@ class PaymentService
             throw new RuntimeException('cash_is_collected_on_delivery');
         }
 
-        $amount = $order->payableTotal();
+        // What is still owed: a cash order may have paid the pickup's trip fee
+        // at the door already («رسوم المشوار», 2026-11-08).
+        $amount = $order->stillOwed();
 
         if ($amount <= 0) {
             throw new RuntimeException('nothing_to_pay');

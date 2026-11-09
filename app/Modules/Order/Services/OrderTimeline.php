@@ -121,6 +121,7 @@ class OrderTimeline
             OrderStatus::Reviewed,
             OrderStatus::Confirmed,
             OrderStatus::Cleaning,
+            OrderStatus::Finished,
             OrderStatus::ReadyForDelivery,
             self::OUT_FOR_DELIVERY,
             OrderStatus::Delivered,

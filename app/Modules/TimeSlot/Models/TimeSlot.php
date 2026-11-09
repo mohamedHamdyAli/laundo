@@ -13,6 +13,7 @@ use Illuminate\Database\Eloquent\Model;
  * @property string $end_time
  * @property string $applies_to
  * @property int|null $capacity
+ * @property int|null $max_pieces pieces a pickup in this window may collect in a day, all orders together; null = no limit (item 19, 2026-11-08)
  * @property int $sort_order
  * @property string $status
  */
@@ -25,6 +26,7 @@ class TimeSlot extends Model
         'end_time',
         'applies_to',
         'capacity',
+        'max_pieces',
         'sort_order',
         'status',
     ];

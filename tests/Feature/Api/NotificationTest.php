@@ -166,12 +166,15 @@ class NotificationTest extends TestCase
 
         $machine = app(OrderStateMachine::class);
         $machine->transition($order->fresh(), OrderStatus::Cleaning, 'laundry');
+        $machine->transition($order->fresh(), OrderStatus::Finished, 'laundry');
         $machine->transition($order->fresh(), OrderStatus::ReadyForDelivery, 'laundry');
 
         foreach ([
             NotificationEvent::DriverOnWay,
             NotificationEvent::FinalPriceReady,
             NotificationEvent::PriceConfirmed,
+            // «خلص الغسيل» (item 18, 2026-11-08).
+            NotificationEvent::OrderWashingFinished,
             NotificationEvent::OrderReadyForDelivery,
         ] as $event) {
             $this->assertSame(
@@ -660,7 +663,8 @@ class NotificationTest extends TestCase
     {
         $admin = $this->superAdmin();
 
-        // Nobody serves the zone, so all four legs queue.
+        // Nobody serves the zone, so the legs queue — three of them: the
+        // collection from the laundry is nobody's before «خلص الغسيل» (item 18).
         $order = $this->placedOrder();
         OrderTask::where('order_id', $order->id)
             ->update(['created_at' => now()->subHours(5)]);
@@ -668,7 +672,7 @@ class NotificationTest extends TestCase
         $this->artisan('tasks:alert-stuck')->assertSuccessful();
 
         $this->assertSame(
-            4,
+            3,
             NotificationLog::where('user_id', $admin->id)
                 ->where('event', NotificationEvent::TaskQueuedTooLong->value)
                 ->where('channel', 'database')->count()
@@ -689,7 +693,7 @@ class NotificationTest extends TestCase
         $this->artisan('tasks:alert-stuck')->assertSuccessful();
         $this->artisan('tasks:alert-stuck')->assertSuccessful();
 
-        $this->assertSame(4, NotificationLog::where('event', NotificationEvent::TaskQueuedTooLong->value)
+        $this->assertSame(3, NotificationLog::where('event', NotificationEvent::TaskQueuedTooLong->value)
             ->where('channel', 'database')->count());
     }
 
@@ -736,6 +740,7 @@ class NotificationTest extends TestCase
             $this->tenant['owner']
         );
 
-        return $order->fresh();
+        // Sent on by the platform — the moment the customer hears (item 12).
+        return $this->sendReview($order);
     }
 }

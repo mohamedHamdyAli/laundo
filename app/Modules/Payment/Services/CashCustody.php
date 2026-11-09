@@ -3,6 +3,8 @@
 namespace App\Modules\Payment\Services;
 
 use App\Modules\Driver\Models\Driver;
+use App\Modules\Payment\Enums\PaymentMethod;
+use App\Modules\Payment\Enums\PaymentStatus;
 use App\Modules\Payment\Models\Payment;
 use App\Modules\User\Models\User;
 use App\Support\LaundryContext;
@@ -48,6 +50,43 @@ class CashCustody
             // with the rest.
             'last_id' => (int) $row->getAttribute('last_id'),
         ])->values();
+    }
+
+    /**
+     * One driver's cash, for their own app — «إجمالي التحصيل الكاش اليومي»
+     * (the client's sheet, item 17, 2026-11-08).
+     *
+     * - `collected_today`: every pound they took at a door today — the
+     *   business's day (Cairo), the one the driver works in, not UTC's —
+     *   handed in since or not.
+     * - `held`: what is still with them, any day, until the office receives it
+     *   (`receive()`) — the figure the office will ask them for.
+     *
+     * @return array{collected_today: float, collections_today: int, held: float}
+     */
+    public function forDriver(int $driverId): array
+    {
+        // Both ends on the business's clock, then to UTC: Egypt keeps summer
+        // time, and a day is 23 or 25 hours on the two days it changes. The end
+        // is tomorrow's own start — a midnight that does not exist (24 April)
+        // starts at 01:00, and adding a day to it would keep the 01:00.
+        $dayStart = now(displayTimezone())->startOfDay()->utc();
+        $dayEnd = now(displayTimezone())->addDay()->startOfDay()->utc();
+
+        $today = Payment::query()
+            ->where('method', PaymentMethod::Cash->value)
+            ->where('status', PaymentStatus::Captured->value)
+            ->where('collected_by', $driverId)
+            ->where('captured_at', '>=', $dayStart)
+            ->where('captured_at', '<', $dayEnd)
+            ->selectRaw('count(*) as collections, coalesce(sum(amount), 0) as amount')
+            ->first();
+
+        return [
+            'collected_today' => round((float) ($today?->getAttribute('amount') ?? 0), 2),
+            'collections_today' => (int) ($today?->getAttribute('collections') ?? 0),
+            'held' => round((float) Payment::withDrivers()->where('collected_by', $driverId)->sum('amount'), 2),
+        ];
     }
 
     /**

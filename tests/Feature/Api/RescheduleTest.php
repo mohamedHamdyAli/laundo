@@ -6,9 +6,11 @@ use App\Modules\Notification\Enums\NotificationEvent;
 use App\Modules\Notification\Models\NotificationLog;
 use App\Modules\Order\Enums\TaskFailureReason;
 use App\Modules\Order\Enums\TaskStatus;
+use App\Modules\Order\Enums\TaskType;
 use App\Modules\Order\Models\Order;
 use App\Modules\Order\Models\OrderTask;
 use App\Modules\Order\Services\OrderService;
+use App\Modules\Order\Services\RescheduleService;
 use App\Modules\Order\Services\TaskService;
 use App\Modules\TimeSlot\Models\TimeSlot;
 use App\Modules\User\Models\User;
@@ -404,6 +406,90 @@ class RescheduleTest extends TestCase
                 'date' => now()->addDay()->toDateString(),
             ])
             ->assertStatus(400);
+    }
+
+    // ------------------------------------- the customer not there (item 7)
+
+    #[Test]
+    public function a_customer_not_there_for_the_pickup_is_asked_for_a_new_time_at_once(): void
+    {
+        // The client's sheet, item 7 (2026-11-08): from the first absence, not
+        // after two attempts by two drivers.
+        $this->driverUser('+201066660002');
+        $order = $this->order();
+        $driver = $this->driverUser('+201066660001');
+
+        $task = $order->tasks()->orderBy('sequence')->firstOrFail();
+        $task->forceFill(['status' => TaskStatus::Assigned, 'driver_id' => $driver->id])->save();
+
+        $task = app(TaskService::class)->fail($task->fresh(), $driver, TaskFailureReason::CustomerUnavailable);
+
+        // Not handed to the next driver.
+        $this->assertSame(TaskStatus::Failed, $task->status);
+        $this->assertNull($task->driver_id);
+        $this->assertNull($order->fresh()->pickup_slot_id);
+
+        // Told, in words that fit what happened.
+        $log = NotificationLog::where('event', NotificationEvent::RescheduleNeeded->value)
+            ->where('user_id', $this->customer->id)->where('channel', 'database')->firstOrFail();
+        $this->assertStringContainsString('could not find you', $log->body);
+        $this->assertTrue($order->statusLogs()->where('note', 'like', '%not there for the pickup%')->exists());
+
+        // The app opens the same «choose a new time» screen — for the pickup only.
+        $data = $this->actingAs($this->customer)
+            ->getJson("/api/v1/orders/{$order->id}/reschedule")
+            ->assertOk()
+            ->json('data');
+        $this->assertTrue($data['needs_new_time']);
+        $this->assertSame('pickup', $data['leg']);
+
+        $fee = $order->fresh()->delivery_fee;
+
+        $this->actingAs($this->customer)
+            ->postJson("/api/v1/orders/{$order->id}/reschedule", [
+                'slot_id' => $this->slot()->id,
+                'date' => now()->addDays(2)->toDateString(),
+            ])
+            ->assertOk();
+
+        // Back in play, and the trip that was missed is not charged again.
+        $this->assertSame(TaskStatus::Pending, $task->fresh()->status);
+        $this->assertSame($fee, $order->fresh()->delivery_fee);
+    }
+
+    #[Test]
+    public function an_absent_pickup_that_ran_out_of_attempts_under_the_old_rule_stays_an_operators(): void
+    {
+        // Failed twice before 2026-11-08: still Failed, its window untouched —
+        // an operator's rescue, not something the customer is now prompted to
+        // rebook (code review).
+        $order = $this->order();
+        $order->tasks()->orderBy('sequence')->firstOrFail()->forceFill([
+            'status' => TaskStatus::Failed,
+            'failure_reason' => TaskFailureReason::CustomerUnavailable,
+            'attempts' => 2,
+            'driver_id' => null,
+        ])->save();
+
+        $this->assertNotNull($order->fresh()->pickup_slot_id);
+        $this->assertFalse(app(RescheduleService::class)->isAwaitingNewSlot($order->fresh()));
+    }
+
+    #[Test]
+    public function a_customer_not_there_for_the_delivery_keeps_the_old_path(): void
+    {
+        // Item 7 is about the pickup. At the delivery the clothes are on the van,
+        // and the leg goes back to the drivers as before.
+        $order = $this->order();
+        $driver = $this->driverUser('+201066660001');
+
+        $task = $order->tasks()->where('type', TaskType::DeliverToCustomer->value)->firstOrFail();
+        $task->forceFill(['status' => TaskStatus::Assigned, 'driver_id' => $driver->id])->save();
+
+        $task = app(TaskService::class)->fail($task->fresh(), $driver, TaskFailureReason::CustomerUnavailable);
+
+        $this->assertNotSame(TaskStatus::Failed, $task->status);
+        $this->assertFalse(app(RescheduleService::class)->isAwaitingNewSlot($order->fresh()));
     }
 
     #[Test]

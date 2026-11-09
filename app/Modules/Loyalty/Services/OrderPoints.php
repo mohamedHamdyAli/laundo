@@ -262,7 +262,10 @@ class OrderPoints
      */
     public function earnForHangers(OrderTask $task): ?PointTransaction
     {
-        $hangers = (int) ($task->hangers_returned ?? 0);
+        // The laundry's count, at its confirmation (the client's sheet, item
+        // 11, 2026-11-08) — not the driver's: «المغسلة تأكد اللي وصلها». An
+        // unconfirmed leg earns nothing yet.
+        $hangers = $task->hangers_confirmed_at !== null ? (int) ($task->hangers_confirmed ?? 0) : 0;
 
         if ($hangers < 1 || ! $task->type->takesHangers() || ! $this->policy->enabled()) {
             return null;

@@ -29,32 +29,12 @@
         </div>
     </div>
 
-    {{-- The delivery rate for this zone. The fee an order is charged is the
-         straight-line distance from the laundry to the customer multiplied by
-         this rate, floored at the minimum, and x1.5 when pickup and delivery are
-         different addresses. Left empty, the fee cannot be worked out and the
-         customer is told so rather than being shown a free delivery. --}}
-    <div class="col-lg-3">
-        <div class="mb-3">
-            <label class="form-label">{{ __('Delivery Rate / km') }}</label>
-            <input type="number" step="0.01" min="0" name="price_per_km" class="form-control"
-                placeholder="{{ __('e.g. 5.00') }}"
-                value="{{ old('price_per_km', $row->price_per_km ?? '') }}"
-                {{ Route::is('*.show') ? 'readonly' : '' }}>
-            <small class="text-muted">{{ __('Leave empty if not priced yet') }}</small>
-        </div>
-    </div>
-
-    <div class="col-lg-3">
-        <div class="mb-3">
-            <label class="form-label">{{ __('Minimum Delivery Fee') }}</label>
-            <input type="number" step="0.01" min="0" name="min_delivery_fee" class="form-control"
-                placeholder="{{ __('e.g. 20.00') }}"
-                value="{{ old('min_delivery_fee', $row->min_delivery_fee ?? '') }}"
-                {{ Route::is('*.show') ? 'readonly' : '' }}>
-            <small class="text-muted">{{ __('Floor for very short trips') }}</small>
-        </div>
-    </div>
+    {{-- No per-km rate any more: since «رسوم المشوار» (2026-11-08) a new order
+         pays one figure per trip, set on the settings screen (`Trip_Fee`). The
+         zone's `price_per_km` / `min_delivery_fee` columns stay, untouched by
+         this form (a field not sent is left as it is), for the one thing that
+         still reads them — re-measuring an order placed before the change when
+         its laundry is reassigned. --}}
 
     <div class="col-lg-3">
         <div class="mb-3">

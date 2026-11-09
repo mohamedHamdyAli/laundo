@@ -90,7 +90,31 @@ class OrderDashboardTest extends TestCase
     }
 
     #[Test]
-    public function assigning_an_order_prices_its_delivery(): void
+    public function a_trip_priced_order_keeps_its_fee_whichever_laundry_takes_it(): void
+    {
+        // «رسوم المشوار» (2026-11-08): two trips at the set fee, known at
+        // placement with no laundry at all, and not re-measured on assignment.
+        $customer = $this->customer();
+        $address = $this->addressFor($customer, $this->geo['zones'][1]);
+
+        $tenant = $this->laundryWithOwner('A', '+201011110001', '+201011110002');
+        $this->cover($tenant['laundry'], $this->geo['zones'][1]->id, $this->catalog['service']->id);
+
+        $order = $this->placeFor($customer, $address);
+        $this->assertSame('50.00', $order->delivery_fee);
+        $total = $order->estimated_total;
+
+        $this->actingAs($this->superAdmin())
+            ->put("/admin/order/assign/{$order->id}", ['laundry_id' => $tenant['laundry']->id])
+            ->assertRedirect();
+
+        $order->refresh();
+        $this->assertSame('50.00', $order->delivery_fee);
+        $this->assertSame($total, $order->estimated_total);
+    }
+
+    #[Test]
+    public function assigning_an_order_priced_by_distance_prices_its_delivery(): void
     {
         $customer = $this->customer();
         $address = $this->addressFor($customer, $this->geo['zones'][1]);
@@ -98,8 +122,14 @@ class OrderDashboardTest extends TestCase
         $tenant = $this->laundryWithOwner('A', '+201011110001', '+201011110002');
         $this->cover($tenant['laundry'], $this->geo['zones'][0]->id, $this->catalog['service']->id);
 
+        // An order placed before the trip fee: its journey unknown until a
+        // laundry is set, and no trip split (`pickup_fee` null).
         $order = $this->placeFor($customer, $address);
-        $this->assertSame('0.00', $order->delivery_fee);
+        $order->forceFill([
+            'pickup_fee' => null, 'return_fee' => null, 'delivery_fee' => 0,
+            'estimated_total' => $order->estimated_subtotal, 'estimated_tax' => 0,
+        ])->save();
+        $this->assertSame('0.00', $order->fresh()->delivery_fee);
 
         // Coverage is extended, then the order is placed by hand.
         $this->cover($tenant['laundry'], $this->geo['zones'][1]->id, $this->catalog['service']->id);

@@ -506,6 +506,8 @@ class RefundAndEarningTest extends TestCase
         $reviews = app(OrderReviewService::class);
         $reviews->review($order, [['item_id' => $this->catalog['items'][0]->id, 'qty' => 2]], null, $this->tenant['owner']);
 
+        $this->sendReview($order);
+
         return $reviews->confirm($order->fresh(), $this->customer)->fresh();
     }
 
@@ -528,10 +530,12 @@ class RefundAndEarningTest extends TestCase
 
         $reviews = app(OrderReviewService::class);
         $reviews->review($order->fresh(), [['item_id' => $this->catalog['items'][0]->id, 'qty' => 2]], null, $this->tenant['owner']);
+        $this->sendReview($order);
         $reviews->confirm($order->fresh(), $this->customer);
 
         $machine = app(OrderStateMachine::class);
         $machine->transition($order->fresh(), OrderStatus::Cleaning, 'laundry');
+        $machine->transition($order->fresh(), OrderStatus::Finished, 'laundry');
         $machine->transition($order->fresh(), OrderStatus::ReadyForDelivery, 'laundry');
 
         $this->walk($order->fresh(), TaskType::CollectFromLaundry, $driver);
@@ -551,13 +555,15 @@ class RefundAndEarningTest extends TestCase
 
         app(TaskService::class)->start($task->fresh(), $driver);
 
-        app(TaskService::class)->complete(
+        // Held and approved when the figures do not match (`TaskHolds`): these
+        // tests are about the money after the leg, not the hold.
+        $this->completeLeg(
             $task->fresh(),
             $driver,
             // The delivery on an unpaid order says what was collected: nothing
             // here — these tests settle the money by hand.
             ($type->countsPieces() ? ['piece_count' => 2] : [])
-                + ($type->collectsPayment() ? ['collected_amount' => 0] : []),
+                + ($type === TaskType::DeliverToCustomer ? ['collected_amount' => 0] : []),
             [],
             $signed ? UploadedFile::fake()->image('sig.png') : null,
         );

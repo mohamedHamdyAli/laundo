@@ -737,6 +737,42 @@
             "column": "lot_id",
             "to": "point_transactions",
             "migration": "database/migrations/2026_10_12_100000_create_point_ledger_tables.php"
+        },
+        {
+            "from": "task_holds",
+            "column": "order_task_id",
+            "to": "order_tasks",
+            "migration": "database/migrations/2026_11_08_100200_create_task_holds_table.php"
+        },
+        {
+            "from": "task_holds",
+            "column": "order_id",
+            "to": "orders",
+            "migration": "database/migrations/2026_11_08_100200_create_task_holds_table.php"
+        },
+        {
+            "from": "task_holds",
+            "column": "raised_by",
+            "to": "users",
+            "migration": "database/migrations/2026_11_08_100200_create_task_holds_table.php"
+        },
+        {
+            "from": "task_holds",
+            "column": "decided_by",
+            "to": "users",
+            "migration": "database/migrations/2026_11_08_100200_create_task_holds_table.php"
+        },
+        {
+            "from": "order_tasks",
+            "column": "hangers_confirmed_by",
+            "to": "users",
+            "migration": "database/migrations/2026_11_08_100300_add_hanger_confirmation_to_order_tasks.php"
+        },
+        {
+            "from": "orders",
+            "column": "review_sent_by",
+            "to": "users",
+            "migration": "database/migrations/2026_11_08_100400_add_review_sent_to_orders.php"
         }
     ],
     "eloquent": [
@@ -1336,6 +1372,15 @@
         },
         {
             "from": "App\\Modules\\Order\\Models\\Order",
+            "to": "App\\Modules\\Order\\Models\\TaskHold",
+            "type": "has_many",
+            "method": "taskHolds",
+            "foreign_key": "order_id",
+            "from_table": "orders",
+            "to_table": "task_holds"
+        },
+        {
+            "from": "App\\Modules\\Order\\Models\\Order",
             "to": "App\\Modules\\Payment\\Models\\OrderSettlement",
             "type": "has_one",
             "method": "settlement",
@@ -1585,6 +1630,33 @@
             "foreign_key": "recurrence_id",
             "from_table": "recurrence_prompts",
             "to_table": "order_recurrences"
+        },
+        {
+            "from": "App\\Modules\\Order\\Models\\TaskHold",
+            "to": "App\\Modules\\Order\\Models\\Order",
+            "type": "belongs_to",
+            "method": "order",
+            "foreign_key": "order_id",
+            "from_table": "task_holds",
+            "to_table": "orders"
+        },
+        {
+            "from": "App\\Modules\\Order\\Models\\TaskHold",
+            "to": "App\\Modules\\Order\\Models\\OrderTask",
+            "type": "belongs_to",
+            "method": "task",
+            "foreign_key": "order_task_id",
+            "from_table": "task_holds",
+            "to_table": "order_tasks"
+        },
+        {
+            "from": "App\\Modules\\Order\\Models\\TaskHold",
+            "to": "App\\Modules\\User\\Models\\User",
+            "type": "belongs_to",
+            "method": "decidedBy",
+            "foreign_key": null,
+            "from_table": "task_holds",
+            "to_table": "users"
         },
         {
             "from": "App\\Modules\\Payment\\Models\\CommissionRule",

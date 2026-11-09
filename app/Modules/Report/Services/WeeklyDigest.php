@@ -171,7 +171,7 @@ class WeeklyDigest
             ['label' => __('Waiting to be counted'), 'count' => Order::where('status', OrderStatus::PickedUp->value)->count()],
             ['label' => __('Priced, waiting for the customer'), 'count' => Order::where('status', OrderStatus::Reviewed->value)->count()],
             ['label' => __('Confirmed, not started'), 'count' => Order::where('status', OrderStatus::Confirmed->value)->count()],
-            ['label' => __('Ready, waiting to go out'), 'count' => Order::where('status', OrderStatus::ReadyForDelivery->value)->count()],
+            ['label' => __('Ready, waiting to go out'), 'count' => Order::whereIn('status', [OrderStatus::Finished->value, OrderStatus::ReadyForDelivery->value])->count()],
         ];
 
         return array_values(array_filter($rows, fn ($row) => $row['count'] > 0));

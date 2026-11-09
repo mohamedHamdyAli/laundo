@@ -37,6 +37,9 @@ enum OrderStatus: string
     case ReviewDisputed = 'review_disputed';
     case Confirmed = 'confirmed';
     case Cleaning = 'cleaning';
+    // «خلص الغسيل» — the laundry says the work is done; only then is the
+    // collection offered to a driver (the client's sheet, item 18, 2026-11-08).
+    case Finished = 'finished';
     case ReadyForDelivery = 'ready_for_delivery';
     case Delivered = 'delivered';
     case Completed = 'completed';
@@ -62,7 +65,10 @@ enum OrderStatus: string
             self::ReviewDisputed => [self::Reviewed, self::Returned],
             // Confirmed releases the work. Payment is tracked separately.
             self::Confirmed => [self::Cleaning],
-            self::Cleaning => [self::ReadyForDelivery],
+            // The laundry presses «خلص الغسيل» from the panel.
+            self::Cleaning => [self::Finished],
+            // The driver has collected them.
+            self::Finished => [self::ReadyForDelivery],
             self::ReadyForDelivery => [self::Delivered],
             self::Delivered => [self::Completed],
             self::Completed, self::Cancelled, self::Returned => [],
@@ -128,6 +134,19 @@ enum OrderStatus: string
     }
 
     /**
+     * Where an order may be when a driver collects it from the laundry: the
+     * laundry has said «خلص الغسيل», or the pieces are already back out.
+     * Before that the collection is neither offered, assigned nor started
+     * (the client's sheet, item 18, 2026-11-08).
+     *
+     * @return array<int, self>
+     */
+    public static function collectable(): array
+    {
+        return [self::Finished, self::ReadyForDelivery];
+    }
+
+    /**
      * The customer-facing label, keyed for translation.
      */
     public function label(): string
@@ -140,6 +159,7 @@ enum OrderStatus: string
             self::ReviewDisputed => 'Awaiting a second review',
             self::Confirmed => 'Price confirmed',
             self::Cleaning => 'Cleaning',
+            self::Finished => 'Washing finished',
             self::ReadyForDelivery => 'Ready for delivery',
             self::Delivered => 'Delivered',
             self::Completed => 'Completed',
@@ -186,6 +206,10 @@ enum OrderStatus: string
      * `416:6541` and `399:2762` both include it. Confirmation is a step the
      * customer has to *act* on, so leaving it off the line would hide from them
      * the one place the order is waiting on nobody but themselves.
+     *
+     * `Finished` («خلص الغسيل», 2026-11-08) is not here: this is the landing
+     * page's journey, whose copy is the Web File. The customer's tracking
+     * screen draws it (`OrderTimeline`).
      *
      * `ReviewDisputed` is deliberately absent — it is a detour, not a milestone,
      * and drawing it would make the line grow when things go wrong.

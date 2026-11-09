@@ -11,7 +11,7 @@
     "surfaces": {
         "panel": {
             "prefix": "/admin",
-            "routes": 329,
+            "routes": 340,
             "note": "Blade admin panel; laundry owners share it and are confined by the tenant scope"
         },
         "api": {
@@ -61,51 +61,51 @@
     "scale": {
         "communities": 17,
         "modules": 43,
-        "features": 467,
-        "routes": 462,
-        "tables": 75,
+        "features": 486,
+        "routes": 473,
+        "tables": 76,
         "nodes_by_type": {
-            "class": 575,
+            "class": 599,
             "command": 11,
             "enum": 22,
-            "feature": 467,
-            "file": 1087,
+            "feature": 486,
+            "file": 1121,
             "integration": 5,
             "interface": 4,
-            "method": 3446,
+            "method": 3574,
             "module": 43,
             "permission": 242,
-            "route": 462,
-            "table": 75,
-            "test": 164,
-            "trait": 7,
-            "view": 298
+            "route": 473,
+            "table": 76,
+            "test": 173,
+            "trait": 8,
+            "view": 300
         },
         "edges_by_type": {
-            "contains": 5631,
-            "implemented_by": 4480,
-            "tested_by": 3302,
-            "imports": 2697,
-            "references": 2578,
-            "entry_point": 1527,
-            "depends_on": 1208,
-            "calls": 950,
-            "route_to": 892,
-            "touches": 614,
-            "guarded_by": 425,
-            "includes": 374,
-            "extends": 252,
-            "renders": 180,
-            "writes_table": 168,
-            "co_changes": 119,
-            "foreign_key": 104,
-            "uses_trait": 97,
-            "belongs_to": 89,
-            "integrates": 67,
-            "validates": 67,
-            "defined_by": 66,
-            "maps_to": 66,
-            "has_many": 30,
+            "contains": 5829,
+            "implemented_by": 4959,
+            "tested_by": 3618,
+            "imports": 2927,
+            "references": 2749,
+            "entry_point": 1760,
+            "depends_on": 1302,
+            "calls": 972,
+            "route_to": 914,
+            "touches": 626,
+            "guarded_by": 439,
+            "includes": 377,
+            "extends": 265,
+            "renders": 181,
+            "writes_table": 175,
+            "co_changes": 120,
+            "foreign_key": 107,
+            "uses_trait": 98,
+            "belongs_to": 92,
+            "integrates": 75,
+            "validates": 70,
+            "defined_by": 67,
+            "maps_to": 67,
+            "has_many": 31,
             "implements": 6,
             "belongs_to_many": 4,
             "has_one": 4
@@ -122,7 +122,7 @@
                 "Zone"
             ],
             "routes": 30,
-            "cohesion": 0.568
+            "cohesion": 0.563
         },
         {
             "slug": "catalog",
@@ -135,7 +135,7 @@
                 "Pricing"
             ],
             "routes": 31,
-            "cohesion": 0.52
+            "cohesion": 0.516
         },
         {
             "slug": "laundries",
@@ -148,7 +148,7 @@
                 "LaundryZone"
             ],
             "routes": 32,
-            "cohesion": 0.496
+            "cohesion": 0.493
         },
         {
             "slug": "delivery",
@@ -159,8 +159,8 @@
                 "Driver",
                 "Payment"
             ],
-            "routes": 83,
-            "cohesion": 0.445
+            "routes": 94,
+            "cohesion": 0.442
         },
         {
             "slug": "user",
@@ -170,7 +170,7 @@
                 "User"
             ],
             "routes": 9,
-            "cohesion": 0.198
+            "cohesion": 0.188
         },
         {
             "slug": "marketing",
@@ -185,7 +185,7 @@
                 "Faq"
             ],
             "routes": 54,
-            "cohesion": 0.659
+            "cohesion": 0.657
         },
         {
             "slug": "order",
@@ -194,11 +194,12 @@
             "modules": [
                 "Order",
                 "Payment",
+                "Address",
                 "Rating",
                 "Recurrence"
             ],
-            "routes": 46,
-            "cohesion": 0.392
+            "routes": 57,
+            "cohesion": 0.395
         },
         {
             "slug": "operations",
@@ -209,8 +210,8 @@
                 "Order",
                 "TimeSlot"
             ],
-            "routes": 31,
-            "cohesion": 0.363
+            "routes": 42,
+            "cohesion": 0.372
         },
         {
             "slug": "money",
@@ -223,7 +224,7 @@
                 "Loyalty"
             ],
             "routes": 45,
-            "cohesion": 0.506
+            "cohesion": 0.497
         },
         {
             "slug": "report",
@@ -233,7 +234,7 @@
                 "Report"
             ],
             "routes": 7,
-            "cohesion": 0.491
+            "cohesion": 0.486
         },
         {
             "slug": "api",
@@ -243,7 +244,7 @@
                 "Api"
             ],
             "routes": 108,
-            "cohesion": 0.372
+            "cohesion": 0.36
         },
         {
             "slug": "authentication",
@@ -263,7 +264,7 @@
                 "Database"
             ],
             "routes": 0,
-            "cohesion": 0.445
+            "cohesion": 0.448
         },
         {
             "slug": "public_site",
@@ -273,7 +274,7 @@
                 "Landing"
             ],
             "routes": 0,
-            "cohesion": 0.163
+            "cohesion": 0.16
         },
         {
             "slug": "quality",
@@ -281,11 +282,10 @@
             "source": "derived",
             "modules": [
                 "Tests",
-                "Docs",
-                "Address"
+                "Docs"
             ],
             "routes": 0,
-            "cohesion": 0.353
+            "cohesion": 0.34
         },
         {
             "slug": "routing_and_distance",
@@ -295,7 +295,7 @@
                 "Routing"
             ],
             "routes": 0,
-            "cohesion": 0.232
+            "cohesion": 0.231
         },
         {
             "slug": "system",
@@ -311,7 +311,7 @@
                 "Roles"
             ],
             "routes": 68,
-            "cohesion": 0.432
+            "cohesion": 0.423
         }
     ],
     "runtime": {
@@ -372,6 +372,7 @@
         "docs/driver-app-backend-answers.md",
         "docs/mobile-2026-10-25-app-strings.md",
         "docs/mobile-2026-11-01-no-laundry-hold.md",
+        "docs/mobile-2026-11-08-client-batch.md",
         "docs/mobile-api-changes.md",
         "docs/order-cycle-explained.md",
         "docs/order-lifecycle.md",

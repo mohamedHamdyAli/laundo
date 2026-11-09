@@ -189,7 +189,8 @@ class HomeTest extends TestCase
         $queue = collect($this->summary()->needsAPerson())->keyBy('key');
 
         $this->assertArrayHasKey('tasks_queued', $queue->all());
-        $this->assertSame(4, $queue['tasks_queued']['count']);
+        // Three: the collection from the laundry is nobody's before «خلص الغسيل» (item 18, 2026-11-08).
+        $this->assertSame(3, $queue['tasks_queued']['count']);
         $this->assertSame('critical', $queue['tasks_queued']['severity']);
     }
 
@@ -721,14 +722,15 @@ class HomeTest extends TestCase
 
         $item = collect($this->summary()->needsAPerson())->firstWhere('key', 'tasks_queued');
 
-        $this->assertSame(8, $item['count']);
+        // Six, three per order: the collection from the laundry is nobody's before «خلص الغسيل» (item 18, 2026-11-08).
+        $this->assertSame(6, $item['count']);
 
         // The key carries the placeholders and the params carry the numbers —
         // the view is what calls `__()`, and a hint with its numbers already
         // substituted matches no translation key and renders in English.
         $this->assertStringContainsString(':legs', $item['hint']);
         $this->assertStringContainsString(':orders', $item['hint']);
-        $this->assertSame(['legs' => 8, 'orders' => 2], $item['hintParams']);
+        $this->assertSame(['legs' => 6, 'orders' => 2], $item['hintParams']);
     }
 
     // ------------------------------------------- and that the filter works
@@ -930,9 +932,10 @@ class HomeTest extends TestCase
 
         $item = collect($this->summary()->needsAPerson())->firstWhere('key', 'tasks_queued');
 
-        $this->assertSame(4, $item['count']);
+        // Three legs, not four: the collection from the laundry is nobody's before «خلص الغسيل» (item 18, 2026-11-08).
+        $this->assertSame(3, $item['count']);
         $this->assertStringContainsString('on one order', $item['hint']);
-        $this->assertSame(['legs' => 4], $item['hintParams']);
+        $this->assertSame(['legs' => 3], $item['hintParams']);
     }
 
     #[Test]

@@ -58,8 +58,9 @@ enum TaskType: string
     /**
      * Whether this leg ends at a customer's door.
      *
-     * Decides two things at once: that a signature is taken, and that the address
-     * to navigate to is the customer's rather than the laundry's.
+     * Decides that the address to navigate to is the customer's rather than the
+     * laundry's. (It used to decide the signature too; since 2026-11-08 that is
+     * the delivery only — `requiresSignature()`.)
      */
     public function involvesCustomer(): bool
     {
@@ -67,33 +68,62 @@ enum TaskType: string
     }
 
     /**
-     * «توقيع العميل». Required on the customer-facing legs and meaningless on the
-     * others — the design marks every optional field «(اختياري)» and marks neither
-     * signature pad.
+     * «توقيع العميل» — required on the delivery only.
+     *
+     * It was required on both legs at the customer's door. The client's sheet,
+     * item 5 (2026-11-08): «إزالة شرط توقيع العميل لتأكيد عملية الإستلام من طرف
+     * المندوب» — the owner kept it on the delivery, where it is the proof the
+     * customer got their clothes back. A signature sent on the pickup is still
+     * stored; it is simply no longer a condition of completing it.
      */
     public function requiresSignature(): bool
     {
-        return $this->involvesCustomer();
+        return $this === self::DeliverToCustomer;
     }
 
     /**
-     * Whether the driver counts pieces at this handover.
+     * Whether the driver app asks for the bag's QR scan («مسح الكود») on this
+     * leg before «تأكيد».
      *
-     * Not on the final leg: the count was settled by the laundry's review and
-     * agreed by the customer, and asking a driver to re-open it on the doorstep
-     * would invite a dispute nobody there can resolve.
+     * The server has never enforced the scan — `verify` checks a code and
+     * records nothing, `complete` does not ask for it — the app runs the step.
+     * The client's sheet, item 6 (2026-11-08): «إزالة شرط الـ QR في حالة
+     * الإستلام من المغسلة لعدم الحاجة له». So the leg says it, as
+     * `requires_signature` does, and the app stops asking at the laundry.
+     * `verify` still answers on every leg for an app that scans anyway.
+     */
+    public function requiresScan(): bool
+    {
+        return $this !== self::CollectFromLaundry;
+    }
+
+    /**
+     * Whether the driver counts pieces at this handover — **the collection from
+     * the laundry only** (the client's sheet, item 12, 2026-11-08: «تحديد عملية
+     * فحص القطع من خلال المغسلة فقط و ليس المندوب»).
+     *
+     * The driver used to count at the customer's door and at the laundry's too;
+     * the laundry's own count is now the one that stands, and the driver counts
+     * once more only when taking the pieces back out, against that count (a
+     * mismatch is held for the platform — `TaskHolds`, item 9). A count sent on
+     * the other legs is ignored, so an app that still asks breaks nothing.
+     * Never on the final leg: the count was agreed by the customer.
      */
     public function countsPieces(): bool
     {
-        return $this !== self::DeliverToCustomer;
+        return $this === self::CollectFromLaundry;
     }
 
     /**
-     * Whether money changes hands here. Only the last leg, and only for COD.
+     * Whether money may change hands here — the two legs at the customer's door.
+     *
+     * The delivery collects what is still owed; since «رسوم المشوار»
+     * (2026-11-08) the pickup collects the pickup trip's fee on a cash order.
+     * Whether *this* leg has anything to take is `OrderTask::toCollect()`.
      */
     public function collectsPayment(): bool
     {
-        return $this === self::DeliverToCustomer;
+        return $this === self::PickupFromCustomer || $this === self::DeliverToCustomer;
     }
 
     /**

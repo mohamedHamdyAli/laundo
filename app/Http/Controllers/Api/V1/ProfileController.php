@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
+use App\Modules\Loyalty\Services\PointsService;
+use App\Modules\Order\Enums\OrderStatus;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -15,6 +17,8 @@ use Illuminate\Validation\Rule;
  */
 class ProfileController extends Controller
 {
+    public function __construct(private readonly PointsService $points) {}
+
     public function show(Request $request): JsonResponse
     {
         return successReturnData($this->present($request));
@@ -117,6 +121,13 @@ class ProfileController extends Controller
             'image' => getImageassetUrl($user->image_profile),
             'phone_verified' => $user->hasVerifiedPhone(),
             'addresses_count' => $user->addresses()->count(),
+            // The client's sheet, items 14 and 15 (2026-11-08): the orders they
+            // placed that went all the way, and their points — what they have
+            // spent on orders (less what came back) and what is left to spend,
+            // lapsed points not counted (`PointsService::available()`).
+            'completed_orders_count' => $user->orders()->where('status', OrderStatus::Completed->value)->count(),
+            'points_used' => $this->points->used($user),
+            'points_remaining' => $this->points->available($user),
         ];
     }
 }

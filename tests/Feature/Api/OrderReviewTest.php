@@ -451,8 +451,15 @@ class OrderReviewTest extends TestCase
         return $order->fresh();
     }
 
+    /**
+     * The laundry's count, sent on to the customer by the platform — the two
+     * steps a count takes to reach the customer since 2026-11-08 (the
+     * client's sheet, item 12). The draft in between is `ReviewDraftTest`'s.
+     */
     private function review(Order $order, array $lines, ?string $note = null): Order
     {
-        return app(OrderReviewService::class)->review($order, $lines, $note, $this->tenant['owner']);
+        app(OrderReviewService::class)->review($order, $lines, $note, $this->tenant['owner']);
+
+        return $this->sendReview($order);
     }
 }

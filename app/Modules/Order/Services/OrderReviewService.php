@@ -5,6 +5,7 @@ namespace App\Modules\Order\Services;
 use App\Modules\Coupon\Models\Coupon;
 use App\Modules\Loyalty\Services\OrderPoints;
 use App\Modules\Notification\Services\OrderNotifier;
+use App\Modules\Notification\Services\PanelAudience;
 use App\Modules\Notification\Services\PieceCountNotifier;
 use App\Modules\Order\Enums\OrderStatus;
 use App\Modules\Order\Enums\TaskStatus;
@@ -18,12 +19,23 @@ use App\Modules\Pricing\Services\PlatformFee;
 use App\Modules\Pricing\Services\PriceIncrease;
 use App\Modules\Service\Models\Service;
 use App\Modules\User\Models\User;
+use App\Notifications\AdminNotification;
+use App\Support\LaundryContext;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Traits\Localizable;
 use RuntimeException;
 
 /**
- * The laundry counts the pieces; the customer agrees to the number.
+ * The laundry counts the pieces; the platform sends the count on; the customer
+ * agrees to the number.
+ *
+ * Since 2026-11-08 (the client's sheet, item 12) `review()` saves a **draft**:
+ * the order does not move and the customer sees nothing of it until the
+ * platform `send()`s it — that is when it becomes «reviewed» and the customer
+ * is asked. `Order::hasReviewToSend()` / `customerSeesFinal()` are the two
+ * questions, by `review_round` against `review_sent_round`.
  *
  * This is where an order stops being an estimate. Three things about it are worth
  * stating plainly, because each is the sort of rule that is expensive to get
@@ -45,6 +57,8 @@ use RuntimeException;
  */
 class OrderReviewService
 {
+    use Localizable;
+
     public function __construct(
         private readonly OrderStateMachine $machine,
         private readonly TaskGenerator $tasks,
@@ -188,12 +202,14 @@ class OrderReviewService
                 'review_round' => $order->review_round + 1,
             ]);
 
-            $this->machine->transition(
+            // Not sent to the customer from here any more (the client's sheet,
+            // item 12, 2026-11-08): the count is a draft the platform reviews
+            // and sends (`send()`). The order stays where it is meanwhile.
+            $this->machine->note(
                 $order,
-                OrderStatus::Reviewed,
-                'laundry',
-                $actor,
-                $note ?: __('Pieces reviewed and priced.')
+                ($note ?: __('Pieces reviewed and priced.')).' — '.__('waiting for the platform to send it to the customer.'),
+                $actor?->laundry_id !== null ? 'laundry' : 'admin',
+                $actor
             );
 
             // The laundry's count against what was handed to it: a piece that
@@ -210,7 +226,79 @@ class OrderReviewService
             $this->pieceNotifier->mismatch($discrepancy);
         }
 
+        $this->announceDraft($reviewed);
+
         return $reviewed;
+    }
+
+    /**
+     * «إرسال للعميل» — the platform sends the laundry's count and price to the
+     * customer (the client's sheet, item 12, 2026-11-08: «تحديد عملية فحص القطع
+     * من خلال المغسلة فقط … وبعدها الأدمن يبعت للعميل»).
+     *
+     * The moment `review()` used to be: the order moves to «reviewed» and the
+     * customer is asked to confirm (`OrderStateMachine` announces it). The
+     * platform's only — refused inside a laundry, and for any sender who
+     * belongs to one, whatever the permission.
+     */
+    public function send(Order $order, User $by, ?string $note = null): Order
+    {
+        if ($by->laundry_id !== null || LaundryContext::currentId() !== null) {
+            throw new RuntimeException('platform_only');
+        }
+
+        return DB::transaction(function () use ($order, $by, $note) {
+            $order = Order::whereKey($order->id)->lockForUpdate()->first() ?? $order;
+
+            if (! $order->hasReviewToSend()) {
+                throw new RuntimeException('nothing_to_send');
+            }
+
+            $order->update([
+                'review_sent_round' => $order->review_round,
+                'review_sent_at' => now(),
+                'review_sent_by' => $by->id,
+            ]);
+
+            return $this->machine->transition(
+                $order,
+                OrderStatus::Reviewed,
+                'admin',
+                $by,
+                $note ?: __('The count from the laundry was checked and sent to the customer.')
+            );
+        });
+    }
+
+    /**
+     * The bell, for the people who send it on — the platform's, never the
+     * laundry's. Swallowed: the draft is recorded and on the order screen
+     * either way.
+     */
+    private function announceDraft(Order $order): void
+    {
+        try {
+            $recipients = PanelAudience::platform('order.update');
+
+            if ($recipients->isEmpty()) {
+                return;
+            }
+
+            $notice = $this->withLocale((string) getDefaultLanguage('code'), fn () => new AdminNotification(
+                __('The laundry has counted order #:code', ['code' => $order->code]),
+                __(':count pieces, :total — check it and send it to the customer.', [
+                    'count' => (int) $order->final_items_count,
+                    'total' => moneyFormat((float) $order->final_total),
+                ]),
+                // A path, never `route()` — see NotificationUrlTest.
+                "/admin/order/show/{$order->id}",
+                ['order_id' => (string) $order->id],
+            ));
+
+            Notification::send($recipients, $notice);
+        } catch (\Throwable $e) {
+            Log::warning('[notifications] review draft notice failed', ['order' => $order->id, 'error' => $e->getMessage()]);
+        }
     }
 
     /**
@@ -351,21 +439,30 @@ class OrderReviewService
      */
     public function comparison(Order $order): array
     {
+        // The laundry's count is the order once the customer is shown it, and
+        // a piece they added reads «مضافة», not as a difference (the client's
+        // sheet, item 2) — every line says what the count did to it, from the
+        // one place the order screen reads too (`OrderPieces`).
+        $pieces = app(OrderPieces::class);
+        $counted = $order->customerSeesFinal();
+
         return [
             'estimated' => [
                 'items_count' => $order->estimated_items_count,
                 'subtotal' => (float) $order->estimated_subtotal,
                 'tax' => (float) $order->estimated_tax,
                 'total' => (float) $order->estimated_total,
-                'lines' => $this->presentLines($order, 'estimated'),
+                'lines' => $pieces->estimated($order),
             ],
-            'final' => $order->final_total === null ? null : [
+            'final' => ! $counted ? null : [
                 'items_count' => $order->final_items_count,
                 'subtotal' => (float) $order->final_subtotal,
                 'tax' => (float) $order->final_tax,
                 'total' => (float) $order->final_total,
-                'lines' => $this->presentLines($order, 'final'),
+                'lines' => $pieces->current($order),
             ],
+            // `pieces_added` / `pieces_missing`.
+            ...$pieces->totals($order),
             'delivery_fee' => (float) $order->delivery_fee,
             'discount' => (float) $order->discount_total,
             // As they stand after the count: fewer pieces may have handed some
@@ -382,7 +479,7 @@ class OrderReviewService
             'reviewed_at' => $order->reviewed_at ? humanDate($order->reviewed_at) : null,
             'review_round' => $order->review_round,
             // The figure the customer is being asked to agree to.
-            'difference' => $order->final_total === null
+            'difference' => ! $counted
                 ? null
                 : round((float) $order->final_total - (float) $order->estimated_total, 2),
         ];
@@ -475,25 +572,5 @@ class OrderReviewService
         }
 
         return [$priced, $count, round($subtotal, 2), $unpriced, round($baseSubtotal, 2)];
-    }
-
-    /**
-     * @return array<int, array<string, mixed>>
-     */
-    private function presentLines(Order $order, string $phase): array
-    {
-        $out = [];
-
-        foreach ($order->items->where('phase', $phase) as $line) {
-            $out[] = [
-                'item_id' => $line->item_id,
-                'name' => $line->item ? getLocalizedValue($line->item, 'name') : null,
-                'qty' => $line->qty,
-                'unit_price' => (float) $line->unit_price,
-                'line_total' => (float) $line->line_total,
-            ];
-        }
-
-        return $out;
     }
 }

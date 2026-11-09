@@ -71,6 +71,10 @@ class orderCrudService
             'needsRescue' => OrderRepository::NEEDS_RESCUE,
             'needsPriceAnswer' => OrderRepository::NEEDS_PRICE_ANSWER,
             'pieceMismatch' => OrderRepository::PIECE_MISMATCH,
+            'awaitingApproval' => OrderRepository::AWAITING_APPROVAL,
+            'hangersToConfirm' => OrderRepository::HANGERS_TO_CONFIRM,
+            'reviewToSend' => OrderRepository::REVIEW_TO_SEND,
+            'washingOverdue' => OrderRepository::WASHING_OVERDUE,
             'counts' => $this->orders->counts(),
         ];
 
@@ -246,6 +250,12 @@ class orderCrudService
      */
     private function feesFor(Order $order, array $laundries): array
     {
+        // Trip-priced («رسوم المشوار»): the laundry does not move the fee, so
+        // there is no «would be» to show.
+        if ($order->pickup_fee !== null) {
+            return [];
+        }
+
         $pricing = app(OrderPricing::class);
         $out = [];
 

@@ -14,6 +14,13 @@ use App\Modules\ItemCategory\Models\ItemCategory;
 use App\Modules\Laundry\Models\Laundry;
 use App\Modules\LaundryService\Models\LaundryService;
 use App\Modules\LaundryZone\Models\LaundryZone;
+use App\Modules\Order\Enums\OrderStatus;
+use App\Modules\Order\Models\Order;
+use App\Modules\Order\Models\OrderTask;
+use App\Modules\Order\Services\OrderReviewService;
+use App\Modules\Order\Services\OrderStateMachine;
+use App\Modules\Order\Services\TaskHeld;
+use App\Modules\Order\Services\TaskService;
 use App\Modules\Pricing\Models\ItemPrice;
 use App\Modules\Service\Models\Service;
 use App\Modules\Setting\Models\Setting;
@@ -21,6 +28,7 @@ use App\Modules\User\Models\User;
 use App\Modules\Zone\Models\Zone;
 use App\Services\PermissionGenerator;
 use Illuminate\Foundation\Testing\TestCase as BaseTestCase;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Cache;
 
 abstract class TestCase extends BaseTestCase
@@ -248,6 +256,86 @@ abstract class TestCase extends BaseTestCase
                 'phone_verified_at' => now(),
             ]
         );
+    }
+
+    /**
+     * «خلص الغسيل» — the laundry finished (the client's sheet, item 18,
+     * 2026-11-08). The collection from the laundry is not offered, assigned or
+     * started before it, so a test that walks an order out of `cleaning` needs
+     * this first. Straight through the state machine: the offer to a driver is
+     * `FinishedWashing`'s, tested on its own.
+     */
+    protected function finishWashing(Order $order): Order
+    {
+        return app(OrderStateMachine::class)
+            ->transition($order->fresh(), OrderStatus::Finished, 'laundry')
+            ->fresh();
+    }
+
+    /**
+     * The laundry's count and price sent to the customer by the platform — the
+     * step that moves an order to «reviewed» since 2026-11-08 (the client's
+     * sheet, item 12: `OrderReviewService::review()` saves a draft, `send()`
+     * is the platform's). A test that reviews and then has the customer
+     * confirm needs this between the two.
+     */
+    protected function sendReview(Order $order): Order
+    {
+        // As the platform, whoever the test is signed in as: `send()` refuses
+        // inside a laundry, and a laundry owner is often the one signed in.
+        // Signed back in as them afterwards.
+        $before = auth()->user();
+        $operator = $this->platformOperator();
+        $this->actingAs($operator);
+
+        try {
+            return app(OrderReviewService::class)->send($order->fresh(), $operator);
+        } finally {
+            $before ? $this->actingAs($before) : $this->app['auth']->forgetGuards();
+        }
+    }
+
+    /**
+     * A platform user who is not the super admin — the oldest super admin is
+     * the platform's wallet (`PlatformAccount`), so a test must not conjure one
+     * just to approve something.
+     */
+    protected function platformOperator(): User
+    {
+        return User::firstOrCreate(
+            ['phone' => '+201000000009'],
+            [
+                'name' => 'Operator', 'email' => 'operator@test.local',
+                'password' => 'password', 'status' => 'active',
+                'role_id' => Role::where('slug', 'admin')->value('id'),
+                'phone_verified_at' => now(),
+            ]
+        );
+    }
+
+    /**
+     * Complete a leg the way it ends: at once, or — when the count at the
+     * laundry or the cash at the door does not match (`TaskHolds`, since
+     * 2026-11-08) — held and then approved by the platform with what was sent.
+     * For tests that walk an order through and are not about the hold itself.
+     *
+     * @param  array<string, mixed>  $data
+     * @param  array<int, UploadedFile>  $photos
+     */
+    protected function completeLeg(
+        OrderTask $task,
+        Driver $driver,
+        array $data = [],
+        array $photos = [],
+        ?UploadedFile $signature = null,
+    ): OrderTask {
+        $tasks = app(TaskService::class);
+
+        try {
+            return $tasks->complete($task, $driver, $data, $photos, $signature);
+        } catch (TaskHeld $held) {
+            return $tasks->approveHold($held->hold, $this->platformOperator());
+        }
     }
 
     /**

@@ -38,9 +38,11 @@ use App\Modules\Notification\Controllers\NotificationLogController;
 use App\Modules\Offer\Controllers\OfferController;
 use App\Modules\Order\Controllers\DispatchController;
 use App\Modules\Order\Controllers\OrderController;
+use App\Modules\Order\Controllers\OrderPlacementController;
 use App\Modules\Order\Controllers\OrderReviewController as DashboardOrderReviewController;
 use App\Modules\Order\Controllers\OrderTaskController;
 use App\Modules\Order\Controllers\OrderTodayController;
+use App\Modules\Order\Controllers\OrderWashingController;
 use App\Modules\Payment\Controllers\CommissionRuleController;
 use App\Modules\Payment\Controllers\InvoiceController;
 use App\Modules\Payment\Controllers\LaundryRevenueController;
@@ -699,6 +701,23 @@ Route::middleware(['auth', 'dashboard.only'])->prefix('/admin')->group(function 
         Route::post('/order/bulk-delete', 'bulkDestroy')->middleware('permission:order.delete')->name('admin.order.bulkDelete');
     });
 
+    /*
+    | «إنشاء طلب» — an order taken for a customer, from the panel (2026-11-08).
+    | The app's own checkout behind it (`PanelOrders` → `OrderService`). Every
+    | route answers to `order.create`, which no seeded role carries, and the
+    | service refuses inside a laundry even when it is granted.
+    */
+    Route::controller(OrderPlacementController::class)->group(function () {
+        Route::get('/order/create', 'create')->middleware('permission:order.create')->name('admin.order.create');
+        Route::post('/order/store', 'store')->middleware('permission:order.create')->name('admin.order.store');
+        Route::post('/order/quote', 'quote')->middleware('permission:order.create')->name('admin.order.quote');
+        Route::get('/order/customers', 'customers')->middleware('permission:order.create')->name('admin.order.customers');
+        Route::get('/order/customers/{id}/addresses', 'addresses')->whereNumber('id')
+            ->middleware('permission:order.create')->name('admin.order.customer_addresses');
+        Route::post('/order/customers/{id}/addresses', 'storeAddress')->whereNumber('id')
+            ->middleware('permission:order.create')->name('admin.order.customer_addresses.store');
+    });
+
     // «تحميل الفاتورة» — a printable page rather than a PDF, since no PDF package
     // is installed and adding a dependency is not a decision to slip into a phase.
     Route::get('/order/invoice/{id}', [InvoiceController::class, 'show'])
@@ -717,9 +736,22 @@ Route::middleware(['auth', 'dashboard.only'])->prefix('/admin')->group(function 
     Route::controller(DashboardOrderReviewController::class)->group(function () {
         Route::post('/order/review/{id}', 'store')
             ->middleware('permission:order.update')->name('admin.order.review');
+        // «إرسال للعميل» — the laundry's count is a draft until the platform
+        // sends it (the client's sheet, item 12, 2026-11-08). `order.update`,
+        // and `OrderReviewService::send()` refuses anybody inside a laundry.
+        Route::post('/order/review/{id}/send', 'send')->whereNumber('id')
+            ->middleware('permission:order.update')->name('admin.order.review.send');
         Route::post('/order/query/{id}', 'answerQuery')
             ->middleware('permission:order.update')->name('admin.order.query.answer');
     });
+
+    // «خلص الغسيل» — the laundry says the work is done, and only then is the
+    // collection offered to a driver (the client's sheet, item 18, 2026-11-08).
+    // `order.view` at the route: the laundry's staff are the ones at the
+    // machines. `OrderWashingController::mayFinish()` asks `order.update` of
+    // anybody outside a laundry.
+    Route::post('/order/{id}/finish-washing', [OrderWashingController::class, 'finish'])->whereNumber('id')
+        ->middleware('permission:order.view')->name('admin.order.finish_washing');
 
     /*
     |--------------------------------------------------------------------------
@@ -777,6 +809,20 @@ Route::middleware(['auth', 'dashboard.only'])->prefix('/admin')->group(function 
         // owner holds `order.update` by design.
         Route::post('/order/piece-check/{id}', 'resolvePieces')
             ->middleware('permission:order.update')->name('admin.order.piece_check.resolve');
+        // «بانتظار موافقة الإدارة» — a driver's «تأكيد» held because the count
+        // at the laundry or the cash at the door did not match (2026-11-08).
+        // `{id}` is the TaskHold. `order.update` here; a held amount also needs
+        // `payment.update` (the controller), and `TaskService` refuses anybody
+        // inside a laundry.
+        Route::post('/order/hold/{id}/approve', 'approveHold')->whereNumber('id')
+            ->middleware('permission:order.update')->name('admin.order.hold.approve');
+        Route::post('/order/hold/{id}/reject', 'rejectHold')->whereNumber('id')
+            ->middleware('permission:order.update')->name('admin.order.hold.reject');
+        // «تأكيد استلام الشماعات» — the laundry confirms the hangers that
+        // reached it; the customer's hanger points follow its count (item 11).
+        // `{id}` is the leg, found through the tenant-scoped order.
+        Route::post('/order/task/{id}/hangers', 'confirmHangers')->whereNumber('id')
+            ->middleware('permission:order.update')->name('admin.order.tasks.hangers');
     });
 
     /*

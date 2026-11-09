@@ -59,15 +59,32 @@ class RescheduleService
     /**
      * The leg that was postponed, if the order is waiting on one.
      *
-     * A failed task whose reason is a postponement and which nothing has replaced.
+     * A failed task whose reason sends it back to the customer
+     * (`TaskFailureReason::needsANewSlot()`) and which nothing has replaced: a
+     * postponement on either leg, or the customer not being there for the
+     * pickup (since 2026-11-08).
      */
     public function postponedTask(Order $order): ?OrderTask
     {
-        return $order->tasks()
+        $task = $order->tasks()
             ->where('status', TaskStatus::Failed->value)
-            ->where('failure_reason', TaskFailureReason::CustomerPostponed->value)
+            ->where(fn ($q) => $q
+                ->where('failure_reason', TaskFailureReason::CustomerPostponed->value)
+                ->orWhere(fn ($absent) => $absent
+                    ->where('failure_reason', TaskFailureReason::CustomerUnavailable->value)
+                    ->where('type', TaskType::PickupFromCustomer->value)))
             ->orderByDesc('id')
             ->first();
+
+        // An absent customer's pickup is the customer's to rebook only when it
+        // took that path — which clears the pickup's window. One that failed
+        // its way out under the old rule (two attempts, before 2026-11-08)
+        // still has its window, and is an operator's rescue, not a prompt.
+        if ($task?->failure_reason === TaskFailureReason::CustomerUnavailable && $order->pickup_slot_id !== null) {
+            return null;
+        }
+
+        return $task;
     }
 
     /**
@@ -133,6 +150,12 @@ class RescheduleService
             // The same cap as the wizard. Without it a full window is reachable
             // through the back door — postpone, then rebook into it.
             $this->slots->claim($slot->id, $date);
+
+            // And the pieces a pickup window may still collect (item 19,
+            // 2026-11-08). The order's own pieces are counted wherever it is now.
+            if ($collection) {
+                app(PieceLimits::class)->claimWindow($slot->id, $date, (int) $order->estimated_items_count, $order->id);
+            }
 
             // Writing the wrong end would leave the postponed half unscheduled
             // while looking fixed.
@@ -267,7 +290,7 @@ class RescheduleService
             ->where('status', TaskStatus::Pending->value)
             ->get()
             ->each(fn (OrderTask $leg) => $this->dispatcher->automatically($leg->setRelation('order', $order), announce: false))
-            ->filter(fn (OrderTask $leg) => $leg->fresh()?->driver_id === null)
+            ->filter(fn (OrderTask $leg) => $leg->fresh()?->driver_id === null && ! $leg->awaitsWashing())
             ->count();
 
         // Legs somebody had assigned by hand are back on the board: with drivers

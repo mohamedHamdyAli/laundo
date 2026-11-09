@@ -7,6 +7,7 @@ use App\Modules\City\Models\City;
 use App\Modules\Laundry\Services\LaundryLoad;
 use App\Modules\Order\Enums\SlotOverflowBehavior;
 use App\Modules\Order\Services\LaundryAssigner;
+use App\Modules\Order\Services\PieceLimits;
 use App\Modules\Order\Services\Turnaround;
 use App\Modules\Service\Models\Service;
 use App\Modules\Service\Repositories\ServiceRepository;
@@ -138,6 +139,10 @@ class GeoController extends Controller
             // The pickup the delivery has to leave time after.
             'pickup_date' => ['nullable', 'date'],
             'pickup_slot_id' => ['nullable', 'integer', 'exists:time_slots,id'],
+            // The basket's pieces (item 19, 2026-11-08): a pickup window without
+            // room for this many is reported full. Without it, full means no
+            // room for one more.
+            'pieces' => ['nullable', 'integer', 'min:1', 'max:100000'],
         ]);
 
         $type = $data['type'] ?? null;
@@ -166,7 +171,10 @@ class GeoController extends Controller
         $earliest = $service ? $this->turnaround->earliestDelivery($service, $data['pickup_date'], $pickupSlot) : null;
         $latest = $service ? $this->turnaround->latestDelivery($service, $data['pickup_date'], $pickupSlot) : null;
 
-        $payload = $slots->map(function ($slot) use ($date, $covering, $hideWhenFull, $earliest, $latest) {
+        $pieces = (int) ($data['pieces'] ?? 1);
+        $limits = app(PieceLimits::class);
+
+        $payload = $slots->map(function ($slot) use ($date, $covering, $hideWhenFull, $earliest, $latest, $type, $pieces, $limits) {
             $row = [
                 'id' => $slot->id,
                 'start_time' => substr((string) $slot->start_time, 0, 5),
@@ -189,6 +197,13 @@ class GeoController extends Controller
             // collapsed into one number here.
             $platformFull = $remaining !== null && $remaining < 1;
 
+            // «أقصى عدد قطع في الميعاد» (item 19): the pieces a pickup in this
+            // window may still collect today, null when it has no limit or is
+            // not a pickup window. Full for a pickup when this order's pieces
+            // do not fit — the order is refused for it.
+            $piecesLeft = $type !== 'delivery' && $slot->appliesTo('pickup') ? $limits->roomInWindow($slot, $date) : null;
+            $piecesFull = $type !== 'delivery' && $piecesLeft !== null && $piecesLeft < $pieces;
+
             // Reported separately from `remaining`, which keeps meaning
             // exactly what it meant: places left across the platform. A
             // client that ignores this field behaves as it always did.
@@ -203,7 +218,8 @@ class GeoController extends Controller
 
             return $row + [
                 'remaining' => $remaining,
-                'is_full' => $platformFull || ($hideWhenFull && $laundriesFull),
+                'pieces_left' => $piecesLeft,
+                'is_full' => $platformFull || $piecesFull || ($hideWhenFull && $laundriesFull),
                 'laundries_full' => $covering === [] || ! $slot->appliesTo('pickup') ? null : $laundriesFull,
                 // Today's window that has ended, or ends within
                 // `Slot_Booking_Cutoff_Minutes` — too late to send anybody.

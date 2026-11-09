@@ -12,7 +12,10 @@ use App\Modules\Payment\Services\CashCustody;
 use App\Modules\Payment\Services\RefundService;
 use App\Modules\User\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
+use Laravel\Sanctum\Sanctum;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
@@ -53,6 +56,59 @@ class CashCustodyTest extends TestCase
 
         $this->ahmed = $this->driverUser('+201044440001');
         $this->sara = $this->driverUser('+201044440002');
+    }
+
+    #[Test]
+    public function the_driver_app_shows_todays_cash_and_what_is_still_with_them(): void
+    {
+        // The client's sheet, item 17 (2026-11-08). The business's day: 23:30 in
+        // Cairo yesterday is not today, whatever UTC thinks. Pinned to Cairo for
+        // the direct call too — a request gets it from `SetTimezone`.
+        config(['app.display_timezone' => 'Africa/Cairo']);
+        $this->travelTo(Carbon::parse('2026-11-08 12:00:00', 'Africa/Cairo'));
+
+        $this->cash($this->ahmed, 40);
+        $this->cash($this->ahmed, 60, handedIn: true);
+        $this->cash($this->sara, 999);
+        $yesterday = $this->cash($this->ahmed, 25);
+        // Straight at the table: a captured payment is not edited through its model.
+        DB::table('payments')->where('id', $yesterday->id)->update([
+            'captured_at' => Carbon::parse('2026-11-07 23:30:00', 'Africa/Cairo')->utc(),
+        ]);
+
+        $this->assertSame(
+            ['collected_today' => 100.0, 'collections_today' => 2, 'held' => 65.0],
+            app(CashCustody::class)->forDriver($this->ahmed->id),
+        );
+
+        Sanctum::actingAs($this->ahmed);
+        $this->getJson('/api/v1/driver/summary', $this->apiHeaders())
+            ->assertOk()
+            ->assertJsonPath('data.cash.collected_today', 100)
+            ->assertJsonPath('data.cash.held', 65)
+            ->assertJsonPath('data.cash.collections_today', 2);
+    }
+
+    #[Test]
+    public function the_cash_day_is_a_cairo_day_on_the_day_the_clocks_change(): void
+    {
+        // Code review (2026-11-08): the day's end was its start plus 24 hours
+        // in UTC. 24 April 2026 is 23 hours long in Cairo (summer time starts
+        // at midnight), so the first hour of the 25th was counted as today.
+        config(['app.display_timezone' => 'Africa/Cairo']);
+        $this->travelTo(Carbon::parse('2026-04-24 12:00:00', 'Africa/Cairo'));
+
+        $late = $this->cash($this->ahmed, 40);
+        $tomorrow = $this->cash($this->ahmed, 25);
+        foreach ([[$late, '2026-04-24 23:30:00'], [$tomorrow, '2026-04-25 00:30:00']] as [$payment, $at]) {
+            DB::table('payments')->where('id', $payment->id)->update([
+                'captured_at' => Carbon::parse($at, 'Africa/Cairo')->utc(),
+            ]);
+        }
+
+        $today = app(CashCustody::class)->forDriver($this->ahmed->id);
+        $this->assertSame(40.0, $today['collected_today']);
+        $this->assertSame(1, $today['collections_today']);
     }
 
     private function cash(Driver $driver, float $amount, bool $handedIn = false): Payment

@@ -70,8 +70,11 @@ class OrderTest extends TestCase
     }
 
     #[Test]
-    public function a_quote_reports_an_unknown_fee_instead_of_a_free_delivery(): void
+    public function a_quote_prices_both_trips_even_before_a_laundry_is_known(): void
     {
+        // «رسوم المشوار» (2026-11-08): a fee per trip, not a distance from a
+        // laundry — so an area no laundry covers yet is priced all the same.
+        // Until then the fee here was null with `no_laundry_assigned`.
         [$customer, $address] = $this->customerWithAddress(cover: false);
         Sanctum::actingAs($customer);
 
@@ -83,8 +86,10 @@ class OrderTest extends TestCase
         ], $this->apiHeaders());
 
         $response->assertOk();
-        $this->assertNull($response->json('data.delivery_fee'));
-        $this->assertSame('no_laundry_assigned', $response->json('data.delivery_fee_reason'));
+        $this->assertEquals(50, $response->json('data.delivery_fee'));
+        $this->assertEquals(25, $response->json('data.pickup_fee'));
+        $this->assertEquals(25, $response->json('data.return_fee'));
+        $this->assertNull($response->json('data.delivery_fee_reason'));
         $this->assertNull($response->json('data.laundry'));
     }
 
@@ -156,9 +161,12 @@ class OrderTest extends TestCase
 
         $order = Order::withoutGlobalScopes()->firstOrFail();
 
-        // Accepted by decision, and left for operations to place.
+        // Accepted by decision, and left for operations to place — and priced
+        // in full, since the trips do not depend on which laundry.
         $this->assertNull($order->laundry_id);
-        $this->assertSame('0.00', $order->delivery_fee);
+        $this->assertSame('50.00', $order->delivery_fee);
+        $this->assertSame('25.00', $order->pickup_fee);
+        $this->assertSame('25.00', $order->return_fee);
     }
 
     #[Test]
@@ -329,14 +337,15 @@ class OrderTest extends TestCase
 
         $response = $this->getJson("/api/v1/orders/{$order->id}/track", $this->apiHeaders());
 
-        // Eight steps, not the landing page's six. `OrderStatus::trackingSteps()`
+        // Nine steps, not the landing page's six. `OrderStatus::trackingSteps()`
         // is the marketing journey and keeps its six; the tracking screen adds
         // the two «on the way» states, because between «ready» and «delivered»
-        // the screen used to sit unchanged for the whole journey home.
+        // the screen used to sit unchanged for the whole journey home — and,
+        // since 2026-11-08 (item 18), «خلص الغسيل» after «cleaning».
         $response->assertOk()
             ->assertJsonPath('data.status', 'picked_up')
             ->assertJsonPath('data.can_cancel', false)
-            ->assertJsonCount(8, 'data.steps')
+            ->assertJsonCount(9, 'data.steps')
             ->assertJsonPath('data.steps.0.status', 'driver_on_way')
             ->assertJsonPath('data.steps.0.reached', true)
             ->assertJsonPath('data.steps.1.status', 'picked_up')

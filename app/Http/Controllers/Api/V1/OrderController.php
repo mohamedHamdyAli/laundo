@@ -12,12 +12,14 @@ use App\Modules\Loyalty\Services\OrderPoints;
 use App\Modules\Order\Enums\OrderStatus;
 use App\Modules\Order\Enums\TaskType;
 use App\Modules\Order\Models\Order;
-use App\Modules\Order\Models\OrderMedia;
 use App\Modules\Order\Models\RecurrencePrompt;
 use App\Modules\Order\Services\OrderEta;
+use App\Modules\Order\Services\OrderPieces;
 use App\Modules\Order\Services\OrderService;
 use App\Modules\Order\Services\OrderTimeline;
 use App\Modules\Order\Services\OutOfCoverage;
+use App\Modules\Order\Services\PieceLimits;
+use App\Modules\Order\Services\PlacementFailure;
 use App\Modules\Order\Services\RecurrenceService;
 use App\Modules\Order\Services\RescheduleService;
 use App\Modules\Order\Services\Turnaround;
@@ -96,6 +98,11 @@ class OrderController extends Controller
             'items_count' => $quote['items_count'],
             'subtotal' => $quote['subtotal'],
             'delivery_fee' => $quote['delivery_fee'],
+            // «رسوم المشوار» (2026-11-08): the two trips `delivery_fee` is made
+            // of — 0 for a visit another of the customer's orders already pays.
+            // A cash order pays `pickup_fee` to the driver at the pickup.
+            'pickup_fee' => $quote['pickup_fee'],
+            'return_fee' => $quote['return_fee'],
             'delivery_distance_km' => $quote['delivery_distance_km'],
             // Non-null when the fee could not be worked out — the app shows «يتم
             // تحديدها لاحقاً» rather than a misleading 0.00.
@@ -165,18 +172,7 @@ class OrderController extends Controller
         }
 
         // Stain photos, attached after the order exists so they can carry its id.
-        foreach ((array) $request->file('photos', []) as $photo) {
-            $path = uploadOrUpdateImage($photo, 'images/orders/stains');
-
-            if ($path) {
-                OrderMedia::create([
-                    'order_id' => $order->id,
-                    'type' => 'stain',
-                    'path' => $path,
-                    'uploaded_by' => $request->user()->id,
-                ]);
-            }
-        }
+        $this->orders->attachStainPhotos($order, (array) $request->file('photos', []), $request->user());
 
         return successReturnCreated(
             $this->presentDetail($this->find($request, $order->id)),
@@ -250,7 +246,7 @@ class OrderController extends Controller
             // clothes are going, and the screen names the destination.
             'pickup_address' => $this->addressCard($order->pickupAddress),
             'delivery_address' => $this->addressCard($order->deliveryAddress),
-            // Eight steps, not the landing page's six. `OrderStatus::trackingSteps()`
+            // Nine steps, not the landing page's six («خلص الغسيل» since 2026-11-08). `OrderStatus::trackingSteps()`
             // is the marketing journey and stays that; a customer waiting at home
             // needs the two «on the way» states it leaves out. See OrderTimeline.
             'steps' => app(OrderTimeline::class)->for($order),
@@ -418,55 +414,18 @@ class OrderController extends Controller
     /**
      * Turn the service layer's failure codes into the customer's message.
      *
-     * The service throws codes rather than sentences on purpose: it has no
-     * business knowing about HTTP status or the request locale.
+     * What each code means is `PlacementFailure`, shared with the panel's
+     * «إنشاء طلب»; this decides only the envelope. An id that is not the
+     * caller's answers 404, so it says nothing about whose it is.
      */
     private function translateFailure(RuntimeException $e): JsonResponse
     {
-        $message = $e->getMessage();
+        $failure = PlacementFailure::describe($e);
 
-        // The turnaround backstop in OrderService::place() — the request refuses
-        // it first, with the same words, so this is for a caller that skipped it.
-        // The same for today's window that has closed (`SlotClock`).
-        foreach (['delivery_date', 'pickup_slot_id', 'delivery_slot_id'] as $field) {
-            if (str_starts_with($message, $field.':')) {
-                $text = substr($message, strlen($field.':'));
-
-                return failReturnValidation([$field => [$text]], $text);
-            }
-        }
-
-        if (str_starts_with($message, 'unpriced_items:')) {
-            return failReturnValidation(
-                ['items' => [__('Some pieces are not available for this service.')]],
-                __('Some pieces are not available for this service.')
-            );
-        }
-
-        return match ($message) {
-            'service_not_found' => failReturnNotFound(__('Service not found.')),
-            'pickup_address_not_found' => failReturnNotFound(__('Pickup address not found.')),
-            'delivery_address_not_found' => failReturnNotFound(__('Delivery address not found.')),
-            'empty_basket' => failReturnValidation(
-                ['items' => [__('Please add at least one piece.')]],
-                __('Please add at least one piece.')
-            ),
-            'not_cancellable' => failReturnMsg(
-                __('This order can no longer be cancelled.')
-            ),
-            // Named against the field so the wizard can mark the window red
-            // rather than showing a banner over the whole form.
-            // Another checkout spent the points between this one's quote and
-            // its submit. Named against the field so the app can re-quote.
-            'points_changed' => failReturnValidation(
-                ['use_points' => [__('Your points balance has changed. Please review your order and try again.')]],
-                __('Your points balance has changed. Please review your order and try again.')
-            ),
-            'slot_full' => failReturnValidation(
-                ['pickup_slot_id' => [__('This window is fully booked. Please choose another one.')]],
-                __('This window is fully booked. Please choose another one.')
-            ),
-            default => failReturnMsg(__('We could not complete your order.')),
+        return match ($failure['kind']) {
+            'validation' => failReturnValidation([$failure['field'] => [$failure['message']]], $failure['message']),
+            'not_found' => failReturnNotFound($failure['message']),
+            default => failReturnMsg($failure['message']),
         };
     }
 
@@ -488,8 +447,11 @@ class OrderController extends Controller
             // (2026-11-01). `laundry_assigned` says which of the two it is.
             'laundry' => $order->laundry ? getLocalizedValue($order->laundry, 'name') : __('Not assigned yet'),
             'laundry_assigned' => $order->laundry !== null,
-            'items_count' => $order->final_items_count ?? $order->estimated_items_count,
-            'total' => $order->payableTotal(),
+            // The same pieces `items` lists (`Order::customerSeesFinal()`).
+            'items_count' => $order->customerSeesFinal() ? $order->final_items_count : $order->estimated_items_count,
+            // The bill as the customer is shown it — an unsent draft count
+            // (item 12) leaves the estimate standing.
+            'total' => $order->customerSeesFinal() ? $order->payableTotal() : (float) $order->estimated_total,
             'pickup_date' => $order->pickup_date?->toDateString(),
             // Both of these were detail-only, which meant the home screen's
             // «طلبك الحالي» card — a *list* row — could not draw the pickup
@@ -516,18 +478,7 @@ class OrderController extends Controller
      */
     private function presentDetail(Order $order): array
     {
-        $items = [];
-
-        foreach ($order->items as $line) {
-            $items[] = [
-                'item_id' => $line->item_id,
-                'name' => $line->item ? getLocalizedValue($line->item, 'name') : null,
-                'phase' => $line->phase,
-                'qty' => $line->qty,
-                'unit_price' => (float) $line->unit_price,
-                'line_total' => (float) $line->line_total,
-            ];
-        }
+        $pieces = app(OrderPieces::class);
 
         $photos = [];
 
@@ -554,6 +505,14 @@ class OrderController extends Controller
             'pricing' => [
                 'estimated_subtotal' => (float) $order->estimated_subtotal,
                 'delivery_fee' => (float) $order->delivery_fee,
+                // «رسوم المشوار»: the two trips it is made of — null on an order
+                // priced by distance before 2026-11-08.
+                'pickup_fee' => $order->pickup_fee !== null ? (float) $order->pickup_fee : null,
+                'return_fee' => $order->return_fee !== null ? (float) $order->return_fee : null,
+                // What the driver takes at the pickup (a cash order's pickup
+                // trip), and what has been paid so far.
+                'pay_at_pickup' => $order->payment_method === 'cash' ? (float) ($order->pickup_fee ?? 0) : 0.0,
+                'paid_so_far' => $order->paidSoFar(),
                 'discount' => (float) $order->discount_total,
                 // «خصم النقاط» — after a review, what is left of it: fewer
                 // pieces counted hands points back.
@@ -568,16 +527,27 @@ class OrderController extends Controller
                 'tax_rate' => $order->taxRate(),
                 'estimated_tax' => (float) $order->estimated_tax,
                 'estimated_total' => (float) $order->estimated_total,
-                // Null until the laundry has counted the pieces in P7.
-                'final_subtotal' => $order->final_subtotal !== null ? (float) $order->final_subtotal : null,
-                'final_tax' => $order->final_tax !== null ? (float) $order->final_tax : null,
-                'final_total' => $order->final_total !== null ? (float) $order->final_total : null,
+                // Null until the laundry's count has been SENT to the customer
+                // (the client's sheet, item 12, 2026-11-08) — a draft the
+                // platform has not sent yet is not the customer's to see.
+                'final_subtotal' => $order->customerSeesFinal() ? (float) $order->final_subtotal : null,
+                'final_tax' => $order->customerSeesFinal() ? (float) $order->final_tax : null,
+                'final_total' => $order->customerSeesFinal() ? (float) $order->final_total : null,
                 // The pair that actually applies, so a client rendering a bill
                 // does not have to know whether the pieces have been counted yet.
-                'payable_tax' => $order->payableTax(),
-                'payable_total' => $order->payableTotal(),
+                'payable_tax' => $order->customerSeesFinal() ? $order->payableTax() : (float) $order->estimated_tax,
+                'payable_total' => $order->customerSeesFinal() ? $order->payableTotal() : (float) $order->estimated_total,
             ],
-            'items' => $items,
+            // The pieces that ARE the order now: the laundry's count once the
+            // customer is shown it, their basket before — never both in one
+            // list, which read as a count that matched neither (the client's
+            // sheet, item 2). `change` says what the count did to each line.
+            'items' => $pieces->current($order),
+            // The basket as the customer placed it, each line with what was
+            // found (`counted`, `change: missing` for a piece not received).
+            'estimated_items' => $pieces->estimated($order),
+            // `pieces_added` / `pieces_missing`.
+            ...$pieces->totals($order),
             'photos' => $photos,
             // What this order pays in points once it completes, and what it
             // has paid so far — the order's own and its hangers.
@@ -672,8 +642,11 @@ class OrderController extends Controller
             // so the app built the label itself and could not tell a full day
             // from an unknown one — `remaining` is null for an uncapped window
             // and 0 for a full one, and those are different answers.
-            'slots' => $slots->map(function (TimeSlot $slot) use ($capacity, $date, $earliest, $turnaround, $clock) {
+            'slots' => $slots->map(function (TimeSlot $slot) use ($capacity, $date, $earliest, $turnaround, $clock, $collection, $order) {
                 $remaining = $capacity->remaining($slot, $date);
+                // A pickup rebooked into a window that cannot collect this
+                // order's pieces is refused (item 19) — marked full here.
+                $room = $collection ? app(PieceLimits::class)->roomInWindow($slot, $date) : null;
 
                 return [
                     'id' => $slot->id,
@@ -683,7 +656,9 @@ class OrderController extends Controller
                     'applies_to' => $slot->applies_to,
                     'capacity' => $slot->capacity,
                     'remaining' => $remaining,
-                    'is_full' => $remaining !== null && $remaining < 1,
+                    'pieces_left' => $room,
+                    'is_full' => ($remaining !== null && $remaining < 1)
+                        || ($room !== null && $room < max(1, (int) $order->estimated_items_count)),
                     // Today's window, ended or ending too soon: refused on rebook.
                     'closed' => $clock->isClosed($date, $slot),
                 ] + $turnaround->windowFlags(
@@ -738,8 +713,9 @@ class OrderController extends Controller
                 'nothing_to_reschedule' => failReturnMsg(__('This order is not waiting for a new time.')),
                 'slot_not_available' => failReturnMsg(__('That time is not available.')),
                 'slot_full' => failReturnMsg(__('This window is fully booked. Please choose another one.')),
+                'window_pieces_full' => failReturnMsg(__('This pickup window is fully booked. Please choose another one.')),
                 'date_in_the_past' => failReturnMsg(__('Choose a date from today onwards.')),
-                'slot_closed' => failReturnMsg(__('This window has ended or is about to. Please choose a later one.')),
+                'slot_closed' => failReturnMsg(__('This window starts too soon to book. Please choose a later one.')),
                 'not_your_order' => failReturnNotFound(__('Order not found.')),
                 default => failReturnMsg(__('Could not set a new time.')),
             };

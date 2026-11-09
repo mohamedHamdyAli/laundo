@@ -143,6 +143,8 @@ class QuotePricedReviewTest extends TestCase
                 ],
             ])->assertRedirect();
 
+        // Sent on by the platform since item 12 (2026-11-08).
+        $this->sendReview($order);
         $order->refresh();
 
         $this->assertSame(OrderStatus::Reviewed, $order->status);

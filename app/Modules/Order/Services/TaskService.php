@@ -15,11 +15,16 @@ use App\Modules\Order\Enums\TaskType;
 use App\Modules\Order\Models\Order;
 use App\Modules\Order\Models\OrderMedia;
 use App\Modules\Order\Models\OrderTask;
+use App\Modules\Order\Models\TaskHold;
 use App\Modules\Order\Repositories\OrderRepository;
 use App\Modules\Payment\Enums\PaymentMethod;
 use App\Modules\Payment\Enums\PaymentStatus;
 use App\Modules\Payment\Models\Payment;
 use App\Modules\Payment\Services\EarningService;
+use App\Modules\User\Models\User;
+use App\Modules\Wallet\Enums\TransactionReason;
+use App\Modules\Wallet\Services\WalletService;
+use App\Support\LaundryContext;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
@@ -47,6 +52,7 @@ class TaskService
         private readonly PieceCountNotifier $pieceNotifier,
         private readonly OrderRepository $orders,
         private readonly OrderPoints $points,
+        private readonly TaskHolds $holds,
     ) {}
 
     /**
@@ -125,8 +131,10 @@ class TaskService
         }
 
         // Asked again here, not only at the start: a leg started before the
-        // rule existed must not be completed past it.
-        if (! $task->orderAllows()) {
+        // rule existed must not be completed past it. Under way, `cleaning` is
+        // enough — a collection started before «خلص الغسيل» existed (item 18)
+        // finishes.
+        if (! $task->orderAllows(underWay: true)) {
             throw new RuntimeException('order_not_ready');
         }
 
@@ -157,9 +165,140 @@ class TaskService
             throw new RuntimeException('hangers_too_many');
         }
 
+        // Stored before anything is decided: a confirmation held for the
+        // platform completes later with exactly these files.
+        $signaturePath = $signature ? uploadOrUpdateImage($signature, 'images/orders/signatures') : null;
+        $photoPaths = array_values(array_filter(array_map(
+            fn (UploadedFile $photo) => uploadOrUpdateImage($photo, 'images/orders/tasks'),
+            $photos
+        )));
+
+        // «بانتظار موافقة الإدارة» (items 9 and 10): a count at the laundry or
+        // cash at the door that does not match is held, not completed.
+        if (($need = $this->holds->needed($task, $data)) !== null) {
+            throw new TaskHeld($this->holds->raise($task, $driver, $need, [
+                'piece_count' => $data['piece_count'] ?? null,
+                'receiver_name' => $data['receiver_name'] ?? null,
+                'collected_amount' => $data['collected_amount'] ?? null,
+                'note' => $data['note'] ?? null,
+                'hangers_returned' => $hangers,
+                'photos' => $photoPaths,
+                'signature' => $signaturePath,
+            ]));
+        }
+
+        return $this->finish($task, $driver, $data, $hangers, $photoPaths, $signaturePath);
+    }
+
+    /**
+     * «موافقة» — the platform accepts a held confirmation, and the leg completes
+     * with what the driver sent (`TaskHolds`, items 9 and 10).
+     *
+     * The platform's only: refused inside a laundry, and for any approver who
+     * belongs to one, whatever the permission says.
+     */
+    public function approveHold(TaskHold $hold, User $by, ?string $note = null): OrderTask
+    {
+        $this->platformOnly($by);
+
+        if (! $hold->isPending()) {
+            throw new RuntimeException('nothing_to_decide');
+        }
+
+        $task = $hold->task;
+
+        if (! $task || $task->status !== TaskStatus::Started) {
+            throw new RuntimeException('task_not_started');
+        }
+
+        // Only for the driver who raised it: their count, their cash.
+        if ((int) $task->driver_id !== (int) $hold->raised_by) {
+            throw new RuntimeException('task_not_started');
+        }
+
+        $driver = Driver::find($task->driver_id) ?? throw new RuntimeException('task_has_no_driver');
+        $payload = $hold->payload;
+
+        $completed = $this->finish(
+            $task,
+            $driver,
+            array_intersect_key($payload, array_flip(['piece_count', 'receiver_name', 'collected_amount', 'note'])),
+            $payload['hangers_returned'] ?? null,
+            (array) ($payload['photos'] ?? []),
+            $payload['signature'] ?? null,
+            $hold,
+            $by,
+            $note,
+        );
+
+        $this->holdDecided($hold->refresh());
+
+        return $completed;
+    }
+
+    /**
+     * «رفض» — back to the driver to recount or collect again. A note is
+     * required: it is what the driver is told.
+     */
+    public function rejectHold(TaskHold $hold, User $by, string $note): TaskHold
+    {
+        $this->platformOnly($by);
+
+        if (trim($note) === '') {
+            throw new RuntimeException('note_required');
+        }
+
+        $rejected = DB::transaction(function () use ($hold, $by, $note) {
+            $current = TaskHold::whereKey($hold->id)->lockForUpdate()->first();
+
+            if (! $current || ! $current->isPending()) {
+                throw new RuntimeException('nothing_to_decide');
+            }
+
+            $current->update([
+                'status' => TaskHold::REJECTED,
+                'decided_by' => $by->id,
+                'decided_at' => now(),
+                'note' => trim($note),
+            ]);
+
+            $this->machine->note(
+                $current->order,
+                __('Held confirmation refused: :note', ['note' => trim($note)]),
+                'admin',
+                $by
+            );
+
+            return $current->refresh();
+        });
+
+        $this->holdDecided($rejected);
+
+        return $rejected;
+    }
+
+    /**
+     * The leg completes — from the driver's «تأكيد», or from the platform's
+     * approval of one that was held. The one place a leg completes.
+     *
+     * @param  array<string, mixed>  $data
+     * @param  array<int, string>  $photoPaths  stored already
+     */
+    private function finish(
+        OrderTask $task,
+        Driver $driver,
+        array $data,
+        ?int $hangers,
+        array $photoPaths,
+        ?string $signaturePath,
+        ?TaskHold $approved = null,
+        ?User $approver = null,
+        ?string $approvalNote = null,
+    ): OrderTask {
+        $type = $task->type;
         $raised = [];
 
-        $completed = DB::transaction(function () use ($task, $driver, $data, $photos, $signature, $type, $hangers, &$raised) {
+        $completed = DB::transaction(function () use ($task, $driver, $data, $photoPaths, $signaturePath, $type, $hangers, $approved, $approver, $approvalNote, &$raised) {
             // Re-checked under a row lock: the same «تأكيد» sent twice at once —
             // a double tap, a retry on a slow line — would otherwise pass the
             // check above twice and complete the leg twice, its earnings and
@@ -191,10 +330,8 @@ class TaskService
                 $update['receiver_name'] = $data['receiver_name'] ?? null;
             }
 
-            if ($signature) {
-                $update['signature_path'] = uploadOrUpdateImage(
-                    $signature, 'images/orders/signatures', $task->signature_path
-                );
+            if ($signaturePath) {
+                $update['signature_path'] = $signaturePath;
             }
 
             if ($type->collectsPayment() && array_key_exists('collected_amount', $data)
@@ -208,12 +345,9 @@ class TaskService
 
             $task->update($update);
 
-            // Credited now, with the leg — the owner's call. Keyed on the leg,
-            // so the row lock above and the ledger's key both stand between a
-            // double «تأكيد» and points paid twice.
-            if ($hangers !== null && $hangers > 0) {
-                $this->points->earnForHangers($task->refresh());
-            }
+            // Hanger points are no longer paid here: the laundry confirms what
+            // reached it, and the points follow its count (`HangerReceipt`,
+            // the client's sheet, item 11, 2026-11-08).
 
             // In the handover's own transaction: a leg recorded without the
             // disagreement it raised would be a mismatch nobody is ever asked
@@ -222,22 +356,53 @@ class TaskService
                 $raised = $this->pieceCheck->afterHandover(
                     $task, $update['piece_count'], $update['expected_piece_count'], $update['expected_piece_source'],
                 );
-            }
 
-            foreach ($photos as $photo) {
-                $path = uploadOrUpdateImage($photo, 'images/orders/tasks');
+                // An approved count was looked into before it was accepted:
+                // its disagreement is recorded and closed in one step, by the
+                // person who approved it, rather than raised again.
+                if ($approved && $approver) {
+                    foreach ($raised as $discrepancy) {
+                        $this->pieceCheck->resolve(
+                            $discrepancy,
+                            $approver,
+                            $approvalNote ?: __('Approved with the held count.'),
+                            (int) $update['piece_count'],
+                        );
+                    }
 
-                if ($path) {
-                    OrderMedia::create([
-                        'order_id' => $task->order_id,
-                        'type' => $type->mediaType(),
-                        'path' => $path,
-                        'uploaded_by' => $driver->id,
-                    ]);
+                    $raised = [];
                 }
             }
 
-            $this->settlePayment($task);
+            foreach ($photoPaths as $path) {
+                OrderMedia::create([
+                    'order_id' => $task->order_id,
+                    'type' => $type->mediaType(),
+                    'path' => $path,
+                    'uploaded_by' => $driver->id,
+                ]);
+            }
+
+            if ($approved && $approver) {
+                $approved->update([
+                    'status' => TaskHold::APPROVED,
+                    'decided_by' => $approver->id,
+                    'decided_at' => now(),
+                    'note' => $approvalNote,
+                ]);
+
+                $this->machine->note(
+                    $task->order,
+                    __('Held confirmation approved: :what', ['what' => $approved->describe()]).($approvalNote ? " — {$approvalNote}" : ''),
+                    'admin',
+                    $approver
+                );
+            } else {
+                // Confirmed again, matching this time: the open question goes.
+                $this->holds->withdrawPending($task);
+            }
+
+            $this->settlePayment($task, $approver);
 
             // «تمت إضافة أرباحك إلى الرصيد المعلق» — pending until the order
             // completes, because paying for a delivery that is later returned
@@ -285,6 +450,10 @@ class TaskService
         }
 
         return DB::transaction(function () use ($task, $driver, $reason, $note) {
+            // A confirmation held for the platform on this leg is moot once the
+            // driver gives the leg up (code review, 2026-11-08).
+            $this->holds->withdrawPending($task);
+
             $task->update([
                 'failure_reason' => $reason,
                 'failure_note' => $note,
@@ -294,7 +463,7 @@ class TaskService
 
             $task->refresh();
 
-            if ($reason->needsANewSlot()) {
+            if ($reason->needsANewSlot($task->type)) {
                 // The customer said "not now". Releasing it — which is what used
                 // to happen — offered the same journey to the next driver within
                 // seconds. That is not a retry, it is the same failure again.
@@ -302,18 +471,39 @@ class TaskService
                 // So the task stops here and the order's slot is cleared. Nothing
                 // dispatches until the customer picks a time, and the cleared slot
                 // is what makes that unmistakable to anybody reading the row.
+                //
+                // The customer not being there for the pickup takes the same
+                // path from the first time (the client's sheet, item 7): only
+                // the pickup's time is asked for again — the delivery follows
+                // on its own when it must, the service stays — and the trip is
+                // not charged twice.
                 $task->update(['status' => TaskStatus::Failed, 'driver_id' => null]);
+
+                // The order leaves its visit — the trip that visit still makes
+                // for another of the customer's orders is that order's to pay
+                // now, before the window it is read from is cleared (code
+                // review, 2026-11-08). This order keeps its own fee for the
+                // time it picks: the missed trip is not charged twice.
+                app(OrderService::class)->handOverTripFees(
+                    $task->order,
+                    [$this->isCollectionEnd($task->type) ? 'pickup' : 'return'],
+                    wasCancelled: false,
+                );
 
                 $this->clearSchedule($task);
 
+                $absent = $reason === TaskFailureReason::CustomerUnavailable;
+
                 $this->machine->note(
                     $task->order,
-                    __('Postponed by the customer. Waiting for a new time.').($note ? " — {$note}" : ''),
+                    ($absent
+                        ? __('The customer was not there for the pickup. Waiting for them to pick a new time.')
+                        : __('Postponed by the customer. Waiting for a new time.')).($note ? " — {$note}" : ''),
                     'driver',
                     $driver
                 );
 
-                $this->askForANewSlot($task->order);
+                $this->askForANewSlot($task->order, $absent);
 
                 return $task->refresh();
             }
@@ -386,6 +576,13 @@ class TaskService
             $task->setRelation('order', $order);
         }
 
+        // A collection started at `cleaning`, before «خلص الغسيل» existed
+        // (item 18): the driver has the pieces, so the laundry finished — said
+        // first, so the history and the customer's line carry the step.
+        if ($order && $order->status === OrderStatus::Cleaning && $target === OrderStatus::ReadyForDelivery) {
+            $order = $this->machine->transition($order, OrderStatus::Finished, 'driver', $driver, __($task->type->label()));
+        }
+
         if (! $order || ! $order->status->canTransitionTo($target)) {
             // The order is somewhere the state machine will not accept this from.
             // Recorded rather than forced: the task genuinely happened.
@@ -418,24 +615,33 @@ class TaskService
      */
     private function paymentAtTheDoor(OrderTask $task, array $data): array
     {
-        $order = $task->order;
+        $collected = $data['collected_amount'] ?? null;
+        $reported = $collected !== null && $collected !== '';
 
-        if ($order === null || $order->payment_status === 'paid') {
+        // Nothing to take here — an order already paid, or a pickup with no trip
+        // fee on it (paid online, or priced by distance): a figure sent anyway is
+        // dropped rather than recorded as cash that never existed.
+        if ($task->toCollect() <= 0 && ! $task->requiresCollectedAmount()) {
             unset($data['collected_amount']);
 
             return $data;
         }
 
-        $collected = $data['collected_amount'] ?? null;
+        if (! $reported) {
+            if ($task->requiresCollectedAmount()) {
+                throw new RuntimeException('collected_amount_required');
+            }
 
-        if ($collected === null || $collected === '') {
-            throw new RuntimeException('collected_amount_required');
+            // A pickup that says nothing: the trip fee stays owed and the
+            // delivery takes it with the rest.
+            unset($data['collected_amount']);
+
+            return $data;
         }
 
-        if ((float) $collected - 0.001 > $order->payableTotal()) {
-            throw new RuntimeException('collected_amount_too_high');
-        }
-
+        // Not refused when it differs from what this leg takes — less or more —
+        // but held for the platform's approval (`TaskHolds`, item 10). «More»
+        // used to be refused here outright.
         return $data;
     }
 
@@ -450,7 +656,7 @@ class TaskService
      * name. Before, cash was a flag on the order and nothing else: the payments
      * screen never saw it, and nobody could say how much each driver was holding.
      */
-    private function settlePayment(OrderTask $task): void
+    private function settlePayment(OrderTask $task, ?User $approver = null): void
     {
         if (! $task->type->collectsPayment() || $task->collected_amount === null) {
             return;
@@ -462,11 +668,11 @@ class TaskService
             return;
         }
 
-        $due = $order->payableTotal();
         $collected = (float) $task->collected_amount;
+        $payment = null;
 
         if ($collected > 0) {
-            Payment::create([
+            $payment = Payment::create([
                 'order_id' => $order->id,
                 'user_id' => $order->user_id,
                 'provider' => 'cash',
@@ -480,8 +686,41 @@ class TaskService
             ]);
         }
 
-        if ($collected + 0.001 >= $due) {
+        // Never decided at the pickup: there is no price yet, only the
+        // estimate. A pickup whose cash covered the estimate marked the order
+        // paid before the laundry counted, and the counted price was never
+        // collected — the delivery was told to take 0 (security review,
+        // 2026-11-08). What the pickup took is a payment towards the bill, and
+        // the delivery settles the rest against the price that was agreed.
+        if ($task->type === TaskType::PickupFromCustomer) {
+            return;
+        }
+
+        // Paid when everything taken for it — the pickup's trip fee and this —
+        // covers the bill.
+        if ($order->paidSoFar() + 0.001 >= $order->payableTotal()) {
             $order->update(['payment_status' => 'paid', 'paid_at' => now()]);
+        }
+
+        // More than was owed, and the platform approved taking it (item 10;
+        // the owner: «الزيادة محفظة»): the cash stays the driver's to hand in,
+        // all of it, and what the customer overpaid is theirs to spend — a
+        // wallet credit, said under its own reason. Short is simply left owed.
+        // Measured here, against the agreed bill, whichever leg took the extra:
+        // cash over the trip fee at the pickup is only known to be over once
+        // the pieces are counted. Every pound above a leg's figure went through
+        // an approval, so the extra is credited at the leg that settles.
+        $excess = round($order->paidSoFar() - $order->payableTotal(), 2);
+
+        if ($excess > 0.001 && $order->customer) {
+            app(WalletService::class)->credit(
+                $order->customer,
+                $excess,
+                TransactionReason::OverCollected,
+                $payment ?? $order->payments()->where('status', PaymentStatus::Captured->value)->latest('id')->first(),
+                __('Paid over the bill at the door on order #:code', ['code' => $order->code]),
+                $approver,
+            );
         }
     }
 
@@ -492,6 +731,44 @@ class TaskService
      * should be unreachable — but a service that trusts its caller is a service
      * that breaks the first time somebody calls it from a console command.
      */
+    private function platformOnly(User $by): void
+    {
+        if ($by->laundry_id !== null || LaundryContext::currentId() !== null) {
+            throw new RuntimeException('platform_only');
+        }
+    }
+
+    /**
+     * Tell the driver what became of their held «تأكيد». Swallowed: the
+     * decision is recorded either way, and the task screen shows it.
+     */
+    private function holdDecided(TaskHold $hold): void
+    {
+        $driverId = $hold->task?->driver_id ?? $hold->raised_by;
+        $driver = $driverId ? Driver::find($driverId) : null;
+
+        if (! $driver) {
+            return;
+        }
+
+        $approved = $hold->status === TaskHold::APPROVED;
+
+        try {
+            app(NotificationDispatcher::class)->send($driver, new NotificationMessage(
+                event: NotificationEvent::TaskHoldDecided,
+                title: $approved ? __('Your confirmation was approved') : __('Your confirmation was refused'),
+                body: $approved
+                    ? __('Order :code: the leg is complete.', ['code' => $hold->order?->code])
+                    : __('Order :code: :note', ['code' => $hold->order?->code, 'note' => (string) $hold->note]),
+                url: "/driver/tasks/{$hold->order_task_id}",
+                data: ['order_id' => (string) $hold->order_id, 'task_id' => (string) $hold->order_task_id],
+                subject: $hold,
+            ));
+        } catch (Throwable) {
+            // Recorded either way.
+        }
+    }
+
     private function assertHolder(OrderTask $task, Driver $driver): void
     {
         if ($task->driver_id !== $driver->id) {
@@ -514,14 +791,18 @@ class TaskService
             return;
         }
 
-        $collection = in_array($task->type, [
-            TaskType::PickupFromCustomer,
-            TaskType::DeliverToLaundry,
-        ], true);
-
-        $order->forceFill($collection
+        $order->forceFill($this->isCollectionEnd($task->type)
             ? ['pickup_slot_id' => null, 'pickup_date' => null]
             : ['delivery_slot_id' => null, 'delivery_date' => null])->save();
+    }
+
+    /**
+     * Whether a leg belongs to the order's collection end (the pickup's window)
+     * rather than its return end (the delivery's).
+     */
+    private function isCollectionEnd(TaskType $type): bool
+    {
+        return in_array($type, [TaskType::PickupFromCustomer, TaskType::DeliverToLaundry], true);
     }
 
     /**
@@ -532,7 +813,7 @@ class TaskService
      * order also appears in the operations queue, so the message is not the only
      * way anybody finds out.
      */
-    private function askForANewSlot(?Order $order): void
+    private function askForANewSlot(?Order $order, bool $absent = false): void
     {
         if ($order === null || $order->customer === null) {
             return;
@@ -542,9 +823,11 @@ class TaskService
             app(NotificationDispatcher::class)->send($order->customer, new NotificationMessage(
                 event: NotificationEvent::RescheduleNeeded,
                 title: __('Pick a new time for your order'),
-                body: __('Order :code was postponed. Choose a new time so we can collect it.', [
-                    'code' => $order->code,
-                ]),
+                body: $absent
+                    ? __('Our driver could not find you to collect order :code. Choose a new pickup time.', ['code' => $order->code])
+                    : __('Order :code was postponed. Choose a new time so we can collect it.', [
+                        'code' => $order->code,
+                    ]),
                 data: ['order_id' => (string) $order->id],
                 subject: $order,
             ));

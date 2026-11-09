@@ -35,6 +35,9 @@ use Illuminate\Support\Carbon;
  * @property Carbon|null $completed_at
  * @property int|null $piece_count
  * @property int|null $hangers_returned
+ * @property int|null $hangers_confirmed what the laundry says reached it (item 11, 2026-11-08)
+ * @property Carbon|null $hangers_confirmed_at
+ * @property int|null $hangers_confirmed_by
  * @property int|null $expected_piece_count
  * @property PieceCountSource|null $expected_piece_source
  * @property string|null $receiver_name
@@ -46,6 +49,7 @@ use Illuminate\Support\Carbon;
  *
  * @method static Builder<static>|OrderTask open()
  * @method static Builder<static>|OrderTask queued()
+ * @method static Builder<static>|OrderTask offerable()
  * @method static Builder<static>|OrderTask late()
  */
 class OrderTask extends Model
@@ -81,6 +85,7 @@ class OrderTask extends Model
         'started_at', 'completed_at', 'piece_count', 'receiver_name', 'signature_path',
         'collected_amount', 'failure_reason', 'failure_note', 'attempts', 'note',
         'expected_piece_count', 'expected_piece_source', 'hangers_returned',
+        'hangers_confirmed', 'hangers_confirmed_at', 'hangers_confirmed_by',
     ];
 
     protected function casts(): array
@@ -96,6 +101,8 @@ class OrderTask extends Model
             'completed_at' => 'datetime',
             'collected_amount' => 'decimal:2',
             'hangers_returned' => 'integer',
+            'hangers_confirmed' => 'integer',
+            'hangers_confirmed_at' => 'datetime',
         ];
     }
 
@@ -124,6 +131,53 @@ class OrderTask extends Model
     public function discrepancy(): HasOne
     {
         return $this->hasOne(PieceDiscrepancy::class, 'order_task_id');
+    }
+
+    /**
+     * What the driver takes at the door on this leg — the one answer the
+     * driver app's «تفاصيل الدفع», the completion and the payment record all
+     * read (2026-11-08).
+     *
+     * - **Pickup**: the pickup trip's fee («رسوم المشوار»), on a cash order not
+     *   paid yet — the owner: «لما الدليفري يروح يستلم ياخد منه 25». An order
+     *   paid online pays both trips in its total; an order priced by distance
+     *   (`pickup_fee` null) collects nothing here, as before.
+     * - **Delivery**: whatever is still owed (`Order::stillOwed()`), the pickup's
+     *   fee already taken off.
+     * - The laundry legs: nothing.
+     */
+    public function toCollect(): float
+    {
+        $order = $this->order;
+
+        if (! $order || $order->payment_status === 'paid') {
+            return 0.0;
+        }
+
+        return match ($this->type) {
+            TaskType::PickupFromCustomer => $order->payment_method === 'cash' && (float) $order->pickup_fee > 0
+                ? round(min((float) $order->pickup_fee, $order->stillOwed()), 2)
+                : 0.0,
+            TaskType::DeliverToCustomer => $order->stillOwed(),
+            default => 0.0,
+        };
+    }
+
+    /**
+     * Whether «تأكيد» on this leg must say what changed hands
+     * (`collected_amount`, 0 allowed): the delivery of an order not paid yet.
+     *
+     * **Not the pickup**, though it may take the trip fee: a driver app that
+     * predates the trip fee sends no amount there, and refusing its pickups
+     * would stop every collection until the app is updated. A pickup that
+     * reports nothing leaves the fee owed, and the delivery takes it with the
+     * rest (`Order::stillOwed()`).
+     */
+    public function requiresCollectedAmount(): bool
+    {
+        return $this->type === TaskType::DeliverToCustomer
+            && $this->order !== null
+            && $this->order->payment_status !== 'paid';
     }
 
     /**
@@ -180,7 +234,10 @@ class OrderTask extends Model
      */
     public function scopeNeedingAPerson(Builder $query): Builder
     {
-        return $query->whereNull('driver_id')
+        // A collection whose laundry has not finished is nobody's to assign yet
+        // (item 18) — the board would list it and its badge count it.
+        return $query->offerable()
+            ->whereNull('driver_id')
             ->whereNotIn('status', [
                 TaskStatus::Completed->value,
                 TaskStatus::Cancelled->value,
@@ -280,14 +337,49 @@ class OrderTask extends Model
      * it, so on live a driver collected and delivered orders still `picked_up`:
      * back at the customer's door with no price, nothing to collect, and an
      * order that could never move again (the owner, 2026-10-01).
+     *
+     * **And the laundry has said it finished** (`finished`, «خلص الغسيل» —
+     * the client's sheet, item 18, 2026-11-08): `cleaning` alone no longer
+     * lets the collection start. `$underWay` is the one exception — a
+     * collection already started at `cleaning` before the rule existed still
+     * finishes, the way a leg under way always does.
      */
-    public function orderAllows(): bool
+    public function orderAllows(bool $underWay = false): bool
     {
         if ($this->type !== TaskType::CollectFromLaundry) {
             return true;
         }
 
-        return in_array($this->order?->status, [OrderStatus::Cleaning, OrderStatus::ReadyForDelivery], true);
+        $allowed = OrderStatus::collectable();
+
+        if ($underWay) {
+            $allowed[] = OrderStatus::Cleaning;
+        }
+
+        return in_array($this->order?->status, $allowed, true);
+    }
+
+    /**
+     * The collection from a laundry that has not finished yet — not offered to
+     * a driver, not assignable, not started (item 18). The laundry's
+     * «خلص الغسيل» offers it (`Order/Services/FinishedWashing`).
+     */
+    public function awaitsWashing(): bool
+    {
+        return $this->type === TaskType::CollectFromLaundry && ! $this->orderAllows();
+    }
+
+    /**
+     * The legs that may be given to a driver now: every leg but a collection
+     * whose laundry has not finished — `awaitsWashing()` as a query, for the
+     * dispatch board, its badge, the sweep and the stuck-task alert.
+     */
+    public function scopeOfferable(Builder $query): Builder
+    {
+        return $query->where(fn (Builder $q) => $q
+            ->where('order_tasks.type', '!=', TaskType::CollectFromLaundry->value)
+            ->orWhereHas('order', fn (Builder $order) => $order
+                ->whereIn('status', array_map(fn (OrderStatus $s) => $s->value, OrderStatus::collectable()))));
     }
 
     /**
@@ -317,7 +409,9 @@ class OrderTask extends Model
             return 'order_has_no_laundry';
         }
 
-        return $this->orderAllows() ? null : 'order_not_ready';
+        // A collection already started at `cleaning` before «خلص الغسيل»
+        // existed finishes (`TaskService::complete()`), so it is not shown blocked.
+        return $this->orderAllows(underWay: $this->status === TaskStatus::Started) ? null : 'order_not_ready';
     }
 
     /**

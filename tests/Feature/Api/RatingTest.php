@@ -74,6 +74,7 @@ class RatingTest extends TestCase
             OrderStatus::Reviewed,
             OrderStatus::Confirmed,
             OrderStatus::Cleaning,
+            OrderStatus::Finished,
             OrderStatus::ReadyForDelivery,
             OrderStatus::Delivered,
             OrderStatus::Completed,

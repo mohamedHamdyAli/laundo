@@ -37,35 +37,50 @@ class TaskTypeTest extends TestCase
     }
 
     #[Test]
-    public function only_the_customer_facing_legs_take_a_signature(): void
+    public function the_collection_from_the_laundry_asks_for_no_scan(): void
     {
-        // A laundry hands over to a colleague, not to a customer.
-        $this->assertTrue(TaskType::PickupFromCustomer->requiresSignature());
+        // The client's sheet, item 6 (2026-11-08).
+        $this->assertFalse(TaskType::CollectFromLaundry->requiresScan());
+
+        $this->assertTrue(TaskType::PickupFromCustomer->requiresScan());
+        $this->assertTrue(TaskType::DeliverToLaundry->requiresScan());
+        $this->assertTrue(TaskType::DeliverToCustomer->requiresScan());
+    }
+
+    #[Test]
+    public function only_the_delivery_takes_a_signature(): void
+    {
+        // The client's sheet, item 5 (2026-11-08): no signature to confirm a
+        // pickup; the delivery keeps it as the proof the clothes came back. A
+        // laundry hands over to a colleague, not to a customer.
         $this->assertTrue(TaskType::DeliverToCustomer->requiresSignature());
 
+        $this->assertFalse(TaskType::PickupFromCustomer->requiresSignature());
         $this->assertFalse(TaskType::DeliverToLaundry->requiresSignature());
         $this->assertFalse(TaskType::CollectFromLaundry->requiresSignature());
     }
 
     #[Test]
-    public function the_final_leg_does_not_re_open_the_piece_count(): void
+    public function the_driver_counts_only_when_taking_the_pieces_out_of_the_laundry(): void
     {
-        // The count was settled by the laundry's review and agreed by the
-        // customer. Asking a driver to re-open it on the doorstep would invite a
-        // dispute nobody standing there can resolve.
-        $this->assertFalse(TaskType::DeliverToCustomer->countsPieces());
-
-        $this->assertTrue(TaskType::PickupFromCustomer->countsPieces());
-        $this->assertTrue(TaskType::DeliverToLaundry->countsPieces());
+        // The client's sheet, item 12 (2026-11-08): the laundry inspects and
+        // counts; the driver counts once, at the collection, against it. Never
+        // on the doorstep at the end — the customer agreed that count.
         $this->assertTrue(TaskType::CollectFromLaundry->countsPieces());
+
+        $this->assertFalse(TaskType::PickupFromCustomer->countsPieces());
+        $this->assertFalse(TaskType::DeliverToLaundry->countsPieces());
+        $this->assertFalse(TaskType::DeliverToCustomer->countsPieces());
     }
 
     #[Test]
-    public function money_changes_hands_on_the_last_leg_only(): void
+    public function money_changes_hands_only_at_the_customers_door(): void
     {
+        // The delivery takes what is owed; since «رسوم المشوار» (2026-11-08)
+        // the pickup may take its trip fee on a cash order.
         $collecting = array_filter(TaskType::cases(), fn (TaskType $t) => $t->collectsPayment());
 
-        $this->assertSame([TaskType::DeliverToCustomer], array_values($collecting));
+        $this->assertSame([TaskType::PickupFromCustomer, TaskType::DeliverToCustomer], array_values($collecting));
     }
 
     #[Test]
@@ -109,6 +124,18 @@ class TaskTypeTest extends TestCase
             // The review sits between leg 1 and leg 2 and is driven by the
             // laundry, so the walk resumes from `confirmed`.
             $from = $previous === OrderStatus::PickedUp ? OrderStatus::Confirmed : $previous;
+
+            // And «خلص الغسيل» sits between leg 2 and leg 3 (the client's sheet,
+            // item 18, 2026-11-08): the laundry, not a leg, moves `cleaning` to
+            // `finished`, and the collection is completed from there.
+            if ($leg === TaskType::CollectFromLaundry) {
+                $this->assertSame(OrderStatus::Cleaning, $from);
+                $this->assertTrue(
+                    OrderStatus::Cleaning->canTransitionTo(OrderStatus::Finished),
+                    '«cleaning» cannot reach «finished», so the laundry could never release the collection'
+                );
+                $from = OrderStatus::Finished;
+            }
 
             $this->assertTrue(
                 $from->canTransitionTo($target),

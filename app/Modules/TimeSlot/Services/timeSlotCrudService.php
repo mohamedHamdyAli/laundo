@@ -2,6 +2,7 @@
 
 namespace App\Modules\TimeSlot\Services;
 
+use App\Modules\Order\Services\PieceLimits;
 use App\Modules\TimeSlot\Models\TimeSlot;
 use App\Modules\TimeSlot\Repositories\TimeSlotRepository;
 use App\Services\ResponseService;
@@ -61,16 +62,20 @@ class timeSlotCrudService
      * Bookings against each window for today and tomorrow.
      *
      * @param  iterable<int, TimeSlot>  $slots
-     * @return array<int, array{today: int, tomorrow: int}>
+     *                                          And the pieces booked for collection in each, beside its limit (item 19).
+     * @return array<int, array{today: int, tomorrow: int, pieces_today: int, pieces_tomorrow: int}>
      */
     private function usage(iterable $slots): array
     {
         $out = [];
+        $pieces = app(PieceLimits::class);
 
         foreach ($slots as $slot) {
             $out[$slot->id] = [
                 'today' => $this->capacity->booked($slot, now()),
                 'tomorrow' => $this->capacity->booked($slot, now()->addDay()),
+                'pieces_today' => $pieces->bookedInWindow($slot, now()),
+                'pieces_tomorrow' => $pieces->bookedInWindow($slot, now()->addDay()),
             ];
         }
 
@@ -100,10 +105,13 @@ class timeSlotCrudService
             'status' => $request['status'] ?? null,
         ], fn ($value) => ! is_null($value));
 
-        if (array_key_exists('capacity', $request)) {
-            $data['capacity'] = ($request['capacity'] === null || $request['capacity'] === '')
-                ? null
-                : (int) $request['capacity'];
+        // The same for the pieces limit (item 19): clearing it clears it.
+        foreach (['capacity', 'max_pieces'] as $field) {
+            if (array_key_exists($field, $request)) {
+                $data[$field] = ($request[$field] === null || $request[$field] === '')
+                    ? null
+                    : (int) $request[$field];
+            }
         }
 
         return $data;

@@ -39,6 +39,28 @@ class OrderReviewController extends Controller
                 ->withInput();
         }
 
+        // A draft now (the client's sheet, item 12): the platform sends it on.
+        return back()->with('success', __('Count and price saved — waiting for the platform to send them to the customer.'));
+    }
+
+    /**
+     * «إرسال للعميل» — the platform sends the laundry's count and price on to
+     * the customer, who is then asked to confirm (item 12, 2026-11-08).
+     */
+    public function send(Request $request, $id)
+    {
+        $order = Order::findOrFail($id);
+
+        try {
+            $this->reviews->send($order, $request->user());
+        } catch (RuntimeException $e) {
+            return back()->with('error', match ($e->getMessage()) {
+                'platform_only' => __('Only the platform sends a count to the customer.'),
+                'nothing_to_send' => __('There is no new count to send.'),
+                default => throw $e,
+            });
+        }
+
         return back()->with('success', __('Final price sent to the customer for confirmation.'));
     }
 

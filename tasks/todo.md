@@ -1,3 +1,161 @@
+# The client's 19 requests (asked 2026-11-08) — queued, worked by priority
+
+«دي تاسكات العميل سجلها عندك وابتدي اعملها واحدة واحدة ع حسب priority — لو
+في أي جزء عاوز قرار فيه اسألني بالعربي». The client's sheet, numbered as they
+numbered it. Order of work: High (1–12), then Medium (16–19), then Low (13–15).
+Every decision the owner makes goes under **Answers** before the item is built.
+
+High
+- [x] 1. إضافة إمكانية لعمل أوردرات من خلال الداشبورد — place an order from the panel.
+      Built 2026-11-08: `PanelOrders` + `OrderPlacementController` + `admin/order/create`,
+      `AddressBook` shared with the app, `PanelOrderTest` (16), driven in Chromium.
+- [x] 2. أعداد القطع لسه بتظهر للعميل غير مطابقة بعد ما سلّم المندوب عدد أكبر من
+      اللي في الأوردر — the customer still sees a mismatch when they hand over *more*.
+      Built: `OrderPieces` + `Order::customerSeesFinal()`; `items` one phase with
+      `change`, `estimated_items`; `OrderPiecesTest` (4). Needs the mobile note.
+      `docs/api-reference.html` NOT regenerated — no Python on this machine.
+- [x] 3. رسوم التوصيل منفصلة لكل مرة ذهاب للعميل (استلام أو تسليم) — 25 ج للمرة.
+      Built: `TripFees`, `Trip_Fee`, `orders.pickup_fee|return_fee`, cash at the
+      pickup (`OrderTask::toCollect()`, optional to report), `TripFeeTest` (12).
+- [x] 4. لا تُحتسب رسوم توصيل على أكثر من أوردر يستلمه العميل في نفس التوقيت.
+      Built with 3: `sharingVisit()`, `handOverTripFees()` + `TripFeeMoved`.
+- [x] 5. إزالة شرط توقيع العميل لتأكيد الاستلام من طرف المندوب.
+      `requiresSignature()` = delivery only.
+- [x] 6. إزالة شرط الـ QR في الاستلام من المغسلة.
+      `requires_scan` (false on `collect_from_laundry`); app-side change → mobile note.
+- [x] 7. لو تعذّر الاستلام من العميل لغيابه: الأوردر يرجع للعميل يحدد موعد
+      استلام جديد — بدون تغيير موعد التسليم أو نوع الخدمة.
+      `needsANewSlot($leg)`, `postponedTask()` finds it; RescheduleTest (+2).
+- [x] 8. آخر وقت لعمل أوردر = قبل بداية الفترة بـ 15 دقيقة.
+      `SlotClock::closesAt()` from the start, default 15, migration sets 15.
+- [x] 9. وقف إكمال مهمة المندوب لو العدد مش مطابق عند الاستلام من المغسلة.
+- [x] 10. التحصيل من العميل بمبلغ أقل أو أكثر لا يكتمل إلا بموافقة الأدمن.
+      Built together: `task_holds`, `TaskHolds`, `TaskHeld` (409), approve/reject on
+      the order screen, `TaskService::finish()` the one completion path,
+      `OverCollected` wallet credit; `TaskHoldTest` (11). Mobile note needed.
+- [x] 11. تأكيد استلام المغسلة لعدد الشماعات.
+      `HangerReceipt`, `hangers_confirmed|_at|_by`, points on the laundry's count;
+      `HangerReceiptTest` (3) + LoyaltyPointsTest updated.
+- [x] 12. فحص القطع من المغسلة فقط (مش المندوب)، وبعدها الأدمن يبعت للعميل.
+      `countsPieces()` = collection only; review is a draft, `send()` + button,
+      `review_sent_round`; `ReviewDraftTest` (5); ~70 test call sites moved to the
+      new flow (`sendReview()`, `completeLeg()` in TestCase); PieceCheckTest rewritten.
+
+Medium
+- [x] 16. العميل يختار عنوان توصيل مختلف عن عنوان الاستلام.
+      Already in the API — written into the mobile note.
+- [x] 17. إجمالي التحصيل الكاش اليومي في تطبيق المندوب.
+      `CashCustody::forDriver()` → `GET /driver/summary` `cash` block.
+- [x] 18. حالة «Finished» بعد «Cleaning»، يحرّكها الشخص الموجود في المغسلة.
+      `FinishedWashing` + `admin.order.finish_washing`; collection not offered /
+      assigned / started before it (`awaitsWashing`, `offerable`); `washingOverdue`
+      filter + badge; `FinishedWashingTest` (11); ~45 tests moved to the new flow.
+- [x] 19. التحكم في عدد القطع لكل أوردر ولكل فترة استلام.
+      `PieceLimits`, `Max_Pieces_Per_Order`, `time_slots.max_pieces`, `pieces` /
+      `pieces_left` on `/time-slots`; `PieceLimitsTest` (10).
+
+Low
+- [x] 13. عدد الأوردرات المكتملة اللي نفّذها المندوب في صفحته الشخصية.
+- [x] 14. عدد الأوردرات المكتملة اللي طلبها العميل في صفحته الشخصية.
+- [x] 15. إجمالي النقاط المستخدمة والمتبقية للعميل في صفحته الشخصية.
+      13–15: profile fields + `PointsService::used()`; `ProfileCountsTest` (3).
+
+Review (2026-11-09)
+- [x] Full suite green; `/code-review` (items 2–12: 10 fixed; 13–19: 9 fixed, 1
+      left as a deploy-time one-off) and `/security-review` (items 2–12: the
+      pickup-cash finding fixed; 13–19: nothing at the bar).
+- [ ] Not done here: `docs/api-reference.html` (needs Python), the Postman
+      collection bodies, the QC note for the deploy, committing (not asked).
+
+Answers (2026-11-08, the owner's picks — Arabic as asked):
+- **1** Existing customers only (picked on the screen; address from their saved
+  ones or a new pin on the map, saved to them). Payment **exactly as the app**:
+  every method, coupon, offer, points. **Platform only** — new `order.create`,
+  refused inside a laundry even if granted. Same rules as the app (coverage,
+  cutoff, slot capacity, laundry assignment, the customer notified).
+- **3** «فهمني الحساب بالكيلو… العميل عاوز لما الدليفري يروح يستلم ياخد 25،
+  ويرجع يسلّم ياخد 25 برضه — بتتحدد من الداشبورد». So: per-km pricing retired
+  for new orders; one setting (the trip fee, 25) from the settings screen; the
+  pickup trip and the delivery trip each charge it; **cash orders pay the pickup
+  trip's fee at the pickup**, the rest at the delivery. **Online payment covers
+  both trips** — nothing is collected at the door then.
+- **4** One visit = same customer + same address + same day + same window, per
+  trip kind. The first order carries the fee, the others 0. **If the carrier is
+  cancelled, the fee moves to the other order** (unpaid, trip not done yet), and
+  the customer is told the new total.
+- **5** Signature off the **pickup** only; delivery keeps it; still accepted
+  when sent.
+- **7** From the **first** absence the order goes back to the customer to pick
+  a new pickup time (pickup only — no delivery time, no service). **The missed
+  trip is not charged again.** If the new pickup leaves too little turnaround,
+  **the delivery moves automatically** to the first window that fits, and the
+  customer is told (as postponement already does).
+- **9 / 10** A mismatch **waits for the admin**: the leg is held «بانتظار موافقة
+  الإدارة», the platform is notified; approve on the order screen → the leg
+  completes by itself; reject → the driver recounts / collects again.
+- **10** Approved more → the extra goes to the customer's **wallet**; approved
+  less → the order **stays owed** (not completed) until paid.
+- **11** The **laundry confirms** the hangers that reached it (panel); hanger
+  points are paid **after** that confirmation, on the laundry's count.
+- **12** The driver **no longer counts** at the customer or at the laundry (only
+  at the collection from the laundry — item 9). The laundry inspects, counts and
+  prices; its inspection goes **to the admin first**, who reviews and sends it
+  to the customer.
+- **2** The customer's review screen reads **the laundry's count as the order**:
+  extra pieces show as «added», not as a mismatch.
+- **6** (no question needed) verify is not enforced by the server on any leg; the
+  app enforces it. A per-leg `requires_scan` flag, false on
+  `collect_from_laundry`, plus a note to the driver app.
+- **8** (no question needed) the cutoff is measured from the window's **start**,
+  setting default 15, for every window.
+
+- **16** (2026-11-08) Already in the API (`delivery_address_id` at placement,
+  the delivery leg goes there) — a note to the customer-app team only.
+- **18** The collection from the laundry **waits for «Finished»**: the laundry
+  marks it from the panel; the leg is not offered/started before; the customer
+  sees the new status.
+- **19** Two limits: «max pieces per order» (a setting) and «max pieces per
+  pickup window» (a field on each time slot, blank = open), platform-wide. Over
+  either: **refused**, and a full window is marked full in the app.
+
+Build plan (read from the code 2026-11-08, before building each):
+- **5** `TaskType::requiresSignature()` → `DeliverToCustomer` only; a signature
+  sent on the pickup is still stored. Tests: `TaskTypeTest`, `DriverTaskTest`.
+- **6** verify is never enforced server-side; the app enforces it. Add
+  `TaskType::requiresScan()` (all but `CollectFromLaundry`) → `requires_scan` in
+  the task detail; mobile note.
+- **8** `SlotClock::closesAt()` = start − cutoff; default 15; settings label
+  reworded; a migration sets `Slot_Booking_Cutoff_Minutes` to 15 (its meaning
+  changed, the old value means nothing now). Every `isClosed()` caller follows.
+- **2** customer `GET /orders/{id}`: `items` = the pieces that apply now (the
+  laundry's count once it reaches the customer, the estimate before), each with
+  `change` (`added|more|fewer|same`); `estimated_items` keeps the original.
+  `GET /orders/{id}/review` lines gain `change` + `pieces_added|missing`. One
+  predicate for «the customer sees the count» (item 12 narrows it).
+- **3/4** a `Trip_Fee` setting (25); `orders.pickup_fee` + `return_fee`,
+  `delivery_fee` = their sum (settlement, coupons, bonus untouched). A trip is
+  free when another live order of the customer shares address + day + window for
+  that trip kind; the carrier's cancellation moves the fee to the other order
+  (unpaid, trip not done) and tells the customer. Cash orders: the pickup leg
+  collects `pickup_fee` (a captured cash payment); the delivery collects the
+  rest (payable − paid so far). Online: nothing at the door. Per-km zone fields
+  retired from the zone form and the laundry picker's fee line.
+- **7** `CustomerUnavailable` on the pickup leg → the postponement path from the
+  first absence (`needsANewSlot()`), its own words to the customer; reschedule
+  moves the pickup only, the delivery follows automatically when it must.
+- **9/10** a held completion: `order_tasks.held_at|held_reason|held_value`; the
+  leg stays started «بانتظار موافقة الإدارة», the platform is notified;
+  approve (platform, order screen) completes it with the held values; reject
+  clears the hold. 10: extra → wallet credit, short → order stays owed.
+- **11** `order_tasks.hangers_confirmed|_at|_by`; the laundry confirms on the
+  order screen; hanger points paid at confirmation, on the confirmed count.
+- **12** `countsPieces()` → `CollectFromLaundry` only. The review becomes a draft:
+  `review()` saves it without moving the order; `orders.review_sent_at|_by`;
+  the platform «إرسال للعميل» moves it to `reviewed` and notifies the customer;
+  the customer never sees an unsent draft.
+
+---
+
 # The apps' own strings — one set per app (asked 2026-10-25) — built, under review
 
 «دول 4 ملفات يامعلم محتاجين نظبطها وال api محتاج براميتر يقول اني ابلكيشين».

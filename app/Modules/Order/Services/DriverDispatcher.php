@@ -9,6 +9,7 @@ use App\Modules\Order\Enums\TaskStatus;
 use App\Modules\Order\Enums\TaskType;
 use App\Modules\Order\Models\Order;
 use App\Modules\Order\Models\OrderTask;
+use App\Modules\Order\Models\TaskHold;
 use App\Modules\User\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -63,6 +64,13 @@ class DriverDispatcher
         // bag with no destination; the legs are offered once a laundry is set
         // (OrderService::assignLaundry()).
         if ($task->order && $task->order->laundry_id === null) {
+            return null;
+        }
+
+        // The laundry has not said «خلص الغسيل» (item 18): nothing to collect
+        // yet, so nobody is sent and nobody is told it waits.
+        // FinishedWashing offers it when the laundry does.
+        if ($task->awaitsWashing()) {
             return null;
         }
 
@@ -135,6 +143,12 @@ class DriverDispatcher
             throw new RuntimeException('order_has_no_laundry');
         }
 
+        // Not before the laundry has finished (item 18): a driver holding a
+        // collection that cannot start holds it against their cap.
+        if ($task->awaitsWashing()) {
+            throw new RuntimeException('washing_not_finished');
+        }
+
         if (! $this->isEligible($driver, $task)) {
             throw new RuntimeException('driver_not_eligible');
         }
@@ -159,6 +173,14 @@ class DriverDispatcher
             'started_at' => null,
         ]);
 
+        // A confirmation the driver had held for the platform goes with the
+        // driver: approved later, it would complete the leg with one driver's
+        // count or cash under whoever holds it next (code review, 2026-11-08).
+        TaskHold::where('order_task_id', $task->id)->pending()->update([
+            'status' => TaskHold::WITHDRAWN,
+            'updated_at' => now(),
+        ]);
+
         return $task->refresh();
     }
 
@@ -169,6 +191,11 @@ class DriverDispatcher
      */
     public function candidates(OrderTask $task): array
     {
+        // Nobody, yet: the laundry has not finished (item 18).
+        if ($task->awaitsWashing()) {
+            return [];
+        }
+
         $zoneId = $this->zoneFor($task);
 
         if ($zoneId === null) {
@@ -219,6 +246,10 @@ class DriverDispatcher
     {
         if ($this->candidates($task) !== []) {
             return null;
+        }
+
+        if ($task->awaitsWashing()) {
+            return ['reason' => 'The laundry has not finished washing this order yet', 'params' => []];
         }
 
         // Rule 3 needs a zone to compare against, and without one no rule can
@@ -430,6 +461,7 @@ class DriverDispatcher
         $assigned = 0;
 
         OrderTask::queued()
+            ->offerable()
             ->with(['order.pickupAddress', 'order.deliveryAddress'])
             ->orderBy('due_at')
             ->chunkById(100, function ($tasks) use (&$assigned) {

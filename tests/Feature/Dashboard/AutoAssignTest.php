@@ -97,7 +97,8 @@ class AutoAssignTest extends TestCase
 
         // Exactly as the platform has always run.
         $this->assertSame($this->tenant['laundry']->id, $order->laundry_id);
-        $this->assertSame(4, OrderTask::where('order_id', $order->id)->where('driver_id', $driver->id)->count());
+        // Three: the collection from the laundry is nobody's before «خلص الغسيل» (item 18, 2026-11-08).
+        $this->assertSame(3, OrderTask::where('order_id', $order->id)->where('driver_id', $driver->id)->count());
     }
 
     #[Test]
@@ -158,7 +159,8 @@ class AutoAssignTest extends TestCase
             ->put(route('admin.order.assign', $order->id), ['laundry_id' => $this->tenant['laundry']->id])
             ->assertRedirect();
 
-        $this->assertSame(4, OrderTask::where('order_id', $order->id)->where('driver_id', $driver->id)->count());
+        // Three: the collection from the laundry is nobody's before «خلص الغسيل» (item 18, 2026-11-08).
+        $this->assertSame(3, OrderTask::where('order_id', $order->id)->where('driver_id', $driver->id)->count());
     }
 
     #[Test]
@@ -186,7 +188,8 @@ class AutoAssignTest extends TestCase
 
         // The admin's own «وزّع» is a person deciding, so that one works.
         $this->post(route('admin.order.tasks.dispatch', $order->id))->assertRedirect();
-        $this->assertSame(4, OrderTask::where('order_id', $order->id)->where('driver_id', $driver->id)->count());
+        // Three: the collection from the laundry is nobody's before «خلص الغسيل» (item 18, 2026-11-08).
+        $this->assertSame(3, OrderTask::where('order_id', $order->id)->where('driver_id', $driver->id)->count());
     }
 
     #[Test]
@@ -260,7 +263,8 @@ class AutoAssignTest extends TestCase
             ->post(route('admin.order.tasks.dispatch', $order->id))
             ->assertRedirect();
 
-        $this->assertSame(4, OrderTask::where('order_id', $order->id)->where('driver_id', $driver->id)->count());
+        // Three: the collection from the laundry is nobody's before «خلص الغسيل» (item 18, 2026-11-08).
+        $this->assertSame(3, OrderTask::where('order_id', $order->id)->where('driver_id', $driver->id)->count());
     }
 
     #[Test]

@@ -1,14 +1,21 @@
 [
     {
         "name": "Address",
-        "community": "quality",
+        "community": "order",
         "path": "app/Modules/Address",
         "layers": {
-            "model": 1
+            "model": 1,
+            "service": 1
         },
-        "files": 1,
-        "lines": 133,
+        "files": 2,
+        "lines": 185,
         "classes": [
+            {
+                "fqcn": "App\\Modules\\Address\\Services\\AddressBook",
+                "layer": "service",
+                "path": "app/Modules/Address/Services/AddressBook.php",
+                "summary": "A customer's saved addresses — adding one."
+            },
             {
                 "fqcn": "App\\Modules\\Address\\Models\\Address",
                 "layer": "model",
@@ -23,24 +30,24 @@
             "addresses"
         ],
         "reads_tables": [
-            "cities",
             "users",
+            "cities",
             "zones"
         ],
         "routes": [],
         "permissions": [],
         "tests": [],
-        "summary": "A customer's saved address.",
+        "summary": "A customer's saved addresses — adding one.",
         "depends_on": {
-            "City": 1,
-            "User": 1,
-            "Zone": 1
+            "User": 3,
+            "Zone": 3,
+            "City": 1
         },
         "depended_on_by": {
-            "Order": 11,
-            "Tests": 11,
+            "Order": 15,
+            "Tests": 12,
             "Zone": 7,
-            "Api": 3,
+            "Api": 5,
             "User": 1,
             "Platform": 1,
             "Database": 1
@@ -160,7 +167,7 @@
             "api-controller": 24
         },
         "files": 24,
-        "lines": 5552,
+        "lines": 5645,
         "classes": [
             {
                 "fqcn": "App\\Http\\Controllers\\Api\\V1\\AddressController",
@@ -328,7 +335,6 @@
             "languages",
             "device_tokens",
             "notification_preferences",
-            "order_media",
             "payments",
             "point_transactions",
             "order_recurrences",
@@ -340,6 +346,7 @@
             "settings",
             "driver_profiles",
             "driver_record_submissions",
+            "task_holds",
             "order_ratings"
         ],
         "routes": [
@@ -457,10 +464,10 @@
         "summary": "A customer's saved addresses.",
         "depends_on": {
             "Platform": 73,
-            "Order": 57,
-            "Payment": 17,
+            "Order": 67,
+            "Payment": 18,
+            "Loyalty": 13,
             "TimeSlot": 12,
-            "Loyalty": 11,
             "Driver": 10,
             "Auth": 8,
             "Coupon": 8,
@@ -468,9 +475,9 @@
             "Service": 6,
             "Complaint": 6,
             "Notification": 6,
+            "Address": 5,
             "User": 4,
             "Zone": 3,
-            "Address": 3,
             "Pricing": 2,
             "Banner": 2,
             "Faq": 2,
@@ -1092,11 +1099,11 @@
         "community": "database",
         "path": null,
         "layers": {
-            "migration": 119,
+            "migration": 125,
             "seeder": 11
         },
-        "files": 130,
-        "lines": 7824,
+        "files": 136,
+        "lines": 8130,
         "classes": [
             {
                 "fqcn": "Database\\Seeders\\AdminUserSeeder",
@@ -1225,10 +1232,10 @@
         "community": "quality",
         "path": null,
         "layers": {
-            "doc": 11
+            "doc": 12
         },
-        "files": 11,
-        "lines": 11303,
+        "files": 12,
+        "lines": 11606,
         "classes": [],
         "models": [],
         "owns_tables": [],
@@ -1533,10 +1540,10 @@
             "City": 2
         },
         "depended_on_by": {
-            "Tests": 62,
+            "Tests": 64,
             "Platform": 22,
+            "Order": 11,
             "Api": 10,
-            "Order": 9,
             "Payment": 8,
             "Routing": 6,
             "Notification": 4,
@@ -1986,7 +1993,7 @@
             "service": 1
         },
         "files": 5,
-        "lines": 1183,
+        "lines": 1180,
         "classes": [
             {
                 "fqcn": "App\\Services\\Landing\\LandingContentService",
@@ -2015,7 +2022,7 @@
         "summary": "Everything the landing page states about the business, read from the business.",
         "depends_on": {
             "Pricing": 5,
-            "Order": 2,
+            "Order": 3,
             "Platform": 1,
             "Faq": 1,
             "ItemCategory": 1,
@@ -2192,7 +2199,7 @@
             "Notification": 1
         },
         "depended_on_by": {
-            "Tests": 30,
+            "Tests": 33,
             "Platform": 15,
             "Order": 14,
             "Payment": 12,
@@ -2474,7 +2481,7 @@
             "repository": 1
         },
         "files": 14,
-        "lines": 2273,
+        "lines": 2293,
         "classes": [
             {
                 "fqcn": "App\\Modules\\Loyalty\\Controllers\\PointAccountController",
@@ -2578,9 +2585,9 @@
             "Notification": 3
         },
         "depended_on_by": {
-            "Tests": 15,
-            "Order": 12,
-            "Api": 11,
+            "Tests": 18,
+            "Order": 16,
+            "Api": 13,
             "Platform": 6,
             "Notification": 4,
             "Report": 3,
@@ -2690,7 +2697,7 @@
             "notification": 1
         },
         "files": 30,
-        "lines": 3337,
+        "lines": 3440,
         "classes": [
             {
                 "fqcn": "App\\Modules\\Notification\\Controllers\\NotificationComposeController",
@@ -2868,6 +2875,7 @@
         "reads_tables": [
             "users",
             "orders",
+            "order_status_logs",
             "order_tasks",
             "driver_applications",
             "driver_record_submissions",
@@ -2893,7 +2901,7 @@
         "summary": "Work waiting for a person because automatic assignment is switched off.",
         "depends_on": {
             "User": 23,
-            "Order": 15,
+            "Order": 21,
             "Platform": 11,
             "Laundry": 5,
             "Driver": 4,
@@ -2902,8 +2910,8 @@
             "Payment": 1
         },
         "depended_on_by": {
-            "Tests": 68,
-            "Order": 16,
+            "Tests": 69,
+            "Order": 21,
             "Platform": 10,
             "Driver": 8,
             "Api": 6,
@@ -2932,7 +2940,7 @@
             "service": 1
         },
         "files": 13,
-        "lines": 1076,
+        "lines": 1088,
         "classes": [
             {
                 "fqcn": "App\\Modules\\Offer\\Controllers\\OfferController",
@@ -3009,8 +3017,8 @@
         "depended_on_by": {
             "Tests": 6,
             "Platform": 5,
+            "Order": 4,
             "Api": 2,
-            "Order": 2,
             "Landing": 1,
             "Routing": 1
         }
@@ -3020,17 +3028,17 @@
         "community": "order",
         "path": "app/Modules/Order",
         "layers": {
-            "service": 23,
-            "view": 13,
-            "model": 10,
+            "service": 32,
+            "view": 15,
+            "model": 11,
             "enum": 8,
-            "controller": 5,
+            "controller": 7,
+            "request": 3,
             "command": 2,
-            "repository": 1,
-            "request": 1
+            "repository": 1
         },
-        "files": 63,
-        "lines": 13191,
+        "files": 79,
+        "lines": 16632,
         "classes": [
             {
                 "fqcn": "App\\Modules\\Order\\Controllers\\DispatchController",
@@ -3043,6 +3051,12 @@
                 "layer": "controller",
                 "path": "app/Modules/Order/Controllers/OrderController.php",
                 "summary": "Orders in the dashboard."
+            },
+            {
+                "fqcn": "App\\Modules\\Order\\Controllers\\OrderPlacementController",
+                "layer": "controller",
+                "path": "app/Modules/Order/Controllers/OrderPlacementController.php",
+                "summary": "«إنشاء طلب» — the panel taking an order for a customer. HTTP only; the rules are `PanelOrders`, and behind it the app's own `OrderService`."
             },
             {
                 "fqcn": "App\\Modules\\Order\\Controllers\\OrderReviewController",
@@ -3063,6 +3077,12 @@
                 "summary": "«طلبات اليوم» — HTTP only; the counting is the service's."
             },
             {
+                "fqcn": "App\\Modules\\Order\\Controllers\\OrderWashingController",
+                "layer": "controller",
+                "path": "app/Modules/Order/Controllers/OrderWashingController.php",
+                "summary": "«خلص الغسيل» from the order screen (the client's sheet, item 18, 2026-11-08)."
+            },
+            {
                 "fqcn": "App\\Modules\\Order\\Services\\AutoAssign",
                 "layer": "service",
                 "path": "app/Modules/Order/Services/AutoAssign.php",
@@ -3079,6 +3099,18 @@
                 "layer": "service",
                 "path": "app/Modules/Order/Services/DriverDispatcher.php",
                 "summary": "Decides who does a task."
+            },
+            {
+                "fqcn": "App\\Modules\\Order\\Services\\FinishedWashing",
+                "layer": "service",
+                "path": "app/Modules/Order/Services/FinishedWashing.php",
+                "summary": "«خلص الغسيل» — the laundry says the work on an order is done (the client's sheet, item 18, 2026-11-08)."
+            },
+            {
+                "fqcn": "App\\Modules\\Order\\Services\\HangerReceipt",
+                "layer": "service",
+                "path": "app/Modules/Order/Services/HangerReceipt.php",
+                "summary": "«تأكيد استلام من المغسلة لعدد الشماعات» — the client's sheet, item 11 (2026-11-08)."
             },
             {
                 "fqcn": "App\\Modules\\Order\\Services\\LaundryAssigner",
@@ -3105,6 +3137,12 @@
                 "summary": "Everything that happened to one order, newest first, and who did it."
             },
             {
+                "fqcn": "App\\Modules\\Order\\Services\\OrderPieces",
+                "layer": "service",
+                "path": "app/Modules/Order/Services/OrderPieces.php",
+                "summary": "The pieces of an order as the customer is shown them (2026-11-08)."
+            },
+            {
                 "fqcn": "App\\Modules\\Order\\Services\\OrderPricing",
                 "layer": "service",
                 "path": "app/Modules/Order/Services/OrderPricing.php",
@@ -3114,7 +3152,7 @@
                 "fqcn": "App\\Modules\\Order\\Services\\OrderReviewService",
                 "layer": "service",
                 "path": "app/Modules/Order/Services/OrderReviewService.php",
-                "summary": "The laundry counts the pieces; the customer agrees to the number."
+                "summary": "The laundry counts the pieces; the platform sends the count on; the customer agrees to the number."
             },
             {
                 "fqcn": "App\\Modules\\Order\\Services\\OrderService",
@@ -3147,10 +3185,28 @@
                 "summary": "An order to or from an address we do not serve — a pin outside every zone drawn on the map, so the address has no zone, or an address in a zone (or city) the owner switched off (`Address::isCovered()`)."
             },
             {
+                "fqcn": "App\\Modules\\Order\\Services\\PanelOrders",
+                "layer": "service",
+                "path": "app/Modules/Order/Services/PanelOrders.php",
+                "summary": "«إنشاء طلب» — an order placed from the panel, for a customer (2026-11-08)."
+            },
+            {
                 "fqcn": "App\\Modules\\Order\\Services\\PieceCheck",
                 "layer": "service",
                 "path": "app/Modules/Order/Services/PieceCheck.php",
                 "summary": "«عدد القطع المستلمة», checked."
+            },
+            {
+                "fqcn": "App\\Modules\\Order\\Services\\PieceLimits",
+                "layer": "service",
+                "path": "app/Modules/Order/Services/PieceLimits.php",
+                "summary": "«التحكم في عدد القطع» — how many pieces one order may carry, and how many a pickup window may collect (the client's sheet, item 19, 2026-11-08)."
+            },
+            {
+                "fqcn": "App\\Modules\\Order\\Services\\PlacementFailure",
+                "layer": "service",
+                "path": "app/Modules/Order/Services/PlacementFailure.php",
+                "summary": "What `OrderService`'s failure codes mean, said once."
             },
             {
                 "fqcn": "App\\Modules\\Order\\Services\\RatingService",
@@ -3177,10 +3233,28 @@
                 "summary": "Turns an order into its four journeys."
             },
             {
+                "fqcn": "App\\Modules\\Order\\Services\\TaskHeld",
+                "layer": "service",
+                "path": "app/Modules/Order/Services/TaskHeld.php",
+                "summary": "The driver's «تأكيد» was recorded as a question for the platform, not as a completion (`TaskHolds`, 2026-11-08). Thrown after the hold has committed — the leg is still started, and the caller says so."
+            },
+            {
+                "fqcn": "App\\Modules\\Order\\Services\\TaskHolds",
+                "layer": "service",
+                "path": "app/Modules/Order/Services/TaskHolds.php",
+                "summary": "«بانتظار موافقة الإدارة» — a leg confirmed with a figure that does not match is held, not completed (the client's sheet, items 9 and 10, 2026-11-08)."
+            },
+            {
                 "fqcn": "App\\Modules\\Order\\Services\\TaskService",
                 "layer": "service",
                 "path": "app/Modules/Order/Services/TaskService.php",
                 "summary": "What a driver does to a task."
+            },
+            {
+                "fqcn": "App\\Modules\\Order\\Services\\TripFees",
+                "layer": "service",
+                "path": "app/Modules/Order/Services/TripFees.php",
+                "summary": "«رسوم المشوار» — what each visit to the customer costs (the client's sheet, items 3 and 4, 2026-11-08)."
             },
             {
                 "fqcn": "App\\Modules\\Order\\Services\\Turnaround",
@@ -3267,10 +3341,28 @@
                 "summary": "One asking of «محتاج تغسل النهاردة؟»."
             },
             {
+                "fqcn": "App\\Modules\\Order\\Models\\TaskHold",
+                "layer": "model",
+                "path": "app/Modules/Order/Models/TaskHold.php",
+                "summary": "A leg held «بانتظار موافقة الإدارة» — see `TaskHolds` (2026-11-08)."
+            },
+            {
                 "fqcn": "App\\Modules\\Order\\Requests\\OrderReviewRequest",
                 "layer": "request",
                 "path": "app/Modules/Order/Requests/OrderReviewRequest.php",
                 "summary": "The laundry's count."
+            },
+            {
+                "fqcn": "App\\Modules\\Order\\Requests\\PanelOrderQuoteRequest",
+                "layer": "request",
+                "path": "app/Modules/Order/Requests/PanelOrderQuoteRequest.php",
+                "summary": "The price box on «إنشاء طلب» — the app's quote, plus whose order it is."
+            },
+            {
+                "fqcn": "App\\Modules\\Order\\Requests\\PanelOrderRequest",
+                "layer": "request",
+                "path": "app/Modules/Order/Requests/PanelOrderRequest.php",
+                "summary": "«إنشاء طلب» from the panel — the app's own checkout rules, plus whose order it is."
             },
             {
                 "fqcn": "App\\Modules\\Order\\Enums\\OrderStatus",
@@ -3343,7 +3435,8 @@
             "App\\Modules\\Order\\Models\\OrderStatusLog",
             "App\\Modules\\Order\\Models\\OrderTask",
             "App\\Modules\\Order\\Models\\PieceDiscrepancy",
-            "App\\Modules\\Order\\Models\\RecurrencePrompt"
+            "App\\Modules\\Order\\Models\\RecurrencePrompt",
+            "App\\Modules\\Order\\Models\\TaskHold"
         ],
         "owns_tables": [
             "orders",
@@ -3355,7 +3448,8 @@
             "order_status_logs",
             "order_tasks",
             "piece_discrepancies",
-            "recurrence_prompts"
+            "recurrence_prompts",
+            "task_holds"
         ],
         "reads_tables": [
             "users",
@@ -3383,16 +3477,27 @@
             "admin.dispatch.search",
             "admin.order.assign",
             "admin.order.bulkDelete",
+            "admin.order.create",
+            "admin.order.customer_addresses",
+            "admin.order.customer_addresses.store",
+            "admin.order.customers",
             "admin.order.delete",
+            "admin.order.finish_washing",
+            "admin.order.hold.approve",
+            "admin.order.hold.reject",
             "admin.order.index",
             "admin.order.piece_check.resolve",
             "admin.order.query.answer",
+            "admin.order.quote",
             "admin.order.review",
+            "admin.order.review.send",
             "admin.order.search",
             "admin.order.show",
+            "admin.order.store",
             "admin.order.tasks.assign",
             "admin.order.tasks.dispatch",
             "admin.order.tasks.generate",
+            "admin.order.tasks.hangers",
             "admin.order.tasks.release",
             "admin.order_today.index",
             "admin.order_today.search"
@@ -3402,52 +3507,54 @@
             "order_task.update",
             "order.update",
             "order.delete",
+            "order.create",
             "order.view"
         ],
         "tests": [],
         "summary": "«التعيين التلقائي» — whether the platform hands out work by itself.",
         "depends_on": {
-            "Platform": 37,
-            "TimeSlot": 26,
-            "User": 25,
-            "Notification": 16,
-            "Payment": 15,
+            "Platform": 53,
+            "User": 36,
+            "TimeSlot": 30,
+            "Notification": 21,
+            "Payment": 19,
+            "Loyalty": 16,
+            "Pricing": 16,
+            "Address": 15,
             "Laundry": 14,
-            "Pricing": 14,
+            "Service": 14,
             "Routing": 12,
-            "Service": 12,
-            "Loyalty": 12,
-            "Address": 11,
-            "Driver": 9,
+            "Driver": 11,
             "Coupon": 7,
+            "Offer": 4,
+            "Wallet": 3,
             "LaundryService": 2,
             "LaundryZone": 2,
-            "Offer": 2,
+            "Zone": 2,
             "Item": 2,
-            "Complaint": 1,
-            "Wallet": 1
+            "Complaint": 1
         },
         "depended_on_by": {
-            "Tests": 434,
-            "Api": 57,
+            "Tests": 537,
+            "Api": 67,
             "Report": 40,
             "Driver": 34,
             "Payment": 27,
-            "Platform": 23,
-            "Notification": 15,
+            "Platform": 24,
+            "Notification": 21,
             "Database": 13,
             "Coupon": 7,
+            "Routing": 7,
             "Loyalty": 6,
             "Recurrence": 5,
-            "Routing": 5,
             "Complaint": 4,
+            "TimeSlot": 4,
             "Laundry": 3,
-            "TimeSlot": 3,
+            "Landing": 3,
             "Zone": 2,
             "Pricing": 2,
             "Rating": 2,
-            "User": 2,
-            "Landing": 2
+            "User": 2
         }
     },
     {
@@ -3467,7 +3574,7 @@
             "gateway": 1
         },
         "files": 54,
-        "lines": 6742,
+        "lines": 6790,
         "classes": [
             {
                 "fqcn": "App\\Modules\\Payment\\Controllers\\CommissionRuleController",
@@ -3770,10 +3877,10 @@
             "Notification": 1
         },
         "depended_on_by": {
-            "Tests": 81,
+            "Tests": 89,
             "Platform": 30,
-            "Api": 17,
-            "Order": 15,
+            "Order": 19,
+            "Api": 18,
             "Report": 12,
             "Routing": 6,
             "Laundry": 3,
@@ -3789,7 +3896,7 @@
             "view": 63,
             "support": 45,
             "config": 20,
-            "request": 15,
+            "request": 16,
             "service": 10,
             "middleware": 8,
             "controller": 5,
@@ -3801,8 +3908,8 @@
             "view-component": 3,
             "mail": 2
         },
-        "files": 189,
-        "lines": 20242,
+        "files": 190,
+        "lines": 20338,
         "classes": [
             {
                 "fqcn": "App\\Http\\Controllers\\Controller",
@@ -3935,6 +4042,12 @@
                 "layer": "request",
                 "path": "app/Http/Requests/Api/V1/Concerns/OneDiscountPerOrder.php",
                 "summary": "One discount per order."
+            },
+            {
+                "fqcn": "App\\Http\\Requests\\Api\\V1\\Concerns\\PiecesWithinLimits",
+                "layer": "request",
+                "path": "app/Http/Requests/Api/V1/Concerns/PiecesWithinLimits.php",
+                "summary": "«التحكم في عدد القطع» (the client's sheet, item 19, 2026-11-08): no more pieces in one order than `Max_Pieces_Per_Order`, and no more in a pickup window than its `max_pieces` has room for — said beside the field, before…"
             },
             {
                 "fqcn": "App\\Http\\Requests\\Api\\V1\\Concerns\\WindowStillOpen",
@@ -4518,15 +4631,15 @@
         "summary": "Who changed what — one row per model created, updated or deleted.",
         "depends_on": {
             "Payment": 30,
-            "Order": 23,
+            "Order": 24,
             "Driver": 22,
             "Laundry": 15,
-            "Service": 11,
+            "Service": 12,
             "Notification": 10,
             "City": 9,
             "User": 9,
+            "TimeSlot": 9,
             "Country": 8,
-            "TimeSlot": 8,
             "Zone": 8,
             "ItemCategory": 7,
             "Item": 7,
@@ -4553,12 +4666,12 @@
             "LaundryZone": 1
         },
         "depended_on_by": {
-            "Tests": 106,
+            "Tests": 115,
             "Api": 73,
+            "Order": 53,
             "Payment": 46,
             "Driver": 38,
             "AdminShell": 37,
-            "Order": 37,
             "Zone": 22,
             "Laundry": 21,
             "LaundryService": 19,
@@ -4695,7 +4808,7 @@
         },
         "depended_on_by": {
             "Tests": 22,
-            "Order": 14,
+            "Order": 16,
             "Platform": 6,
             "Landing": 5,
             "Service": 3,
@@ -4805,7 +4918,7 @@
             "data": 1
         },
         "files": 23,
-        "lines": 3988,
+        "lines": 3996,
         "classes": [
             {
                 "fqcn": "App\\Modules\\Report\\Controllers\\FinanceController",
@@ -4947,7 +5060,7 @@
             "Wallet": 2
         },
         "depended_on_by": {
-            "Tests": 17,
+            "Tests": 19,
             "Platform": 4,
             "Routing": 2
         }
@@ -4981,7 +5094,7 @@
             "routes": 3
         },
         "files": 9,
-        "lines": 2607,
+        "lines": 2653,
         "classes": [
             {
                 "fqcn": "App\\Services\\Routing\\Coordinate",
@@ -5029,11 +5142,11 @@
         "summary": "A point on the map, and the only thing a router is allowed to be given.",
         "depends_on": {
             "Api": 23,
+            "Order": 7,
             "Driver": 6,
             "Payment": 6,
             "AdminShell": 5,
             "Platform": 5,
-            "Order": 5,
             "LaundryService": 2,
             "Laundry": 2,
             "Notification": 2,
@@ -5151,8 +5264,8 @@
         },
         "depended_on_by": {
             "Tests": 15,
-            "Order": 12,
-            "Platform": 11,
+            "Order": 14,
+            "Platform": 12,
             "Api": 6,
             "Coupon": 4,
             "LaundryService": 4,
@@ -5178,7 +5291,7 @@
             "service": 1
         },
         "files": 11,
-        "lines": 2000,
+        "lines": 2041,
         "classes": [
             {
                 "fqcn": "App\\Modules\\Setting\\Controllers\\SettingController",
@@ -5233,7 +5346,7 @@
             "Platform": 6
         },
         "depended_on_by": {
-            "Tests": 39,
+            "Tests": 42,
             "Platform": 6,
             "Database": 4,
             "Api": 1,
@@ -5246,11 +5359,11 @@
         "community": "quality",
         "path": null,
         "layers": {
-            "test": 138,
+            "test": 147,
             "browser-test": 26
         },
-        "files": 164,
-        "lines": 53857,
+        "files": 173,
+        "lines": 56989,
         "classes": [
             {
                 "fqcn": "Tests\\Feature\\Api\\AddressIdDisclosureTest",
@@ -5403,6 +5516,12 @@
                 "summary": "The back half of an order's life, which was never wired up."
             },
             {
+                "fqcn": "Tests\\Feature\\Api\\OrderPiecesTest",
+                "layer": "test",
+                "path": "tests/Feature/Api/OrderPiecesTest.php",
+                "summary": "The client's sheet, item 2 (2026-11-08): «أعداد القطع لسه بتظهر للعميل غير مطابقة بعد ما سلّم المندوب عدد أكبر». The order screen listed the basket and the laundry's count together; the owner's answer is that the count…"
+            },
+            {
                 "fqcn": "Tests\\Feature\\Api\\OrderReviewTest",
                 "layer": "test",
                 "path": "tests/Feature/Api/OrderReviewTest.php",
@@ -5425,6 +5544,18 @@
                 "layer": "test",
                 "path": "tests/Feature/Api/PaymentTest.php",
                 "summary": "Paying for an order."
+            },
+            {
+                "fqcn": "Tests\\Feature\\Api\\PieceLimitsTest",
+                "layer": "test",
+                "path": "tests/Feature/Api/PieceLimitsTest.php",
+                "summary": "«التحكم في عدد القطع» — the client's sheet, item 19 (2026-11-08): the most pieces one order may carry (`Max_Pieces_Per_Order`) and the most a pickup window may collect in a day (`time_slots.max_pieces`). Over either, th…"
+            },
+            {
+                "fqcn": "Tests\\Feature\\Api\\ProfileCountsTest",
+                "layer": "test",
+                "path": "tests/Feature/Api/ProfileCountsTest.php",
+                "summary": "The client's sheet, items 13–15 (2026-11-08): the driver's profile counts the orders they took part in that went all the way; the customer's counts the orders they placed that did, and their points used and left."
             },
             {
                 "fqcn": "Tests\\Feature\\Api\\PublicCatalogTest",
@@ -5463,6 +5594,12 @@
                 "summary": "«طلب التأجيل» — the customer picks a new time."
             },
             {
+                "fqcn": "Tests\\Feature\\Api\\ReviewDraftTest",
+                "layer": "test",
+                "path": "tests/Feature/Api/ReviewDraftTest.php",
+                "summary": "«تحديد عملية فحص القطع من خلال المغسلة فقط … وبعدها الأدمن يبعت للعميل» — the client's sheet, item 12 (2026-11-08)."
+            },
+            {
                 "fqcn": "Tests\\Feature\\Api\\SlotAvailabilityTest",
                 "layer": "test",
                 "path": "tests/Feature/Api/SlotAvailabilityTest.php",
@@ -5473,6 +5610,12 @@
                 "layer": "test",
                 "path": "tests/Feature/Api/SlotCapacityTest.php",
                 "summary": "«كام طلب النافذة دي تشيل؟»"
+            },
+            {
+                "fqcn": "Tests\\Feature\\Api\\TaskHoldTest",
+                "layer": "test",
+                "path": "tests/Feature/Api/TaskHoldTest.php",
+                "summary": "«بانتظار موافقة الإدارة» — the client's sheet, items 9 and 10 (2026-11-08)."
             },
             {
                 "fqcn": "Tests\\Feature\\Api\\TrackPayloadTest",
@@ -5491,6 +5634,12 @@
                 "layer": "test",
                 "path": "tests/Feature/Api/TranslationFileTest.php",
                 "summary": "Uploading and serving a translation set."
+            },
+            {
+                "fqcn": "Tests\\Feature\\Api\\TripFeeTest",
+                "layer": "test",
+                "path": "tests/Feature/Api/TripFeeTest.php",
+                "summary": "«رسوم المشوار» — the client's sheet, items 3 and 4 (2026-11-08)."
             },
             {
                 "fqcn": "Tests\\Feature\\Api\\TurnaroundTest",
@@ -5643,10 +5792,22 @@
                 "summary": "«ملخص الماليات» — the money that left the home page (the owner, 2026-09-30)."
             },
             {
+                "fqcn": "Tests\\Feature\\Dashboard\\FinishedWashingTest",
+                "layer": "test",
+                "path": "tests/Feature/Dashboard/FinishedWashingTest.php",
+                "summary": "«خلص الغسيل» — the client's sheet, item 18 (2026-11-08): the collection from the laundry is neither offered, assigned nor started until the laundry marks the order finished; then a driver is sent and the customer sees i…"
+            },
+            {
                 "fqcn": "Tests\\Feature\\Dashboard\\GeneralSettingTabsTest",
                 "layer": "test",
                 "path": "tests/Feature/Dashboard/GeneralSettingTabsTest.php",
                 "summary": "«الإعدادات» in four tabs — one form, so a save still posts every field and a tab nobody opened is never blanked."
+            },
+            {
+                "fqcn": "Tests\\Feature\\Dashboard\\HangerReceiptTest",
+                "layer": "test",
+                "path": "tests/Feature/Dashboard/HangerReceiptTest.php",
+                "summary": "«تأكيد استلام من المغسلة لعدد الشماعات» — the client's sheet, item 11 (2026-11-08): the laundry confirms the hangers a driver collected, and the customer's hanger points follow its count."
             },
             {
                 "fqcn": "Tests\\Feature\\Dashboard\\HomeTest",
@@ -5811,6 +5972,12 @@
                 "summary": "«خليت العربي ديفولت والداش بورد متغيرتش»."
             },
             {
+                "fqcn": "Tests\\Feature\\Dashboard\\PanelOrderTest",
+                "layer": "test",
+                "path": "tests/Feature/Dashboard/PanelOrderTest.php",
+                "summary": "«إنشاء طلب» — an order taken for a customer from the panel (2026-11-08)."
+            },
+            {
                 "fqcn": "Tests\\Feature\\Dashboard\\PaymentLedgerTest",
                 "layer": "test",
                 "path": "tests/Feature/Dashboard/PaymentLedgerTest.php",
@@ -5820,7 +5987,7 @@
                 "fqcn": "Tests\\Feature\\Dashboard\\PieceCheckTest",
                 "layer": "test",
                 "path": "tests/Feature/Dashboard/PieceCheckTest.php",
-                "summary": "«عدد القطع المستلمة», checked against the count before it."
+                "summary": "«عدد القطع المستلمة», checked."
             },
             {
                 "fqcn": "Tests\\Feature\\Dashboard\\PlatformFeeTest",
@@ -6115,6 +6282,8 @@
             "zones",
             "order_recurrences",
             "laundry_zones",
+            "piece_discrepancies",
+            "task_holds",
             "languages",
             "wallets",
             "wallet_transactions",
@@ -6136,7 +6305,6 @@
             "laundry_slot_capacities",
             "countries",
             "refunds",
-            "piece_discrepancies",
             "services",
             "price_changes",
             "items",
@@ -6197,21 +6365,27 @@
             "tests/Feature/Api/NotificationTest.php",
             "tests/Feature/Api/OrderComplaintFlagTest.php",
             "tests/Feature/Api/OrderLifecycleCompletionTest.php",
+            "tests/Feature/Api/OrderPiecesTest.php",
             "tests/Feature/Api/OrderReviewTest.php",
             "tests/Feature/Api/OrderTest.php",
             "tests/Feature/Api/OutOfCoverageTest.php",
             "tests/Feature/Api/PaymentTest.php",
+            "tests/Feature/Api/PieceLimitsTest.php",
+            "tests/Feature/Api/ProfileCountsTest.php",
             "tests/Feature/Api/PublicCatalogTest.php",
             "tests/Feature/Api/RatingTest.php",
             "tests/Feature/Api/RecurrenceTest.php",
             "tests/Feature/Api/ReferralTest.php",
             "tests/Feature/Api/RefundAndEarningTest.php",
             "tests/Feature/Api/RescheduleTest.php",
+            "tests/Feature/Api/ReviewDraftTest.php",
             "tests/Feature/Api/SlotAvailabilityTest.php",
             "tests/Feature/Api/SlotCapacityTest.php",
+            "tests/Feature/Api/TaskHoldTest.php",
             "tests/Feature/Api/TrackPayloadTest.php",
             "tests/Feature/Api/TrackReturnLegTest.php",
             "tests/Feature/Api/TranslationFileTest.php",
+            "tests/Feature/Api/TripFeeTest.php",
             "tests/Feature/Api/TurnaroundTest.php",
             "tests/Feature/Api/ValidationLanguageTest.php",
             "tests/Feature/Api/WalletTest.php",
@@ -6237,7 +6411,9 @@
             "tests/Feature/Dashboard/ErrorPageTest.php",
             "tests/Feature/Dashboard/FaqTranslationTest.php",
             "tests/Feature/Dashboard/FinanceTest.php",
+            "tests/Feature/Dashboard/FinishedWashingTest.php",
             "tests/Feature/Dashboard/GeneralSettingTabsTest.php",
+            "tests/Feature/Dashboard/HangerReceiptTest.php",
             "tests/Feature/Dashboard/HomeTest.php",
             "tests/Feature/Dashboard/InvoiceDocumentTest.php",
             "tests/Feature/Dashboard/InvoiceTest.php",
@@ -6265,6 +6441,7 @@
             "tests/Feature/Dashboard/OrderReviewDashboardTest.php",
             "tests/Feature/Dashboard/OrderTodayTest.php",
             "tests/Feature/Dashboard/PanelLanguageTest.php",
+            "tests/Feature/Dashboard/PanelOrderTest.php",
             "tests/Feature/Dashboard/PaymentLedgerTest.php",
             "tests/Feature/Dashboard/PieceCheckTest.php",
             "tests/Feature/Dashboard/PlatformFeeTest.php",
@@ -6313,25 +6490,25 @@
         ],
         "summary": "",
         "depends_on": {
-            "Order": 434,
-            "Platform": 106,
-            "User": 99,
-            "Payment": 81,
-            "Notification": 68,
-            "Driver": 62,
-            "Wallet": 46,
-            "Setting": 39,
-            "Laundry": 30,
+            "Order": 537,
+            "Platform": 115,
+            "User": 108,
+            "Payment": 89,
+            "Notification": 69,
+            "Driver": 64,
+            "Wallet": 47,
+            "Setting": 42,
+            "Laundry": 33,
+            "TimeSlot": 22,
             "Pricing": 22,
             "Complaint": 21,
-            "TimeSlot": 19,
             "Coupon": 19,
+            "Report": 19,
+            "Loyalty": 18,
             "Zone": 18,
-            "Report": 17,
-            "Loyalty": 15,
             "Service": 15,
             "City": 13,
-            "Address": 11,
+            "Address": 12,
             "Database": 9,
             "Routing": 8,
             "ItemCategory": 7,
@@ -6365,7 +6542,7 @@
             "request": 1
         },
         "files": 13,
-        "lines": 857,
+        "lines": 903,
         "classes": [
             {
                 "fqcn": "App\\Modules\\TimeSlot\\Controllers\\TimeSlotController",
@@ -6440,13 +6617,13 @@
         "summary": "How many visits a window can still take.",
         "depends_on": {
             "Platform": 6,
-            "Order": 3
+            "Order": 4
         },
         "depended_on_by": {
-            "Order": 26,
-            "Tests": 19,
+            "Order": 30,
+            "Tests": 22,
             "Api": 12,
-            "Platform": 8,
+            "Platform": 9,
             "Laundry": 5,
             "Database": 2,
             "Landing": 1,
@@ -6466,7 +6643,7 @@
             "request": 1
         },
         "files": 13,
-        "lines": 983,
+        "lines": 1011,
         "classes": [
             {
                 "fqcn": "App\\Modules\\User\\Controllers\\UserController",
@@ -6546,8 +6723,8 @@
             "Laundry": 1
         },
         "depended_on_by": {
-            "Tests": 99,
-            "Order": 25,
+            "Tests": 108,
+            "Order": 36,
             "Notification": 23,
             "Payment": 13,
             "Driver": 11,
@@ -6563,10 +6740,10 @@
             "Api": 4,
             "Complaint": 4,
             "Moderator": 4,
+            "Address": 3,
             "Pricing": 3,
             "Zone": 3,
             "LaundryStaff": 2,
-            "Address": 1,
             "Routing": 1
         }
     },
@@ -6582,7 +6759,7 @@
             "service": 1
         },
         "files": 10,
-        "lines": 1366,
+        "lines": 1374,
         "classes": [
             {
                 "fqcn": "App\\Modules\\Wallet\\Controllers\\WalletController",
@@ -6652,13 +6829,13 @@
             "User": 6
         },
         "depended_on_by": {
-            "Tests": 46,
+            "Tests": 47,
             "Payment": 15,
             "Api": 7,
             "Platform": 7,
             "Driver": 4,
+            "Order": 3,
             "Report": 2,
-            "Order": 1,
             "Routing": 1
         }
     },
@@ -6675,7 +6852,7 @@
             "request": 1
         },
         "files": 19,
-        "lines": 1814,
+        "lines": 1794,
         "classes": [
             {
                 "fqcn": "App\\Modules\\Zone\\Controllers\\CoverageRequestController",
@@ -6789,10 +6966,11 @@
             "Platform": 8,
             "Driver": 5,
             "Api": 3,
+            "Address": 3,
             "LaundryZone": 3,
             "Database": 3,
+            "Order": 2,
             "Routing": 2,
-            "Address": 1,
             "City": 1,
             "Landing": 1
         }

@@ -22,8 +22,13 @@ use Illuminate\Support\Carbon;
  */
 class SlotClock
 {
-    /** The booking cut-off when the setting is blank: an hour before the end. */
-    public const DEFAULT_CUTOFF_MINUTES = 60;
+    /**
+     * The booking cut-off when the setting is blank: a quarter of an hour
+     * before the window **starts** (the client's sheet, item 8, 2026-11-08 —
+     * «آخر وقت لعمل أوردر يكون قبل بداية كل فترة بـ 15 دقيقة»). It used to be
+     * an hour before the window ended.
+     */
+    public const DEFAULT_CUTOFF_MINUTES = 15;
 
     /**
      * The instant a wall-clock time on a date means, in UTC.
@@ -65,9 +70,9 @@ class SlotClock
     }
 
     /**
-     * Minutes before a window's end after which it can no longer be booked —
-     * `Slot_Booking_Cutoff_Minutes` (operations tab). Blank is the default
-     * hour; 0 is «until it ends».
+     * Minutes before a window's **start** after which it can no longer be
+     * booked — `Slot_Booking_Cutoff_Minutes` (operations tab). Blank is the
+     * default quarter hour; 0 is «until it starts».
      */
     public function cutoffMinutes(): int
     {
@@ -77,16 +82,20 @@ class SlotClock
     }
 
     /**
-     * The last moment the window can be booked.
+     * The last moment the window can be booked: the cut-off before it starts.
+     *
+     * Measured from the end until 2026-11-08, so a window could be booked
+     * while it was already running; the client wants the driver's day known
+     * before the window opens.
      */
     public function closesAt(mixed $date, TimeSlot $slot): ?Carbon
     {
-        return $this->end($date, $slot)?->subMinutes($this->cutoffMinutes());
+        return $this->start($date, $slot)?->subMinutes($this->cutoffMinutes());
     }
 
     /**
-     * Too late to book: the window has ended, or ends too soon for a driver to
-     * be sent — 08:00–10:00 can be booked until 09:00 with the default hour.
+     * Too late to book: the window starts too soon (or has started) —
+     * 10:00–13:00 can be booked until 09:45 with the default quarter hour.
      */
     public function isClosed(mixed $date, TimeSlot $slot, ?Carbon $now = null): bool
     {

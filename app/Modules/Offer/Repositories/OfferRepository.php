@@ -3,6 +3,7 @@
 namespace App\Modules\Offer\Repositories;
 
 use App\Modules\Offer\Models\Offer;
+use Illuminate\Database\Eloquent\Collection;
 
 /**
  * The only place raw Eloquent for offers lives.
@@ -27,6 +28,17 @@ class OfferRepository
             ->orderBy('sort_order')
             ->orderBy('id')
             ->paginate($perPage);
+    }
+
+    /**
+     * The offers a checkout can use right now — the app's own list
+     * (`Offer::live()`), for the panel's «إنشاء طلب».
+     *
+     * @return Collection<int, Offer>
+     */
+    public function live()
+    {
+        return Offer::live()->orderBy('sort_order')->orderBy('id')->get();
     }
 
     public function find($id)

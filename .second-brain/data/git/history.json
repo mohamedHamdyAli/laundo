@@ -1,8 +1,26 @@
 {
     "available": true,
-    "head": "079477463b28c57909f7477fe43a65802bd59e63",
-    "commits_scanned": 146,
+    "head": "86c63bf0d2ff0e8a4b25823af09b5f50b3a5179f",
+    "commits_scanned": 149,
     "recent": [
+        {
+            "sha": "86c63bf0",
+            "date": "2026-11-01",
+            "subject": "fix: the orders API always returns the laundry as a string",
+            "files": 3
+        },
+        {
+            "sha": "2ccaa253",
+            "date": "2026-11-01",
+            "subject": "docs: the no-laundry hold is live",
+            "files": 1
+        },
+        {
+            "sha": "cd71bb51",
+            "date": "2026-11-01",
+            "subject": "fix: nothing goes towards a laundry that is not set",
+            "files": 14
+        },
         {
             "sha": "07947746",
             "date": "2026-10-25",
@@ -74,66 +92,48 @@
             "date": "2026-10-11",
             "subject": "docs: the address id fix is live",
             "files": 1
-        },
-        {
-            "sha": "76724322",
-            "date": "2026-10-11",
-            "subject": "fix: an id that is nobody's answers like one that is somebody else's",
-            "files": 9
-        },
-        {
-            "sha": "a91450b5",
-            "date": "2026-10-11",
-            "subject": "docs: the time-slots fix is live",
-            "files": 1
-        },
-        {
-            "sha": "db6db655",
-            "date": "2026-10-11",
-            "subject": "fix: GET /time-slots measures only the caller's own address",
-            "files": 7
         }
     ],
     "hottest_files": {
         "routes/web.php": 30,
         "docs/postman/Laundo API v1.postman_collection.json": 28,
-        "docs/mobile-api-changes.md": 23,
+        "docs/mobile-api-changes.md": 25,
         "app/Helpers/Helpers.php": 20,
         "config/menu.php": 18,
         "resources/views/admin/setting/generalSetting/forms/formInput.blade.php": 18,
-        "app/Http/Controllers/Api/V1/OrderController.php": 15,
+        "app/Http/Controllers/Api/V1/OrderController.php": 16,
+        "app/Modules/Order/Services/OrderService.php": 15,
         "app/Modules/Setting/Requests/GeneralSettingRequest.php": 15,
-        "app/Modules/Order/Services/OrderService.php": 14,
         "config/dashboard.php": 14,
         "resources/views/layouts/footer_script.blade.php": 14,
+        "docs/architecture.md": 12,
         "app/Http/Controllers/Admin/LanguageController.php": 12,
         "app/Services/languages/LanguageService.php": 12,
-        "docs/architecture.md": 11,
-        "app/Modules/Order/Services/orderCrudService.php": 10,
-        "resources/views/admin/order/show.blade.php": 10,
+        "app/Modules/Order/Services/orderCrudService.php": 11,
+        "resources/views/admin/order/show.blade.php": 11,
         "database/seeders/SettingsSeeder.php": 10,
+        "app/Modules/Order/Models/OrderTask.php": 9,
         "app/Modules/Order/Models/Order.php": 9,
         "routes/api.php": 9,
         "app/Modules/User/Models/User.php": 9,
         "app/Modules/Driver/Services/DriverCard.php": 9,
         "resources/views/layouts/topbar.blade.php": 9,
         "resources/views/layouts/sidebar.blade.php": 9,
-        "app/Modules/Order/Models/OrderTask.php": 8,
+        "app/Http/Controllers/Api/V1/DriverTaskController.php": 8,
         "app/Http/Controllers/Api/V1/DriverController.php": 8,
         "resources/views/admin/home.blade.php": 8,
         "resources/views/admin/order/index.blade.php": 8,
         "resources/views/admin/banner/forms/formInput.blade.php": 8,
         "app/Services/CachingService.php": 8,
+        "app/Modules/Order/Services/OrderReviewService.php": 7,
         "app/Helpers/LanguageHelper.php": 7,
         "resources/views/admin/language/forms/formInput.blade.php": 7,
-        "app/Http/Controllers/Api/V1/DriverTaskController.php": 7,
         "app/Http/Requests/Api/V1/OrderRequest.php": 7,
         "app/Modules/Order/Services/RecurrenceService.php": 7,
         "app/Services/MenuBadges.php": 7,
         "app/Modules/Order/Repositories/OrderRepository.php": 7,
         "tests/Feature/Api/DriverTaskTest.php": 7,
         "app/Modules/City/Models/City.php": 7,
-        "app/Modules/Pricing/Services/pricingService.php": 7,
-        "app/Providers/AppServiceProvider.php": 7
+        "app/Modules/Pricing/Services/pricingService.php": 7
     }
 }

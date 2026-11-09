@@ -91,7 +91,6 @@ class OrderReviewDashboardTest extends TestCase
         $order->refresh();
 
         // 3 x 17 = 51. The zero-count line is dropped, not stored.
-        $this->assertSame(OrderStatus::Reviewed, $order->status);
         $this->assertSame(3, $order->final_items_count);
         $this->assertSame('51.00', $order->final_subtotal);
         $this->assertSame('تم العثور على قطعة إضافية', $order->review_note);
@@ -102,11 +101,33 @@ class OrderReviewDashboardTest extends TestCase
             'phase' => 'final',
         ]);
 
+        // A draft: the order has not moved and the customer has not been asked
+        // (the client's sheet, item 12, 2026-11-08) …
+        $this->assertSame(OrderStatus::PickedUp, $order->status);
+        $this->assertTrue($order->hasReviewToSend());
+        $this->assertFalse($order->customerSeesFinal());
+
+        // … the laundry cannot send it on …
+        $this->actingAs($owner)->post(route('admin.order.review.send', $order->id))->assertSessionHas('error');
+        $this->assertSame(OrderStatus::PickedUp, $order->fresh()->status);
+
+        // … the platform sees it waiting, and sends it.
+        $admin = $this->superAdmin();
+        $this->actingAs($admin)->get("/admin/order/show/{$order->id}")
+            ->assertSee('data-review-to-send', false)
+            ->assertSee(route('admin.order.review.send', $order->id));
+
+        $this->actingAs($admin)->post(route('admin.order.review.send', $order->id))
+            ->assertRedirect()->assertSessionHas('success');
+
+        $this->assertSame(OrderStatus::Reviewed, $order->fresh()->status);
+        $this->assertTrue($order->fresh()->customerSeesFinal());
+
         $this->assertDatabaseHas('order_status_logs', [
             'order_id' => $order->id,
             'to_status' => 'reviewed',
-            'actor_type' => 'laundry',
-            'actor_id' => $owner->id,
+            'actor_type' => 'admin',
+            'actor_id' => $admin->id,
         ]);
     }
 
@@ -179,6 +200,7 @@ class OrderReviewDashboardTest extends TestCase
         $this->actingAs($owner)->post("/admin/order/review/{$order->id}", [
             'lines' => [['item_id' => $this->catalog['items'][0]->id, 'qty' => 3]],
         ]);
+        $this->sendReview($order);
 
         $response = $this->actingAs($owner)->get("/admin/order/show/{$order->id}");
 

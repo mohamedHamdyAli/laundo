@@ -58,7 +58,7 @@ class OrderSheet extends Sheet
         // The same match as OrderRepository::search(): two of the queue's
         // filters are task states and one is a null laundry, not statuses.
         return match ($status) {
-            OrderRepository::NEEDS_DRIVER => $query->whereIn($query->qualifyColumn('id'), OrderTask::queued()->select('order_id')),
+            OrderRepository::NEEDS_DRIVER => $query->whereIn($query->qualifyColumn('id'), OrderTask::queued()->offerable()->select('order_id')),
             OrderRepository::NEEDS_LAUNDRY => $query->scopes(['unassigned', 'active']),
             OrderRepository::NEEDS_RESCUE => $query->whereIn($query->qualifyColumn('id'), OrderTask::where('status', 'failed')
                 ->where('attempts', '>=', OrderTask::MAX_ATTEMPTS)

@@ -7,9 +7,14 @@ use App\Modules\Driver\Models\Driver;
 use App\Modules\Order\Enums\TaskStatus;
 use App\Modules\Order\Models\Order;
 use App\Modules\Order\Models\OrderTask;
+use App\Modules\Order\Models\TaskHold;
+use App\Modules\Order\Repositories\OrderRepository;
 use App\Modules\Order\Services\DriverDispatcher;
+use App\Modules\Order\Services\HangerReceipt;
 use App\Modules\Order\Services\PieceCheck;
 use App\Modules\Order\Services\TaskGenerator;
+use App\Modules\Order\Services\TaskHolds;
+use App\Modules\Order\Services\TaskService;
 use Illuminate\Http\Request;
 use RuntimeException;
 
@@ -30,7 +35,70 @@ class OrderTaskController extends Controller
         private readonly DriverDispatcher $dispatcher,
         private readonly TaskGenerator $generator,
         private readonly PieceCheck $pieceCheck,
+        private readonly TaskService $tasks,
+        private readonly OrderRepository $orders,
     ) {}
+
+    /**
+     * «موافقة» on a held «تأكيد» — the leg completes with what the driver sent.
+     */
+    public function approveHold(Request $request, $id)
+    {
+        $request->validate(['hold_note' => ['nullable', 'string', 'max:1000']]);
+
+        $hold = $this->decidableHold($id);
+
+        try {
+            $this->tasks->approveHold($hold, $request->user(), $request->input('hold_note'));
+        } catch (RuntimeException $e) {
+            return back()->with('error', $this->holdRefusal($e));
+        }
+
+        return back()->with('success', __('Approved — the leg is complete.'));
+    }
+
+    /**
+     * «رفض» — back to the driver; the note is what they are told.
+     */
+    public function rejectHold(Request $request, $id)
+    {
+        $request->validate(['hold_note' => ['required', 'string', 'min:3', 'max:1000']]);
+
+        $hold = $this->decidableHold($id);
+
+        try {
+            $this->tasks->rejectHold($hold, $request->user(), (string) $request->input('hold_note'));
+        } catch (RuntimeException $e) {
+            return back()->with('error', $this->holdRefusal($e));
+        }
+
+        return back()->with('success', __('Refused — the driver has been told.'));
+    }
+
+    /**
+     * Reached through the order, so a laundry account cannot even find another
+     * laundry's; and cash needs `payment.update` beside the route's
+     * `order.update` — money is not decided by whoever works orders.
+     */
+    private function decidableHold($id): TaskHold
+    {
+        $hold = $this->orders->findHold($id);
+
+        abort_unless(canDo(TaskHolds::permissionFor($hold)), 403);
+
+        return $hold;
+    }
+
+    private function holdRefusal(RuntimeException $e): string
+    {
+        return match ($e->getMessage()) {
+            'platform_only' => __('Only the platform can decide a held confirmation.'),
+            'nothing_to_decide' => __('This has already been decided.'),
+            'task_not_started' => __('The leg is no longer waiting — the driver has moved on from it.'),
+            'note_required' => __('Say why, so the driver knows what to do.'),
+            default => throw $e,
+        };
+    }
 
     public function assign(Request $request, $id)
     {
@@ -53,6 +121,7 @@ class OrderTaskController extends Controller
                 'driver_not_eligible' => __('This driver does not serve the area, is unavailable, or is at capacity.'),
                 'task_completed' => __('This leg is already completed and cannot be reassigned.'),
                 'order_has_no_laundry' => __('Assign a laundry to this order before giving its legs to a driver.'),
+                'washing_not_finished' => __('The laundry has not finished washing this order yet — its collection is given to a driver once it does.'),
                 default => __('Could not assign the task.'),
             });
         }
@@ -213,6 +282,29 @@ class OrderTaskController extends Controller
         $this->generator->generate($order);
 
         return back()->with('success', __('Tasks created.'));
+    }
+
+    /**
+     * «تأكيد استلام الشماعات» — the laundry says how many of the hangers the
+     * driver collected reached it (the client's sheet, item 11). `{id}` is the
+     * leg; found through the tenant-scoped order, so a laundry confirms its own.
+     */
+    public function confirmHangers(Request $request, $id)
+    {
+        $request->validate(['hangers_confirmed' => ['required', 'integer', 'min:0', 'max:999']]);
+
+        try {
+            app(HangerReceipt::class)->confirm($this->find($id), (int) $request->input('hangers_confirmed'), $request->user());
+        } catch (RuntimeException $e) {
+            return back()->with('error', match ($e->getMessage()) {
+                'already_confirmed' => __('These hangers have already been confirmed.'),
+                'no_hangers' => __('No hangers were collected on this leg.'),
+                'hangers_too_many' => __('No more than the driver collected.'),
+                default => throw $e,
+            });
+        }
+
+        return back()->with('success', __('Hangers confirmed.'));
     }
 
     private function find($id): OrderTask

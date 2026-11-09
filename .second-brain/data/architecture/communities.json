@@ -56,7 +56,7 @@
             "admin.zone.update"
         ],
         "node_count": 259,
-        "cohesion": 0.568,
+        "cohesion": 0.563,
         "screens": [
             {
                 "key": "country",
@@ -161,7 +161,7 @@
             "admin.service.update"
         ],
         "node_count": 262,
-        "cohesion": 0.52,
+        "cohesion": 0.516,
         "screens": [
             {
                 "key": "service",
@@ -267,7 +267,7 @@
             "admin.laundry_zone.update"
         ],
         "node_count": 275,
-        "cohesion": 0.496,
+        "cohesion": 0.493,
         "screens": [
             {
                 "key": "laundry",
@@ -356,6 +356,7 @@
             "App\\Modules\\Order\\Models\\OrderTask",
             "App\\Modules\\Order\\Models\\PieceDiscrepancy",
             "App\\Modules\\Order\\Models\\RecurrencePrompt",
+            "App\\Modules\\Order\\Models\\TaskHold",
             "App\\Modules\\Payment\\Models\\CommissionRule",
             "App\\Modules\\Payment\\Models\\DriverEarning",
             "App\\Modules\\Payment\\Models\\LaundryDeduction",
@@ -383,6 +384,7 @@
             "order_tasks",
             "piece_discrepancies",
             "recurrence_prompts",
+            "task_holds",
             "commission_rules",
             "driver_earnings",
             "laundry_deductions",
@@ -392,7 +394,7 @@
             "payments",
             "refunds"
         ],
-        "route_count": 83,
+        "route_count": 94,
         "routes": [
             "admin.commission_rule.create",
             "admin.commission_rule.delete",
@@ -435,8 +437,8 @@
             "admin.driver_bonus_rule.toggleStatus",
             "admin.driver_bonus_rule.update"
         ],
-        "node_count": 1111,
-        "cohesion": 0.445,
+        "node_count": 1227,
+        "cohesion": 0.442,
         "screens": [
             {
                 "key": "order_task",
@@ -541,8 +543,8 @@
             "admin.user.toggleStatus",
             "admin.user.update"
         ],
-        "node_count": 79,
-        "cohesion": 0.198,
+        "node_count": 81,
+        "cohesion": 0.188,
         "screens": [
             {
                 "key": "user",
@@ -632,8 +634,8 @@
             "admin.journey_step.edit",
             "admin.journey_step.index"
         ],
-        "node_count": 455,
-        "cohesion": 0.659,
+        "node_count": 456,
+        "cohesion": 0.657,
         "screens": [
             {
                 "key": "offer",
@@ -702,6 +704,7 @@
         "modules": [
             "Order",
             "Payment",
+            "Address",
             "Rating",
             "Recurrence"
         ],
@@ -716,6 +719,7 @@
             "App\\Modules\\Order\\Models\\OrderTask",
             "App\\Modules\\Order\\Models\\PieceDiscrepancy",
             "App\\Modules\\Order\\Models\\RecurrencePrompt",
+            "App\\Modules\\Order\\Models\\TaskHold",
             "App\\Modules\\Payment\\Models\\CommissionRule",
             "App\\Modules\\Payment\\Models\\DriverEarning",
             "App\\Modules\\Payment\\Models\\LaundryDeduction",
@@ -736,6 +740,7 @@
             "order_tasks",
             "piece_discrepancies",
             "recurrence_prompts",
+            "task_holds",
             "commission_rules",
             "driver_earnings",
             "laundry_deductions",
@@ -745,7 +750,7 @@
             "payments",
             "refunds"
         ],
-        "route_count": 46,
+        "route_count": 57,
         "routes": [
             "admin.commission_rule.create",
             "admin.commission_rule.delete",
@@ -768,28 +773,28 @@
             "admin.laundry_revenue.search",
             "admin.order.assign",
             "admin.order.bulkDelete",
+            "admin.order.create",
+            "admin.order.customer_addresses",
+            "admin.order.customer_addresses.store",
+            "admin.order.customers",
             "admin.order.delete",
+            "admin.order.finish_washing",
+            "admin.order.hold.approve",
+            "admin.order.hold.reject",
             "admin.order.index",
             "admin.order.invoice",
             "admin.order.piece_check.resolve",
             "admin.order.query.answer",
+            "admin.order.quote",
             "admin.order.review",
+            "admin.order.review.send",
             "admin.order.search",
             "admin.order.show",
-            "admin.order.tasks.assign",
-            "admin.order.tasks.dispatch",
-            "admin.order.tasks.generate",
-            "admin.order.tasks.release",
-            "admin.order_today.index",
-            "admin.order_today.search",
-            "admin.payment.cash.receive",
-            "admin.payment.index",
-            "admin.payment.search",
-            "admin.refund.approve",
-            "admin.refund.index"
+            "admin.order.store",
+            "admin.order.tasks.assign"
         ],
-        "node_count": 787,
-        "cohesion": 0.392,
+        "node_count": 903,
+        "cohesion": 0.395,
         "screens": [
             {
                 "key": "order",
@@ -814,6 +819,7 @@
             "order_today"
         ],
         "inferred_modules": [
+            "Address",
             "Rating",
             "Recurrence"
         ]
@@ -842,6 +848,7 @@
             "App\\Modules\\Order\\Models\\OrderTask",
             "App\\Modules\\Order\\Models\\PieceDiscrepancy",
             "App\\Modules\\Order\\Models\\RecurrencePrompt",
+            "App\\Modules\\Order\\Models\\TaskHold",
             "App\\Modules\\TimeSlot\\Models\\TimeSlot"
         ],
         "tables": [
@@ -857,9 +864,10 @@
             "order_tasks",
             "piece_discrepancies",
             "recurrence_prompts",
+            "task_holds",
             "time_slots"
         ],
-        "route_count": 31,
+        "route_count": 42,
         "routes": [
             "admin.complaint.index",
             "admin.complaint.note",
@@ -871,16 +879,27 @@
             "admin.dispatch.search",
             "admin.order.assign",
             "admin.order.bulkDelete",
+            "admin.order.create",
+            "admin.order.customer_addresses",
+            "admin.order.customer_addresses.store",
+            "admin.order.customers",
             "admin.order.delete",
+            "admin.order.finish_washing",
+            "admin.order.hold.approve",
+            "admin.order.hold.reject",
             "admin.order.index",
             "admin.order.piece_check.resolve",
             "admin.order.query.answer",
+            "admin.order.quote",
             "admin.order.review",
+            "admin.order.review.send",
             "admin.order.search",
             "admin.order.show",
+            "admin.order.store",
             "admin.order.tasks.assign",
             "admin.order.tasks.dispatch",
             "admin.order.tasks.generate",
+            "admin.order.tasks.hangers",
             "admin.order.tasks.release",
             "admin.order_today.index",
             "admin.order_today.search",
@@ -889,12 +908,10 @@
             "admin.time_slot.edit",
             "admin.time_slot.index",
             "admin.time_slot.show",
-            "admin.time_slot.store",
-            "admin.time_slot.toggleStatus",
-            "admin.time_slot.update"
+            "admin.time_slot.store"
         ],
-        "node_count": 589,
-        "cohesion": 0.363,
+        "node_count": 704,
+        "cohesion": 0.372,
         "screens": [
             {
                 "key": "complaint",
@@ -1025,8 +1042,8 @@
             "admin.settlement.settle",
             "admin.wallet.adjust"
         ],
-        "node_count": 637,
-        "cohesion": 0.506,
+        "node_count": 639,
+        "cohesion": 0.497,
         "screens": [
             {
                 "key": "finance",
@@ -1132,7 +1149,7 @@
             "admin.report.revenue"
         ],
         "node_count": 129,
-        "cohesion": 0.491,
+        "cohesion": 0.486,
         "screens": [
             {
                 "key": "report",
@@ -1201,8 +1218,8 @@
             "api.v1.driver.tasks.complete",
             "api.v1.driver.tasks.fail"
         ],
-        "node_count": 280,
-        "cohesion": 0.372
+        "node_count": 281,
+        "cohesion": 0.36
     },
     {
         "slug": "authentication",
@@ -1243,8 +1260,8 @@
         "tables": [],
         "route_count": 0,
         "routes": [],
-        "node_count": 229,
-        "cohesion": 0.445
+        "node_count": 236,
+        "cohesion": 0.448
     },
     {
         "slug": "public_site",
@@ -1260,7 +1277,7 @@
         "route_count": 0,
         "routes": [],
         "node_count": 13,
-        "cohesion": 0.163
+        "cohesion": 0.16
     },
     {
         "slug": "quality",
@@ -1270,18 +1287,14 @@
         "order": 90,
         "modules": [
             "Tests",
-            "Docs",
-            "Address"
+            "Docs"
         ],
         "models": [],
         "tables": [],
         "route_count": 0,
         "routes": [],
-        "node_count": 1722,
-        "cohesion": 0.353,
-        "inferred_modules": [
-            "Address"
-        ]
+        "node_count": 1798,
+        "cohesion": 0.34
     },
     {
         "slug": "routing_and_distance",
@@ -1297,7 +1310,7 @@
         "route_count": 0,
         "routes": [],
         "node_count": 36,
-        "cohesion": 0.232
+        "cohesion": 0.231
     },
     {
         "slug": "system",
@@ -1379,8 +1392,8 @@
             "admin.myNotifications.read-all",
             "admin.myNotifications.unread"
         ],
-        "node_count": 1129,
-        "cohesion": 0.432,
+        "node_count": 1131,
+        "cohesion": 0.423,
         "screens": [
             {
                 "key": "moderator",

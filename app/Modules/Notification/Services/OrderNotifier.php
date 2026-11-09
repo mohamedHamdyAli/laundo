@@ -41,6 +41,28 @@ class OrderNotifier
         ));
     }
 
+    /**
+     * «رسوم المشوار» moved onto this order from a cancelled one on the same
+     * visit — its total went up by one trip.
+     */
+    public function tripFeeMoved(Order $order, Order $cancelled, bool $wasCancelled = true): void
+    {
+        $this->toCustomer($order, new NotificationMessage(
+            event: NotificationEvent::TripFeeMoved,
+            title: __('Your order total changed'),
+            body: __($wasCancelled
+                ? 'Order :cancelled was cancelled, so order :code now carries the trip fee. New total: :total.'
+                : 'Order :cancelled moved to another time, so order :code now carries the trip fee. New total: :total.', [
+                    'cancelled' => $cancelled->code,
+                    'code' => $order->code,
+                    'total' => moneyFormat($order->payableTotal()),
+                ]),
+            url: "/orders/{$order->id}",
+            data: ['order_id' => (string) $order->id],
+            subject: $order,
+        ));
+    }
+
     public function driverOnWay(Order $order): void
     {
         $this->toCustomer($order, new NotificationMessage(
@@ -92,6 +114,22 @@ class OrderNotifier
         );
 
         $this->dispatcher->sendMany(User::where('laundry_id', $laundry->id)->get(), $message);
+    }
+
+    /**
+     * «خلص الغسيل» — the laundry finished; a driver collects it next (the
+     * client's sheet, item 18, 2026-11-08).
+     */
+    public function washingFinished(Order $order): void
+    {
+        $this->toCustomer($order, new NotificationMessage(
+            event: NotificationEvent::OrderWashingFinished,
+            title: __('Washing finished'),
+            body: __('The laundry has finished order :code. A driver will collect it and bring it back to you.', ['code' => $order->code]),
+            url: "/orders/{$order->id}/track",
+            data: ['order_id' => (string) $order->id],
+            subject: $order,
+        ));
     }
 
     public function readyForDelivery(Order $order): void
@@ -151,6 +189,29 @@ class OrderNotifier
             event: NotificationEvent::TaskAssigned,
             title: __($task->type->label()),
             body: __('Order :code has been assigned to you.', ['code' => $task->order?->code]),
+            url: "/driver/tasks/{$task->id}",
+            data: ['task_id' => (string) $task->id],
+            subject: $task,
+        ));
+    }
+
+    /**
+     * The laundry finished an order whose collection this driver already
+     * holds: it can go now (item 18, 2026-11-08). Under `TaskAssigned`, the
+     * event the driver app already opens a leg from.
+     */
+    public function collectionReady(OrderTask $task): void
+    {
+        $driver = $task->driver;
+
+        if (! $driver) {
+            return;
+        }
+
+        $this->dispatcher->send($driver, new NotificationMessage(
+            event: NotificationEvent::TaskAssigned,
+            title: __($task->type->label()),
+            body: __('Order :code is ready at the laundry — you can collect it now.', ['code' => $task->order?->code]),
             url: "/driver/tasks/{$task->id}",
             data: ['task_id' => (string) $task->id],
             subject: $task,

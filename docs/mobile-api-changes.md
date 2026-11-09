@@ -1279,3 +1279,12 @@ git: `git show b403985:docs/<اسم الملف>`.
 
 - `GET /orders` و`GET /orders/{id}`: `laundry` كان بيرجع `null` لطلب لسه مالوش مغسلة، وده كان بيوقّع قايمة الطلبات. دلوقتي **نص دايمًا**: اسم المغسلة، أو «لسه متسندتش» / «Not assigned yet» بلغة الطلب.
 - حقل جديد `laundry_assigned` (`true`/`false`) لو التطبيق محتاج يفرّق.
+
+---
+
+## ٨ نوفمبر ٢٠٢٦ — طلبات العميل: رسوم المشوار، موافقة الإدارة، فحص المغسلة (التطبيقين)
+
+ملف مستقل بالتفصيل: `docs/mobile-2026-11-08-client-batch.md`. الملخص:
+
+- **المندوب:** التوقيع في التسليم بس؛ `requires_scan` جديد (`false` في الاستلام من المغسلة)؛ العدّ في الاستلام من المغسلة بس؛ رسوم المشوار (25) بتتحصّل كاش وقت الاستلام (`collected_amount` اختياري هناك)؛ **`/complete` ممكن يرجّع 409 `awaiting_approval`** لو العدد أو المبلغ مختلف — الرحلة لسه مكملتش، و`hold` في الرحلة بيقول حالتها؛ `customer_unavailable` في الاستلام بيرجع للعميل يختار ميعاد؛ `summary.cash` (التحصيل الكاش النهارده واللي معاه)؛ الاستلام من المغسلة مابيوصلش قبل «خلص الغسيل»؛ `completed_orders_count` و`completed_trips_count` في البروفايل.
+- **العميل:** `items` في تفاصيل الطلب **قايمة واحدة** بـ`change` + `estimated_items` جديد؛ عدّ المغسلة والسعر النهائي بيظهروا بعد ما الإدارة تبعتهم؛ `pickup_fee` / `return_fee` / `pay_at_pickup` / `paid_so_far`؛ آخر حجز قبل بداية الفترة بربع ساعة؛ إشعار `trip_fee_moved` جديد؛ **حالة جديدة `finished`** («خلص الغسيل») وإشعار `order_washing_finished`؛ حد أقصى للقطع في الطلب (`max_pieces_per_order` في `/app-settings`) وفي ميعاد الاستلام (`pieces_left` و`pieces` في `/time-slots`)، وأي تجاوز 422؛ البروفايل فيه `completed_orders_count` و`points_used` و`points_remaining`.

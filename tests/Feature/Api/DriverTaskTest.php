@@ -9,7 +9,9 @@ use App\Modules\Order\Enums\TaskStatus;
 use App\Modules\Order\Enums\TaskType;
 use App\Modules\Order\Models\Order;
 use App\Modules\Order\Models\OrderTask;
+use App\Modules\Order\Models\TaskHold;
 use App\Modules\Order\Services\DriverDispatcher;
+use App\Modules\Order\Services\FinishedWashing;
 use App\Modules\Order\Services\OrderReviewService;
 use App\Modules\Order\Services\OrderService;
 use App\Modules\Order\Services\OrderStateMachine;
@@ -119,8 +121,9 @@ class DriverTaskTest extends TestCase
         $driver = $this->eligibleDriver();
         $order = $this->placedOrder();
 
+        // Three: the collection from the laundry is nobody's before «خلص الغسيل» (item 18, 2026-11-08).
         $this->assertSame(
-            4,
+            3,
             OrderTask::where('order_id', $order->id)->where('driver_id', $driver->id)->count()
         );
     }
@@ -197,9 +200,10 @@ class DriverTaskTest extends TestCase
 
         $assigned = app(DriverDispatcher::class)->sweep();
 
-        $this->assertSame(4, $assigned);
+        // Three: the collection from the laundry is nobody's before «خلص الغسيل» (item 18, 2026-11-08).
+        $this->assertSame(3, $assigned);
         $this->assertSame(
-            4,
+            3,
             OrderTask::where('order_id', $order->id)->where('driver_id', $driver->id)->count()
         );
     }
@@ -236,7 +240,9 @@ class DriverTaskTest extends TestCase
 
         $task->refresh();
         $this->assertSame(TaskStatus::Completed, $task->status);
-        $this->assertSame(9, $task->piece_count);
+        // The driver no longer counts at the customer's door (the client's
+        // sheet, item 12, 2026-11-08): a count sent anyway is not kept.
+        $this->assertNull($task->piece_count);
         $this->assertNotNull($task->signature_path);
         $this->assertNotNull($task->durationMinutes());
 
@@ -262,47 +268,80 @@ class DriverTaskTest extends TestCase
     }
 
     #[Test]
-    public function a_customer_leg_cannot_be_completed_without_a_signature(): void
+    public function the_pickup_needs_no_signature(): void
     {
+        // The client's sheet, item 5 (2026-11-08): «إزالة شرط توقيع العميل
+        // لتأكيد عملية الإستلام». The delivery still needs one — below.
         $driver = $this->eligibleDriver();
         $order = $this->placedOrder();
         $task = $this->started($order, TaskType::PickupFromCustomer, $driver);
 
         Sanctum::actingAs($driver);
 
+        $detail = $this->getJson("/api/v1/driver/tasks/{$task->id}", $this->apiHeaders())->assertOk();
+        $this->assertFalse($detail->json('data.requires_signature'));
+        // The bag is still scanned at the customer's door (item 6 drops it only
+        // at the laundry's).
+        $this->assertTrue($detail->json('data.requires_scan'));
+
         $this->postJson("/api/v1/driver/tasks/{$task->id}/complete",
             ['piece_count' => 5], $this->apiHeaders())
-            ->assertStatus(422);
+            ->assertOk();
+
+        $this->assertSame(TaskStatus::Completed, $task->fresh()->status);
+        $this->assertNull($task->fresh()->signature_path);
+    }
+
+    #[Test]
+    public function the_delivery_cannot_be_completed_without_a_signature(): void
+    {
+        $driver = $this->eligibleDriver();
+        $order = $this->placedOrder();
+        $order->forceFill(['payment_status' => 'paid'])->save();
+
+        foreach ([TaskType::PickupFromCustomer, TaskType::DeliverToLaundry, TaskType::CollectFromLaundry] as $leg) {
+            OrderTask::where('order_id', $order->id)->where('type', $leg->value)
+                ->update(['status' => TaskStatus::Completed->value, 'completed_at' => now()]);
+        }
+
+        $order->forceFill(['status' => OrderStatus::ReadyForDelivery])->save();
+        $task = $this->started($order, TaskType::DeliverToCustomer, $driver);
+
+        Sanctum::actingAs($driver);
+
+        $this->postJson("/api/v1/driver/tasks/{$task->id}/complete", [], $this->apiHeaders())
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('signature');
 
         $this->assertSame(TaskStatus::Started, $task->fresh()->status);
     }
 
     #[Test]
-    public function the_laundry_leg_needs_no_signature_but_does_need_a_count(): void
+    public function the_laundry_leg_needs_neither_a_signature_nor_a_count(): void
     {
+        // The handover to the laundry asked for a count until 2026-11-08; the
+        // laundry inspects and counts now (the client's sheet, item 12).
         $driver = $this->eligibleDriver();
         $order = $this->placedOrder();
 
-        $this->walk($order, TaskType::PickupFromCustomer, $driver, ['piece_count' => 9], signed: true);
+        $this->walk($order, TaskType::PickupFromCustomer, $driver, [], signed: true);
 
         $task = $this->started($order, TaskType::DeliverToLaundry, $driver);
 
         Sanctum::actingAs($driver);
 
-        // No count: refused.
+        $this->getJson("/api/v1/driver/tasks/{$task->id}", $this->apiHeaders())
+            ->assertJsonPath('data.requires_piece_count', false);
+
         $this->postJson("/api/v1/driver/tasks/{$task->id}/complete",
             ['receiver_name' => 'محمود'], $this->apiHeaders())
-            ->assertStatus(422);
-
-        // A count and no signature: accepted.
-        $this->postJson("/api/v1/driver/tasks/{$task->id}/complete",
-            ['piece_count' => 9, 'receiver_name' => 'محمود'], $this->apiHeaders())
             ->assertOk();
 
         $task->refresh();
         $this->assertSame(TaskStatus::Completed, $task->status);
         $this->assertSame('محمود', $task->receiver_name);
         $this->assertNull($task->signature_path);
+        $this->assertNull($task->piece_count);
     }
 
     #[Test]
@@ -345,12 +384,14 @@ class DriverTaskTest extends TestCase
 
         Sanctum::actingAs($driver);
 
-        // By decision the delivery completes: a driver at the customer's door is
-        // the worst possible place to argue about the difference.
+        // Short is held for the platform (the client's sheet, item 10,
+        // 2026-11-08 — it used to complete at once); approved, it is recorded.
         $this->postJson("/api/v1/driver/tasks/{$task->id}/complete", [
             'collected_amount' => $due - 5,
             'signature' => UploadedFile::fake()->image('sig.png'),
-        ], $this->apiHeaders())->assertOk();
+        ], $this->apiHeaders())->assertStatus(409);
+
+        app(TaskService::class)->approveHold(TaskHold::firstOrFail(), $this->superAdmin());
 
         $task->refresh();
         $order->refresh();
@@ -375,8 +416,10 @@ class DriverTaskTest extends TestCase
 
         Sanctum::actingAs($driver);
 
+        // Not `customer_unavailable`: at the pickup that goes back to the
+        // customer for a new time since 2026-11-08 (RescheduleTest).
         $this->postJson("/api/v1/driver/tasks/{$task->id}/fail",
-            ['reason' => 'customer_unavailable'], $this->apiHeaders())
+            ['reason' => 'wrong_address'], $this->apiHeaders())
             ->assertOk();
 
         $task->refresh();
@@ -581,8 +624,9 @@ class DriverTaskTest extends TestCase
 
         $response->assertOk()
             ->assertJsonPath('data.is_available', true)
-            // Two collections and two deliveries per order.
-            ->assertJsonPath('data.counters.collections', 2)
+            // Two collections and two deliveries per order — but the collection
+            // from the laundry is nobody's before «خلص الغسيل» (item 18, 2026-11-08).
+            ->assertJsonPath('data.counters.collections', 1)
             ->assertJsonPath('data.counters.deliveries', 2)
             ->assertJsonPath('data.counters.completed_today', 0);
 
@@ -598,17 +642,18 @@ class DriverTaskTest extends TestCase
 
         Sanctum::actingAs($driver);
 
+        // Three: the collection from the laundry is nobody's before «خلص الغسيل» (item 18, 2026-11-08).
         $all = $this->getJson('/api/v1/driver/tasks', $this->apiHeaders());
-        $this->assertCount(4, $all->json('data'));
+        $this->assertCount(3, $all->json('data'));
         // The page info the app's infinite scroll reads; `msg` is a sentence, never
         // the rendered pagination view.
-        $this->assertSame(4, $all->json('meta.total'));
+        $this->assertSame(3, $all->json('meta.total'));
         $this->assertFalse($all->json('meta.has_more'));
         $this->assertStringNotContainsString('<', (string) $all->json('msg'));
 
-        $this->assertCount(2, $this->getJson('/api/v1/driver/tasks?kind=collection', $this->apiHeaders())->json('data'));
+        $this->assertCount(1, $this->getJson('/api/v1/driver/tasks?kind=collection', $this->apiHeaders())->json('data'));
         $this->assertCount(2, $this->getJson('/api/v1/driver/tasks?kind=delivery', $this->apiHeaders())->json('data'));
-        $this->assertCount(4, $this->getJson('/api/v1/driver/tasks?state=new', $this->apiHeaders())->json('data'));
+        $this->assertCount(3, $this->getJson('/api/v1/driver/tasks?state=new', $this->apiHeaders())->json('data'));
         $this->assertCount(0, $this->getJson('/api/v1/driver/tasks?state=completed', $this->apiHeaders())->json('data'));
     }
 
@@ -739,6 +784,10 @@ class DriverTaskTest extends TestCase
         $order = $this->placedOrder();
 
         $this->assertSame(4, OrderTask::where('order_id', $order->id)->open()->count());
+        // Who held each leg — three of them this driver; the collection from the
+        // laundry nobody, before «خلص الغسيل» (item 18, 2026-11-08).
+        $holders = OrderTask::where('order_id', $order->id)->orderBy('id')->pluck('driver_id', 'id')->all();
+        $this->assertSame(3, count(array_keys($holders, $driver->id, true)));
 
         app(OrderStateMachine::class)->transition($order, OrderStatus::Cancelled, 'customer');
 
@@ -752,7 +801,7 @@ class DriverTaskTest extends TestCase
         // against the driver in the monthly bonus gates.
         $this->assertTrue($tasks->every(fn ($t) => $t->failure_reason === null));
         // The holder is kept, or «ملغاة» in their history would be empty.
-        $this->assertTrue($tasks->every(fn ($t) => $t->driver_id === $driver->id));
+        $this->assertSame($holders, $tasks->sortBy('id')->pluck('driver_id', 'id')->all());
         $this->assertSame(0, OrderTask::where('order_id', $order->id)->open()->count());
     }
 
@@ -772,7 +821,8 @@ class DriverTaskTest extends TestCase
         $response = $this->getJson('/api/v1/driver/tasks/history?state=cancelled', $this->apiHeaders());
 
         $response->assertOk();
-        $this->assertSame(4, $response->json('meta.total'));
+        // Three: the collection from the laundry is nobody's before «خلص الغسيل» (item 18, 2026-11-08).
+        $this->assertSame(3, $response->json('meta.total'));
         $this->assertTrue(
             collect($response->json('data'))->every(fn ($row) => $row['status'] === 'cancelled')
         );
@@ -794,6 +844,7 @@ class DriverTaskTest extends TestCase
             null,
             $this->tenant['owner']
         );
+        $this->sendReview($order);
 
         // «returned» is not «cancelled»: the pieces go back, and the two legs
         // already walked are work the driver is owed for.
@@ -817,7 +868,8 @@ class DriverTaskTest extends TestCase
     public function every_task_in_the_list_carries_the_pin_for_where_it_is_going(): void
     {
         $driver = $this->eligibleDriver();
-        $this->placedOrder();
+        // Washed, so the collection from the laundry is in the list at all (item 18).
+        $this->washedOrder($driver);
 
         Sanctum::actingAs($driver);
 
@@ -842,6 +894,26 @@ class DriverTaskTest extends TestCase
             $this->assertSame((float) $laundry->lat, $point['lat'], $type->value);
             $this->assertSame((float) $laundry->lng, $point['lng'], $type->value);
         }
+    }
+
+    #[Test]
+    public function the_collection_from_the_laundry_asks_for_no_scan(): void
+    {
+        // The client's sheet, item 6 (2026-11-08): no QR at the laundry.
+        $driver = $this->eligibleDriver();
+        // Washed, so the collection is this driver's to open (item 18).
+        $order = $this->washedOrder($driver);
+
+        Sanctum::actingAs($driver);
+
+        $task = OrderTask::withoutGlobalScopes()
+            ->where('order_id', $order->id)
+            ->where('type', TaskType::CollectFromLaundry->value)
+            ->firstOrFail();
+
+        $this->getJson("/api/v1/driver/tasks/{$task->id}", $this->apiHeaders())
+            ->assertOk()
+            ->assertJsonPath('data.requires_scan', false);
     }
 
     #[Test]
@@ -870,9 +942,12 @@ class DriverTaskTest extends TestCase
     public function drawing_a_pin_does_not_cost_a_query_per_row(): void
     {
         $driver = $this->eligibleDriver();
-        $this->placedOrder();
-        $this->placedOrder('+201099887799');
+        // Washed, so all four legs of each are the driver's (item 18): the
+        // collection from the laundry is nobody's before «خلص الغسيل».
+        $this->washedOrder($driver);
+        $this->washedOrder($driver, '+201099887799');
 
+        $this->app['auth']->forgetGuards();
         Sanctum::actingAs($driver);
 
         DB::enableQueryLog();
@@ -1008,10 +1083,11 @@ class DriverTaskTest extends TestCase
         $this->assertSame((float) $this->address->lat, $data['pickup']['address']['lat']);
         $this->assertNotNull($data['delivery']['address']);
 
-        // All four of their legs, in the list's shape and in order.
-        $this->assertSame([1, 2, 3, 4], array_column($data['my_tasks'], 'sequence'));
+        // Their legs, in the list's shape and in order — three: the collection
+        // from the laundry is nobody's before «خلص الغسيل» (item 18, 2026-11-08).
+        $this->assertSame([1, 2, 4], array_column($data['my_tasks'], 'sequence'));
         $this->assertSame(
-            OrderTask::where('order_id', $order->id)->orderBy('sequence')->pluck('id')->all(),
+            OrderTask::where('order_id', $order->id)->where('driver_id', $driver->id)->orderBy('sequence')->pluck('id')->all(),
             array_column($data['my_tasks'], 'id')
         );
     }
@@ -1067,11 +1143,13 @@ class DriverTaskTest extends TestCase
             null,
             $this->tenant['owner']
         );
+        $this->sendReview($order);
         $reviews->confirm($order->fresh(), $this->customer);
         $hidden();
 
         $machine = app(OrderStateMachine::class);
         $machine->transition($order->fresh(), OrderStatus::Cleaning, 'laundry');
+        $machine->transition($order->fresh(), OrderStatus::Finished, 'laundry');
         $machine->transition($order->fresh(), OrderStatus::ReadyForDelivery, 'laundry');
         $this->walk($order->fresh(), TaskType::CollectFromLaundry, $driver, ['piece_count' => 3]);
 
@@ -1242,15 +1320,47 @@ class DriverTaskTest extends TestCase
             null,
             $this->tenant['owner']
         );
+        $this->sendReview($order);
         $reviews->confirm($order->fresh(), $this->customer);
 
         // The laundry does the work.
         $machine = app(OrderStateMachine::class);
         $machine->transition($order->fresh(), OrderStatus::Cleaning, 'laundry');
+        $machine->transition($order->fresh(), OrderStatus::Finished, 'laundry');
         $machine->transition($order->fresh(), OrderStatus::ReadyForDelivery, 'laundry');
 
         // Leg 3 — collect the finished order.
         $this->walk($order->fresh(), TaskType::CollectFromLaundry, $driver, ['piece_count' => 2]);
+
+        return $order->fresh();
+    }
+
+    /**
+     * An order walked to «خلص الغسيل» (the client's sheet, item 18, 2026-11-08):
+     * legs 1 and 2 done, priced and agreed, and the laundry's button pressed —
+     * which is what offers the collection from the laundry to a driver at all,
+     * so only now are all four legs the driver's.
+     */
+    private function washedOrder(Driver $driver, string $phone = '+201099887766'): Order
+    {
+        $order = $this->placedOrder($phone);
+
+        $this->walk($order, TaskType::PickupFromCustomer, $driver, ['piece_count' => 2], signed: true);
+        $this->walk($order, TaskType::DeliverToLaundry, $driver, ['piece_count' => 2]);
+
+        $reviews = app(OrderReviewService::class);
+        $reviews->review(
+            $order->fresh(),
+            [['item_id' => $this->catalog['items'][0]->id, 'qty' => 2]],
+            null,
+            $this->tenant['owner']
+        );
+        $this->sendReview($order);
+        $reviews->confirm($order->fresh(), $order->customer);
+
+        app(FinishedWashing::class)->mark($order->fresh(), $this->tenant['owner']);
+
+        $this->assertSame($driver->id, $this->leg($order, TaskType::CollectFromLaundry)->driver_id);
 
         return $order->fresh();
     }

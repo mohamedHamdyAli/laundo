@@ -112,6 +112,8 @@ class DashboardSummary
                 OrderStatus::ReviewDisputed,
                 OrderStatus::Confirmed,
                 OrderStatus::Cleaning,
+                // Washed, waiting for the driver to collect (item 18).
+                OrderStatus::Finished,
             ]),
             // Washed and waiting for a delivery leg.
             'ready_to_go' => $sum([OrderStatus::ReadyForDelivery]),
@@ -431,12 +433,13 @@ class DashboardSummary
                 'label' => 'In cleaning',
                 'count' => Order::where('status', OrderStatus::Cleaning->value)->count(),
                 'severity' => 'info',
-                'hint' => 'Mark ready when done and a driver is dispatched',
+                'hint' => 'Press «Washing finished» when done — a driver is sent to collect it then',
             ],
             [
                 'key' => 'ready',
                 'label' => 'Ready, waiting for a driver',
-                'count' => Order::where('status', OrderStatus::ReadyForDelivery->value)->count(),
+                // Finished at the laundry and not collected yet (item 18).
+                'count' => Order::where('status', OrderStatus::Finished->value)->count(),
                 'severity' => 'info',
                 'hint' => 'Done on your side',
             ],

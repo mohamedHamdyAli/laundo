@@ -477,6 +477,7 @@ class ReportTest extends TestCase
             $this->tenant['owner']
         );
 
-        return $order->fresh();
+        // Sent on by the platform, as a count reaches the customer since item 12.
+        return $this->sendReview($order);
     }
 }

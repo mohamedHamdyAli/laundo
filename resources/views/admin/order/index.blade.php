@@ -1,8 +1,17 @@
 @extends('layouts.main')
 
 @section('content')
-    <div class="card-header d-flex justify-content-between align-items-center">
+    <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
         <h5 class="card-title mb-0">{{ __('Orders') }}</h5>
+
+        {{-- «إنشاء طلب»: the platform's only — `PanelOrders` refuses it inside a
+             laundry even when a role grants the permission, so the button is
+             not drawn there either. --}}
+        @if (canDo('order.create') && \App\Support\LaundryContext::currentId() === null)
+            <a href="{{ route('admin.order.create') }}" class="btn-add">
+                <i class="fa fa-plus"></i>{{ __('New order for a customer') }}
+            </a>
+        @endif
     </div>
 
     <section class="section">
@@ -84,6 +93,18 @@
                                     </option>
                                     <option value="{{ $pieceMismatch }}" @selected(($activeStatus ?? null) === $pieceMismatch)>
                                         {{ __('The piece count does not match') }}
+                                    </option>
+                                    <option value="{{ $awaitingApproval }}" @selected(($activeStatus ?? null) === $awaitingApproval)>
+                                        {{ __('Awaiting management approval') }}
+                                    </option>
+                                    <option value="{{ $hangersToConfirm }}" @selected(($activeStatus ?? null) === $hangersToConfirm)>
+                                        {{ __('Hangers waiting for the laundry to confirm') }}
+                                    </option>
+                                    <option value="{{ $reviewToSend }}" @selected(($activeStatus ?? null) === $reviewToSend)>
+                                        {{ __('A count waiting to be sent to the customer') }}
+                                    </option>
+                                    <option value="{{ $washingOverdue }}" @selected(($activeStatus ?? null) === $washingOverdue)>
+                                        {{ __('Washing not marked finished, its collection is due') }}
                                     </option>
                                 </optgroup>
 

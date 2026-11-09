@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\V1;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\V1\AddressRequest;
 use App\Modules\Address\Models\Address;
+use App\Modules\Address\Services\AddressBook;
 use App\Modules\Zone\Services\ZoneLocator;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -20,7 +21,10 @@ use Illuminate\Support\Facades\DB;
  */
 class AddressController extends Controller
 {
-    public function __construct(private readonly ZoneLocator $zones) {}
+    public function __construct(
+        private readonly ZoneLocator $zones,
+        private readonly AddressBook $book,
+    ) {}
 
     public function index(Request $request): JsonResponse
     {
@@ -45,25 +49,9 @@ class AddressController extends Controller
 
     public function store(AddressRequest $request): JsonResponse
     {
-        // The zone follows the pin (ZoneLocator), not the app's pick.
-        $data = $this->zones->placeAddress($request->validated(), null);
-
-        $address = DB::transaction(function () use ($request, $data) {
-            $user = $request->user();
-
-            // The first address a customer saves is their default, whether or not
-            // they ticked the box — otherwise they would have none.
-            $isFirst = ! $user->addresses()->exists();
-            $makeDefault = ($data['is_default'] ?? false) || $isFirst;
-
-            $address = $user->addresses()->create($data + ['is_default' => $makeDefault]);
-
-            if ($makeDefault) {
-                $this->clearOtherDefaults($request, $address->id);
-            }
-
-            return $address;
-        });
+        // The zone follows the pin and the first address is the default —
+        // both in AddressBook, shared with the panel's «إنشاء طلب».
+        $address = $this->book->add($request->user(), $request->validated());
 
         return successReturnCreated($this->present($address->fresh(['city', 'zone.city'])), 'Address saved.');
     }

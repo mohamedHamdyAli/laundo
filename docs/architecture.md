@@ -116,8 +116,137 @@ from the code) and **`docs/order-cycle-explained.md`**; the rules that bind code
   the number `expected_pieces` holds back. «توجد مشكلة ← عدد القطع غير مطابق»
   (`PieceCountMismatch`, halts the order) is the separate path for a driver who
   will not complete the handover at all.
-- `cleaning`, `ready_for_delivery`, `completed` and `returned` currently have
-  **no endpoint driving them** — a known gap, not something to paper over.
+- **And nothing leaves before the laundry says it finished** (the client's
+  sheet, item 18, 2026-11-08). `finished` («خلص الغسيل») sits between
+  `cleaning` and `ready_for_delivery`; the table no longer lets `cleaning`
+  skip it. The laundry presses it on the order screen
+  (`Order/Services/FinishedWashing`, under the row lock): its staff, who hold
+  only `order.view` and are the ones at the machines — inside a laundry the
+  tenant scope is the gate — or the platform with `order.update`
+  (`OrderWashingController::mayFinish()`). Before it the collection from the
+  laundry is **not offered** (`DriverDispatcher::automatically()` and
+  `candidates()` give nobody, the sweep skips it), **not assignable** (`assign()`
+  → `washing_not_finished`), **not started** (`orderAllows()` → `order_not_ready`)
+  and **not counted as waiting** — the dispatch board and its badge, the
+  «needs a driver» filter and the stuck-task alert all read
+  `OrderTask::scopeOfferable()`, or every order in the building would show a
+  collection nobody could take. Pressing it offers the leg through the
+  automatic path (with drivers assigned by hand, the people who assign them are
+  told) and tells the customer (`order_washing_finished`). A collection started
+  at `cleaning` before this existed is completed (`orderAllows(underWay: true)`)
+  and `TaskService::advanceOrder()` steps the order through `finished` first,
+  so the history and the customer's line carry it. **A laundry that forgets the
+  button is chased**: `Order::washingOverdue()` (being cleaned, its collection
+  past due) is an orders-list filter and in the orders badge for both sides —
+  the collection is on no board until then. The stuck-task alert measures a
+  collection from the `finished` log, and a driver who held the collection
+  before the rule is told it can go (`OrderNotifier::collectionReady()`). `OrderStatus::trackingSteps()`
+  is left alone — it is the landing page's journey, whose copy is the Web
+  File; the customer's tracking line (`OrderTimeline`) draws it.
+- `ready_for_delivery`, `completed` and `returned` currently have **no
+  endpoint driving them** — a known gap, not something to paper over.
+
+### The laundry inspects, the platform sends — item 12 (2026-11-08)
+
+«تحديد عملية فحص القطع من خلال المغسلة فقط و ليس المندوب و بعدها الأدمن يبعت
+للعميل». The owner's answer: the driver no longer counts, the laundry's
+inspection goes to the platform first, and the platform sends it on.
+
+- **The driver counts once**, when taking the pieces out of the laundry
+  (`TaskType::countsPieces()` = `collect_from_laundry`), against the laundry's
+  count — a mismatch is held (below). A `piece_count` sent at the pickup or the
+  handover to the laundry is ignored: no count stored, nothing compared, no
+  `PieceDiscrepancy` — so an app that still asks breaks nothing. The review has
+  no handover count to be held to, so `PieceCheck::afterReview()` raises nothing
+  for new orders; the PieceCheck surfaces (alert, resolve, badge) still serve
+  the disagreements already on record and the closed ones approvals create.
+- **The review is a draft**: `OrderReviewService::review()` writes the final
+  rows, totals and points cap as before but **does not move the order** — a note
+  says it waits for the platform, and the platform is told in the bell. The
+  order screen shows «المغسلة فحصت الطلب ده وسعّرته» with «إرسال للعميل» for the
+  platform (`admin.order.review.send`, `order.update`; `send()` refuses inside a
+  laundry) and «اتبعت للإدارة» for the laundry. `send()` moves it to `reviewed`
+  (actor `admin`) and the state machine asks the customer, as review() used to.
+- **One predicate each**: `Order::hasReviewToSend()` (final price, reviewable
+  status, `review_round` past `review_sent_round`) and `customerSeesFinal()`
+  (sent at least once and no unsent draft). Rounds, not timestamps — a recount
+  saved in the second the last one was sent is still a draft. The customer's
+  `GET /orders/{id}` shows no `final_*` and `payable_*` stays the estimate while
+  a draft is unsent; `items`, `items_count` and the review screen follow the same
+  predicate (`OrderPieces`). Orders reviewed before the change were stamped sent.
+- Counted in the orders badge and the list's «فحص مستني يتبعت للعميل» filter
+  (`Order::withReviewToSend()`).
+
+### «بانتظار موافقة الإدارة» — a confirmation held for the platform (2026-11-08)
+
+The client's sheet, items 9 and 10. «يجب وقف إكتمال المهمة عند المندوب في حالة عدم
+تطابق العدد عند الإستلام من المغسلة» and «عدم إتمام عملية التحصيل من العميل في
+حالة وجود مبلغ أقل أو أكثر إلا بعد موافقة الأدمن». The owner chose **held, not
+refused**.
+
+- `Order/Services/TaskHolds::needed()` decides: the collection from the laundry
+  counting other than the laundry's own count (`PieceCheck::expectedFor()`), or
+  cash at the door other than what the leg takes (`OrderTask::toCollect()` —
+  less **or more**; `collected_amount_too_high` is gone).
+- `TaskService::complete()` stores the files first, then `raise()`s a
+  `task_holds` row (one pending per leg — a second wrong figure replaces it)
+  with the confirmation as `payload`, and throws `TaskHeld`. The driver API
+  answers **409 `awaiting_approval`** — never a 2xx, so an app that predates
+  this cannot read it as done — with the task, whose `hold` block says
+  `pending | approved | rejected | withdrawn` and the note. The leg stays
+  started. Confirming again with the right figure completes at once and
+  withdraws the question — which is why a held **count**'s `hold.expected` and
+  `message` leave out the laundry's number until the platform approves: shown
+  it, a driver could type it back and walk the hold away (`countsRevealed()`'s
+  rule). A held amount shows it; `payment.to_collect` says it anyway.
+- The platform is told in the bell (`order.update` for a count,
+  `payment.update` for cash). The order screen's alert
+  (`_task_holds`) has «موافقة» / «رفض»; the routes need `order.update`, cash
+  also `payment.update`, and `TaskService::approveHold()` / `rejectHold()`
+  refuse inside a laundry whatever the permission. Approve runs the one
+  completion path (`TaskService::finish()`) with the held payload — a count's
+  `PieceDiscrepancy` is recorded and closed by the approver in the same step;
+  cash over the bill is a captured payment for all of it plus a wallet credit
+  for the excess (`TransactionReason::OverCollected`, the owner: «الزيادة
+  محفظة»); short stays owed («النقص دين»). Refuse needs a note, which the
+  driver is told (`NotificationEvent::TaskHoldDecided`).
+- Counted in the orders badge and the list's «بانتظار موافقة الإدارة» filter
+  (`Order::withPendingHold()`, one definition for both).
+
+### An order placed from the panel — «إنشاء طلب» (2026-11-08)
+
+The client asked for it so an operator can take an order over the phone. The
+owner's answers set it: **an existing customer only** (picked by name, phone or
+bag reference — `UserRepository::activeCustomersMatching()`, active customers
+only), **the app's checkout exactly** (every payment method, a coupon or an
+offer, the customer's points) and **the platform only**.
+
+- `Order/Services/PanelOrders` → `OrderService::quote()` / `place()`, the same
+  two calls the app makes, so coverage, the booking cutoff, slot capacity, the
+  turnaround, laundry assignment and the customer's notification cannot differ
+  between the two ways in. `place()` takes the operator as `$placedBy`: the
+  opening `order_status_logs` row is theirs, as `admin`, and the activity log
+  records the insert under their name.
+- `order.create` (generated, carried by no seeded role) on all six routes
+  (`admin.order.create|store|quote|customers|customer_addresses[.store]`), and
+  **refused inside a laundry by the service**, not only the route: which laundry
+  gets an order is `LaundryAssigner`'s decision, and a laundry placing one would
+  choose itself. The list's button is not drawn there either.
+- The request **extends the app's** (`PanelOrderRequest extends OrderRequest`,
+  `PanelOrderQuoteRequest extends OrderQuoteRequest`) plus `user_id`, minus
+  `prompt_id` — a rule added to the checkout reaches the panel the same day. A
+  form cannot post an empty array, so a missing `items` is read as `[]` (a
+  quote-priced service); a per-item service with no pieces is still refused.
+- A new address for the customer is `Address/Services/AddressBook::add()`, which
+  the app's `POST /addresses` now uses too: the zone follows the pin, and the
+  first address is the default.
+- The screen (`admin/order/create`) asks the server for the price
+  (`admin.order.quote`) and never sums anything itself, marks closed or full
+  windows from the app's own `GET /time-slots`, and posts only the pieces with
+  a count (hidden `items[n]` rebuilt on every change). The customer picker is
+  select2 over AJAX, initialised on DOM-ready **after** the panel's own passes:
+  `custom.js` runs `$('.select2').select2()` on DOM-ready, which matches the
+  container select2 draws, so an earlier init is re-wrapped and stops searching.
 
 ## What a driver may change about themselves
 
@@ -357,7 +486,14 @@ is «from the Nth day», never N×24 hours) on `GET /services`. **A postponed pi
 delivery** to the first window with room that fits (`RescheduleService::
 keepDeliveryAfterPickup()`, legs' `due_at` moved with it, `delivery_moved` in the
 response); a delivery rebooked too soon is refused. The quote takes no dates, so
-it has nothing to check. **The range has a far end too**: `Delivery_Window_Days` (settings,
+it has nothing to check. **The customer not being there for the pickup is a
+postponement from the first time** (the client's sheet, item 7, 2026-11-08):
+`TaskFailureReason::needsANewSlot($leg)` — `customer_unavailable` on
+`pickup_from_customer` stops the leg, clears the pickup's window, notes «not
+there for the pickup» and sends `RescheduleNeeded` in its own words;
+`RescheduleService::postponedTask()` finds it, so the same screen moves the
+pickup only (the delivery follows by itself, the service never changes) and the
+trip fee is not charged again. Absent at the delivery keeps the queue path. **The range has a far end too**: `Delivery_Window_Days` (settings,
 operations tab, 14 by default) after the earliest day; past it is `too_late`,
 refused the same way — **for a new booking only**. A rebooked delivery is held
 to the turnaround alone (`problem(..., withLatest: false)`): the window is
@@ -378,6 +514,23 @@ that is not the caller's, or any address without a token, is answered as if none
 was sent — the endpoint is public and must not report on a stranger's door) —
 until an app sends both it behaves like the first, which the settings field says
 on its face.
+
+**Except pieces, which the client asked to refuse** (the client's sheet,
+item 19, 2026-11-08; `Order/Services/PieceLimits`). Two platform-wide limits,
+blank = none: `Max_Pieces_Per_Order` (settings), and `time_slots.max_pieces` —
+the pieces every live order *collected* in that window on that day add up to it
+(a delivery carries none; a cancelled order gives its pieces back; pieces are the
+basket's `estimated_items_count`, the only count there is when a window is
+booked — so a quoted service, which has no basket, is held to neither limit). Over either the order is refused: `OrderRequest`
+(`Concerns/PiecesWithinLimits`) says so beside `items` or `pickup_slot_id` with
+the room left, and `OrderService::place()` asks again under the window's row
+lock, beside `SlotCapacity::claim()` and on the same `$enforceSlotCapacity`
+flag; a pickup rebooked into a window is held to it (`RescheduleService`, the
+order's own pieces excepted). `GET /time-slots` reports `pieces_left` and, given
+the basket as `pieces`, marks a pickup window without room `is_full` — only for
+`type` other than `delivery`; the reschedule options do the same.
+`GET /app-settings` carries `max_pieces_per_order`. This is not
+`time_slots.capacity` (visits, vans) and not the laundry's intake capacity.
 
 **Capacity gates on `laundry_slot_capacity.update`, not `laundry.update`** — a
 laundry owner holds the latter by design, and capacity decides how much work
@@ -416,6 +569,45 @@ It splits four ways: **tax** → the state, never divided and never commissioned
 them; and **cleaning revenue** (`Order::cleaningRevenue()` = the laundry's own
 piece prices, less their share of the discount) is the only part the platform
 and the laundry divide.
+
+### «رسوم المشوار» — the delivery fee is per trip (2026-11-08)
+
+The client's sheet, items 3 and 4. The owner: «لما الدليفري يروح يستلم من العميل
+ياخد منه 25، ويرجع يسلّم ياخد منه 25 برضه — بتتحدد من الداشبورد»; and «ميتحسبش
+رسوم توصيل على أكتر من أوردر العميل بيستلمه في نفس التوقيت».
+
+- **One figure per trip**, the `Trip_Fee` setting (money section of the
+  settings screen; blank = 25, 0 = free). `TripFees::forOrder()` prices the
+  pickup and the return; `orders.pickup_fee` / `return_fee` hold them and
+  `delivery_fee` is their sum — so the settlement (the platform's), coupons that
+  cover the delivery, the `percent_delivery_fee` bonus and `RevenueReport` read
+  what they always read. The per-km zone rates price nothing new: their fields
+  left the zone form, and the columns are read only to re-measure an order placed
+  before the change (`pickup_fee` null) when its laundry is reassigned. The
+  laundry picker's «would be» fee and «Assigning recalculates…» show only for
+  those.
+- **One visit, one fee** (item 4, the owner's definition): same customer, same
+  address, same day, same window, the same kind of trip (pickups with pickups,
+  returns with returns). A trip is free when another of the customer's orders on
+  that visit, still waiting for it, carries its fee
+  (`OrderRepository::sharingVisit()`). No date or window, no sharing. The quote
+  sees it too when the app sends the dates (`OrderQuoteRequest` accepts
+  `pickup_date|slot_id`, `delivery_date|slot_id`).
+- **A cancelled carrier hands the fee on** (the owner's answer): `cancel()` →
+  `handOverTripFees()` gives each trip it paid for to the first order still
+  making that trip, unpaid, carrying none — repriced through
+  `repriceJourney()` (the one path a delivery fee change takes, shared with the
+  distance re-measure), noted on its history, the customer told
+  (`NotificationEvent::TripFeeMoved`, transactional). A paid order is never
+  repriced.
+- **Cash at the pickup**: `OrderTask::toCollect()` — a cash order's pickup takes
+  its trip fee, the delivery takes `Order::stillOwed()` (payable − captured
+  payments, `paidSoFar()`); online payment covers both trips in its total.
+  The pickup's amount is **optional to report**: a driver app that predates this
+  sends none, and refusing those pickups would have stopped every collection
+  until the app shipped — the fee then stays owed and the delivery takes it.
+  More than the trip fee is refused. `settlePayment()` marks the order paid when
+  everything taken covers the bill.
 
 **The percentage on a laundry is what the *laundry* receives** — 10 means the
 laundry gets 10 of the hundred and the platform keeps 90. It was the other way
@@ -644,9 +836,19 @@ it happens):
   there rather than in the customer's cancel so the panel's cancellations do too.
 - *Hangers.* `TaskType::takesHangers()` — pickup from and delivery to the
   customer. `TaskService::complete()` stamps `order_tasks.hangers_returned`
-  (refused above `Max_Hangers_Per_Visit`, ignored on the laundry legs) and
-  credits `hangers × Points_Per_Hanger` in the same transaction. The count is
-  recorded with the programme off; only the points wait on the switch.
+  (refused above `Max_Hangers_Per_Visit`, ignored on the laundry legs). **The
+  laundry confirms what reached it** (the client's sheet, item 11,
+  2026-11-08: «تأكيد استلام من المغسلة لعدد الشماعات»): the order screen's leg
+  row has the box (`admin.order.tasks.hangers`, `order.update`, the leg found
+  through the tenant-scoped order, so a laundry confirms its own; the platform
+  may too), `HangerReceipt::confirm()` stamps `hangers_confirmed|_at|_by` once
+  per leg under its lock and **then** credits `hangers_confirmed ×
+  Points_Per_Hanger` — the laundry's count, not the driver's. Before, the points
+  were paid at the driver's count in the completion; the migration stamped every
+  leg already paid as confirmed with its own count. Waiting legs count in the
+  orders badge and the list's «شماعات مستنية تأكيد المغسلة» filter
+  (`Order::withHangersToConfirm()`). The count is recorded with the programme
+  off; only the points wait on the switch.
 - Notifications (`PointsNotifier`, `points_earned`) go **after the commit**
   (`DB::afterCommit`), so a rolled-back completion never announced points.
 
@@ -1280,8 +1482,12 @@ five Playwright specs** — leave it alone.
     hours after the moment it meant. Also, nothing refused a window that had
     already ended: an order was taken at 14:11 for that morning's 08:00–10:00,
     and its driver was «late» on the spot.
-  - **A window of today closes `Slot_Booking_Cutoff_Minutes` before its end**
-    (Operations tab; blank = 60, 0 = until it ends).
+  - **A window closes `Slot_Booking_Cutoff_Minutes` before its *start***
+    (Operations tab; blank = 15, 0 = until it starts). The client's sheet, item
+    8 (2026-11-08): «آخر وقت لعمل أوردر يكون قبل بداية كل فترة بـ 15 دقيقة».
+    Until then it was before the window's *end* (blank = 60), so a window could
+    be booked while it was running. The migration that turned it round set the
+    setting to 15 — the old figure meant something else.
   - Where the closed state shows up: `GET /time-slots` carries `closed` and
     `closes_at`; `GET /delivery-window` and the reschedule options carry
     `closed`, and it is folded into `available`.

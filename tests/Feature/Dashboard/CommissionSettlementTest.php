@@ -111,6 +111,8 @@ class CommissionSettlementTest extends TestCase
         $reviews = app(OrderReviewService::class);
         $reviews->review($order, [['item_id' => $this->catalog['items'][0]->id, 'qty' => 2]], null, $this->tenant['owner']);
 
+        $this->sendReview($order);
+
         return $reviews->confirm($order->fresh(), $this->customer)->fresh();
     }
 
@@ -124,7 +126,7 @@ class CommissionSettlementTest extends TestCase
     {
         $machine = app(OrderStateMachine::class);
 
-        foreach ([OrderStatus::Cleaning, OrderStatus::ReadyForDelivery, OrderStatus::Delivered, OrderStatus::Completed] as $status) {
+        foreach ([OrderStatus::Cleaning, OrderStatus::Finished, OrderStatus::ReadyForDelivery, OrderStatus::Delivered, OrderStatus::Completed] as $status) {
             $order = $machine->transition($order->fresh(), $status, 'admin');
         }
 
@@ -649,6 +651,7 @@ class CommissionSettlementTest extends TestCase
 
         app(OrderReviewService::class)
             ->review($order, [['item_id' => $this->catalog['items'][0]->id, 'qty' => 2]], null, $this->tenant['owner']);
+        $this->sendReview($order);
 
         // Recorded early, so there is something for the return to cancel.
         app(SettlementService::class)->recordFor($order->fresh());

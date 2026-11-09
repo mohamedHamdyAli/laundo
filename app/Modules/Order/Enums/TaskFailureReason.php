@@ -28,9 +28,22 @@ enum TaskFailureReason: string
      * decision that belongs to the customer, so the task stops and waits for them
      * to choose. The owner's decision.
      */
-    public function needsANewSlot(): bool
+    /**
+     * Whether this failure on this leg goes back to the customer for a new time
+     * — the leg stops, its window is cleared, and nothing moves until they
+     * pick one.
+     *
+     * A postponement always. **An absence at the pickup too, from the first
+     * one** (the client's sheet, item 7, 2026-11-08: «في حالة تعذر إستلام
+     * المندوب للأوردر من العميل لعدم وجوده يتم إعادة توجيه الأوردر للعميل
+     * لتحديد موعد آخر للإستلام») — it used to go back to the drivers and only
+     * reach a person after two attempts. An absence at the delivery keeps the
+     * old path.
+     */
+    public function needsANewSlot(?TaskType $leg = null): bool
     {
-        return $this === self::CustomerPostponed;
+        return $this === self::CustomerPostponed
+            || ($this === self::CustomerUnavailable && $leg === TaskType::PickupFromCustomer);
     }
 
     /**

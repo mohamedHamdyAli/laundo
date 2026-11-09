@@ -10,6 +10,7 @@ use App\Modules\JourneyStep\Models\JourneyStep;
 use App\Modules\Offer\Models\Offer;
 use App\Modules\Order\Enums\OrderStatus;
 use App\Modules\Order\Enums\TaskType;
+use App\Modules\Order\Services\TripFees;
 use App\Modules\Pricing\Models\ItemPrice;
 use App\Modules\Pricing\Services\PlatformFee;
 use App\Modules\Pricing\Services\PriceIncrease;
@@ -393,13 +394,9 @@ class LandingContentService
         $actualPieces = $estimatedPieces + 1;
         $actualSubtotal = $estimatedSubtotal + $extraUnit;
 
-        // The real floor an area charges, not a round number.
-        $delivery = Zone::query()
-            ->where('status', 'active')
-            ->whereNotNull('min_delivery_fee')
-            ->min('min_delivery_fee');
-
-        $delivery = $delivery === null ? null : (float) $delivery;
+        // The real journey an order pays — two trips at «رسوم المشوار» (since
+        // 2026-11-08), not a round number and no longer an area's per-km floor.
+        $delivery = round(app(TripFees::class)->perTrip() * 2, 2);
 
         return [
             'service' => getLocalizedValue($service, 'name'),
@@ -421,7 +418,7 @@ class LandingContentService
                 'total' => $actualSubtotal + (float) $delivery,
                 'total_label' => moneyFormat($actualSubtotal + (float) $delivery),
             ],
-            'delivery_label' => $delivery === null ? null : moneyFormat($delivery),
+            'delivery_label' => moneyFormat($delivery),
             'difference_label' => moneyFormat($extraUnit),
         ];
     }

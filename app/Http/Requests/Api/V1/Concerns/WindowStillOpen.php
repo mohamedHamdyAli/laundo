@@ -12,9 +12,9 @@ use Illuminate\Validation\Validator;
  * `after_or_equal:today` refused yesterday and nothing else: at two in the
  * afternoon an order was taken for this morning's 08:00–10:00, its driver
  * «late» the moment it was placed (the owner, 2026-09-30). A window closes
- * `Slot_Booking_Cutoff_Minutes` (an hour by default) before it ends, on the
- * business's clock — `SlotClock`, the same rule `GET /time-slots` marks as
- * `closed`.
+ * `Slot_Booking_Cutoff_Minutes` (a quarter hour by default) before it
+ * **starts** (since 2026-11-08; it was before it ended), on the business's
+ * clock — `SlotClock`, the same rule `GET /time-slots` marks as `closed`.
  */
 trait WindowStillOpen
 {
@@ -23,8 +23,8 @@ trait WindowStillOpen
         $validator->after(function (Validator $validator) {
             $clock = app(SlotClock::class);
 
-            foreach (['pickup' => __('This pickup window has ended or is about to. Please choose a later one.'),
-                'delivery' => __('This delivery window has ended or is about to. Please choose a later one.')] as $end => $message) {
+            foreach (['pickup' => __('This pickup window starts too soon to book. Please choose a later one.'),
+                'delivery' => __('This delivery window starts too soon to book. Please choose a later one.')] as $end => $message) {
                 $dateField = $end.'_date';
                 $slotField = $end.'_slot_id';
 

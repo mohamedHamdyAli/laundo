@@ -71,6 +71,13 @@ enum TransactionReason: string
     case DiscountFunded = 'discount_funded';
 
     /**
+     * The customer handed the driver more than the bill and the platform
+     * approved taking it (the client's sheet, item 10, 2026-11-08): the excess
+     * is theirs, as wallet credit — the owner's answer.
+     */
+    case OverCollected = 'over_collected';
+
+    /**
      * Which of the design's four tabs this belongs under.
      */
     public function group(): string
@@ -78,7 +85,7 @@ enum TransactionReason: string
         return match ($this) {
             self::TopUp, self::Earning, self::Commission, self::PlatformFee, self::LaundryPayout, self::Bonus => 'additions',
             self::OrderPayment, self::Withdrawal, self::DiscountFunded => 'payments',
-            self::Refund => 'refunds',
+            self::Refund, self::OverCollected => 'refunds',
             self::Adjustment => 'adjustments',
         };
     }
@@ -97,6 +104,7 @@ enum TransactionReason: string
             self::PlatformFee => 'Platform fee from the customer',
             self::Bonus => 'Monthly bonus',
             self::DiscountFunded => 'Discount funded by the platform',
+            self::OverCollected => 'Paid over the bill at the door',
         };
     }
 

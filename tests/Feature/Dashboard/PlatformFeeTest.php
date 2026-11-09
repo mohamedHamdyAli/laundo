@@ -398,6 +398,7 @@ class PlatformFeeTest extends TestCase
 
         // The laundry types 100.
         $reviews->review($order, $line, null, $this->tenant['owner']);
+        $this->sendReview($order);
         $this->assertSame('110.00', $order->fresh()->final_subtotal);
         $this->assertSame('100.00', $order->fresh()->items->where('phase', 'final')->first()->base_unit_price);
 
@@ -452,9 +453,10 @@ class PlatformFeeTest extends TestCase
 
         $reviews = app(OrderReviewService::class);
         $reviews->review($order, [['item_id' => $this->catalog['items'][0]->id, 'qty' => 2]], null, $this->tenant['owner']);
+        $this->sendReview($order);
         $order = $reviews->confirm($order->fresh(), $this->customer);
 
-        foreach ([OrderStatus::Cleaning, OrderStatus::ReadyForDelivery, OrderStatus::Delivered, OrderStatus::Completed] as $next) {
+        foreach ([OrderStatus::Cleaning, OrderStatus::Finished, OrderStatus::ReadyForDelivery, OrderStatus::Delivered, OrderStatus::Completed] as $next) {
             $order = $machine->transition($order->fresh(), $next, 'system');
         }
 

@@ -33,7 +33,52 @@
         <div class="row">
             {{-- Left: what was ordered --}}
             <div class="col-md-8">
+                @include('admin.order.partials._task_holds', ['row' => $row])
                 @include('admin.order.partials._piece_check', ['row' => $row])
+
+                {{-- The laundry's count is a draft until the platform sends it to
+                     the customer (the client's sheet, item 12, 2026-11-08): the
+                     platform gets the button, the laundry is told it is waiting. --}}
+                @if ($row->hasReviewToSend())
+                    <div class="alert alert-primary d-flex flex-wrap gap-2 align-items-center" role="alert" data-review-to-send>
+                        <div class="flex-grow-1">
+                            <strong class="d-block">{{ __('The laundry has counted and priced this order') }}</strong>
+                            {{ __(':count pieces, :total — the customer has not seen it yet.', [
+                                'count' => (int) $row->final_items_count,
+                                'total' => moneyFormat((float) $row->final_total),
+                            ]) }}
+                        </div>
+                        @if (canDo('order.update') && ! \App\Support\LaundryContext::isTenant())
+                            <form method="POST" action="{{ route('admin.order.review.send', $row->id) }}">
+                                @csrf
+                                <button type="submit" class="btn btn-primary btn-sm">
+                                    <i class="fa fa-paper-plane me-1"></i>{{ __('Send to the customer') }}
+                                </button>
+                            </form>
+                        @else
+                            <small>{{ __('Sent to the platform — they send it on to the customer.') }}</small>
+                        @endif
+                    </div>
+                @endif
+
+                {{-- «خلص الغسيل» (the client's sheet, item 18, 2026-11-08): the
+                     collection from the laundry waits for this button. --}}
+                @if ($row->status === \App\Modules\Order\Enums\OrderStatus::Cleaning)
+                    <div class="alert alert-info d-flex flex-wrap gap-2 align-items-center" role="alert" data-finish-washing>
+                        <div class="flex-grow-1">
+                            <strong class="d-block">{{ __('Being cleaned') }}</strong>
+                            {{ __('No driver is sent to collect it until the laundry marks it finished.') }}
+                        </div>
+                        @if (\App\Modules\Order\Controllers\OrderWashingController::mayFinish())
+                            <form method="POST" action="{{ route('admin.order.finish_washing', $row->id) }}">
+                                @csrf
+                                <button type="submit" class="btn btn-success btn-sm">
+                                    <i class="fa fa-check-double me-1"></i>{{ __('Washing finished') }}
+                                </button>
+                            </form>
+                        @endif
+                    </div>
+                @endif
 
                 {{-- The laundry's core screen, offered only while the pieces are
                      actually here and waiting to be counted. --}}
@@ -739,9 +784,13 @@
                                     <button type="submit" class="btn btn-primary btn-sm w-100">
                                         {{ __('Assign') }}
                                     </button>
-                                    <small class="text-muted d-block mt-2">
-                                        {{ __('Assigning recalculates the delivery fee from the laundry\'s location.') }}
-                                    </small>
+                                    {{-- Only an order priced by distance (before the
+                                         trip fee) is re-measured from the laundry. --}}
+                                    @if ($row->pickup_fee === null)
+                                        <small class="text-muted d-block mt-2">
+                                            {{ __('Assigning recalculates the delivery fee from the laundry\'s location.') }}
+                                        </small>
+                                    @endif
                                 </form>
                             @endif
                         </div>

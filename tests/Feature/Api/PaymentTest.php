@@ -512,6 +512,8 @@ class PaymentTest extends TestCase
             $this->tenant['owner']
         );
 
+        $this->sendReview($order);
+
         return $reviews->confirm($order->fresh(), $this->customer)->fresh();
     }
 
@@ -521,6 +523,8 @@ class PaymentTest extends TestCase
         $machine = app(OrderStateMachine::class);
 
         $machine->transition($order, OrderStatus::Cleaning, 'laundry');
+
+        $machine->transition($order->fresh(), OrderStatus::Finished, 'laundry');
         $machine->transition($order->fresh(), OrderStatus::ReadyForDelivery, 'laundry');
 
         // The three legs before the delivery.
