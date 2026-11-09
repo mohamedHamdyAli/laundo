@@ -2621,5 +2621,6 @@
     "The hangers do not match what the laundry wrote.": "عدد الشماعات مش مطابق للي المغسلة كتبته.",
     "Waiting for your approval — the hangers from the laundry": "مستني موافقتك — الشماعات من المغسلة",
     "Hangers the clothes go out on": "عدد الشماعات اللي الهدوم طالعة عليها",
-    "Hangers: the laundry :sent · the driver :collected": "الشماعات: المغسلة :sent · المندوب :collected"
+    "Hangers: the laundry :sent · the driver :collected": "الشماعات: المغسلة :sent · المندوب :collected",
+    "Please enter the number of hangers you received.": "أدخل عدد الشماعات اللي استلمتها."
 }

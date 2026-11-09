@@ -976,6 +976,10 @@ class DriverTaskController extends Controller
                 ['piece_count' => [__('Please enter the number of pieces.')]],
                 __('Please enter the number of pieces.')
             ),
+            'hanger_count_required' => failReturnValidation(
+                ['hanger_count' => [__('Please enter the number of hangers you received.')]],
+                __('Please enter the number of hangers you received.')
+            ),
             'task_finished' => failReturnMsg(__('This task is already finished.')),
             'order_not_ready' => failReturnMsg($this->notReady()),
             'order_has_no_laundry' => failReturnMsg($this->noLaundry()),

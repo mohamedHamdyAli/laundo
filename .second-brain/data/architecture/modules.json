@@ -167,7 +167,7 @@
             "api-controller": 24
         },
         "files": 24,
-        "lines": 5691,
+        "lines": 5695,
         "classes": [
             {
                 "fqcn": "App\\Http\\Controllers\\Api\\V1\\AddressController",
@@ -3038,7 +3038,7 @@
             "repository": 1
         },
         "files": 79,
-        "lines": 16726,
+        "lines": 16752,
         "classes": [
             {
                 "fqcn": "App\\Modules\\Order\\Controllers\\DispatchController",
@@ -5363,7 +5363,7 @@
             "browser-test": 26
         },
         "files": 173,
-        "lines": 57153,
+        "lines": 57176,
         "classes": [
             {
                 "fqcn": "Tests\\Feature\\Api\\AddressIdDisclosureTest",

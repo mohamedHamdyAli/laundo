@@ -96,7 +96,7 @@ class TaskHolds
      * that still does not match replaces the figure, it does not queue a
      * second question.
      *
-     * @param  array{kind: string, reported: float, expected: float}  $need
+     * @param  array{kind: string, reported: float, expected: float, hangers?: array{reported: int, expected: int}|null}  $need
      * @param  array<string, mixed>  $payload  the confirmation, files as stored paths
      */
     public function raise(OrderTask $task, Driver $driver, array $need, array $payload): TaskHold

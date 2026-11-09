@@ -127,7 +127,7 @@
                                     {{-- The hangers the clothes came out on: the laundry's
                                          figure and what the driver received (item 11). --}}
                                     @if ($task->type->countsHangers() && $row->hangers_sent !== null)
-                                        <small class="d-block {{ $task->hangers_collected !== null && $task->hangers_collected !== $row->hangers_sent ? 'text-danger' : 'text-muted' }}" data-hangers-out="{{ $task->id }}">
+                                        <small class="d-block {{ $task->hangers_collected !== null && $task->hangers_collected !== $row->hangers_sent ? 'text-danger' : ($task->hangers_collected === null && $task->status === \App\Modules\Order\Enums\TaskStatus::Completed ? 'text-warning' : 'text-muted') }}" data-hangers-out="{{ $task->id }}">
                                             {{ __('Hangers: the laundry :sent · the driver :collected', ['sent' => $row->hangers_sent, 'collected' => $task->hangers_collected ?? '—']) }}
                                         </small>
                                     @endif

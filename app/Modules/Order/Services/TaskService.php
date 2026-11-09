@@ -154,6 +154,20 @@ class TaskService
             throw new RuntimeException('piece_count_required');
         }
 
+        // The hangers are optional to send so an app that does not ask yet
+        // keeps completing collections (item 11, 2026-11-09) — but an app that
+        // sent them and was held cannot walk the question away by leaving them
+        // out the next time (code review): the hold would close as withdrawn
+        // with nobody asked.
+        if ($type->countsHangers() && ! isset($data['hanger_count']) && $task->order?->hangers_sent !== null) {
+            $last = $this->holds->latestFor($task);
+
+            if ($last && in_array($last->status, [TaskHold::PENDING, TaskHold::REJECTED], true)
+                && ($last->payload['hanger_count'] ?? null) !== null) {
+                throw new RuntimeException('hanger_count_required');
+            }
+        }
+
         // «شماعات راجعة» — only at the customer's door, and never more than a
         // visit may be credited for. Ignored on the laundry legs, the way
         // `receiver_name` is ignored where nobody signs.

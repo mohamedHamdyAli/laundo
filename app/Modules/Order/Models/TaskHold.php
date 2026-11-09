@@ -14,7 +14,7 @@ use Illuminate\Support\Carbon;
  * @property int $id
  * @property int $order_task_id
  * @property int $order_id
- * @property string $kind `piece_count` | `collected_amount`
+ * @property string $kind `piece_count` | `hanger_count` | `collected_amount`
  * @property string $reported
  * @property string|null $expected
  * @property array<string, mixed> $payload
@@ -57,21 +57,33 @@ class TaskHold extends Model
         ];
     }
 
+    /**
+     * @return BelongsTo<OrderTask, $this>
+     */
     public function task(): BelongsTo
     {
         return $this->belongsTo(OrderTask::class, 'order_task_id');
     }
 
+    /**
+     * @return BelongsTo<Order, $this>
+     */
     public function order(): BelongsTo
     {
         return $this->belongsTo(Order::class, 'order_id');
     }
 
+    /**
+     * @return BelongsTo<User, $this>
+     */
     public function raisedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'raised_by');
     }
 
+    /**
+     * @return BelongsTo<User, $this>
+     */
     public function decidedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'decided_by');

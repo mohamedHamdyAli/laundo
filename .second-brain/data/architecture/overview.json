@@ -89,7 +89,7 @@
             "references": 2747,
             "entry_point": 1760,
             "depends_on": 1303,
-            "calls": 972,
+            "calls": 973,
             "route_to": 914,
             "touches": 648,
             "guarded_by": 439,

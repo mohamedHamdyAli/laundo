@@ -398,6 +398,29 @@ class FinishedWashingTest extends TestCase
     }
 
     #[Test]
+    public function a_driver_held_over_the_hangers_cannot_leave_them_out_the_next_time(): void
+    {
+        // Code review (2026-11-09): resending without `hanger_count` completed
+        // the leg and closed the question as «withdrawn», nobody asked.
+        $leg = $this->collectionStarted(hangers: 6);
+        $this->complete($leg, ['piece_count' => 2, 'hanger_count' => 5])->assertStatus(409);
+
+        $this->complete($leg, ['piece_count' => 2])
+            ->assertStatus(422)
+            ->assertJsonPath('errors.hanger_count.0', __('Please enter the number of hangers you received.'));
+        $this->assertSame(TaskStatus::Started, $leg->fresh()->status);
+        $this->assertSame(TaskHold::PENDING, TaskHold::sole()->status);
+
+        // Refused by the platform: still asked for.
+        app(TaskService::class)->rejectHold(TaskHold::sole(), $this->platformOperator(), 'Count again');
+        $this->complete($leg, ['piece_count' => 2])->assertStatus(422);
+
+        // With the right figure it completes.
+        $this->complete($leg, ['piece_count' => 2, 'hanger_count' => 6])->assertOk();
+        $this->assertSame(6, $leg->fresh()->hangers_collected);
+    }
+
+    #[Test]
     public function an_order_finished_without_a_figure_is_not_checked(): void
     {
         $leg = $this->collectionStarted(hangers: null);

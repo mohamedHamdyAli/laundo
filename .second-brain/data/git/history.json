@@ -1,8 +1,14 @@
 {
     "available": true,
-    "head": "fec73282d0cdedece47df2add8d25b2229b02ebb",
-    "commits_scanned": 150,
+    "head": "196b5f2995f374c08b6c85df64b8b48ef5ab3caa",
+    "commits_scanned": 151,
     "recent": [
+        {
+            "sha": "196b5f29",
+            "date": "2026-11-09",
+            "subject": "feat: enhance order management with new features and updates",
+            "files": 19
+        },
         {
             "sha": "fec73282",
             "date": "2026-11-09",
@@ -86,42 +92,38 @@
             "date": "2026-10-12",
             "subject": "docs: the social links release is live",
             "files": 1
-        },
-        {
-            "sha": "234a96f9",
-            "date": "2026-10-12",
-            "subject": "feat: the social links as a list on /app-settings, real ones only",
-            "files": 7
         }
     ],
     "hottest_files": {
         "routes/web.php": 31,
         "docs/postman/Laundo API v1.postman_collection.json": 28,
-        "docs/mobile-api-changes.md": 26,
+        "docs/mobile-api-changes.md": 27,
         "app/Helpers/Helpers.php": 20,
         "resources/views/admin/setting/generalSetting/forms/formInput.blade.php": 19,
+        "app/Http/Controllers/Api/V1/OrderController.php": 18,
         "config/menu.php": 18,
-        "app/Http/Controllers/Api/V1/OrderController.php": 17,
         "app/Modules/Order/Services/OrderService.php": 16,
         "app/Modules/Setting/Requests/GeneralSettingRequest.php": 16,
+        "docs/architecture.md": 14,
         "config/dashboard.php": 14,
         "resources/views/layouts/footer_script.blade.php": 14,
-        "docs/architecture.md": 13,
+        "resources/views/admin/order/show.blade.php": 13,
         "app/Modules/Order/Services/orderCrudService.php": 12,
-        "resources/views/admin/order/show.blade.php": 12,
         "app/Http/Controllers/Admin/LanguageController.php": 12,
         "app/Services/languages/LanguageService.php": 12,
+        "app/Modules/Order/Models/Order.php": 11,
+        "app/Modules/Order/Models/OrderTask.php": 11,
         "database/seeders/SettingsSeeder.php": 11,
-        "app/Modules/Order/Models/Order.php": 10,
-        "app/Modules/Order/Models/OrderTask.php": 10,
+        "app/Http/Controllers/Api/V1/DriverTaskController.php": 10,
         "app/Http/Controllers/Api/V1/DriverController.php": 9,
-        "app/Http/Controllers/Api/V1/DriverTaskController.php": 9,
         "resources/views/admin/order/index.blade.php": 9,
         "routes/api.php": 9,
         "app/Modules/User/Models/User.php": 9,
         "app/Modules/Driver/Services/DriverCard.php": 9,
         "resources/views/layouts/topbar.blade.php": 9,
         "resources/views/layouts/sidebar.blade.php": 9,
+        "app/Modules/Order/Services/TaskService.php": 8,
+        "resources/views/admin/order/partials/_tasks.blade.php": 8,
         "app/Http/Requests/Api/V1/OrderRequest.php": 8,
         "app/Modules/Order/Repositories/OrderRepository.php": 8,
         "app/Modules/Order/Services/OrderReviewService.php": 8,
@@ -130,10 +132,8 @@
         "resources/views/admin/home.blade.php": 8,
         "resources/views/admin/banner/forms/formInput.blade.php": 8,
         "app/Services/CachingService.php": 8,
+        "app/Modules/Order/Enums/TaskType.php": 7,
         "app/Http/Controllers/Api/V1/GeoController.php": 7,
-        "app/Modules/Notification/Enums/NotificationEvent.php": 7,
-        "app/Modules/Order/Services/OrderPricing.php": 7,
-        "app/Modules/Order/Services/TaskService.php": 7,
-        "app/Modules/Report/Services/DashboardSummary.php": 7
+        "app/Modules/Notification/Enums/NotificationEvent.php": 7
     }
 }
