@@ -56,12 +56,15 @@
                     </thead>
                     <tbody>
                         @foreach ($row->tasks as $task)
-                            <tr class="{{ $task->isLate() ? 'table-warning' : '' }}">
+                            {{-- Waiting on the customer, not failed (the owner, 2026-11-11):
+                                 they were asked for a new time and the window is cleared. --}}
+                            @php $postponed = $task->setRelation('order', $row)->awaitsNewTime(); @endphp
+                            <tr class="{{ $task->isLate() ? 'table-warning' : '' }}" @if ($postponed) data-awaiting-new-time="{{ $task->id }}" @endif>
                                 <td>{{ $task->sequence }}</td>
                                 <td>
                                     {{ __($task->type->label()) }}
                                     @if ($task->failure_reason)
-                                        <small class="d-block text-danger">
+                                        <small class="d-block {{ $postponed ? 'text-attention' : 'text-danger' }}">
                                             {{ __($task->failure_reason->label()) }}
                                             @if ($task->failure_note) — {{ $task->failure_note }} @endif
                                             ({{ $task->attempts }} {{ __('attempts') }})
@@ -94,9 +97,16 @@
                                     @endif
                                 </td>
                                 <td>
+                                    @if ($postponed)
+                                        <span class="status-pill tone-warn">{{ __('Postponed') }}</span>
+                                        <small class="d-block text-muted" style="max-width: 12rem">
+                                            {{ __('Waiting for the customer to pick a new time') }}
+                                        </small>
+                                    @else
                                     <span class="badge {{ $task->status->isFinished() ? ($task->status->value === 'failed' ? 'bg-danger' : 'bg-success') : 'bg-info' }}">
                                         {{ __($task->status->label()) }}
                                     </span>
+                                    @endif
                                     @if ($task->isLate())
                                         <span class="badge bg-warning text-dark">{{ __('Late') }}</span>
                                     @endif

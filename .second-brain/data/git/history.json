@@ -1,8 +1,14 @@
 {
     "available": true,
-    "head": "f5320ba306b09d92ea6f23585fe11ff619a4c6b2",
-    "commits_scanned": 152,
+    "head": "5a2abd70d14b507578252a36c282f1afbf2fefd8",
+    "commits_scanned": 153,
     "recent": [
+        {
+            "sha": "5a2abd70",
+            "date": "2026-11-11",
+            "subject": "fix: resolve 500 errors on order details due to aggregate SQL issues",
+            "files": 6
+        },
         {
             "sha": "f5320ba3",
             "date": "2026-11-09",
@@ -86,25 +92,19 @@
             "date": "2026-10-12",
             "subject": "docs: the driver map release is live",
             "files": 1
-        },
-        {
-            "sha": "39f73396",
-            "date": "2026-10-12",
-            "subject": "feat: «خريطة المناديب» — every driver, live, on one map",
-            "files": 20
         }
     ],
     "hottest_files": {
         "routes/web.php": 31,
-        "docs/postman/Laundo API v1.postman_collection.json": 28,
+        "docs/postman/Laundo API v1.postman_collection.json": 29,
         "docs/mobile-api-changes.md": 27,
         "app/Helpers/Helpers.php": 20,
+        "app/Http/Controllers/Api/V1/OrderController.php": 19,
         "resources/views/admin/setting/generalSetting/forms/formInput.blade.php": 19,
-        "app/Http/Controllers/Api/V1/OrderController.php": 18,
         "config/menu.php": 18,
         "app/Modules/Order/Services/OrderService.php": 16,
         "app/Modules/Setting/Requests/GeneralSettingRequest.php": 16,
-        "docs/architecture.md": 14,
+        "docs/architecture.md": 15,
         "config/dashboard.php": 14,
         "resources/views/layouts/footer_script.blade.php": 14,
         "resources/views/admin/order/show.blade.php": 13,

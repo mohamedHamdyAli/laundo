@@ -1,3 +1,56 @@
+# Item 7 again — absence at the delivery, and «failed» on the panel (2026-11-11)
+
+QA on the live site, order 103: the driver failed **«التوصيل للعميل»** with
+«العميل غير متاح» twice; the panel showed it **Failed**, the leg went back to
+the drivers (so the drivers were told, not the customer), and the driver app
+then showed «المهمة غير موجودة». The owner: «النوتفكيشن تروح لليوزر مش الرايدر…
+لو العميل مستلمش… المفروض يحدد وقت تاني، بس ميقدرش يغير نوع الخدمة — الموعد
+بس» · «بتظهر في الداشبورد failed مش تأجيل».
+
+- [x] `needsANewSlot()`: an absence at the **delivery** takes the same path as
+      at the pickup — the leg stops, the delivery's window is cleared, the
+      customer is asked (`reschedule_needed`), nothing is offered to drivers.
+- [x] One definition of «waiting for the customer's new time»:
+      `OrderTask::awaitsNewTime()` (row) + `scopeAwaitingNewTime()` (query);
+      `RescheduleService::postponedTask()` reads it. An absence needs its
+      window cleared (old-rule rows stay an operator's); a postponement does
+      not — as before (TurnaroundTest fakes postponements with the window set).
+- [x] Words for the delivery: the order's note and the customer's push.
+- [x] Panel: the order screen and the dispatch board show «مؤجّل — بانتظار
+      موعد من العميل», not Failed/red; no Assign form on such a leg; the
+      board's «فشلت» counter leaves it out. Seen in Chromium on the dev DB
+      (task 4 flipped and restored).
+- [x] Tests (RescheduleTest +3 / 1 rewritten; PostponedLegTest 3),
+      translations ×4, mobile note `mobile-2026-11-11-absent-at-delivery.md`,
+      Postman + generate-reference.py, architecture.md, Changelog, brain update.
+- [x] Full suite, then /code-review + /security-review (who gets a notification).
+
+Review (2026-11-11, before the deploy)
+- /security-review: nothing at the bar (recipient, tenant scope, order
+  ownership, SQL, Blade escaping all checked).
+- /code-review, fixed: (1) the assign refusal left a delivery absence with no
+  way out from the panel — **the owner's call: a person can still assign it**
+  (board shows the form under the amber note; nothing automatic sends anyone);
+  (2) a rebooked delivery answered «We will collect it then», and a delivery
+  postponement pushed «so we can collect it» — both now say deliver.
+- /code-review, left: `still_owed` on a `Returned` order (nothing drives
+  `returned` yet — the known gap); the controller's `stillOwed()` measuring
+  against the shown total rather than `Order::stillOwed()` (deliberate, says
+  why); the badge still counting postponed legs (they are now actionable);
+  perf of the `whereNotIn` (a `whereNot` would drop failed legs with a null
+  reason — NULL logic); legacy absences on orders placed with no window read
+  as postponed (checked on live at deploy); custody of the pieces (open,
+  below).
+
+Answers (2026-11-11): «الأدمن يقدر يعيّن» — a postponed leg stays assignable
+by a person.
+
+Open, for the owner: the pieces are with the driver who failed the delivery,
+and the rebooked leg is offered to whoever is eligible — nothing models the
+custody. And the driver app's «المهمة غير موجودة» after a `fail` is the app
+reloading a leg that is no longer the driver's (any failure, not only this) —
+written into the note as an app change.
+
 # The client's 19 requests (asked 2026-11-08) — queued, worked by priority
 
 «دي تاسكات العميل سجلها عندك وابتدي اعملها واحدة واحدة ع حسب priority — لو

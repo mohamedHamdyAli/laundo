@@ -125,6 +125,10 @@ class DriverRepository
         return OrderTask::query()
             ->whereIn('order_id', Order::query()->select('id'))
             ->needingAPerson()
+            // A pin is somewhere to send a driver now; a leg the customer was
+            // asked to rebook has no time yet — an operator who agreed one by
+            // phone assigns it from the dispatch board (2026-11-11).
+            ->whereNotIn('id', OrderTask::query()->awaitingNewTime()->select('id'))
             ->with([
                 'order:id,code,status,user_id,laundry_id,pickup_address_id,delivery_address_id',
                 'order.customer:id,name',

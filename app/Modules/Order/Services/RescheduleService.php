@@ -2,7 +2,6 @@
 
 namespace App\Modules\Order\Services;
 
-use App\Modules\Order\Enums\TaskFailureReason;
 use App\Modules\Order\Enums\TaskStatus;
 use App\Modules\Order\Enums\TaskType;
 use App\Modules\Order\Models\Order;
@@ -60,31 +59,20 @@ class RescheduleService
      * The leg that was postponed, if the order is waiting on one.
      *
      * A failed task whose reason sends it back to the customer
-     * (`TaskFailureReason::needsANewSlot()`) and which nothing has replaced: a
-     * postponement on either leg, or the customer not being there for the
-     * pickup (since 2026-11-08).
+     * (`TaskFailureReason::needsANewSlot()`): a postponement on any leg, or the
+     * customer not being there for the pickup (since 2026-11-08) or the
+     * delivery (since 2026-11-11) — an absence only with its window cleared;
+     * one that failed its way out under the old rule kept its window, and is an
+     * operator's rescue, not a prompt. `OrderTask::scopeAwaitingNewTime()` is
+     * the rule.
      */
     public function postponedTask(Order $order): ?OrderTask
     {
-        $task = $order->tasks()
-            ->where('status', TaskStatus::Failed->value)
-            ->where(fn ($q) => $q
-                ->where('failure_reason', TaskFailureReason::CustomerPostponed->value)
-                ->orWhere(fn ($absent) => $absent
-                    ->where('failure_reason', TaskFailureReason::CustomerUnavailable->value)
-                    ->where('type', TaskType::PickupFromCustomer->value)))
+        return $order->tasks()
+            ->awaitingNewTime()
+            ->reorder()
             ->orderByDesc('id')
             ->first();
-
-        // An absent customer's pickup is the customer's to rebook only when it
-        // took that path — which clears the pickup's window. One that failed
-        // its way out under the old rule (two attempts, before 2026-11-08)
-        // still has its window, and is an operator's rescue, not a prompt.
-        if ($task?->failure_reason === TaskFailureReason::CustomerUnavailable && $order->pickup_slot_id !== null) {
-            return null;
-        }
-
-        return $task;
     }
 
     /**
@@ -106,10 +94,7 @@ class RescheduleService
 
         // Which end of the order this leg belongs to decides which slots are even
         // eligible: a slot marked delivery-only cannot be used for a collection.
-        $collection = in_array($task->type, [
-            TaskType::PickupFromCustomer,
-            TaskType::DeliverToLaundry,
-        ], true);
+        $collection = $task->type->onPickupWindow();
 
         $slot = TimeSlot::where('status', 'active')
             ->whereIn('applies_to', ['both', $collection ? 'pickup' : 'delivery'])

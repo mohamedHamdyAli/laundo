@@ -167,7 +167,7 @@
             "api-controller": 24
         },
         "files": 24,
-        "lines": 5703,
+        "lines": 5787,
         "classes": [
             {
                 "fqcn": "App\\Http\\Controllers\\Api\\V1\\AddressController",
@@ -464,8 +464,8 @@
         "summary": "A customer's saved addresses.",
         "depends_on": {
             "Platform": 73,
-            "Order": 69,
-            "Payment": 18,
+            "Order": 67,
+            "Payment": 19,
             "Loyalty": 13,
             "TimeSlot": 12,
             "Driver": 10,
@@ -1232,10 +1232,10 @@
         "community": "quality",
         "path": null,
         "layers": {
-            "doc": 12
+            "doc": 14
         },
-        "files": 12,
-        "lines": 11650,
+        "files": 14,
+        "lines": 11779,
         "classes": [],
         "models": [],
         "owns_tables": [],
@@ -1262,7 +1262,7 @@
             "command": 1
         },
         "files": 52,
-        "lines": 6485,
+        "lines": 6489,
         "classes": [
             {
                 "fqcn": "App\\Modules\\Driver\\Controllers\\DriverApplicationController",
@@ -1540,7 +1540,7 @@
             "City": 2
         },
         "depended_on_by": {
-            "Tests": 64,
+            "Tests": 65,
             "Platform": 22,
             "Order": 11,
             "Api": 10,
@@ -3038,7 +3038,7 @@
             "repository": 1
         },
         "files": 79,
-        "lines": 16752,
+        "lines": 16867,
         "classes": [
             {
                 "fqcn": "App\\Modules\\Order\\Controllers\\DispatchController",
@@ -3535,8 +3535,8 @@
             "Complaint": 1
         },
         "depended_on_by": {
-            "Tests": 538,
-            "Api": 69,
+            "Tests": 549,
+            "Api": 67,
             "Report": 40,
             "Driver": 34,
             "Payment": 27,
@@ -3879,8 +3879,8 @@
         "depended_on_by": {
             "Tests": 89,
             "Platform": 30,
+            "Api": 19,
             "Order": 19,
-            "Api": 18,
             "Report": 12,
             "Routing": 6,
             "Laundry": 3,
@@ -5359,11 +5359,11 @@
         "community": "quality",
         "path": null,
         "layers": {
-            "test": 147,
+            "test": 148,
             "browser-test": 26
         },
-        "files": 173,
-        "lines": 57202,
+        "files": 174,
+        "lines": 57648,
         "classes": [
             {
                 "fqcn": "Tests\\Feature\\Api\\AddressIdDisclosureTest",
@@ -6002,6 +6002,12 @@
                 "summary": "«نقاط العملاء» on the panel, and the «النقاط» tab on the settings screen."
             },
             {
+                "fqcn": "Tests\\Feature\\Dashboard\\PostponedLegTest",
+                "layer": "test",
+                "path": "tests/Feature/Dashboard/PostponedLegTest.php",
+                "summary": "«بتظهر في الداشبورد failed مش تأجيل» (the owner, 2026-11-11, order 103)."
+            },
+            {
                 "fqcn": "Tests\\Feature\\Dashboard\\PriceIncreaseTest",
                 "layer": "test",
                 "path": "tests/Feature/Dashboard/PriceIncreaseTest.php",
@@ -6446,6 +6452,7 @@
             "tests/Feature/Dashboard/PieceCheckTest.php",
             "tests/Feature/Dashboard/PlatformFeeTest.php",
             "tests/Feature/Dashboard/PointAccountDashboardTest.php",
+            "tests/Feature/Dashboard/PostponedLegTest.php",
             "tests/Feature/Dashboard/PriceIncreaseTest.php",
             "tests/Feature/Dashboard/QuotePricedReviewTest.php",
             "tests/Feature/Dashboard/RatingDashboardTest.php",
@@ -6490,16 +6497,16 @@
         ],
         "summary": "",
         "depends_on": {
-            "Order": 538,
+            "Order": 549,
             "Platform": 115,
-            "User": 108,
+            "User": 109,
             "Payment": 89,
             "Notification": 69,
-            "Driver": 64,
+            "Driver": 65,
             "Wallet": 47,
             "Setting": 42,
             "Laundry": 33,
-            "TimeSlot": 22,
+            "TimeSlot": 23,
             "Pricing": 22,
             "Complaint": 21,
             "Coupon": 19,
@@ -6621,7 +6628,7 @@
         },
         "depended_on_by": {
             "Order": 30,
-            "Tests": 22,
+            "Tests": 23,
             "Api": 12,
             "Platform": 9,
             "Laundry": 5,
@@ -6723,7 +6730,7 @@
             "Laundry": 1
         },
         "depended_on_by": {
-            "Tests": 108,
+            "Tests": 109,
             "Order": 36,
             "Notification": 23,
             "Payment": 13,

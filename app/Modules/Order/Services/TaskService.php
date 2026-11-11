@@ -492,11 +492,12 @@ class TaskService
                 // dispatches until the customer picks a time, and the cleared slot
                 // is what makes that unmistakable to anybody reading the row.
                 //
-                // The customer not being there for the pickup takes the same
-                // path from the first time (the client's sheet, item 7): only
-                // the pickup's time is asked for again — the delivery follows
-                // on its own when it must, the service stays — and the trip is
-                // not charged twice.
+                // The customer not being there takes the same path from the
+                // first time (the client's sheet, item 7 — the pickup since
+                // 2026-11-08, the delivery since 2026-11-11): only that trip's
+                // time is asked for again — after a pickup the delivery follows
+                // on its own when it must; the service never changes — and the
+                // trip is not charged twice. Nothing is offered to the drivers.
                 $task->update(['status' => TaskStatus::Failed, 'driver_id' => null]);
 
                 // The order leaves its visit — the trip that visit still makes
@@ -506,24 +507,27 @@ class TaskService
                 // time it picks: the missed trip is not charged twice.
                 app(OrderService::class)->handOverTripFees(
                     $task->order,
-                    [$this->isCollectionEnd($task->type) ? 'pickup' : 'return'],
+                    [$task->type->onPickupWindow() ? 'pickup' : 'return'],
                     wasCancelled: false,
                 );
 
                 $this->clearSchedule($task);
 
                 $absent = $reason === TaskFailureReason::CustomerUnavailable;
+                $atPickup = $task->type->onPickupWindow();
 
                 $this->machine->note(
                     $task->order,
-                    ($absent
-                        ? __('The customer was not there for the pickup. Waiting for them to pick a new time.')
-                        : __('Postponed by the customer. Waiting for a new time.')).($note ? " — {$note}" : ''),
+                    (match (true) {
+                        $absent && $atPickup => __('The customer was not there for the pickup. Waiting for them to pick a new time.'),
+                        $absent => __('The customer was not there for the delivery. Waiting for them to pick a new time.'),
+                        default => __('Postponed by the customer. Waiting for a new time.'),
+                    }).($note ? " — {$note}" : ''),
                     'driver',
                     $driver
                 );
 
-                $this->askForANewSlot($task->order, $absent);
+                $this->askForANewSlot($task->order, $absent, $atPickup);
 
                 return $task->refresh();
             }
@@ -811,18 +815,9 @@ class TaskService
             return;
         }
 
-        $order->forceFill($this->isCollectionEnd($task->type)
+        $order->forceFill($task->type->onPickupWindow()
             ? ['pickup_slot_id' => null, 'pickup_date' => null]
             : ['delivery_slot_id' => null, 'delivery_date' => null])->save();
-    }
-
-    /**
-     * Whether a leg belongs to the order's collection end (the pickup's window)
-     * rather than its return end (the delivery's).
-     */
-    private function isCollectionEnd(TaskType $type): bool
-    {
-        return in_array($type, [TaskType::PickupFromCustomer, TaskType::DeliverToLaundry], true);
     }
 
     /**
@@ -833,7 +828,7 @@ class TaskService
      * order also appears in the operations queue, so the message is not the only
      * way anybody finds out.
      */
-    private function askForANewSlot(?Order $order, bool $absent = false): void
+    private function askForANewSlot(?Order $order, bool $absent = false, bool $atPickup = true): void
     {
         if ($order === null || $order->customer === null) {
             return;
@@ -843,11 +838,16 @@ class TaskService
             app(NotificationDispatcher::class)->send($order->customer, new NotificationMessage(
                 event: NotificationEvent::RescheduleNeeded,
                 title: __('Pick a new time for your order'),
-                body: $absent
-                    ? __('Our driver could not find you to collect order :code. Choose a new pickup time.', ['code' => $order->code])
-                    : __('Order :code was postponed. Choose a new time so we can collect it.', [
+                body: match (true) {
+                    $absent && $atPickup => __('Our driver could not find you to collect order :code. Choose a new pickup time.', ['code' => $order->code]),
+                    $absent => __('Our driver could not find you to deliver order :code. Choose a new delivery time.', ['code' => $order->code]),
+                    $atPickup => __('Order :code was postponed. Choose a new time so we can collect it.', [
                         'code' => $order->code,
                     ]),
+                    default => __('Order :code was postponed. Choose a new time so we can deliver it.', [
+                        'code' => $order->code,
+                    ]),
+                },
                 data: ['order_id' => (string) $order->id],
                 subject: $order,
             ));

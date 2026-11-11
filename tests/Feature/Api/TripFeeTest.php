@@ -296,12 +296,129 @@ class TripFeeTest extends TestCase
         $this->assertEquals(25, $pricing['return_fee']);
         $this->assertEquals(25, $pricing['pay_at_pickup']);
         $this->assertEquals(0, $pricing['paid_so_far']);
+        $this->assertEquals($pricing['payable_total'], $pricing['still_owed']);
+    }
+
+    /**
+     * The owner's screenshot (2026-11-11): the driver took the 25 at the pickup
+     * and was told to collect 203 at the delivery, while the customer's app
+     * still showed 228 to pay and «هتدفع 25 للمندوب وقت الاستلام».
+     */
+    #[Test]
+    public function once_the_pickup_is_paid_the_customer_is_shown_what_is_left(): void
+    {
+        $order = $this->place();
+        $driver = $this->driverUser();
+        $pickup = $this->leg($order, TaskType::PickupFromCustomer);
+        $pickup->forceFill(['driver_id' => $driver->id, 'status' => TaskStatus::Assigned])->save();
+        Sanctum::actingAs($driver);
+
+        $this->postJson("/api/v1/driver/tasks/{$pickup->id}/start", [], $this->apiHeaders())->assertOk();
+        $this->postJson("/api/v1/driver/tasks/{$pickup->id}/complete", ['collected_amount' => 25, 'piece_count' => 2], $this->apiHeaders())
+            ->assertOk();
+
+        // The counted price, sent to the customer — «سعر مؤكد» in the screenshot.
+        // A piece more than the basket, so the counted bill is not the estimate.
+        $order = $this->reviewedAndSent($order, qty: 3);
+        $this->assertNotEquals((float) $order->estimated_total, (float) $order->final_total);
+        $this->app['auth']->forgetGuards();
+        Sanctum::actingAs($this->customer);
+
+        $detail = $this->getJson("/api/v1/orders/{$order->id}", $this->apiHeaders())->assertOk()->json('data');
+        $pricing = $detail['pricing'];
+
+        $this->assertEquals(0, $pricing['pay_at_pickup'], 'the pickup is paid: nothing more is taken there');
+        $this->assertEquals(25, $pricing['paid_so_far']);
+        $this->assertEqualsWithDelta((float) $order->final_total, $pricing['payable_total'], 0.01);
+        $this->assertEqualsWithDelta((float) $order->final_total - 25, $pricing['still_owed'], 0.01);
+        // The figure the driver collects at the delivery.
+        $this->assertEqualsWithDelta($this->leg($order, TaskType::DeliverToCustomer)->toCollect(), $pricing['still_owed'], 0.01);
+        $this->assertEquals($pricing['still_owed'], $detail['still_owed']);
+
+        // The list's card says the same.
+        $row = collect($this->getJson('/api/v1/orders', $this->apiHeaders())->assertOk()->json('data'))
+            ->firstWhere('id', $order->id);
+        $this->assertEquals($pricing['still_owed'], $row['still_owed']);
+    }
+
+    #[Test]
+    public function a_cancelled_order_owes_nothing_and_takes_nothing_at_the_pickup(): void
+    {
+        $order = $this->place();
+        Sanctum::actingAs($this->customer);
+
+        $this->putJson("/api/v1/orders/{$order->id}/cancel", [], $this->apiHeaders())->assertOk();
+
+        $detail = $this->getJson("/api/v1/orders/{$order->id}", $this->apiHeaders())->assertOk()->json('data');
+
+        $this->assertEquals(0, $detail['still_owed']);
+        $this->assertEquals(0, $detail['pricing']['still_owed']);
+        $this->assertEquals(0, $detail['pricing']['pay_at_pickup']);
+    }
+
+    /**
+     * Code review (2026-11-11): a postponed pickup leaves its leg `failed`, and
+     * stopping the order does not close a failed leg — read off the leg, the
+     * cancelled order still said «هتدفع 25 للمندوب وقت الاستلام».
+     */
+    #[Test]
+    public function a_pickup_postponed_and_then_cancelled_takes_nothing(): void
+    {
+        $order = $this->place();
+        $driver = $this->driverUser();
+        $pickup = $this->leg($order, TaskType::PickupFromCustomer);
+        $pickup->forceFill(['driver_id' => $driver->id, 'status' => TaskStatus::Assigned])->save();
+        app(TaskService::class)->fail($pickup->fresh(), $driver, TaskFailureReason::CustomerPostponed);
+
+        Sanctum::actingAs($this->customer);
+        // Still to be collected: postponing is not paying.
+        $this->assertEquals(25, $this->getJson("/api/v1/orders/{$order->id}", $this->apiHeaders())->json('data.pricing.pay_at_pickup'));
+
+        $this->putJson("/api/v1/orders/{$order->id}/cancel", [], $this->apiHeaders())->assertOk();
+
+        $this->assertSame(TaskStatus::Failed, $pickup->fresh()->status);
+        $pricing = $this->getJson("/api/v1/orders/{$order->id}", $this->apiHeaders())->assertOk()->json('data.pricing');
+        $this->assertEquals(0, $pricing['pay_at_pickup']);
+        $this->assertEquals(0, $pricing['still_owed']);
+    }
+
+    #[Test]
+    public function a_pickup_that_took_nothing_leaves_the_whole_bill_owed_and_nothing_at_the_pickup(): void
+    {
+        $order = $this->place();
+        $driver = $this->driverUser();
+        $pickup = $this->leg($order, TaskType::PickupFromCustomer);
+        $pickup->forceFill(['driver_id' => $driver->id, 'status' => TaskStatus::Assigned])->save();
+        Sanctum::actingAs($driver);
+        $this->postJson("/api/v1/driver/tasks/{$pickup->id}/start", [], $this->apiHeaders())->assertOk();
+        $this->postJson("/api/v1/driver/tasks/{$pickup->id}/complete", ['piece_count' => 2], $this->apiHeaders())->assertOk();
+
+        $this->app['auth']->forgetGuards();
+        Sanctum::actingAs($this->customer);
+        $pricing = $this->getJson("/api/v1/orders/{$order->id}", $this->apiHeaders())->assertOk()->json('data.pricing');
+
+        $this->assertEquals(0, $pricing['pay_at_pickup']);
+        $this->assertEquals(0, $pricing['paid_so_far']);
+        $this->assertEquals($pricing['payable_total'], $pricing['still_owed']);
+    }
+
+    #[Test]
+    public function a_refunded_order_owes_nothing(): void
+    {
+        $order = $this->place(payment: 'card');
+        $order->forceFill(['payment_status' => 'refunded'])->save();
+        Sanctum::actingAs($this->customer);
+
+        $detail = $this->getJson("/api/v1/orders/{$order->id}", $this->apiHeaders())->assertOk()->json('data');
+
+        $this->assertEquals(0, $detail['still_owed']);
+        $this->assertEquals(0, $detail['pricing']['pay_at_pickup']);
     }
 
     /**
      * Counted by the laundry and sent to the customer by the platform.
      */
-    private function reviewedAndSent(Order $order): Order
+    private function reviewedAndSent(Order $order, int $qty = 2): Order
     {
         $order->refresh();
         $machine = app(OrderStateMachine::class);
@@ -312,7 +429,7 @@ class TripFeeTest extends TestCase
         }
 
         app(OrderReviewService::class)->review(
-            $order->fresh(), [['item_id' => $this->catalog['items'][0]->id, 'qty' => 2]], null, $this->tenant['owner']
+            $order->fresh(), [['item_id' => $this->catalog['items'][0]->id, 'qty' => $qty]], null, $this->tenant['owner']
         );
 
         return $this->sendReview($order)->fresh();

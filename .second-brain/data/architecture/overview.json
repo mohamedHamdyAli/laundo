@@ -65,36 +65,36 @@
         "routes": 473,
         "tables": 76,
         "nodes_by_type": {
-            "class": 599,
+            "class": 600,
             "command": 11,
             "enum": 22,
             "feature": 486,
-            "file": 1122,
+            "file": 1125,
             "integration": 5,
             "interface": 4,
-            "method": 3576,
+            "method": 3583,
             "module": 43,
             "permission": 242,
             "route": 473,
             "table": 76,
-            "test": 173,
+            "test": 174,
             "trait": 8,
             "view": 300
         },
         "edges_by_type": {
-            "contains": 5832,
-            "implemented_by": 4959,
-            "tested_by": 3620,
-            "imports": 2929,
-            "references": 2747,
+            "contains": 5844,
+            "implemented_by": 4964,
+            "tested_by": 3641,
+            "imports": 2940,
+            "references": 2755,
             "entry_point": 1760,
-            "depends_on": 1303,
+            "depends_on": 1305,
             "calls": 973,
             "route_to": 914,
             "touches": 648,
             "guarded_by": 439,
             "includes": 377,
-            "extends": 265,
+            "extends": 266,
             "renders": 181,
             "writes_table": 178,
             "co_changes": 120,
@@ -160,7 +160,7 @@
                 "Payment"
             ],
             "routes": 94,
-            "cohesion": 0.442
+            "cohesion": 0.44
         },
         {
             "slug": "user",
@@ -199,7 +199,7 @@
                 "Recurrence"
             ],
             "routes": 57,
-            "cohesion": 0.395
+            "cohesion": 0.393
         },
         {
             "slug": "operations",
@@ -211,7 +211,7 @@
                 "TimeSlot"
             ],
             "routes": 42,
-            "cohesion": 0.372
+            "cohesion": 0.369
         },
         {
             "slug": "money",
@@ -285,7 +285,7 @@
                 "Docs"
             ],
             "routes": 0,
-            "cohesion": 0.341
+            "cohesion": 0.339
         },
         {
             "slug": "routing_and_distance",
@@ -373,6 +373,8 @@
         "docs/mobile-2026-10-25-app-strings.md",
         "docs/mobile-2026-11-01-no-laundry-hold.md",
         "docs/mobile-2026-11-08-client-batch.md",
+        "docs/mobile-2026-11-11-absent-at-delivery.md",
+        "docs/mobile-2026-11-11-still-owed.md",
         "docs/mobile-api-changes.md",
         "docs/order-cycle-explained.md",
         "docs/order-lifecycle.md",

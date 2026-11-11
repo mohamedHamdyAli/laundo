@@ -87,7 +87,9 @@ class dispatchBoardService
                 // `belongsTo(User::class, 'user_id')`: a column list on the
                 // parent that leaves out the foreign key gives every row a null
                 // relation, and the Customer column silently read «—».
-                'order:id,code,status,user_id,laundry_id,pickup_address_id,delivery_address_id',
+                // The two slot ids: a leg waiting on the customer's new time is
+                // read off its cleared window (`OrderTask::awaitsNewTime()`).
+                'order:id,code,status,user_id,laundry_id,pickup_address_id,delivery_address_id,pickup_slot_id,delivery_slot_id',
                 'order.customer:id,name,phone',
                 'order.pickupAddress.zone',
                 'order.deliveryAddress.zone',
@@ -126,7 +128,11 @@ class dispatchBoardService
         return [
             'waiting' => $base()->count(),
             'never_taken' => $base()->where('status', 'pending')->count(),
-            'failed' => $base()->where('status', 'failed')->count(),
+            // A leg waiting on the customer's new time is a postponement, not a
+            // failure anybody has to look into (the owner, 2026-11-11).
+            'failed' => $base()->where('status', 'failed')
+                ->whereNotIn('id', OrderTask::query()->awaitingNewTime()->select('id'))
+                ->count(),
             'orders' => $base()->distinct()->count('order_id'),
         ];
     }

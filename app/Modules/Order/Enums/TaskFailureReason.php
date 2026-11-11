@@ -37,13 +37,18 @@ enum TaskFailureReason: string
      * one** (the client's sheet, item 7, 2026-11-08: «في حالة تعذر إستلام
      * المندوب للأوردر من العميل لعدم وجوده يتم إعادة توجيه الأوردر للعميل
      * لتحديد موعد آخر للإستلام») — it used to go back to the drivers and only
-     * reach a person after two attempts. An absence at the delivery keeps the
-     * old path.
+     * reach a person after two attempts.
+     *
+     * **And at the delivery** (2026-11-11, the owner after QA on order 103:
+     * «لو العميل مش موجود… مستلمش… المفروض يحدد وقت تاني، بس ميقدرش يغير نوع
+     * الخدمة»): it went back to the drivers, so the drivers were told and the
+     * customer was not, and after two tries the panel read «Failed». Now the
+     * customer picks a new delivery time — the time only, never the service.
      */
     public function needsANewSlot(?TaskType $leg = null): bool
     {
         return $this === self::CustomerPostponed
-            || ($this === self::CustomerUnavailable && $leg === TaskType::PickupFromCustomer);
+            || ($this === self::CustomerUnavailable && $leg?->involvesCustomer() === true);
     }
 
     /**

@@ -363,6 +363,84 @@ class OrderTask extends Model
     }
 
     /**
+     * «مؤجّل — بانتظار موعد من العميل»: a leg the customer has to rebook.
+     *
+     * Stored as `failed` — the attempt did fail, and the reports count it — but
+     * it is not a failure anybody has to rescue: the customer was asked for a
+     * new time (`TaskFailureReason::needsANewSlot()`). The panel shows it as a
+     * postponement, never «Failed» (the owner, 2026-11-11).
+     *
+     * An **absence** also needs its window cleared: that is what tells it apart
+     * from one that failed its way out under the old rule (two attempts —
+     * before 2026-11-08 at the pickup, before 2026-11-11 at the delivery),
+     * which kept its window and is an operator's rescue. A postponement has
+     * always gone to the customer, window or not.
+     *
+     * `scopeAwaitingNewTime()` is the same question as a query — change the
+     * two together.
+     */
+    public function awaitsNewTime(): bool
+    {
+        if ($this->status !== TaskStatus::Failed || ! $this->failure_reason?->needsANewSlot($this->type)) {
+            return false;
+        }
+
+        if ($this->failure_reason !== TaskFailureReason::CustomerUnavailable) {
+            return true;
+        }
+
+        $order = $this->order;
+
+        if ($order === null) {
+            return false;
+        }
+
+        $column = $this->type->onPickupWindow() ? 'pickup_slot_id' : 'delivery_slot_id';
+
+        // An order loaded with a column list that left the window out would
+        // read null here and call every old absence «postponed» — asked of the
+        // row instead.
+        if (! array_key_exists($column, $order->getAttributes())) {
+            return $order->newQuery()->whereKey($order->getKey())->value($column) === null;
+        }
+
+        return $order->getAttribute($column) === null;
+    }
+
+    /**
+     * `awaitsNewTime()` as a query. Through the tenant-scoped `Order`.
+     */
+    public function scopeAwaitingNewTime(Builder $query): Builder
+    {
+        // Every (reason, leg) the enum sends back to the customer — read off
+        // `needsANewSlot()` so the two cannot drift apart.
+        $pairs = [];
+
+        foreach (TaskFailureReason::cases() as $reason) {
+            foreach (TaskType::cases() as $type) {
+                if ($reason->needsANewSlot($type)) {
+                    $pairs[] = [$reason->value, $type];
+                }
+            }
+        }
+
+        return $query
+            ->where($query->qualifyColumn('status'), TaskStatus::Failed->value)
+            ->where(function (Builder $q) use ($pairs): void {
+                foreach ($pairs as [$reason, $type]) {
+                    $q->orWhere(fn (Builder $pair) => $pair
+                        ->where($pair->qualifyColumn('failure_reason'), $reason)
+                        ->where($pair->qualifyColumn('type'), $type->value)
+                        // An absence only with its window cleared (see above).
+                        ->when($reason === TaskFailureReason::CustomerUnavailable->value, fn (Builder $absent) => $absent
+                            ->whereHas('order', fn (Builder $order) => $order->whereNull(
+                                $type->onPickupWindow() ? 'pickup_slot_id' : 'delivery_slot_id'
+                            ))));
+                }
+            });
+    }
+
+    /**
      * The collection from a laundry that has not finished yet — not offered to
      * a driver, not assignable, not started (item 18). The laundry's
      * «خلص الغسيل» offers it (`Order/Services/FinishedWashing`).

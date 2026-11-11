@@ -149,6 +149,14 @@ class DriverDispatcher
             throw new RuntimeException('washing_not_finished');
         }
 
+        // A leg the customer was asked to rebook (`awaitsNewTime()`) is NOT
+        // refused: nothing automatic sends a driver to it, but a person may —
+        // a customer who agrees a time by phone and never opens the app would
+        // otherwise leave the order, and the pieces with the driver, stuck for
+        // good, since an order past the pickup cannot be cancelled (the owner,
+        // 2026-11-11, after code review). Assigned, it is no longer waiting,
+        // and the app's «choose a new time» stops offering it.
+
         if (! $this->isEligible($driver, $task)) {
             throw new RuntimeException('driver_not_eligible');
         }

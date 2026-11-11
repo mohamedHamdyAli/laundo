@@ -48,6 +48,16 @@ enum TaskType: string
     }
 
     /**
+     * Whether this leg runs on the order's **pickup** window (`pickup_slot_id`
+     * / `pickup_date`) rather than its delivery window — the end a
+     * postponement clears and a reschedule rebooks.
+     */
+    public function onPickupWindow(): bool
+    {
+        return in_array($this, [self::PickupFromCustomer, self::DeliverToLaundry], true);
+    }
+
+    /**
      * The app's «استلام» / «تسليم» filter.
      */
     public function isCollection(): bool

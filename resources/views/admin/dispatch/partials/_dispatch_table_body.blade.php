@@ -3,7 +3,10 @@
         $eligible = $candidates[$leg->id] ?? [];
         $blocker = $blockers[$leg->id] ?? null;
         $openLegs = $openLegsByOrder[$leg->order_id] ?? 1;
-        $failed = $leg->status->value === 'failed';
+        // Waiting on the customer's new time, not failed (the owner,
+        // 2026-11-11): no driver is sent before they pick one.
+        $postponed = $leg->awaitsNewTime();
+        $failed = $leg->status->value === 'failed' && ! $postponed;
 
         // The area the leg happens in, which is what decides who is eligible.
         // The delivery leg is matched on the delivery address; every other leg
@@ -38,6 +41,10 @@
                         ({{ $leg->attempts }} {{ __('attempts') }})
                     @endif
                 </span>
+            @elseif ($postponed)
+                <span class="row-sub text-attention" data-awaiting-new-time="{{ $leg->id }}">
+                    {{ __('Postponed') }} · {{ __($leg->failure_reason->label()) }}
+                </span>
             @else
                 <span class="row-sub">{{ __('Step :n of 4', ['n' => $leg->sequence]) }}</span>
             @endif
@@ -63,6 +70,12 @@
         </div>
 
         <div class="text-end">
+            @if ($postponed)
+                {{-- Nothing automatic sends a driver before the customer picks
+                     the time; a person still may — a time agreed by phone —
+                     or the order is stuck (the owner, 2026-11-11). --}}
+                <small class="d-block text-muted ms-auto" style="max-width: 22rem">{{ __('Waiting for the customer to pick a new time') }}</small>
+            @endif
             @if (canDo('order_task.update'))
                 @if (! empty($eligible))
                     <form method="POST" action="{{ route('admin.order.tasks.assign', $leg->id) }}"

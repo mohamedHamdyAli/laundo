@@ -437,8 +437,8 @@
             "admin.driver_bonus_rule.toggleStatus",
             "admin.driver_bonus_rule.update"
         ],
-        "node_count": 1228,
-        "cohesion": 0.442,
+        "node_count": 1231,
+        "cohesion": 0.44,
         "screens": [
             {
                 "key": "order_task",
@@ -793,8 +793,8 @@
             "admin.order.store",
             "admin.order.tasks.assign"
         ],
-        "node_count": 904,
-        "cohesion": 0.395,
+        "node_count": 907,
+        "cohesion": 0.393,
         "screens": [
             {
                 "key": "order",
@@ -910,8 +910,8 @@
             "admin.time_slot.show",
             "admin.time_slot.store"
         ],
-        "node_count": 705,
-        "cohesion": 0.372,
+        "node_count": 708,
+        "cohesion": 0.369,
         "screens": [
             {
                 "key": "complaint",
@@ -1293,8 +1293,8 @@
         "tables": [],
         "route_count": 0,
         "routes": [],
-        "node_count": 1799,
-        "cohesion": 0.341
+        "node_count": 1808,
+        "cohesion": 0.339
     },
     {
         "slug": "routing_and_distance",

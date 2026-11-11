@@ -504,7 +504,23 @@ postponement from the first time** (the client's sheet, item 7, 2026-11-08):
 there for the pickup» and sends `RescheduleNeeded` in its own words;
 `RescheduleService::postponedTask()` finds it, so the same screen moves the
 pickup only (the delivery follows by itself, the service never changes) and the
-trip fee is not charged again. Absent at the delivery keeps the queue path. **The range has a far end too**: `Delivery_Window_Days` (settings,
+trip fee is not charged again. **Absent at the delivery takes the same path**
+(2026-11-11, after QA on order 103: it went back to the drivers, so the drivers
+were told and the customer was not, and after two tries it read «Failed»): the
+delivery's window is cleared, the customer picks a new delivery time, the
+service never changes. **Such a leg is stored `failed` but shown as a
+postponement** — «مؤجّل — بانتظار موعد من العميل» on the order screen and the
+dispatch board (amber, not in the board's «failed» count, no pin on the driver
+map, nothing automatic sends a driver): `OrderTask::awaitsNewTime()` /
+`scopeAwaitingNewTime()`, the one rule `postponedTask()` reads. **A person can
+still assign it** from the dispatch board (the owner, 2026-11-11, after code
+review: an order past the pickup cannot be cancelled, so a customer who agrees a
+time by phone and never opens the app would leave it — and the pieces — stuck
+for good); once assigned it is no longer waiting and the app stops offering a
+new time. An absence counts only with its window cleared — one
+that failed its way out under the old rule kept it and is an operator's rescue.
+Nothing models where the pieces are meanwhile: the driver who failed the
+delivery still has them, and the rebooked leg is offered to whoever is eligible. **The range has a far end too**: `Delivery_Window_Days` (settings,
 operations tab, 14 by default) after the earliest day; past it is `too_late`,
 refused the same way — **for a new booking only**. A rebooked delivery is held
 to the turnaround alone (`problem(..., withLatest: false)`): the window is

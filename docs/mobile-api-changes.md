@@ -1288,3 +1288,22 @@ git: `git show b403985:docs/<اسم الملف>`.
 
 - **المندوب:** التوقيع في التسليم بس؛ `requires_scan` جديد (`false` في الاستلام من المغسلة)؛ العدّ في الاستلام من المغسلة بس؛ رسوم المشوار (25) بتتحصّل كاش وقت الاستلام (`collected_amount` اختياري هناك)؛ **`/complete` ممكن يرجّع 409 `awaiting_approval`** لو العدد أو المبلغ مختلف — الرحلة لسه مكملتش، و`hold` في الرحلة بيقول حالتها؛ `customer_unavailable` في الاستلام بيرجع للعميل يختار ميعاد؛ `summary.cash` (التحصيل الكاش النهارده واللي معاه)؛ الاستلام من المغسلة مابيوصلش قبل «خلص الغسيل»؛ `completed_orders_count` و`completed_trips_count` في البروفايل؛ نقاط الشماعات بعد تأكيد المغسلة و`hangers_confirmed` في الرحلة؛ **عدد الشماعات في الاستلام من المغسلة** (`requires_hanger_count` → `hanger_count`، والمختلف 409 زي عدّ القطع).
 - **العميل:** `items` في تفاصيل الطلب **قايمة واحدة** بـ`change` + `estimated_items` جديد؛ عدّ المغسلة والسعر النهائي بيظهروا بعد ما الإدارة تبعتهم؛ `pickup_fee` / `return_fee` / `pay_at_pickup` / `paid_so_far`؛ آخر حجز قبل بداية الفترة بربع ساعة؛ إشعار `trip_fee_moved` جديد؛ **حالة جديدة `finished`** («خلص الغسيل») وإشعار `order_washing_finished`؛ حد أقصى للقطع في الطلب (`max_pieces_per_order` في `/app-settings`) وفي ميعاد الاستلام (`pieces_left` و`pieces` في `/time-slots`)، وأي تجاوز 422؛ البروفايل فيه `completed_orders_count` و`points_used` و`points_remaining`؛ نقاط الشماعات على عدّ المغسلة (`points.hangers_confirmed` / `hangers_awaiting_laundry` في تفاصيل الطلب).
+
+---
+
+## ١١ نوفمبر ٢٠٢٦ — «المتبقي» في تفاصيل الطلب (تطبيق العميل)
+
+ملف مستقل بالتفصيل: `docs/mobile-2026-11-11-still-owed.md`. الملخص:
+
+- حقل جديد `pricing.still_owed` في `GET /orders/{id}` (و`still_owed` في كارت `GET /orders`) = `payable_total` − `paid_so_far` — نفس اللي المندوب بيحصّله في التسليم (أوردر كاش دفع رسوم المشوار: 228 − 25 = 203). `0` لطلب مدفوع أو مسترد أو ملغي.
+- `pricing.pay_at_pickup` بقى `0` أول ما رحلة الاستلام تخلص (كان بيفضل 25).
+- `payable_total` و`total` زي ما هم.
+
+---
+
+## ١١ نوفمبر ٢٠٢٦ — العميل مش موجود وقت التسليم (التطبيقين)
+
+ملف مستقل بالتفصيل: `docs/mobile-2026-11-11-absent-at-delivery.md`. الملخص:
+
+- `customer_unavailable` على «التسليم للعميل» بقى زي الاستلام: الرحلة بتقف (`requeued: false`)، والعميل بيوصله `reschedule_needed` ويختار **ميعاد تسليم** جديد (`leg: "delivery"`) — الميعاد بس، الخدمة مابتتغيرش. قبل كده كانت بترجع للمناديب.
+- تطبيق المندوب: بعد أي `fail` يرجع لقايمة المهام — `GET /driver/tasks/{id}` بيرجّع 404 لأن الرحلة مابقتش بتاعته.

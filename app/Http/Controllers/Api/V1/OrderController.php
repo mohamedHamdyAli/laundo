@@ -11,7 +11,6 @@ use App\Modules\Driver\Services\DriverCard;
 use App\Modules\Loyalty\Services\OrderPoints;
 use App\Modules\Order\Enums\OrderStatus;
 use App\Modules\Order\Enums\TaskStatus;
-use App\Modules\Order\Enums\TaskType;
 use App\Modules\Order\Models\Order;
 use App\Modules\Order\Models\RecurrencePrompt;
 use App\Modules\Order\Services\OrderEta;
@@ -24,6 +23,7 @@ use App\Modules\Order\Services\PlacementFailure;
 use App\Modules\Order\Services\RecurrenceService;
 use App\Modules\Order\Services\RescheduleService;
 use App\Modules\Order\Services\Turnaround;
+use App\Modules\Payment\Enums\PaymentMethod;
 use App\Modules\TimeSlot\Models\TimeSlot;
 use App\Modules\TimeSlot\Services\SlotCapacity;
 use App\Modules\TimeSlot\Services\SlotClock;
@@ -62,7 +62,7 @@ class OrderController extends Controller
         // fifteen extra round trips to render a list.
         $query = $request->user()->orders()->with([
             'service:id,name', 'laundry:id,name', 'pickupSlot',
-        ])->withExists($this->complaintFlag($request));
+        ])->withExists($this->complaintFlag($request))->withSum(...$this->paidSum());
 
         $query = match ($tab) {
             'active' => $query->active(),
@@ -394,7 +394,87 @@ class OrderController extends Controller
             'service:id,name', 'laundry:id,name',
             'pickupAddress', 'deliveryAddress', 'pickupSlot', 'deliverySlot',
             'items.item:id,name', 'media',
-        ])->withExists($this->complaintFlag($request))->find($id);
+        ])->withExists($this->complaintFlag($request))->withSum(...$this->paidSum())->find($id);
+    }
+
+    /**
+     * What has been taken for each order (`Order::paidSoFar()`), summed in the
+     * list's own query — `still_owed` is on every card, and asking per order
+     * would be a query per card. Read back by `paid()`.
+     *
+     * @return array{0: array<string, \Closure>, 1: string}
+     */
+    private function paidSum(): array
+    {
+        return [['payments as captured_amount' => fn ($query) => $query->captured()], 'amount'];
+    }
+
+    /**
+     * What has been paid for this order so far: the sum `paidSum()` loaded,
+     * else asked (`Order::paidSoFar()`). The sum is null for an order with no
+     * captured payment, which is why presence is tested on the key.
+     */
+    private function paid(Order $order): float
+    {
+        return array_key_exists('captured_amount', $order->getAttributes())
+            ? round((float) $order->getAttribute('captured_amount'), 2)
+            : $order->paidSoFar();
+    }
+
+    /**
+     * The bill as the customer is shown it: the counted price once it has been
+     * sent to them, the estimate until then — an unsent draft count (item 12)
+     * leaves the estimate standing.
+     */
+    private function shownTotal(Order $order): float
+    {
+        return $order->customerSeesFinal() ? $order->payableTotal() : (float) $order->estimated_total;
+    }
+
+    /**
+     * «المتبقي» — what the customer still has to pay: the bill they are shown,
+     * less what has been taken. A cash order pays its pickup trip's fee at the
+     * pickup, and the app showed the whole bill as still to pay afterwards while
+     * the driver was told to take the rest (2026-11-11).
+     *
+     * `Order::stillOwed()` — the driver's figure — measures against
+     * `payableTotal()`, which counts a draft the customer has not been sent;
+     * this measures against what the customer is shown. The two differ only
+     * while a count is unsent, and nothing is collected then. Nothing on a
+     * cancelled order, which owes nothing, nor on a refunded one.
+     */
+    private function stillOwed(Order $order): float
+    {
+        if (in_array($order->payment_status, ['paid', 'refunded'], true) || $order->status === OrderStatus::Cancelled) {
+            return 0.0;
+        }
+
+        return round(max(0.0, $this->shownTotal($order) - $this->paid($order)), 2);
+    }
+
+    /**
+     * What the driver takes at the pickup: a cash order's pickup trip fee, no
+     * more than is owed — the rule `OrderTask::toCollect()` gives the driver —
+     * and only while the pickup is still ahead (`AwaitingPickup`/`DriverOnWay`;
+     * completing the pickup moves the order on, and a cancelled order never
+     * gets there). It said the trip fee for good, so the customer was still
+     * told «هتدفع 25 للمندوب وقت الاستلام» after paying it (2026-11-11). A
+     * pickup that took nothing leaves the fee to the delivery, where
+     * `still_owed` already counts it.
+     *
+     * Read off the order's status, not its pickup leg: a postponed pickup
+     * leaves its leg `failed`, and stopping an order does not close a failed
+     * leg, so the leg alone said 25 on a cancelled order.
+     */
+    private function payAtPickup(Order $order): float
+    {
+        $ahead = in_array($order->status, [OrderStatus::AwaitingPickup, OrderStatus::DriverOnWay], true);
+
+        if (! $ahead || $order->payment_method !== PaymentMethod::Cash->value || (float) $order->pickup_fee <= 0) {
+            return 0.0;
+        }
+
+        return round(min((float) $order->pickup_fee, $this->stillOwed($order)), 2);
     }
 
     /**
@@ -452,7 +532,10 @@ class OrderController extends Controller
             'items_count' => $order->customerSeesFinal() ? $order->final_items_count : $order->estimated_items_count,
             // The bill as the customer is shown it — an unsent draft count
             // (item 12) leaves the estimate standing.
-            'total' => $order->customerSeesFinal() ? $order->payableTotal() : (float) $order->estimated_total,
+            'total' => $this->shownTotal($order),
+            // «المتبقي»: `total` less what has been paid — the pickup's trip fee
+            // on a cash order (2026-11-11).
+            'still_owed' => $this->stillOwed($order),
             'pickup_date' => $order->pickup_date?->toDateString(),
             // Both of these were detail-only, which meant the home screen's
             // «طلبك الحالي» card — a *list* row — could not draw the pickup
@@ -511,9 +594,12 @@ class OrderController extends Controller
                 'pickup_fee' => $order->pickup_fee !== null ? (float) $order->pickup_fee : null,
                 'return_fee' => $order->return_fee !== null ? (float) $order->return_fee : null,
                 // What the driver takes at the pickup (a cash order's pickup
-                // trip), and what has been paid so far.
-                'pay_at_pickup' => $order->payment_method === 'cash' ? (float) ($order->pickup_fee ?? 0) : 0.0,
-                'paid_so_far' => $order->paidSoFar(),
+                // trip) — 0 once the pickup is done — what has been paid so far,
+                // and what is left: `payable_total` less `paid_so_far`, the
+                // figure the driver collects at the delivery (2026-11-11).
+                'pay_at_pickup' => $this->payAtPickup($order),
+                'paid_so_far' => $this->paid($order),
+                'still_owed' => $this->stillOwed($order),
                 'discount' => (float) $order->discount_total,
                 // «خصم النقاط» — after a review, what is left of it: fewer
                 // pieces counted hands points back.
@@ -537,7 +623,7 @@ class OrderController extends Controller
                 // The pair that actually applies, so a client rendering a bill
                 // does not have to know whether the pieces have been counted yet.
                 'payable_tax' => $order->customerSeesFinal() ? $order->payableTax() : (float) $order->estimated_tax,
-                'payable_total' => $order->customerSeesFinal() ? $order->payableTotal() : (float) $order->estimated_total,
+                'payable_total' => $this->shownTotal($order),
             ],
             // The pieces that ARE the order now: the laundry's count once the
             // customer is shown it, their basket before — never both in one
@@ -632,10 +718,7 @@ class OrderController extends Controller
             ]);
         }
 
-        $collection = in_array($task->type, [
-            TaskType::PickupFromCustomer,
-            TaskType::DeliverToLaundry,
-        ], true);
+        $collection = $task->type->onPickupWindow();
 
         // Which day the capacity figures are about. The postponed leg has had its
         // own date cleared, so «today» is the honest default — and a client
@@ -732,10 +815,7 @@ class OrderController extends Controller
         // moment both ends carry the same slot and date.
         $task = $service->postponedTask($order);
 
-        $collection = $task !== null && in_array($task->type, [
-            TaskType::PickupFromCustomer,
-            TaskType::DeliverToLaundry,
-        ], true);
+        $collection = $task !== null && $task->type->onPickupWindow();
 
         $deliveryBefore = [$order->delivery_date?->toDateString(), $order->delivery_slot_id];
 
@@ -797,7 +877,11 @@ class OrderController extends Controller
                 'date' => $order->delivery_date?->toDateString(),
                 'window' => $order->deliverySlot?->label(),
             ])
-            : __('Your new time is set. We will collect it then.'));
+            : ($collection
+                ? __('Your new time is set. We will collect it then.')
+                // A rebooked delivery — every delivery absence comes here since
+                // 2026-11-11, and «we will collect it» told them the wrong trip.
+                : __('Your new time is set. We will deliver it then.')));
     }
 
     /**

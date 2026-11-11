@@ -476,20 +476,134 @@ class RescheduleTest extends TestCase
     }
 
     #[Test]
-    public function a_customer_not_there_for_the_delivery_keeps_the_old_path(): void
+    public function a_customer_not_there_for_the_delivery_picks_a_new_delivery_time(): void
     {
-        // Item 7 is about the pickup. At the delivery the clothes are on the van,
-        // and the leg goes back to the drivers as before.
+        // QA on order 103 (2026-11-11): the absence at the delivery went back to
+        // the drivers — they were told, the customer was not — and after two
+        // tries the panel read «Failed». The owner: the customer picks another
+        // time, the time only, never the service.
+        $this->driverUser('+201066660002', zoneIds: [$this->geo['zones'][0]->id]);
         $order = $this->order();
+        $order->forceFill([
+            'delivery_slot_id' => $this->slot()->id,
+            'delivery_date' => now()->addDays(3)->toDateString(),
+        ])->save();
         $driver = $this->driverUser('+201066660001');
+        $offered = NotificationLog::where('event', NotificationEvent::TaskAssigned->value)->count();
 
         $task = $order->tasks()->where('type', TaskType::DeliverToCustomer->value)->firstOrFail();
-        $task->forceFill(['status' => TaskStatus::Assigned, 'driver_id' => $driver->id])->save();
+        $task->forceFill(['status' => TaskStatus::Started, 'driver_id' => $driver->id])->save();
 
         $task = app(TaskService::class)->fail($task->fresh(), $driver, TaskFailureReason::CustomerUnavailable);
 
-        $this->assertNotSame(TaskStatus::Failed, $task->status);
+        // Stopped, not handed to the next driver; only the delivery's window cleared.
+        $this->assertSame(TaskStatus::Failed, $task->status);
+        $this->assertNull($task->driver_id);
+        $this->assertSame(1, $task->attempts);
+        $this->assertNull($order->fresh()->delivery_slot_id);
+        $this->assertNotNull($order->fresh()->pickup_slot_id);
+        $this->assertTrue($task->fresh()->awaitsNewTime());
+        $this->assertSame($offered, NotificationLog::where('event', NotificationEvent::TaskAssigned->value)->count());
+
+        // The customer is the one told — in words about the delivery.
+        $log = NotificationLog::where('event', NotificationEvent::RescheduleNeeded->value)
+            ->where('user_id', $this->customer->id)->where('channel', 'database')->firstOrFail();
+        $this->assertStringContainsString('to deliver order', $log->body);
+        $this->assertSame(0, NotificationLog::where('event', NotificationEvent::RescheduleNeeded->value)
+            ->where('user_id', '!=', $this->customer->id)->count());
+        $this->assertTrue($order->statusLogs()->where('note', 'like', '%not there for the delivery%')->exists());
+
+        $data = $this->actingAs($this->customer)
+            ->getJson("/api/v1/orders/{$order->id}/reschedule")
+            ->assertOk()
+            ->json('data');
+        $this->assertTrue($data['needs_new_time']);
+        $this->assertSame('delivery', $data['leg']);
+
+        $before = $order->fresh();
+
+        // A service sent along is not read: the time is all that moves.
+        $this->actingAs($this->customer)
+            ->postJson("/api/v1/orders/{$order->id}/reschedule", [
+                'slot_id' => $this->slot()->id,
+                'date' => now()->addDays(7)->toDateString(),
+                'service_id' => $this->catalog['service']->id + 1000,
+            ])
+            ->assertOk()
+            ->assertJsonPath('data.leg', 'delivery')
+            // A delivery, in its own words — not «we will collect it».
+            ->assertJsonPath('msg', __('Your new time is set. We will deliver it then.'));
+
+        $after = $order->fresh();
+        // Back in play — offered for the new time, so the eligible driver has it.
+        $this->assertTrue($task->fresh()->status->isOpen());
+        $this->assertSame(now()->addDays(7)->toDateString(), $after->delivery_date->toDateString());
+        $this->assertSame($before->service_id, $after->service_id);
+        $this->assertSame($before->pickup_date->toDateString(), $after->pickup_date->toDateString());
+        // The missed trip is not charged again.
+        $this->assertSame($before->return_fee, $after->return_fee);
+        $this->assertSame($before->delivery_fee, $after->delivery_fee);
+        $this->assertFalse($task->fresh()->awaitsNewTime());
+    }
+
+    #[Test]
+    public function an_absent_delivery_that_ran_out_of_attempts_under_the_old_rule_stays_an_operators(): void
+    {
+        // Failed twice before 2026-11-11 — its delivery window still set.
+        $order = $this->order();
+        $order->forceFill([
+            'delivery_slot_id' => $this->slot()->id,
+            'delivery_date' => now()->addDays(3)->toDateString(),
+        ])->save();
+        $task = $order->tasks()->where('type', TaskType::DeliverToCustomer->value)->firstOrFail();
+        $task->forceFill([
+            'status' => TaskStatus::Failed,
+            'failure_reason' => TaskFailureReason::CustomerUnavailable,
+            'attempts' => 2,
+            'driver_id' => null,
+        ])->save();
+
         $this->assertFalse(app(RescheduleService::class)->isAwaitingNewSlot($order->fresh()));
+        $this->assertFalse($task->fresh()->awaitsNewTime());
+    }
+
+    #[Test]
+    public function the_row_and_the_query_agree_on_what_waits_for_the_customer(): void
+    {
+        // `awaitsNewTime()` (the panel's rows) and `scopeAwaitingNewTime()` (the
+        // board's counter, `postponedTask()`) are one rule written twice.
+        $awaiting = $this->order();
+        $driver = $this->driverUser('+201066660001');
+        $pickup = $awaiting->tasks()->orderBy('sequence')->firstOrFail();
+        $pickup->forceFill(['status' => TaskStatus::Assigned, 'driver_id' => $driver->id])->save();
+        app(TaskService::class)->fail($pickup->fresh(), $driver, TaskFailureReason::CustomerUnavailable);
+
+        $oldRule = $this->order();
+        $oldRule->tasks()->orderBy('sequence')->firstOrFail()->forceFill([
+            'status' => TaskStatus::Failed, 'failure_reason' => TaskFailureReason::CustomerUnavailable,
+            'attempts' => 2, 'driver_id' => null,
+        ])->save();
+
+        $wrongAddress = $this->order();
+        $wrongAddress->forceFill(['pickup_slot_id' => null, 'pickup_date' => null])->save();
+        $wrongAddress->tasks()->orderBy('sequence')->firstOrFail()->forceFill([
+            'status' => TaskStatus::Failed, 'failure_reason' => TaskFailureReason::WrongAddress,
+            'attempts' => 1, 'driver_id' => null,
+        ])->save();
+
+        // A postponement has always been the customer's, window or not.
+        $postponed = $this->order();
+        $postponedDelivery = $postponed->tasks()->where('type', TaskType::DeliverToCustomer->value)->firstOrFail();
+        $postponedDelivery->forceFill([
+            'status' => TaskStatus::Failed, 'failure_reason' => TaskFailureReason::CustomerPostponed,
+            'attempts' => 1, 'driver_id' => null,
+        ])->save();
+
+        $byRow = OrderTask::with('order')->get()->filter->awaitsNewTime()->pluck('id')->sort()->values()->all();
+        $byQuery = OrderTask::query()->awaitingNewTime()->pluck('id')->sort()->values()->all();
+
+        $this->assertSame(collect([$pickup->id, $postponedDelivery->id])->sort()->values()->all(), $byRow);
+        $this->assertSame($byRow, $byQuery);
     }
 
     #[Test]
