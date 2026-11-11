@@ -5494,7 +5494,7 @@
                     "summary"
                   ]
                 },
-                "description": "The home screen's counters (collections, deliveries, completed today, late) plus the task in hand — the started one if there is one, otherwise the next assigned.",
+                "description": "The home screen's counters (collections, deliveries, completed today, late) plus the task in hand — the started one if there is one, otherwise the next assigned.\n\n**`cash`** (since 2026-11-08, «إجمالي التحصيل الكاش اليومي»): `collected_today` — everything taken at doors today (the Cairo day, handed in or not), `collections_today` — how many times, `held` — what is still with the driver from any day until the office receives it, and `currency`.",
                 "auth": {
                   "type": "bearer",
                   "bearer": [
@@ -5852,7 +5852,7 @@
                     "{{task_id}}"
                   ]
                 },
-                "description": "Everything the task screen renders, driven by the leg rather than by the app guessing from the type string: `requires_signature`, `requires_piece_count`, `collects_payment`, the contact and address for this end of the journey, the payment block, and the `ticket` («طباعة البطاقة») including the QR the scan checks against.\n\n---\n\n`address.lat` / `address.lng` are filled for **all four legs**. On the two laundry legs they were a literal `null` while the laundry's coordinates sat in the table; they now come from the laundry row. Null still means «nobody placed this pin» — draw the address text rather than a marker at (0, 0), which is in the Atlantic.\n\n`started_at_iso` and `completed_at_iso` are the machine-readable twins of `started_at` and `completed_at`.",
+                "description": "Everything the task screen renders, driven by the leg rather than by the app guessing from the type string: `requires_signature`, `requires_piece_count`, `collects_payment`, the contact and address for this end of the journey, the payment block, and the `ticket` («طباعة البطاقة») including the QR the scan checks against.\n\n---\n\n`address.lat` / `address.lng` are filled for **all four legs**. On the two laundry legs they were a literal `null` while the laundry's coordinates sat in the table; they now come from the laundry row. Null still means «nobody placed this pin» — draw the address text rather than a marker at (0, 0), which is in the Atlantic.\n\n`started_at_iso` and `completed_at_iso` are the machine-readable twins of `started_at` and `completed_at`.\n\n---\n\n**Since 2026-11-08:** `requires_signature` is `true` on the delivery to the customer only — the pickup takes no signature. `requires_scan` is `false` on the collection from the laundry (`/verify` still works on every leg). `collects_payment` can be `true` on the pickup too: a cash order pays its trip fee («رسوم المشوار») at the door — `payment.to_collect` is the amount and `payment.collect_required: false` means sending `collected_amount` there is optional. `payment.paid_so_far` is what was paid before.\n\n`hold` («بانتظار موافقة الإدارة») is the latest time this leg was held and what became of it — `null` on a leg never held.\n\n`accepts_hangers` / `max_hangers` / `hangers_returned` are «شماعات راجعة» at the customer's door; `hangers_confirmed` is what the laundry confirmed of them, or `null`.\n\n**Since 2026-11-09:** `requires_hanger_count` is `true` on the collection from the laundry when the laundry wrote a hanger count at «خلص الغسيل» — ask «عدد الشماعات» and send it as `hanger_count`. The laundry's figure is never returned. `hanger_count` is what was recorded.",
                 "auth": {
                   "type": "bearer",
                   "bearer": [
@@ -6096,7 +6096,7 @@
                     "complete"
                   ]
                 },
-                "description": "«تأكيد». Multipart, because of the signature and the photos.\n\nWhich fields are actually required depends on the leg — the task detail says so up front via `requires_signature`, `requires_piece_count` and `collects_payment`, and a missing one comes back as a validation error on that field.\n\nPhotos: up to 5, jpg/jpeg/png/webp, 5 MB each.\n\n**The delivery leg on an unpaid order needs `collected_amount`** (2026-10-01): what was really taken at the door, `0` when nothing was paid. Missing, or more than the order owes, is a 422 on `collected_amount`. On an order already paid it is ignored. The task's `payment.collect_required` and `payment.to_collect` say which applies. Any amount above 0 becomes a captured cash payment in the driver's name.\n\n**The collection from the laundry cannot start or complete before the order is `cleaning`**, meaning priced by the laundry and agreed by the customer. It answers 400, and the task row's `blocked_reason` carries the same words.",
+                "description": "«تأكيد». Multipart, because of the signature and the photos.\n\nWhich fields are actually required depends on the leg — the task detail says so up front via `requires_signature`, `requires_piece_count` and `collects_payment`, and a missing one comes back as a validation error on that field.\n\nPhotos: up to 5, jpg/jpeg/png/webp, 5 MB each.\n\n**The delivery leg on an unpaid order needs `collected_amount`** (2026-10-01): what was really taken at the door, `0` when nothing was paid. Missing is a 422 on `collected_amount`; a figure other than what is owed is held (below), no longer refused. On an order already paid it is ignored. The task's `payment.collect_required` and `payment.to_collect` say which applies. Any amount above 0 becomes a captured cash payment in the driver's name.\n\n**The collection from the laundry cannot start or complete before the laundry says it finished** («خلص الغسيل», order status `finished` — since 2026-11-08; before, `cleaning` was enough). It answers 400, and the task row's `blocked_reason` carries the same words.\n\n---\n\n**«بانتظار موافقة الإدارة» — 409 `awaiting_approval`** (since 2026-11-08). The leg does **not** complete when:\n\n- `piece_count` on the collection from the laundry differs from the laundry's count;\n- `hanger_count` there differs from what the laundry wrote at «خلص الغسيل» (since 2026-11-09);\n- `collected_amount` differs from `payment.to_collect`, less or more.\n\nThe answer is **409** with `key: awaiting_approval`, a `msg` ready to show, and `data` = the task with `hold` (`status: pending`). The leg stays `started`. The platform either approves (the leg completes on its own with what was sent; `hold.status: approved`) or refuses with a note (`hold.status: rejected`, `hold.note`), and the driver is notified (`task_hold_decided`). Confirming again with the right figure completes at once — and a count that was held must be sent again (422 `hanger_count` / `piece_count` when left out). `collected_amount_too_high` is gone.",
                 "body": {
                   "mode": "formdata",
                   "formdata": [
@@ -6104,7 +6104,14 @@
                       "key": "piece_count",
                       "type": "text",
                       "value": "12",
-                      "description": "0–999"
+                      "description": "0–999. Counted on the collection from the laundry only (`requires_piece_count`). Other than the laundry's count → 409 `awaiting_approval`"
+                    },
+                    {
+                      "key": "hanger_count",
+                      "type": "text",
+                      "value": "12",
+                      "description": "0–999. The collection from the laundry only (since 2026-11-09), when `requires_hanger_count`. Optional — left out, the leg completes. Other than what the laundry wrote → 409 `awaiting_approval` (`hold.kind: hanger_count`)",
+                      "disabled": true
                     },
                     {
                       "key": "receiver_name",
@@ -6116,13 +6123,13 @@
                       "key": "collected_amount",
                       "type": "text",
                       "value": "250",
-                      "description": "Delivery leg only. Required while the order is unpaid (0 = nothing paid); never above the amount due; ignored once paid"
+                      "description": "Cash at the door. Delivery leg on an unpaid order: required (0 = nothing paid). Pickup of a cash order: optional — the trip fee. Ignored once paid. Other than `payment.to_collect` (less or more) → 409 `awaiting_approval`"
                     },
                     {
                       "key": "hangers_returned",
                       "type": "text",
                       "value": "0",
-                      "description": "Pickup and delivery legs only («شماعات راجعة»). 0..max_hangers from the task; each hanger earns the customer points at once. Ignored on the laundry legs",
+                      "description": "Pickup and delivery legs only («شماعات راجعة»). 0..max_hangers from the task. The customer's points follow the count the laundry confirms (since 2026-11-08), not this one. Ignored on the laundry legs",
                       "disabled": true
                     },
                     {
@@ -6209,7 +6216,7 @@
                     "fail"
                   ]
                 },
-                "description": "«تعذر الاستلام».\n\n`note` is **required** when the reason is `other` — free text is the point of «سبب آخر».\n\nTwo reasons behave differently on purpose: `customer_postponed` stops the leg and waits for the customer to pick a new time (rather than offering the same trip to the next driver seconds later), and `piece_count_mismatch` halts the order for a person to look at.\n\n`requeued` in the response is what the driver wants to know before driving away: whether anyone will be sent again.",
+                "description": "«تعذر الاستلام».\n\n`note` is **required** when the reason is `other` — free text is the point of «سبب آخر».\n\nTwo reasons behave differently on purpose: `customer_postponed` stops the leg and waits for the customer to pick a new time (rather than offering the same trip to the next driver seconds later), and `piece_count_mismatch` halts the order for a person to look at.\n\n`requeued` in the response is what the driver wants to know before driving away: whether anyone will be sent again.\n\n**Since 2026-11-08:** `customer_unavailable` on the pickup from the customer takes the same path as `customer_postponed` from the first time — the customer picks a new pickup time (the pickup only). On the delivery it is unchanged.",
                 "body": {
                   "mode": "raw",
                   "raw": "{\n    \"reason\": \"customer_unavailable\",\n    \"note\": null\n}",
@@ -6374,7 +6381,7 @@
                     }
                   ]
                 },
-                "description": "The driver's own list, newest first — the same endpoint the customer app reads, answered for whoever holds the token.\n\nWhat reaches a driver, by `event`: `task_assigned` (`meta.task_id`) — a leg handed to them, by the dispatcher or by an operator; `manual_message` (`meta.audience`) — a message an operator wrote from the panel; `complaint_closed` (`meta.complaint_id`, `meta.reference`) — a complaint they filed was closed; `driver_record_rejected` (`meta.driver_record_submission_id`) — a vehicle/licence/document change was refused, with the reason in `body`.\n\nUntil 2026-09-30 an operator's broadcast to drivers never showed here: it was filed under the account while the driver app's token reads as a driver. One list now.",
+                "description": "The driver's own list, newest first — the same endpoint the customer app reads, answered for whoever holds the token.\n\nWhat reaches a driver, by `event`: `task_assigned` (`meta.task_id`) — a leg handed to them, by the dispatcher or by an operator; `task_hold_decided` (`meta.task_id`, `meta.order_id`) — the platform approved or refused a held completion (since 2026-11-08); `manual_message` (`meta.audience`) — a message an operator wrote from the panel; `complaint_closed` (`meta.complaint_id`, `meta.reference`) — a complaint they filed was closed; `driver_record_rejected` (`meta.driver_record_submission_id`) — a vehicle/licence/document change was refused, with the reason in `body`.\n\nUntil 2026-09-30 an operator's broadcast to drivers never showed here: it was filed under the account while the driver app's token reads as a driver. One list now.",
                 "auth": {
                   "type": "bearer",
                   "bearer": [

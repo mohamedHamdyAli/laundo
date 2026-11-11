@@ -167,7 +167,7 @@
             "api-controller": 24
         },
         "files": 24,
-        "lines": 5695,
+        "lines": 5703,
         "classes": [
             {
                 "fqcn": "App\\Http\\Controllers\\Api\\V1\\AddressController",
@@ -1235,7 +1235,7 @@
             "doc": 12
         },
         "files": 12,
-        "lines": 11629,
+        "lines": 11650,
         "classes": [],
         "models": [],
         "owns_tables": [],
@@ -5363,7 +5363,7 @@
             "browser-test": 26
         },
         "files": 173,
-        "lines": 57176,
+        "lines": 57202,
         "classes": [
             {
                 "fqcn": "Tests\\Feature\\Api\\AddressIdDisclosureTest",

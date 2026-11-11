@@ -32,11 +32,14 @@ The environment ships pointing at `DevFixturesSeeder`'s accounts, all with the p
 php artisan db:seed --class=DevFixturesSeeder   # local / testing only
 ```
 
-- customer — `01055556666`
-- driver — `01066660001`
+- customer — `+201055556666`
+- driver — **none**: `DevFixturesSeeder` creates no driver. Add one from the dashboard
+  («المناديب») and put its phone in `driver_phone`; `+201066660001` is only a placeholder.
 
-OTP codes are never returned in a response on any environment. Read them from the log
-(`storage/logs/laravel.log`) and put the value in the `otp_code` variable.
+Phones are E.164 (`+2010…`) — a local `010…` is refused with a 422 on `phone`.
+
+Until SMS delivery exists the OTP is the fixed `123456` (`OTP_STATIC_CODE`), which is
+what `otp_code` already holds. Codes are never returned in a response.
 
 ## Keeping it in sync
 

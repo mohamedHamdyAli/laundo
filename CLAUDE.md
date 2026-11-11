@@ -702,6 +702,10 @@ Don't "fix" these blind. The reasons are in `docs/architecture.md`.
   `services`, `items`, `item_categories`, `laundries`, `coupons` — `name`). On
   production MariaDB they compare case-sensitively; `Searchable` folds case with
   `LOWER(CAST(… AS CHAR))` — **do not simplify it back** (`ListSearchTest`).
+- **A `selectRaw` aggregate through an ordered relation (`tasks()`, `payments()`
+  …) needs `->reorder()`**: MariaDB's ONLY_FULL_GROUP_BY refuses the inherited
+  ORDER BY (1140) while SQLite and MySQL 8 pass it — it took down every
+  `GET /orders/{id}` on 2026-11-09/11. `sum()`/`count()` strip it themselves.
 - Every module's `search()` returns **null** unless the request is AJAX; tests need `X-Requested-With: XMLHttpRequest`.
 - `Banner` and `Intro` model **classes are lowercase**. `CachingService::getSystemSettings()` is dead code.
 - Settings are key/value rows with **PascalCase keys**. **The settings screen is five tabs on one form**; a switch setting needs the hidden-`0` input before its checkbox. `About` / `Privacy_Policy` / `Terms` hold **HTML** authored in TinyMCE (already loaded on every page) and are printed unescaped; `assets/js/pages/ckeditor.js` draws nothing.

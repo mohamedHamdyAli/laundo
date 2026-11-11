@@ -1656,6 +1656,17 @@ Don't "fix" these blind, but know they're there:
   'LIKE', ...)`**. `ListSearchTest` asserts the generated SQL, because the
   behaviour cannot fail on SQLite. Converting the columns would need an `ALTER`
   on seven tables holding live data; the query fix reaches the same end.
+- **An aggregate through an ordered relation needs `reorder()`.** Fourteen
+  relations are defined with an order (`Order::tasks()` → `sequence`,
+  `payments()`, `statusLogs()`, `Wallet::transactions()` …). `sum()` / `count()`
+  drop it themselves (`setAggregate()`), but a `selectRaw('sum(…)')` keeps it,
+  and **MariaDB under ONLY_FULL_GROUP_BY** — which Laravel's strict mode sets —
+  refuses an ORDER BY column in an aggregate with no GROUP BY (error 1140).
+  SQLite and MySQL 8 both accept it, so nothing in the suite can fail. It
+  happened: `OrderController::hangers()` (2026-11-09) made every
+  `GET /api/v1/orders/{id}` a 500 on the live site until 2026-11-11.
+  `HangerReceiptTest::the_order_screen_asks_no_ordered_aggregate` asserts that
+  endpoint's SQL, the way `ListSearchTest` does for case folding.
 - Every module's `search()` action is wrapped in `if ($request->ajax())` and
   returns **null** otherwise, so a bare GET to `/admin/{module}/search` is an
   empty 200. Tests hitting it need `X-Requested-With: XMLHttpRequest`.

@@ -1,5 +1,18 @@
 # Changelog
 
+## 2026-11-11
+
+### Fix
+
+- **`GET /api/v1/orders/{id}` answered 500 on the live site for every order** — the customer app's «تفاصيل الطلب» showed «حدث خطأ في الخادم» (API). `OrderController::hangers()` (added 2026-11-09) aggregates over `$order->tasks()`, which is defined with `orderBy('sequence')`; `sum()` used to strip it, a `selectRaw` aggregate kept it, and MariaDB under ONLY_FULL_GROUP_BY refuses an ORDER BY in an aggregate with no GROUP BY (error 1140) — SQLite and MySQL 8 accept it, so the suite stayed green. Now `->reorder()`. `HangerReceiptTest::the_order_screen_asks_no_ordered_aggregate` checks the endpoint's SQL, since SQLite cannot refuse it.
+
+## 2026-11-10
+
+### Fix
+
+- **The Postman collection's driver folder caught up with 2026-11-08/09** (Docs). «Complete task» gains `hanger_count` and documents the 409 `awaiting_approval` hold (piece count, hanger count, cash other than `payment.to_collect`), the pickup's optional trip-fee `collected_amount`, hanger points following the laundry's count, and the collection from the laundry waiting for `finished` (not `cleaning`); «Show task» gains `requires_scan`, `hold`, `requires_hanger_count` / `hanger_count`, `hangers_confirmed`; «Home summary» the `cash` block; «Fail task» the pickup's `customer_unavailable` → new pickup time; «List notifications» `task_hold_decided`.
+- **The Postman environment's phones are E.164** (`+201055556666`, `+201066660001`) — the local form is a 422 on `phone`. `docs/postman/README.md` no longer claims `DevFixturesSeeder` creates a driver (it creates none) and gives the fixed OTP (Docs).
+
 ## 2026-11-08
 
 ### Feature

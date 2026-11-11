@@ -572,11 +572,19 @@ class OrderController extends Controller
      * the points follow that — and what is still waiting for the laundry.
      * One query, on the detail only.
      *
+     * **`reorder()` is load-bearing.** `tasks()` is defined with
+     * `orderBy('sequence')`, and `sum()` would have dropped it, but a
+     * `selectRaw` aggregate keeps it — and MariaDB under ONLY_FULL_GROUP_BY
+     * (Laravel's strict mode) refuses an ORDER BY column in an aggregate with no
+     * GROUP BY (error 1140). SQLite and MySQL 8 accept it, so the suite stayed
+     * green while every order screen in the customer app answered 500
+     * (2026-11-11).
+     *
      * @return array{hangers_returned: int, hangers_confirmed: int, hangers_awaiting_laundry: int}
      */
     private function hangers(Order $order): array
     {
-        $row = $order->tasks()->toBase()->selectRaw(
+        $row = $order->tasks()->reorder()->toBase()->selectRaw(
             'coalesce(sum(hangers_returned), 0) as returned, '
             .'coalesce(sum(case when hangers_confirmed_at is not null then hangers_confirmed else 0 end), 0) as confirmed, '
             .'coalesce(sum(case when hangers_confirmed_at is null and status = ? then hangers_returned else 0 end), 0) as waiting',

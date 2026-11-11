@@ -10,6 +10,7 @@ use App\Modules\Order\Services\OrderService;
 use App\Modules\Setting\Models\Setting;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Laravel\Sanctum\Sanctum;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
@@ -159,6 +160,31 @@ class HangerReceiptTest extends TestCase
         $points = $customerSees();
         $this->assertSame([5, 3, 0], [$points['hangers_returned'], $points['hangers_confirmed'], $points['hangers_awaiting_laundry']]);
         $this->assertSame(3, $driverSees()['hangers_confirmed']);
+    }
+
+    #[Test]
+    public function the_order_screen_asks_no_ordered_aggregate(): void
+    {
+        // Production is MariaDB: under ONLY_FULL_GROUP_BY it refuses an ORDER BY
+        // in an aggregate with no GROUP BY (error 1140), which SQLite and MySQL 8
+        // accept. `hangers()` inherited `tasks()`'s `orderBy('sequence')` and
+        // every `GET /orders/{id}` answered 500 on the live site (2026-11-11).
+        // SQLite cannot refuse it, so the SQL itself is checked.
+        [$order] = $this->withHangers(5);
+
+        $queries = [];
+        DB::listen(function ($query) use (&$queries) {
+            $queries[] = strtolower($query->sql);
+        });
+
+        Sanctum::actingAs($order->customer);
+        $this->getJson("/api/v1/orders/{$order->id}", $this->apiHeaders())->assertOk();
+
+        $ordered = array_filter($queries, fn (string $sql) => preg_match('/\b(sum|count|min|max|avg)\s*\(/', $sql)
+            && str_contains($sql, ' order by ')
+            && ! str_contains($sql, ' group by '));
+
+        $this->assertSame([], array_values($ordered));
     }
 
     /**
