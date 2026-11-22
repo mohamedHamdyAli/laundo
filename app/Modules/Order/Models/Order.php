@@ -8,6 +8,7 @@ use App\Modules\Coupon\Services\ReferralService;
 use App\Modules\Laundry\Models\Laundry;
 use App\Modules\Offer\Models\Offer;
 use App\Modules\Order\Enums\OrderStatus;
+use App\Modules\Order\Enums\TaskStatus;
 use App\Modules\Order\Enums\TaskType;
 use App\Modules\Payment\Enums\PaymentStatus;
 use App\Modules\Payment\Models\OrderSettlement;
@@ -481,12 +482,25 @@ class Order extends Model
                 ->select('order_id'));
     }
 
+    /**
+     * Hangers handed back that have reached the laundry and wait for it to
+     * confirm them (`OrderTask::hangersReachedLaundry()`, the same rule): a
+     * delivery's once it is done, a pickup's once the trip to the laundry is.
+     */
     public function scopeWithHangersToConfirm(Builder $query): Builder
     {
+        $arrived = OrderTask::query()
+            ->from('order_tasks as arrival')
+            ->whereColumn('arrival.order_id', 'order_tasks.order_id')
+            ->where('arrival.type', TaskType::DeliverToLaundry->value)
+            ->where('arrival.status', TaskStatus::Completed->value);
+
         return $query->whereIn($query->qualifyColumn('id'), OrderTask::query()
             ->where('hangers_returned', '>', 0)
             ->whereNull('hangers_confirmed_at')
-            ->where('status', 'completed')
+            ->where('status', TaskStatus::Completed->value)
+            ->where(fn ($q) => $q->where('type', TaskType::DeliverToCustomer->value)
+                ->orWhere(fn ($q) => $q->where('type', TaskType::PickupFromCustomer->value)->whereExists($arrived)))
             ->select('order_id'));
     }
 

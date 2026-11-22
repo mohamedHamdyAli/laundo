@@ -167,7 +167,7 @@
             "api-controller": 24
         },
         "files": 24,
-        "lines": 5787,
+        "lines": 5798,
         "classes": [
             {
                 "fqcn": "App\\Http\\Controllers\\Api\\V1\\AddressController",
@@ -1232,10 +1232,10 @@
         "community": "quality",
         "path": null,
         "layers": {
-            "doc": 14
+            "doc": 15
         },
-        "files": 14,
-        "lines": 11779,
+        "files": 15,
+        "lines": 11880,
         "classes": [],
         "models": [],
         "owns_tables": [],
@@ -2910,7 +2910,7 @@
             "Payment": 1
         },
         "depended_on_by": {
-            "Tests": 69,
+            "Tests": 70,
             "Order": 21,
             "Platform": 10,
             "Driver": 8,
@@ -3038,7 +3038,7 @@
             "repository": 1
         },
         "files": 79,
-        "lines": 16867,
+        "lines": 16960,
         "classes": [
             {
                 "fqcn": "App\\Modules\\Order\\Controllers\\DispatchController",
@@ -3535,7 +3535,7 @@
             "Complaint": 1
         },
         "depended_on_by": {
-            "Tests": 549,
+            "Tests": 555,
             "Api": 67,
             "Report": 40,
             "Driver": 34,
@@ -5363,7 +5363,7 @@
             "browser-test": 26
         },
         "files": 174,
-        "lines": 57648,
+        "lines": 57788,
         "classes": [
             {
                 "fqcn": "Tests\\Feature\\Api\\AddressIdDisclosureTest",
@@ -6497,11 +6497,11 @@
         ],
         "summary": "",
         "depends_on": {
-            "Order": 549,
+            "Order": 555,
             "Platform": 115,
             "User": 109,
             "Payment": 89,
-            "Notification": 69,
+            "Notification": 70,
             "Driver": 65,
             "Wallet": 47,
             "Setting": 42,

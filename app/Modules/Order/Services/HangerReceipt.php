@@ -55,6 +55,13 @@ class HangerReceipt
                 throw new RuntimeException('already_confirmed');
             }
 
+            // Confirmed when the driver hands them in, not before (QA on item
+            // 11, 2026-11-22): a pickup's hangers arrive with the trip to the
+            // laundry. Asked under the lock, of the row as it stands.
+            if (! $locked->hangersReachedLaundry()) {
+                throw new RuntimeException('hangers_not_arrived');
+            }
+
             $locked->update([
                 'hangers_confirmed' => $count,
                 'hangers_confirmed_at' => now(),

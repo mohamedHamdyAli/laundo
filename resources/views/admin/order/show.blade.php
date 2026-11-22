@@ -70,21 +70,15 @@
                             {{ __('No driver is sent to collect it until the laundry marks it finished.') }}
                         </div>
                         @if (\App\Modules\Order\Controllers\OrderWashingController::mayFinish())
-                            {{-- The hangers the clothes go out on: the driver
-                                 collecting them counts against it (item 11). --}}
+                            {{-- No hanger count here any more (QA on item 11,
+                                 2026-11-22): the laundry confirms the hangers the
+                                 customer hands back, when the driver brings them. --}}
                             <form method="POST" action="{{ route('admin.order.finish_washing', $row->id) }}"
                                 class="d-flex flex-wrap gap-2 align-items-center">
                                 @csrf
-                                <label for="hangers-sent" class="small mb-0">{{ __('Hangers the clothes go out on') }}</label>
-                                <input type="number" name="hangers_sent" id="hangers-sent" min="0" max="999" step="1" required
-                                    class="form-control form-control-sm @error('hangers_sent') is-invalid @enderror" style="width: 6rem"
-                                    value="{{ old('hangers_sent') }}">
                                 <button type="submit" class="btn btn-success btn-sm">
                                     <i class="fa fa-check-double me-1"></i>{{ __('Washing finished') }}
                                 </button>
-                                @error('hangers_sent')
-                                    <small class="d-block w-100 text-danger">{{ $message }}</small>
-                                @enderror
                             </form>
                         @endif
                     </div>

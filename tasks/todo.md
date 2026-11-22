@@ -1,3 +1,67 @@
+# The client's QA comments on items 13–19 (2026-11-22)
+
+The client's sheet numbers these 13–19 (ours, below: 2, 3, 5, 9, 10, 11, 12).
+They were probed with throwaway tests outside the repo before any change. The
+owner's picks (asked in Arabic) are marked «the owner».
+
+- [x] **15 (our 5): the driver counts the pieces at the pickup again.** Item 12
+      took the count away from every leg but the collection from the laundry,
+      but the client asked only to remove the signature. The owner: at the
+      pickup only. `TaskType::countsPieces()` = pickup + collection from the
+      laundry. A different count is a `PieceDiscrepancy`, never refused, as
+      before 2026-11-08.
+- [x] **19 (our 12): resolved with 15.** "Inspection by the laundry" meant the
+      piece **types**, which the laundry's review already does per item before
+      the platform sends it. Nothing more to build. Ask the client whether
+      "type" also means condition (stains/damage).
+- [x] **16 (our 9): a refused hold tells the driver what to do.**
+      `hold.message` on a rejected hold says to recount (or to collect again),
+      and so does the push body, beside the admin's note. A leg completed after
+      a refusal no longer carries the old «rejected» hold.
+- [x] **17 (our 10): a wrong amount goes for approval before the signature is
+      asked for.** The owner: approval first. The signature is still required
+      on a delivery that completes normally.
+- [x] **14 (our 3): a cash pickup with a trip fee must say what it took.** The
+      owner: refuse without it. `requiresCollectedAmount()` covers the pickup
+      when `toCollect() > 0`. **The driver app must be updated first**, or
+      pickups stop: say so in the mobile note and at the deploy.
+- [x] **18 (our 11): hangers are confirmed when the driver brings them back
+      to the laundry.** The owner: remove the old step, do what the client
+      asked.
+  - [x] «خلص الغسيل» no longer asks how many hangers the clothes go out on
+        (`hangers_sent` optional, gone from the form).
+  - [x] The driver no longer counts hangers at the collection from the laundry
+        (`countsHangers()` off, so no hanger hold).
+  - [x] The driver records hangers returned at the door whether or not the
+        points programme is on (`accepts_hangers`).
+  - [x] The laundry confirms a pickup's hangers only once the trip to the
+        laundry has arrived (`deliver_to_laundry` completed): in the service,
+        the badge/filter and the order screen.
+- [x] **13 (our 2): the count shows doubled.** Not reproducible on the
+      backend: `items` is one phase. The customer app is adding
+      `estimated_items` to `items`, or predates the change. Write it in the
+      mobile note; no backend change.
+- [x] Tests for each, then the full suite.
+- [x] Mobile note for the driver app (and the customer app for 13), Postman,
+      `generate-reference.py` + HTML, `docs/architecture.md`, CLAUDE.md,
+      Changelog.
+- [x] `/code-review` and `/security-review` on the diff (money, driver input).
+
+Review (2026-11-22):
+- Every item done, with tests. The suite is green apart from what the review
+  changed, and that was re-run (see the Changelog).
+- `/code-review` found two important issues, both fixed. (1) Requiring the
+  pickup count would have stopped **every** pickup on the current driver app,
+  not only cash ones, so the count is asked of the app but not required by the
+  server. (2) Approving a pickup hold raised before this would have stamped 0
+  pieces; `finish()` now stamps a count only when one was sent. Smaller
+  fixes: the arrival check runs under the lock, there is no query per leg on
+  the order screen, and the wording of an old hanger hold's refusal.
+- Left to the owner: an approved cash-mismatch delivery completes with no
+  signature if none was sent (their choice: approval first), and hangers
+  confirmed while points are off never earn points later.
+- Deploy only after the driver app sends `collected_amount` at a cash pickup.
+
 # Item 7 again — absence at the delivery, and «failed» on the panel (2026-11-11)
 
 QA on the live site, order 103: the driver failed **«التوصيل للعميل»** with

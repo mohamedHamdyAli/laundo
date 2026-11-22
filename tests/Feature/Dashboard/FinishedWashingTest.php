@@ -304,131 +304,49 @@ class FinishedWashingTest extends TestCase
     }
 
     // ------------------- the hangers out of the laundry (item 11, 2026-11-09)
+    //
+    // Retired 2026-11-22 (the client's QA on item 11): the hangers the laundry
+    // confirms are the ones handed back by the customer (HangerReceiptTest),
+    // not the ones the finished clothes go out on.
 
     #[Test]
-    public function the_laundry_says_how_many_hangers_the_clothes_go_out_on(): void
+    public function finishing_asks_for_no_hanger_figure(): void
     {
         $order = $this->beingCleaned();
 
         $this->actingAs($this->tenant['owner'])->get(route('admin.order.show', $order->id))
-            ->assertOk()->assertSee('name="hangers_sent"', false);
+            ->assertOk()->assertDontSee('name="hangers_sent"', false);
 
-        // Not said: refused beside the field, nothing moves.
         $this->actingAs($this->tenant['owner'])->post(route('admin.order.finish_washing', $order->id))
-            ->assertSessionHasErrors('hangers_sent');
-        $this->assertSame(OrderStatus::Cleaning, $order->fresh()->status);
-
-        $this->actingAs($this->tenant['owner'])->post(route('admin.order.finish_washing', $order->id), ['hangers_sent' => 6])
-            ->assertSessionHas('success');
+            ->assertSessionHasNoErrors()->assertSessionHas('success');
         $this->assertSame(OrderStatus::Finished, $order->fresh()->status);
-        $this->assertSame(6, $order->fresh()->hangers_sent);
+        $this->assertNull($order->fresh()->hangers_sent);
     }
 
     #[Test]
-    public function the_driver_counts_the_hangers_and_a_different_count_waits_for_the_platform(): void
+    public function the_collection_asks_for_no_hangers_and_never_holds_over_them(): void
     {
+        // Even an order finished with a figure before the change.
         $leg = $this->collectionStarted(hangers: 6);
-
-        Sanctum::actingAs($this->driver);
-        $this->getJson("/api/v1/driver/tasks/{$leg->id}", $this->apiHeaders())
-            ->assertOk()
-            ->assertJsonPath('data.requires_hanger_count', true)
-            ->assertJsonPath('data.hanger_count', null);
-
-        // Five against six: held, and the laundry's figure is not given away.
-        $this->complete($leg, ['piece_count' => 2, 'hanger_count' => 5])
-            ->assertStatus(409)
-            ->assertJsonPath('key', 'awaiting_approval')
-            ->assertJsonPath('msg', __('The hangers do not match what the laundry wrote. It was sent to the management for approval — wait for their answer.'))
-            ->assertJsonPath('data.hold.kind', 'hanger_count')
-            ->assertJsonPath('data.hold.expected', null);
-        $this->assertSame(TaskStatus::Started, $leg->fresh()->status);
-
-        $hold = TaskHold::firstOrFail();
-        $this->actingAs($this->superAdmin())->get(route('admin.order.show', $leg->order_id))
-            ->assertOk()
-            ->assertSee(__('Waiting for your approval — the hangers from the laundry'))
-            ->assertSee(__('Received :reported hangers at the laundry against the :expected it wrote.', ['reported' => 5, 'expected' => 6]));
-
-        $this->actingAs($this->superAdmin())->post(route('admin.order.hold.approve', $hold->id))->assertRedirect();
-
-        $leg->refresh();
-        $this->assertSame(TaskStatus::Completed, $leg->status);
-        $this->assertSame(5, $leg->hangers_collected);
-        $this->assertSame(OrderStatus::ReadyForDelivery, $leg->order->fresh()->status);
-    }
-
-    #[Test]
-    public function the_same_hangers_complete_at_once(): void
-    {
-        $leg = $this->collectionStarted(hangers: 6);
-
-        $this->complete($leg, ['piece_count' => 2, 'hanger_count' => 6])->assertOk();
-
-        $this->assertSame(6, $leg->fresh()->hangers_collected);
-        $this->assertSame(0, TaskHold::count());
-    }
-
-    #[Test]
-    public function pieces_and_hangers_both_wrong_is_one_question_with_both_figures(): void
-    {
-        $leg = $this->collectionStarted(hangers: 6);
-
-        $this->complete($leg, ['piece_count' => 3, 'hanger_count' => 5])->assertStatus(409);
-
-        $hold = TaskHold::sole();
-        $this->assertSame('piece_count', $hold->kind);
-        $this->assertStringContainsString(
-            __('Received :reported hangers at the laundry against the :expected it wrote.', ['reported' => 5, 'expected' => 6]),
-            $hold->describe(),
-        );
-
-        // One approval accepts the whole confirmation.
-        app(TaskService::class)->approveHold($hold, $this->platformOperator());
-        $this->assertSame([3, 5], [$leg->fresh()->piece_count, $leg->fresh()->hangers_collected]);
-    }
-
-    #[Test]
-    public function an_app_that_does_not_ask_yet_keeps_completing_collections(): void
-    {
-        $leg = $this->collectionStarted(hangers: 6);
-
-        $this->complete($leg, ['piece_count' => 2])->assertOk();
-        $this->assertNull($leg->fresh()->hangers_collected);
-    }
-
-    #[Test]
-    public function a_driver_held_over_the_hangers_cannot_leave_them_out_the_next_time(): void
-    {
-        // Code review (2026-11-09): resending without `hanger_count` completed
-        // the leg and closed the question as «withdrawn», nobody asked.
-        $leg = $this->collectionStarted(hangers: 6);
-        $this->complete($leg, ['piece_count' => 2, 'hanger_count' => 5])->assertStatus(409);
-
-        $this->complete($leg, ['piece_count' => 2])
-            ->assertStatus(422)
-            ->assertJsonPath('errors.hanger_count.0', __('Please enter the number of hangers you received.'));
-        $this->assertSame(TaskStatus::Started, $leg->fresh()->status);
-        $this->assertSame(TaskHold::PENDING, TaskHold::sole()->status);
-
-        // Refused by the platform: still asked for.
-        app(TaskService::class)->rejectHold(TaskHold::sole(), $this->platformOperator(), 'Count again');
-        $this->complete($leg, ['piece_count' => 2])->assertStatus(422);
-
-        // With the right figure it completes.
-        $this->complete($leg, ['piece_count' => 2, 'hanger_count' => 6])->assertOk();
-        $this->assertSame(6, $leg->fresh()->hangers_collected);
-    }
-
-    #[Test]
-    public function an_order_finished_without_a_figure_is_not_checked(): void
-    {
-        $leg = $this->collectionStarted(hangers: null);
 
         Sanctum::actingAs($this->driver);
         $this->getJson("/api/v1/driver/tasks/{$leg->id}", $this->apiHeaders())
             ->assertOk()->assertJsonPath('data.requires_hanger_count', false);
-        $this->complete($leg, ['piece_count' => 2, 'hanger_count' => 9])->assertOk();
+
+        $this->complete($leg, ['piece_count' => 2, 'hanger_count' => 5])->assertOk();
+
+        $this->assertSame(TaskStatus::Completed, $leg->fresh()->status);
+        $this->assertNull($leg->fresh()->hangers_collected);
+        $this->assertSame(0, TaskHold::count());
+    }
+
+    #[Test]
+    public function a_different_piece_count_at_the_collection_is_still_held(): void
+    {
+        $leg = $this->collectionStarted(hangers: null);
+
+        $this->complete($leg, ['piece_count' => 3])->assertStatus(409)
+            ->assertJsonPath('data.hold.kind', 'piece_count');
     }
 
     /**

@@ -15,6 +15,7 @@ use App\Modules\Laundry\Models\Laundry;
 use App\Modules\LaundryService\Models\LaundryService;
 use App\Modules\LaundryZone\Models\LaundryZone;
 use App\Modules\Order\Enums\OrderStatus;
+use App\Modules\Order\Enums\TaskType;
 use App\Modules\Order\Models\Order;
 use App\Modules\Order\Models\OrderTask;
 use App\Modules\Order\Services\OrderReviewService;
@@ -330,12 +331,41 @@ abstract class TestCase extends BaseTestCase
         ?UploadedFile $signature = null,
     ): OrderTask {
         $tasks = app(TaskService::class);
+        $data = $this->doorstepDefaults($task, $data);
 
         try {
             return $tasks->complete($task, $driver, $data, $photos, $signature);
         } catch (TaskHeld $held) {
             return $tasks->approveHold($held->hold, $this->platformOperator());
         }
+    }
+
+    /**
+     * What a pickup must say since 2026-11-22, for tests that are not about
+     * it: the trip fee taken in full on a cash order (`requiresCollectedAmount()`)
+     * and the pieces the customer ordered (`countsPieces()`). A test that sends
+     * either keeps its own figure.
+     *
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     */
+    protected function doorstepDefaults(OrderTask $task, array $data): array
+    {
+        $task = $task->fresh() ?? $task;
+
+        if ($task->type !== TaskType::PickupFromCustomer) {
+            return $data;
+        }
+
+        if (! array_key_exists('collected_amount', $data) && $task->requiresCollectedAmount()) {
+            $data['collected_amount'] = $task->toCollect();
+        }
+
+        if (! array_key_exists('piece_count', $data)) {
+            $data['piece_count'] = (int) $task->order?->estimated_items_count;
+        }
+
+        return $data;
     }
 
     /**

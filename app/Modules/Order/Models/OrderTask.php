@@ -168,19 +168,72 @@ class OrderTask extends Model
 
     /**
      * Whether «تأكيد» on this leg must say what changed hands
-     * (`collected_amount`, 0 allowed): the delivery of an order not paid yet.
+     * (`collected_amount`, 0 allowed):
      *
-     * **Not the pickup**, though it may take the trip fee: a driver app that
-     * predates the trip fee sends no amount there, and refusing its pickups
-     * would stop every collection until the app is updated. A pickup that
-     * reports nothing leaves the fee owed, and the delivery takes it with the
-     * rest (`Order::stillOwed()`).
+     * - the delivery of an order not paid yet;
+     * - **the pickup, when it has a trip fee to take** (`toCollect()` > 0).
+     *   Until 2026-11-22 the pickup could stay silent so that a driver app from
+     *   before the trip fee kept working, and the fee then rode along to the
+     *   delivery. The client saw exactly that: the pickup's fee collected at
+     *   the delivery (QA on item 3). The owner: refuse a pickup that says
+     *   nothing. **The driver app must send `collected_amount` here first.**
      */
     public function requiresCollectedAmount(): bool
     {
-        return $this->type === TaskType::DeliverToCustomer
-            && $this->order !== null
-            && $this->order->payment_status !== 'paid';
+        if ($this->order === null || $this->order->payment_status === 'paid') {
+            return false;
+        }
+
+        return match ($this->type) {
+            TaskType::DeliverToCustomer => true,
+            TaskType::PickupFromCustomer => $this->toCollect() > 0,
+            default => false,
+        };
+    }
+
+    /**
+     * Whether the hangers handed back on this leg have reached the laundry, so
+     * that the laundry can confirm them («شماعات مستلمة من المندوب»).
+     *
+     * The client (QA on item 11, 2026-11-22): the laundry confirms the hangers
+     * when the driver hands them in. The pickup's travel in the bag, so they
+     * arrive with the trip to the laundry. The delivery's go back with the
+     * driver and reach the laundry on a later drop that no leg records, so they
+     * may be confirmed once the delivery is done.
+     */
+    /**
+     * @param  iterable<OrderTask>|null  $legs  the order's legs when the caller
+     *                                          has them already (the order
+     *                                          screen), so there is no query
+     *                                          per leg
+     */
+    public function hangersReachedLaundry(?iterable $legs = null): bool
+    {
+        if (! $this->type->takesHangers() || (int) $this->hangers_returned < 1
+            || $this->status !== TaskStatus::Completed) {
+            return false;
+        }
+
+        if ($this->type !== TaskType::PickupFromCustomer) {
+            return true;
+        }
+
+        if ($legs === null) {
+            return self::query()
+                ->where('order_id', $this->order_id)
+                ->where('type', TaskType::DeliverToLaundry->value)
+                ->where('status', TaskStatus::Completed->value)
+                ->exists();
+        }
+
+        foreach ($legs as $leg) {
+            if ($leg->order_id === $this->order_id && $leg->type === TaskType::DeliverToLaundry
+                && $leg->status === TaskStatus::Completed) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**

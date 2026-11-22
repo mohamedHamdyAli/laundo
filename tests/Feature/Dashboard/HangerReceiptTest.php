@@ -84,6 +84,35 @@ class HangerReceiptTest extends TestCase
     }
 
     #[Test]
+    public function a_pickup_s_hangers_wait_for_the_driver_to_bring_them_to_the_laundry(): void
+    {
+        // The client's QA on item 11 (2026-11-22): the laundry confirms them
+        // when the driver hands them in, not before.
+        [$order, $leg] = $this->withHangers(4, arrived: false);
+
+        $this->actingAs($this->tenant['owner'])->get(route('admin.order.show', $order->id))
+            ->assertOk()
+            ->assertSee('data-hangers-on-the-way="'.$leg->id.'"', false)
+            ->assertDontSee('data-hangers-form="'.$leg->id.'"', false);
+
+        $this->actingAs($this->tenant['owner'])
+            ->post(route('admin.order.tasks.hangers', $leg->id), ['hangers_confirmed' => 4])
+            ->assertSessionHas('error');
+        $this->assertNull($leg->fresh()->hangers_confirmed_at);
+
+        // Not on the list of hangers waiting for the laundry either.
+        $this->assertSame(0, Order::withHangersToConfirm()->count());
+
+        // The trip to the laundry arrives: now they can be confirmed.
+        OrderTask::where('order_id', $order->id)->where('type', TaskType::DeliverToLaundry->value)
+            ->update(['status' => TaskStatus::Completed->value, 'completed_at' => now()]);
+        $this->assertSame(1, Order::withHangersToConfirm()->count());
+
+        $this->actingAs($this->tenant['owner'])->get(route('admin.order.show', $order->id))
+            ->assertOk()->assertSee('data-hangers-form="'.$leg->id.'"', false);
+    }
+
+    #[Test]
     public function the_laundry_cannot_confirm_more_than_the_driver_collected(): void
     {
         // The points are the platform's money (code review, 2026-11-08).
@@ -188,11 +217,12 @@ class HangerReceiptTest extends TestCase
     }
 
     /**
-     * An order whose pickup is done with `$hangers` handed back.
+     * An order whose pickup is done with `$hangers` handed back — and, unless
+     * `$arrived` is false, carried to the laundry, where they can be confirmed.
      *
      * @return array{0: Order, 1: OrderTask}
      */
-    private function withHangers(int $hangers): array
+    private function withHangers(int $hangers, bool $arrived = true): array
     {
         $customer = $this->customer();
         $address = $this->addressFor($customer, $this->geo['zones'][0]);
@@ -206,6 +236,11 @@ class HangerReceiptTest extends TestCase
 
         $leg = OrderTask::where('order_id', $order->id)->where('type', TaskType::PickupFromCustomer->value)->firstOrFail();
         $leg->forceFill(['status' => TaskStatus::Completed, 'completed_at' => now(), 'hangers_returned' => $hangers])->save();
+
+        if ($arrived) {
+            OrderTask::where('order_id', $order->id)->where('type', TaskType::DeliverToLaundry->value)
+                ->update(['status' => TaskStatus::Completed->value, 'completed_at' => now()]);
+        }
 
         return [$order, $leg->fresh()];
     }

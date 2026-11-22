@@ -1,5 +1,28 @@
 # Changelog
 
+## 2026-11-22
+
+### Improvement
+
+- **CLAUDE.md is shorter and up to date** (Docs). The sections on customer points, the driver map, the driver's own record and the home page/«ملخص الماليات» are cut down to their binding rules plus a pointer; the full account was already in `docs/architecture.md`. The suite-duration history is one line (651s at 2,167 tests). The test figures are current (2,167 tests, ~150 files). The Docs section now says to regenerate `docs/api-reference.html` whenever `generate-reference.py` changes, with the command.
+- **`docs/api-reference.html` regenerated**: it had not been rebuilt since 2026-10-25, although `generate-reference.py` changed on 2026-11-09/11 (Docs).
+
+### Fix
+
+The client's QA comments on the 2026-11-08 batch (their items 13–19). Each was probed before any change; the owner chose each fix.
+
+- **The driver counts the pieces at the pickup again** (their 15, our 5). Removing the signature at the pickup had also removed the count. `TaskType::countsPieces()` = pickup + collection from the laundry; at the pickup a different count is a `PieceDiscrepancy`, never refused, and a pickup sent without a count still completes (an older app sends none; code review). `finish()` stamps and checks a count only when one was sent, so approving a hold raised before this does not record 0 pieces (Enum / Service). Their 19 ("inspect the type, not the count") is covered by the laundry's existing per-item review.
+- **A refused hold tells the driver what to do next** (their 16, our 9). `TaskHold::nextStepAfterRefusal()` («الإدارة رفضت العدد — عدّ القطع تاني وأكّد» / «حصّل المبلغ الصح…») is in the push body and `hold.message`, beside the admin's note. A leg completed after a refusal shows `hold: null` (Model / Service / API).
+- **A wrong amount at the door goes for approval before the signature is asked for** (their 17, our 10). `TaskService::complete()` decides the hold first; the signature is required only on a confirmation that completes now (Service).
+- **A cash pickup with a trip fee must report what was collected** (their 14, our 3). `OrderTask::requiresCollectedAmount()` covers the pickup when `toCollect() > 0`: 422 `collected_amount` otherwise. It was optional, so the pickup's fee was being collected at the delivery. **The driver app must be updated before this deploys** (Model / API).
+- **Hangers are confirmed when the driver brings them back to the laundry** (their 18, our 11) (Service / Model / Blade / API):
+  - «خلص الغسيل» no longer asks for the hangers the clothes go out on (`hangers_sent` optional, gone from the form).
+  - The driver no longer counts hangers at the collection from the laundry (`countsHangers()` false, so no hanger hold).
+  - `accepts_hangers` no longer depends on the points programme.
+  - `OrderTask::hangersReachedLaundry()` gates `HangerReceipt::confirm()` (under the leg's lock), the order screen's form («مع المندوب — في الطريق للمغسلة» until then) and the «hangers to confirm» filter/badge. A pickup's hangers arrive with the completed trip to the laundry.
+- **"The count shows doubled"** (their 13, our 2) could not be reproduced on the backend: `items` is one phase and `items_count` is right. The customer app adds `estimated_items` to `items`. Written into the mobile note; no backend change.
+- Tests: `TaskHoldTest` (+3), `DriverTaskTest` (+1), `HangerReceiptTest` (+1), `TripFeeTest` (+2, one rewritten), `TaskTypeTest` (+1, one rewritten); `FinishedWashingTest`'s hanger tests replaced by three; tests that walk a pickup go through `TestCase::doorstepDefaults()`. Docs: `docs/mobile-2026-11-22-client-qa.md` (new), `mobile-api-changes.md`, Postman, `generate-reference.py` + HTML, `architecture.md`, CLAUDE.md.
+
 ## 2026-11-11
 
 ### Fix

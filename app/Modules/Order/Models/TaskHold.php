@@ -105,6 +105,22 @@ class TaskHold extends Model
     }
 
     /**
+     * What the driver does after the platform refuses: count again, or take
+     * the money again. Said in the push and on the task screen, beside the
+     * admin's note (QA on item 9, 2026-11-22).
+     */
+    public function nextStepAfterRefusal(): string
+    {
+        return match ($this->kind) {
+            self::COLLECTED_AMOUNT => __('The management refused the amount — collect the right amount and confirm again'),
+            // Only on holds raised before 2026-11-22: the hangers are no
+            // longer counted here, so there is nothing to recount.
+            self::HANGER_COUNT => __('The management refused the confirmation — confirm the leg again'),
+            default => __('The management refused the count — count the pieces again and confirm'),
+        };
+    }
+
+    /**
      * The one sentence, for the bell, the order screen and the driver.
      */
     public function describe(): string

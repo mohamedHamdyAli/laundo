@@ -235,14 +235,15 @@ class DriverTaskTest extends TestCase
 
         $this->postJson("/api/v1/driver/tasks/{$task->id}/complete", [
             'piece_count' => 9,
+            'collected_amount' => $task->fresh()->toCollect(),
             'signature' => UploadedFile::fake()->image('signature.png'),
         ], $this->apiHeaders())->assertOk();
 
         $task->refresh();
         $this->assertSame(TaskStatus::Completed, $task->status);
-        // The driver no longer counts at the customer's door (the client's
-        // sheet, item 12, 2026-11-08): a count sent anyway is not kept.
-        $this->assertNull($task->piece_count);
+        // The driver counts at the customer's door again (the client's QA on
+        // items 5 and 12, 2026-11-22): the count is kept.
+        $this->assertSame(9, $task->piece_count);
         $this->assertNotNull($task->signature_path);
         $this->assertNotNull($task->durationMinutes());
 
@@ -268,6 +269,76 @@ class DriverTaskTest extends TestCase
     }
 
     #[Test]
+    public function the_driver_counts_the_pieces_at_the_pickup_again(): void
+    {
+        // The client's QA on items 5 and 12 (2026-11-22): removing the
+        // signature also removed the count of what the customer handed over.
+        $driver = $this->eligibleDriver();
+        $order = $this->placedOrder();
+        $task = $this->started($order, TaskType::PickupFromCustomer, $driver);
+        $fee = ['collected_amount' => $task->fresh()->toCollect()];
+
+        Sanctum::actingAs($driver);
+
+        $this->getJson("/api/v1/driver/tasks/{$task->id}", $this->apiHeaders())
+            ->assertOk()
+            ->assertJsonPath('data.requires_piece_count', true)
+            ->assertJsonPath('data.requires_signature', false)
+            // Not shown before it is counted: it would be copied.
+            ->assertJsonPath('data.expected_pieces', null);
+
+        // More than ordered: recorded and raised for the platform, never refused.
+        $ordered = (int) $order->estimated_items_count;
+        $this->postJson("/api/v1/driver/tasks/{$task->id}/complete", $fee + ['piece_count' => $ordered + 2], $this->apiHeaders())
+            ->assertOk();
+
+        $this->assertSame($ordered + 2, $task->fresh()->piece_count);
+        $this->assertDatabaseHas('piece_discrepancies', [
+            'order_task_id' => $task->id, 'counted' => $ordered + 2, 'expected' => $ordered,
+        ]);
+    }
+
+    #[Test]
+    public function a_pickup_from_an_app_that_sends_no_count_still_completes(): void
+    {
+        // Code review (2026-11-22): the driver app from before this sends no
+        // count at the pickup. Refusing it would stop every pickup until the
+        // app ships, so nothing is stamped and nothing is compared.
+        $driver = $this->eligibleDriver();
+        $order = $this->placedOrder();
+        $task = $this->started($order, TaskType::PickupFromCustomer, $driver);
+
+        Sanctum::actingAs($driver);
+        $this->postJson("/api/v1/driver/tasks/{$task->id}/complete",
+            ['collected_amount' => $task->fresh()->toCollect()], $this->apiHeaders())->assertOk();
+
+        $this->assertSame(TaskStatus::Completed, $task->fresh()->status);
+        $this->assertNull($task->fresh()->piece_count);
+        $this->assertDatabaseMissing('piece_discrepancies', ['order_task_id' => $task->id]);
+    }
+
+    #[Test]
+    public function approving_a_pickup_held_without_a_count_records_no_count(): void
+    {
+        // Code review (2026-11-22): a pickup held before the pickup counted
+        // again carries no count. Approved, it must not be stamped 0 pieces
+        // with a difference closed against 0.
+        $driver = $this->eligibleDriver();
+        $order = $this->placedOrder();
+        $task = $this->started($order, TaskType::PickupFromCustomer, $driver);
+
+        Sanctum::actingAs($driver);
+        $this->postJson("/api/v1/driver/tasks/{$task->id}/complete", ['collected_amount' => 0], $this->apiHeaders())
+            ->assertStatus(409);
+
+        app(TaskService::class)->approveHold(TaskHold::sole(), $this->superAdmin());
+
+        $this->assertSame(TaskStatus::Completed, $task->fresh()->status);
+        $this->assertNull($task->fresh()->piece_count);
+        $this->assertDatabaseMissing('piece_discrepancies', ['order_task_id' => $task->id]);
+    }
+
+    #[Test]
     public function the_pickup_needs_no_signature(): void
     {
         // The client's sheet, item 5 (2026-11-08): «إزالة شرط توقيع العميل
@@ -285,7 +356,7 @@ class DriverTaskTest extends TestCase
         $this->assertTrue($detail->json('data.requires_scan'));
 
         $this->postJson("/api/v1/driver/tasks/{$task->id}/complete",
-            ['piece_count' => 5], $this->apiHeaders())
+            ['piece_count' => 5, 'collected_amount' => $task->fresh()->toCollect()], $this->apiHeaders())
             ->assertOk();
 
         $this->assertSame(TaskStatus::Completed, $task->fresh()->status);
@@ -351,7 +422,7 @@ class DriverTaskTest extends TestCase
         $order = $this->deliveredReadyOrder($driver);
         $task = $this->started($order->fresh(), TaskType::DeliverToCustomer, $driver);
 
-        $due = $order->fresh()->payableTotal();
+        $due = $order->fresh()->stillOwed(); // the pickup took its trip fee (2026-11-22)
 
         Sanctum::actingAs($driver);
 
@@ -380,7 +451,7 @@ class DriverTaskTest extends TestCase
         $order = $this->deliveredReadyOrder($driver);
         $task = $this->started($order->fresh(), TaskType::DeliverToCustomer, $driver);
 
-        $due = $order->fresh()->payableTotal();
+        $due = $order->fresh()->stillOwed(); // the pickup took its trip fee (2026-11-22)
 
         Sanctum::actingAs($driver);
 
@@ -1401,7 +1472,7 @@ class DriverTaskTest extends TestCase
         $this->app['auth']->forgetGuards();
         Sanctum::actingAs($driver);
 
-        $this->postJson("/api/v1/driver/tasks/{$task->id}/complete", $data, $this->apiHeaders())
+        $this->postJson("/api/v1/driver/tasks/{$task->id}/complete", $this->doorstepDefaults($task, $data), $this->apiHeaders())
             ->assertOk();
     }
 }

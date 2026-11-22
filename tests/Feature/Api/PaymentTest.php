@@ -387,7 +387,7 @@ class PaymentTest extends TestCase
         app(TaskService::class)->complete(
             $task->fresh(),
             $driver,
-            ['collected_amount' => $order->fresh()->payableTotal()],
+            ['collected_amount' => $order->fresh()->stillOwed()],
             [],
             UploadedFile::fake()->image('sig.png'),
         );
@@ -397,14 +397,16 @@ class PaymentTest extends TestCase
         // Paid at the door, no gateway involved — and, since 2026-10-01, one
         // captured cash payment in the driver's name, still in their pocket.
         $this->assertSame('paid', $order->payment_status);
-        $cash = Payment::sole();
+        // The pickup took its trip fee (required since 2026-11-22); the
+        // delivery's payment is the rest.
+        $cash = Payment::where('order_task_id', $task->id)->sole();
         $this->assertSame(PaymentMethod::Cash, $cash->method);
         $this->assertSame(PaymentStatus::Captured, $cash->status);
         $this->assertSame($driver->id, $cash->collected_by);
         $this->assertSame($task->id, $cash->order_task_id);
         $this->assertNull($cash->handed_over_at);
         $this->assertNull($cash->provider_reference);
-        $this->assertEquals($order->payableTotal(), (float) $cash->amount);
+        $this->assertEquals($order->payableTotal(), (float) Payment::sum('amount'));
     }
 
     // ----------------------------------------------------------- isolation
@@ -543,7 +545,7 @@ class PaymentTest extends TestCase
             app(TaskService::class)->complete(
                 $task->fresh(),
                 $driver,
-                ['piece_count' => 2],
+                $this->doorstepDefaults($task, ['piece_count' => 2]),
                 [],
                 $type->requiresSignature() ? UploadedFile::fake()->image('s.png') : null,
             );

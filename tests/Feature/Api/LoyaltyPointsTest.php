@@ -725,15 +725,25 @@ class LoyaltyPointsTest extends TestCase
         [$driver, $task] = $this->startedLeg($order, TaskType::PickupFromCustomer);
 
         Sanctum::actingAs($driver);
-        $this->postJson("/api/v1/driver/tasks/{$task->id}/complete", [
+        $this->postJson("/api/v1/driver/tasks/{$task->id}/complete", $this->doorstepDefaults($task, [
             'piece_count' => 3,
             'hangers_returned' => 4,
-        ], $this->apiHeaders())->assertOk()->assertJsonPath('data.hangers_returned', 4);
+        ]), $this->apiHeaders())->assertOk()->assertJsonPath('data.hangers_returned', 4);
 
         $this->assertSame(4, $task->fresh()->hangers_returned);
         $this->assertSame(0, $this->points->available($customer));
 
+        // Not before they reach the laundry (the client's QA on item 11,
+        // 2026-11-22): a pickup's hangers arrive with the trip to the laundry.
+        try {
+            app(HangerReceipt::class)->confirm($task->fresh(), 3, $this->superAdmin());
+            $this->fail('Confirmed hangers that had not reached the laundry.');
+        } catch (RuntimeException $e) {
+            $this->assertSame('hangers_not_arrived', $e->getMessage());
+        }
+
         // Three reached the laundry.
+        $this->arrivedAtTheLaundry($order);
         app(HangerReceipt::class)->confirm($task->fresh(), 3, $this->superAdmin());
 
         $this->assertSame(3, $this->points->available($customer));
@@ -755,10 +765,11 @@ class LoyaltyPointsTest extends TestCase
         [$driver, $task] = $this->startedLeg($order, TaskType::PickupFromCustomer);
 
         Sanctum::actingAs($driver);
-        $this->postJson("/api/v1/driver/tasks/{$task->id}/complete", [
+        $this->postJson("/api/v1/driver/tasks/{$task->id}/complete", $this->doorstepDefaults($task, [
             'piece_count' => 3, 'hangers_returned' => 2,
-        ], $this->apiHeaders())->assertOk();
+        ]), $this->apiHeaders())->assertOk();
 
+        $this->arrivedAtTheLaundry($order);
         app(HangerReceipt::class)->confirm($task->fresh(), 2, $this->superAdmin());
 
         $this->assertSame(6, $this->points->available($customer));
@@ -773,9 +784,9 @@ class LoyaltyPointsTest extends TestCase
         [$driver, $task] = $this->startedLeg($order, TaskType::PickupFromCustomer);
 
         Sanctum::actingAs($driver);
-        $this->postJson("/api/v1/driver/tasks/{$task->id}/complete", [
+        $this->postJson("/api/v1/driver/tasks/{$task->id}/complete", $this->doorstepDefaults($task, [
             'piece_count' => 3, 'hangers_returned' => 11,
-        ], $this->apiHeaders())->assertStatus(422)->assertJsonValidationErrors('hangers_returned', 'errors');
+        ]), $this->apiHeaders())->assertStatus(422)->assertJsonValidationErrors('hangers_returned', 'errors');
 
         $this->assertSame(TaskStatus::Started, $task->fresh()->status);
         $this->assertSame(0, $this->points->available($customer));
@@ -796,9 +807,9 @@ class LoyaltyPointsTest extends TestCase
             // An integer on every leg, never null: it is a setting.
             ->assertJsonPath('data.max_hangers', 50);
 
-        $this->postJson("/api/v1/driver/tasks/{$task->id}/complete", [
+        $this->postJson("/api/v1/driver/tasks/{$task->id}/complete", $this->doorstepDefaults($task, [
             'piece_count' => 3, 'hangers_returned' => 5, 'receiver_name' => 'محمود',
-        ], $this->apiHeaders())->assertOk();
+        ]), $this->apiHeaders())->assertOk();
 
         $this->assertNull($task->fresh()->hangers_returned);
         $this->assertSame(0, $this->points->available($customer));
@@ -813,9 +824,13 @@ class LoyaltyPointsTest extends TestCase
         [$driver, $task] = $this->startedLeg($order, TaskType::PickupFromCustomer);
 
         Sanctum::actingAs($driver);
-        $this->postJson("/api/v1/driver/tasks/{$task->id}/complete", [
+        // Asked with the programme off too (the client's QA on item 11,
+        // 2026-11-22): the laundry confirms the hangers either way.
+        $this->getJson("/api/v1/driver/tasks/{$task->id}", $this->apiHeaders())
+            ->assertOk()->assertJsonPath('data.accepts_hangers', true);
+        $this->postJson("/api/v1/driver/tasks/{$task->id}/complete", $this->doorstepDefaults($task, [
             'piece_count' => 3, 'hangers_returned' => 4,
-        ], $this->apiHeaders())->assertOk();
+        ]), $this->apiHeaders())->assertOk();
 
         $this->assertSame(4, $task->fresh()->hangers_returned);
         $this->assertSame(0, $this->points->available($customer));
@@ -1007,5 +1022,14 @@ class LoyaltyPointsTest extends TestCase
         }
 
         $this->fail("The order has no {$type->value} leg.");
+    }
+
+    /**
+     * The trip to the laundry done: the pickup's hangers are there now.
+     */
+    private function arrivedAtTheLaundry(Order $order): void
+    {
+        OrderTask::where('order_id', $order->id)->where('type', TaskType::DeliverToLaundry->value)
+            ->update(['status' => TaskStatus::Completed->value, 'completed_at' => now()]);
     }
 }

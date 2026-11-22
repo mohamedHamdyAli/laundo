@@ -651,7 +651,7 @@ class DriverTaskController extends Controller
             'requires_scan' => $type->requiresScan(),
             // «بانتظار موافقة الإدارة» — the latest time this leg was held, and
             // what became of it (items 9 and 10). Null on a leg never held.
-            'hold' => $this->presentHold($this->holds->latestFor($task)),
+            'hold' => $this->presentHold($this->holds->latestFor($task), $task),
             'requires_piece_count' => $type->countsPieces(),
             // «عدد الشماعات» at the collection from the laundry, when the laundry
             // wrote one at «خلص الغسيل» (item 11, 2026-11-09). Its figure is not
@@ -660,10 +660,11 @@ class DriverTaskController extends Controller
             'requires_hanger_count' => $type->countsHangers() && $order?->hangers_sent !== null,
             'hanger_count' => $task->hangers_collected,
             'collects_payment' => $this->showsPayment($task),
-            // «شماعات راجعة (اختياري)» — asked at the customer's door while the
-            // points programme is on. The customer's points follow the count
-            // the laundry confirms (item 11, 2026-11-08), not this one.
-            'accepts_hangers' => $type->takesHangers() && $this->points->enabled() && $this->points->maxHangersPerVisit() > 0,
+            // «شماعات راجعة (اختياري)» — asked at the customer's door, with the
+            // points programme on or off: the laundry confirms them when the
+            // driver hands them in (QA on item 11, 2026-11-22), and points
+            // follow its count only while the programme is on.
+            'accepts_hangers' => $type->takesHangers() && $this->points->maxHangersPerVisit() > 0,
             // Always the integer ceiling — a setting, not a property of the leg.
             'max_hangers' => $this->points->maxHangersPerVisit(),
             'hangers_returned' => $task->hangers_returned,
@@ -905,9 +906,16 @@ class DriverTaskController extends Controller
     /**
      * @return array<string, mixed>|null
      */
-    private function presentHold(?TaskHold $hold): ?array
+    private function presentHold(?TaskHold $hold, OrderTask $task): ?array
     {
         if (! $hold) {
+            return null;
+        }
+
+        // A leg completed after a refusal (the driver confirmed again,
+        // matching) has no question left. The old «rejected» would read as
+        // «refused» on a finished leg (QA on item 9, 2026-11-22).
+        if ($task->status === TaskStatus::Completed && $hold->status !== TaskHold::APPROVED) {
             return null;
         }
 
@@ -928,11 +936,14 @@ class DriverTaskController extends Controller
             // (recount / collect again — `note` says why) | `withdrawn`.
             'status' => $hold->status,
             'note' => $hold->note,
-            'message' => $secret
+            // A refusal says what to do next, the admin's note in `note`.
+            'message' => $hold->status === TaskHold::REJECTED
+                ? $hold->nextStepAfterRefusal()
+                : ($secret
                 ? ($hold->kind === TaskHold::HANGER_COUNT
                     ? __('The hangers do not match what the laundry wrote.')
                     : __('The count does not match what the laundry counted.'))
-                : $hold->describe(),
+                : $hold->describe()),
             'decided_at_iso' => isoDate($hold->decided_at),
         ];
     }

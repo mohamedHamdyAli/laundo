@@ -108,31 +108,40 @@ enum TaskType: string
     }
 
     /**
-     * Whether the driver counts pieces at this handover — **the collection from
-     * the laundry only** (the client's sheet, item 12, 2026-11-08: «تحديد عملية
-     * فحص القطع من خلال المغسلة فقط و ليس المندوب»).
+     * Whether the driver counts pieces at this handover: **the pickup from the
+     * customer and the collection from the laundry**.
      *
-     * The driver used to count at the customer's door and at the laundry's too;
-     * the laundry's own count is now the one that stands, and the driver counts
-     * once more only when taking the pieces back out, against that count (a
-     * mismatch is held for the platform — `TaskHolds`, item 9). A count sent on
-     * the other legs is ignored, so an app that still asks breaks nothing.
-     * Never on the final leg: the count was agreed by the customer.
+     * - The pickup: what the customer handed over. Item 12 (2026-11-08) took
+     *   this count away along with the signature, but the client asked only for
+     *   the signature to go (QA on items 5 and 12, 2026-11-22: «تم إزالة الشرط
+     *   و لكن تم أيضاً إزالة إضافة عدد القطع المستلمة من العميل»). A different
+     *   count is a `PieceDiscrepancy`, never refused.
+     * - The collection from the laundry: against the laundry's own count. A
+     *   mismatch is held for the platform (`TaskHolds`, item 9).
+     *
+     * Not at the trip to the laundry: the laundry's review is what counts the
+     * bag there (item 12, «فحص القطع من خلال المغسلة»), and a count sent on that
+     * leg is ignored. Never on the final leg: the customer agreed the count.
      */
     public function countsPieces(): bool
     {
-        return $this === self::CollectFromLaundry;
+        return $this === self::PickupFromCustomer || $this === self::CollectFromLaundry;
     }
 
     /**
-     * Whether the driver counts the hangers the clothes come out on — the
-     * collection from the laundry, against what the laundry wrote at
-     * «خلص الغسيل» (`orders.hangers_sent`; the owner, 2026-11-09). A different
-     * figure waits for the platform, like a different piece count.
+     * Whether the driver counts the hangers the clothes come out on: **no leg
+     * any more**.
+     *
+     * From 2026-11-09 the laundry wrote a figure at «خلص الغسيل» and the
+     * collection from the laundry was held to it. The client rejected that
+     * (QA on item 11, 2026-11-22): the hangers the laundry confirms are the
+     * ones the customer hands back, when the driver brings them in
+     * (`HangerReceipt`), not the ones the finished clothes go out on. The
+     * hanger-count hold stays readable for the holds raised before.
      */
     public function countsHangers(): bool
     {
-        return $this === self::CollectFromLaundry;
+        return false;
     }
 
     /**

@@ -437,8 +437,8 @@
             "admin.driver_bonus_rule.toggleStatus",
             "admin.driver_bonus_rule.update"
         ],
-        "node_count": 1231,
-        "cohesion": 0.44,
+        "node_count": 1233,
+        "cohesion": 0.439,
         "screens": [
             {
                 "key": "order_task",
@@ -793,8 +793,8 @@
             "admin.order.store",
             "admin.order.tasks.assign"
         ],
-        "node_count": 907,
-        "cohesion": 0.393,
+        "node_count": 909,
+        "cohesion": 0.392,
         "screens": [
             {
                 "key": "order",
@@ -910,7 +910,7 @@
             "admin.time_slot.show",
             "admin.time_slot.store"
         ],
-        "node_count": 708,
+        "node_count": 710,
         "cohesion": 0.369,
         "screens": [
             {
@@ -1293,7 +1293,7 @@
         "tables": [],
         "route_count": 0,
         "routes": [],
-        "node_count": 1808,
+        "node_count": 1811,
         "cohesion": 0.339
     },
     {

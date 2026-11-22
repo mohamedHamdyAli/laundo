@@ -153,6 +153,12 @@
                                             <small class="d-block text-success" data-hangers-confirmed="{{ $task->id }}">
                                                 {{ __('The laundry confirmed :count', ['count' => (int) $task->hangers_confirmed]) }}
                                             </small>
+                                        @elseif (! $task->hangersReachedLaundry($row->tasks))
+                                            {{-- Confirmed when the driver hands them in
+                                                 (QA on item 11, 2026-11-22). --}}
+                                            <small class="d-block text-muted" data-hangers-on-the-way="{{ $task->id }}">
+                                                {{ __('With the driver — on the way to the laundry') }}
+                                            </small>
                                         @elseif (canDo('order.update'))
                                             <form method="POST" action="{{ route('admin.order.tasks.hangers', $task->id) }}"
                                                 class="d-flex gap-1 align-items-center mt-1" data-hangers-form="{{ $task->id }}">
@@ -162,7 +168,7 @@
                                                     value="{{ $task->hangers_returned }}"
                                                     aria-label="{{ __('Hangers that reached the laundry') }}">
                                                 <button type="submit" class="btn btn-sm btn-outline-success text-nowrap">
-                                                    {{ __('Confirm hangers') }}
+                                                    {{ __('Confirm hangers received from the driver') }}
                                                 </button>
                                             </form>
                                         @else

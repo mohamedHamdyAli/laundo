@@ -144,13 +144,12 @@ class TaskService
             $data = $this->paymentAtTheDoor($task, $data);
         }
 
-        if ($type->requiresSignature() && ! $signature && ! $task->signature_path) {
-            // The design marks every optional field «(اختياري)» and marks neither
-            // signature pad. A handover to a person is proved by that person.
-            throw new RuntimeException('signature_required');
-        }
-
-        if ($type->countsPieces() && ($data['piece_count'] ?? null) === null) {
+        // Required at the collection from the laundry. At the pickup the app
+        // is asked for it (`requires_piece_count`) and a count sent is kept
+        // and checked, but one left out does not stop the pickup: a driver app
+        // from before 2026-11-22 sends none, and refusing it would stop every
+        // pickup until the app ships (code review).
+        if ($type === TaskType::CollectFromLaundry && ($data['piece_count'] ?? null) === null) {
             throw new RuntimeException('piece_count_required');
         }
 
@@ -179,6 +178,21 @@ class TaskService
             throw new RuntimeException('hangers_too_many');
         }
 
+        // «بانتظار موافقة الإدارة» (items 9 and 10): a count at the laundry or
+        // cash at the door that does not match is held, not completed.
+        $need = $this->holds->needed($task, $data);
+
+        // The signature is asked for only on a confirmation that completes
+        // now. A held one goes to the platform first, signed or not: the
+        // driver was told «التوقيع مطلوب» instead of «sent for approval» when
+        // the cash did not match (QA on item 10, 2026-11-22; the owner: the
+        // approval first). A signature sent with it still travels with it.
+        if ($need === null && $type->requiresSignature() && ! $signature && ! $task->signature_path) {
+            // The design marks every optional field «(اختياري)» and marks neither
+            // signature pad. A handover to a person is proved by that person.
+            throw new RuntimeException('signature_required');
+        }
+
         // Stored before anything is decided: a confirmation held for the
         // platform completes later with exactly these files.
         $signaturePath = $signature ? uploadOrUpdateImage($signature, 'images/orders/signatures') : null;
@@ -187,9 +201,7 @@ class TaskService
             $photos
         )));
 
-        // «بانتظار موافقة الإدارة» (items 9 and 10): a count at the laundry or
-        // cash at the door that does not match is held, not completed.
-        if (($need = $this->holds->needed($task, $data)) !== null) {
+        if ($need !== null) {
             throw new TaskHeld($this->holds->raise($task, $driver, $need, [
                 'piece_count' => $data['piece_count'] ?? null,
                 'hanger_count' => $data['hanger_count'] ?? null,
@@ -330,7 +342,13 @@ class TaskService
                 'note' => $data['note'] ?? $task->note,
             ];
 
-            if ($type->countsPieces()) {
+            // Only a count that was sent: a pickup confirmed without one, or a
+            // hold raised before the pickup counted again, has nothing to stamp
+            // or check. Writing `(int) null` would record 0 pieces and raise a
+            // difference against it (code review, 2026-11-22).
+            $counted = $type->countsPieces() && ($data['piece_count'] ?? null) !== null;
+
+            if ($counted) {
                 $update['piece_count'] = (int) $data['piece_count'];
 
                 // What the count is measured against, stamped now: the
@@ -372,7 +390,7 @@ class TaskService
             // In the handover's own transaction: a leg recorded without the
             // disagreement it raised would be a mismatch nobody is ever asked
             // to look at.
-            if ($type->countsPieces()) {
+            if ($counted) {
                 $raised = $this->pieceCheck->afterHandover(
                     $task, $update['piece_count'], $update['expected_piece_count'], $update['expected_piece_source'],
                 );
@@ -781,9 +799,16 @@ class TaskService
             app(NotificationDispatcher::class)->send($driver, new NotificationMessage(
                 event: NotificationEvent::TaskHoldDecided,
                 title: $approved ? __('Your confirmation was approved') : __('Your confirmation was refused'),
+                // A refusal says what to do next, not only the admin's note: the
+                // driver was left with no word to recount (QA on item 9,
+                // 2026-11-22).
                 body: $approved
                     ? __('Order :code: the leg is complete.', ['code' => $hold->order?->code])
-                    : __('Order :code: :note', ['code' => $hold->order?->code, 'note' => (string) $hold->note]),
+                    : __('Order :code: :next — :note', [
+                        'code' => $hold->order?->code,
+                        'next' => $hold->nextStepAfterRefusal(),
+                        'note' => (string) $hold->note,
+                    ]),
                 url: "/driver/tasks/{$hold->order_task_id}",
                 data: ['order_id' => (string) $hold->order_id, 'task_id' => (string) $hold->order_task_id],
                 subject: $hold,

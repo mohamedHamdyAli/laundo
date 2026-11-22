@@ -61,16 +61,28 @@ class TaskTypeTest extends TestCase
     }
 
     #[Test]
-    public function the_driver_counts_only_when_taking_the_pieces_out_of_the_laundry(): void
+    public function the_driver_counts_at_the_pickup_and_when_taking_the_pieces_out_of_the_laundry(): void
     {
-        // The client's sheet, item 12 (2026-11-08): the laundry inspects and
-        // counts; the driver counts once, at the collection, against it. Never
-        // on the doorstep at the end — the customer agreed that count.
+        // The client's sheet, item 12 (2026-11-08): the laundry inspects; the
+        // driver counts at the collection, against it. And the pickup again
+        // since 2026-11-22: item 5 removed the signature there, not the count
+        // (the client's QA). Never on the doorstep at the end, because the
+        // customer agreed that count.
+        $this->assertTrue(TaskType::PickupFromCustomer->countsPieces());
         $this->assertTrue(TaskType::CollectFromLaundry->countsPieces());
 
-        $this->assertFalse(TaskType::PickupFromCustomer->countsPieces());
         $this->assertFalse(TaskType::DeliverToLaundry->countsPieces());
         $this->assertFalse(TaskType::DeliverToCustomer->countsPieces());
+    }
+
+    #[Test]
+    public function no_leg_counts_the_hangers_the_clothes_go_out_on(): void
+    {
+        // The client's QA on item 11 (2026-11-22): the laundry confirms the
+        // hangers the customer hands back, not the ones the clothes leave on.
+        foreach (TaskType::cases() as $type) {
+            $this->assertFalse($type->countsHangers(), $type->value);
+        }
     }
 
     #[Test]

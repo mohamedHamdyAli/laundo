@@ -29,15 +29,9 @@ php .second-brain/bin/brain.php update  # …or only what git says changed
 
 Single test: `php artisan test --filter=TestName` · one file: `php artisan test tests/Feature/Api/OrderTest.php` · one suite: `php artisan test --testsuite=Unit`. One browser spec: `npx playwright test tests/Browser/<name>.spec.js`.
 
-The full PHPUnit suite takes **four to fifteen minutes** — measured runs on the
-same machine came in at 251s, 317s, 477s, (at 1,570 tests, 2026-09-27) 341s
-and 521s, (at 1,662 tests, 2026-09-28) 575s, (at 1,814 tests, 2026-09-29,
-with another agent busy on the machine) 643s, (at 1,861 tests, 2026-09-30)
-317s, (at 1,863–1,877 tests, 2026-10-01/04) 596s, 747s and 785s, and (at
-1,922–1,936 tests, 2026-10-11/12) 424s, 584s, 624s and — with a review agent
-reading the tree alongside — 845s, and (at 2,042 tests, 2026-10-25, with a
-headless browser and a dev server running beside it) 912s, so budget for the
-longest.
+The full PHPUnit suite takes **up to about fifteen minutes**: 651s at 2,167
+tests on 2026-11-22, and 912s at its slowest (2,042 tests, with a browser and a
+dev server running beside it). Budget for the longest.
 When MySQL is down, `php artisan test` cannot boot at all (see the Second Brain
 note below) — run `vendor/bin/phpunit` directly, which reads `phpunit.xml`'s
 SQLite and needs no database server. Use
@@ -171,8 +165,11 @@ The domain core. Status table and requests in **`docs/order-lifecycle.md`**
   only, `admin.order.review.send`) makes it «reviewed» and asks the customer.
   `Order::hasReviewToSend()` / `customerSeesFinal()` — by `review_round` against
   `review_sent_round`, never by timestamps; the customer API shows no `final_*`
-  of an unsent draft. **The driver counts only at the collection from the
-  laundry** (`TaskType::countsPieces()`); a count sent on another leg is ignored.
+  of an unsent draft. **The driver counts at the pickup and at the collection
+  from the laundry** (`TaskType::countsPieces()`; the pickup again since
+  2026-11-22, the client's QA; asked of the app but not required by the
+  server there, so an older app is not stopped). A count sent on the other two
+  legs is ignored.
 - **Nothing goes towards a laundry that is not set** (`OrderTask::needsLaundry()`,
   since 2026-11-01): the pickup and the trip to the laundry do not *start*, a
   driver cannot be *assigned* them, and the count is refused — but a leg already
@@ -183,17 +180,17 @@ The domain core. Status table and requests in **`docs/order-lifecycle.md`**
   a disagreement is one `PieceDiscrepancy` row, **nothing is ever refused**, and
   only the platform closes it. The driver app is not shown an expected count
   before it could copy it (`DriverTaskController::countsRevealed()`).
-- **Except three figures, which are held** (since 2026-11-08, `Order/Services/TaskHolds`):
-  the collection from the laundry counting other than the laundry's count, or
-  receiving other than the hangers the laundry wrote at «خلص الغسيل»
-  (`orders.hangers_sent` → `order_tasks.hangers_collected`, `hanger_count`,
-  since 2026-11-09 — optional to send; both wrong is one question), and
+- **Except two figures, which are held** (since 2026-11-08, `Order/Services/TaskHolds`):
+  the collection from the laundry counting other than the laundry's count, and
   cash at the door other than `OrderTask::toCollect()` (less or more). The leg
-  stays started, the driver API answers **409 `awaiting_approval`**, and the
-  platform approves (`TaskService::approveHold()` completes it with the held
-  payload; extra cash → wallet, short → owed) or refuses with a note. Refused
-  inside a laundry; cash also needs `payment.update`. There is **one** completion
-  path, `TaskService::finish()`.
+  stays started, the driver API answers **409 `awaiting_approval`** (before the
+  signature is asked for, since 2026-11-22), and the platform approves
+  (`TaskService::approveHold()` completes it with the held payload; extra cash →
+  wallet, short → owed) or refuses with a note, which the driver is told with
+  the next step (`TaskHold::nextStepAfterRefusal()`). Refused inside a laundry;
+  cash also needs `payment.update`. There is **one** completion path,
+  `TaskService::finish()`. The hanger count out of the laundry (2026-11-09) was
+  retired on 2026-11-22 (`countsHangers()` is false).
 - `ready_for_delivery`, `completed` and `returned` have **no endpoint driving
   them** — a known gap, not something to paper over.
 - **An order can be placed from the panel** («إنشاء طلب», `Order/Services/PanelOrders`,
@@ -205,29 +202,16 @@ The domain core. Status table and requests in **`docs/order-lifecycle.md`**
 ### What a driver may change about themselves
 
 `POST /api/v1/driver/profile` **writes none of** the vehicle, the licence or the
-six documents: they are staged in `driver_record_submissions` and apply when
-somebody approves them (`Driver/Services/DriverRecordReview`, screen
-`admin/driver-record-submission`, `driver_record_submission.*`). Name, email and
-photo apply at once. Zones are refused outright. The dashboard writes directly.
-One pending row per driver; the diff is computed at review time; a rejection
-requires a note; `GET /driver/profile` carries `pending_review`.
+six documents: they are staged in `driver_record_submissions` and apply only when
+approved (`Driver/Services/DriverRecordReview`). Name, email and photo apply at
+once; zones are refused. Details in `docs/architecture.md`.
 
 ### Where every driver is — «خريطة المناديب»
 
-`admin/driver-map` (`Driver/Services/DriverMap`), polled every
-`tracking.panel_poll_seconds`.
-
-- **Every driver reports their position, always** (since 2026-10-12, the owner's
-  call): `POST /driver/location` no longer refuses a driver with no live leg, and
-  answers `report_after_seconds` (4 on a live leg, 15 otherwise). **What the
-  customer sees did not move** — `DriverCard` gates the dot to their legs and
-  never shows a reading from before the handover. Only the last point is stored.
-- **`driver.view`, never a laundry**: `DriverMap` refuses inside a laundry even
-  if the permission is granted. Waiting pins and «who can take it» need
-  `order_task.view` and use `DriverDispatcher::candidates()`; assigning posts
-  the existing `admin.order.tasks.assign`. Distances there are straight lines.
-- A driver on a job whose reading is older than `tracking.fresh_for_seconds` is
-  «الإشارة مقطوعة».
+`Driver/Services/DriverMap`. Every driver reports their position, always, but
+**what the customer sees is still gated to their own legs** (`DriverCard`).
+`driver.view`, and **refused inside a laundry** even when granted. Details in
+`docs/architecture.md`.
 
 ### Which laundry gets the order
 
@@ -299,9 +283,9 @@ The full account is long and every rule in it was set by an incident — read
   (`OrderService::handOverTripFees()`). `pickup_fee` null = an order priced by
   distance before the change — only those are re-measured on reassignment.
 - **Cash at the door is a payment.** What a leg takes is `OrderTask::toCollect()`:
-  a cash order's pickup takes its trip fee (optional to report — an older driver
-  app sends nothing and the delivery takes it), the delivery takes
-  `Order::stillOwed()`. The delivery leg on an unpaid order requires
+  a cash order's pickup takes its trip fee and **must report it** (since
+  2026-11-22, `requiresCollectedAmount()`; it was optional and the fee rode along
+  to the delivery), the delivery takes `Order::stillOwed()`. The delivery leg on an unpaid order requires
   `collected_amount` (0 allowed, never above what is owed); anything above 0
   is a captured `cash` payment with `collected_by`, «with the driver» until
   `Payment/Services/CashCustody::receive()` (up to `up_to`, `payment.update`,
@@ -340,53 +324,29 @@ Rules that are easy to break:
 
 ### Customer points «النقاط»
 
-`app/Modules/Loyalty/` (since 2026-10-12). Points per completed order and per
-hanger handed back at the door, spent as a discount, lapsing on a schedule.
-**Every figure is a `Points_*` setting, read only by `PointsPolicy`** (the
-settings screen's «النقاط» tab); the switch is off until the owner turns it on.
+`app/Modules/Loyalty/`. Every figure is a `Points_*` setting, read only by
+`PointsPolicy`. The lots, expiry and the hanger flow are in `docs/architecture.md`.
 
-- **`PointsService` is the only thing that changes a balance**: every change a
-  `point_transactions` row, under the `point_accounts` row lock — **and every
-  read after the lock a locking read, every write from the locked row** (MySQL's
-  REPEATABLE READ snapshot double-spent points otherwise). A credit is a
-  **lot** (`remaining`, `expires_at` stamped when earned, never re-read); a
-  spend eats the soonest-expiring first and records it in `point_lot_spends`;
-  a return (`giveBack()`) is bounded by what the spend took and keeps each
-  lot's expiry. `live()` is what makes a lapsed point unspendable;
-  `loyalty:expire-points` (daily, 10:00 Cairo) writes lapsed lots off and
-  reminds once per lot.
-- **`OrderPoints` is where an order meets points**, from one place each:
-  `place()` (spend, under the lock — `points_changed` refuses the order),
-  `OrderReviewService` (capped at the counted washing, the rest given back,
-  never grown), `settleMoney()` (earn at `Completed`, give everything back at
-  `Cancelled`/`Returned`), `Order/Services/HangerReceipt::confirm()` (hangers:
-  the driver records them on `TaskType::takesHangers()` legs, the **laundry
-  confirms** what reached it and the points follow **its** count — since
-  2026-11-08; they were paid at once). Automatic credits are keyed
-  (`dedupe_key`), so a replay pays nothing.
-- **The points discount is the platform's, all of it** (the owner's call):
-  `orders.points_discount` beside `discount_total`, its own argument to
-  `OrderPricing::compose()` (required — a caller that forgets it fails),
-  inside `cleaningRevenue()`, never inside the laundry's share
-  (`order_settlements.points_discount_amount`). It comes off the washing left
-  after a coupon, never the delivery fee, the cash fee or the tax, and sits
-  beside a coupon or offer.
-- The terms (`point_value`, cap, earn minimum) and `points_to_earn` are
-  **copied onto the order at placement**, like the tax rate.
-- «نقاط العملاء» (`point_account.*`, `admin/point-account`) lists and corrects
-  balances; **refused inside a laundry** by the service and empty in the export.
+- **`PointsService` is the only thing that changes a balance**, under the
+  `point_accounts` row lock — and every read after the lock a locking read
+  (MySQL's REPEATABLE READ double-spent points otherwise).
+- **`OrderPoints` is where an order meets points** (placement, review,
+  `settleMoney()`, `HangerReceipt::confirm()`); automatic credits are keyed by
+  `dedupe_key`, so a replay pays nothing.
+- **The points discount is the platform's, all of it**: its own required
+  argument to `OrderPricing::compose()`, never inside the laundry's share, never
+  off the delivery fee, cash fee or tax. Its terms are copied onto the order at
+  placement.
+- «نقاط العملاء» (`point_account.*`) is **refused inside a laundry**.
 
 ### The home page counts; «ملخص الماليات» has the money
 
-**No money on the home page** — it has no permission, so every panel account
-opens it. `DashboardSummary` counts; `Report/Services/FinanceSummary` holds the
-money on `admin.finance.index` behind **`finance.view`** (carrier
-`Report/Models/Finance`; deliberately not `report.view`, which every laundry
-owner holds). Every revenue figure is `RevenueReport`'s. The charts are
-`admin/partials/_viz` (ApexCharts, already on every page): validated colour roles
-as CSS variables, every tooltip string through `esc()`, data as
-`<script type="application/json">@json($var)</script>` (a variable, never an
-array literal — Blade drops the escaping flags), and the numbers always in text.
+**No money on the home page**: it has no permission, so every panel account
+opens it. The money is `FinanceSummary` behind **`finance.view`** (not
+`report.view`, which every laundry owner holds). Every revenue figure is
+`RevenueReport`'s. Charts (`admin/partials/_viz`): tooltips through `esc()`,
+data as `<script type="application/json">@json($var)</script>`, with a
+variable and never an array literal (Blade drops the escaping flags).
 
 ### Tenant scoping (laundry owners share the panel)
 
@@ -612,10 +572,10 @@ only**. `LandingController` reads route parameters off the request.
 
 ## Testing
 
-Around eighteen hundred PHPUnit tests (1,877 on 2026-10-04, data providers
+Over two thousand PHPUnit tests (2,167 on 2026-11-22, data providers
 included), currently green. Treat a failure as a regression, not a flaky stub.
 
-- About 130 PHP test files, mostly in `tests/Feature/Dashboard/` and
+- About 150 PHP test files, mostly in `tests/Feature/Dashboard/` and
   `tests/Feature/Api/`, plus a couple of dozen Playwright specs in
   **`tests/Browser/`** — capital B, which `playwright.config.js` points at.
 - **The browser suite is not isolated.** It drives the real dashboard against
@@ -637,7 +597,10 @@ usually touches:
 - **`docs/postman/Laundo API v1.postman_collection.json`** (116 requests in six
   caller-grouped folders) and **`docs/postman/generate-reference.py`** →
   `docs/api-reference.html`, whose endpoint list is hand-written Python. Check
-  request *bodies* when a field changes.
+  request *bodies* when a field changes. **Regenerate the HTML whenever the
+  script changes.** Python is installed on this machine, so "needs Python" is
+  not a reason to skip it:
+  `python -I docs/postman/generate-reference.py`.
 - **`docs/laundo-qa-guide.html` + `.pdf`** — the Arabic QA guide. The HTML is the
   source; the PDF is rendered from it:
 

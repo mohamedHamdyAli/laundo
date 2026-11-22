@@ -74,7 +74,7 @@ class TrackReturnLegTest extends TestCase
         $tasks->complete(
             $task->fresh(),
             $driver,
-            $type->countsPieces() ? ['piece_count' => 2] : [],
+            $this->doorstepDefaults($task, $type->countsPieces() ? ['piece_count' => 2] : []),
             [],
             $type->requiresSignature() ? UploadedFile::fake()->image('sig.png') : null,
         );

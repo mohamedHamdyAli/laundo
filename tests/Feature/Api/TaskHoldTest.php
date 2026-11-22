@@ -4,6 +4,7 @@ namespace Tests\Feature\Api;
 
 use App\Models\Role;
 use App\Modules\Driver\Models\Driver;
+use App\Modules\Notification\Models\NotificationLog;
 use App\Modules\Order\Enums\OrderStatus;
 use App\Modules\Order\Enums\TaskFailureReason;
 use App\Modules\Order\Enums\TaskStatus;
@@ -183,7 +184,64 @@ class TaskHoldTest extends TestCase
         Sanctum::actingAs($this->driver);
         $this->getJson("/api/v1/driver/tasks/{$leg->id}", $this->apiHeaders())
             ->assertJsonPath('data.hold.status', 'rejected')
-            ->assertJsonPath('data.hold.note', 'count again, the laundry has three');
+            ->assertJsonPath('data.hold.note', 'count again, the laundry has three')
+            // Says what to do next (the client's QA on item 9, 2026-11-22).
+            ->assertJsonPath('data.hold.message', __('The management refused the count — count the pieces again and confirm'));
+    }
+
+    #[Test]
+    public function a_refusal_tells_the_driver_to_recount_and_the_right_count_then_completes(): void
+    {
+        // The client's QA on item 9 (2026-11-22): after a refusal the driver
+        // had no word to recount, and a finished leg still read «rejected».
+        $order = $this->atTheLaundry(laundryCount: 3);
+        $leg = $this->startedLeg($order, TaskType::CollectFromLaundry);
+        $this->complete($leg, ['piece_count' => 2])->assertStatus(409);
+
+        app(TaskService::class)->rejectHold(TaskHold::firstOrFail(), $this->platformOperator(), 'the laundry has three');
+
+        // The push says to recount, beside the admin's note.
+        $body = (string) NotificationLog::where('user_id', $this->driver->id)
+            ->where('event', 'task_hold_decided')->latest('id')->value('body');
+        $this->assertStringContainsString(__('The management refused the count — count the pieces again and confirm'), $body);
+        $this->assertStringContainsString('the laundry has three', $body);
+
+        // The right count completes it, and the old refusal is not shown on
+        // the finished leg.
+        $this->complete($leg, ['piece_count' => 3])->assertOk()->assertJsonPath('data.hold', null);
+        $this->assertSame(TaskStatus::Completed, $leg->fresh()->status);
+    }
+
+    #[Test]
+    public function a_wrong_amount_goes_for_approval_before_the_signature_is_asked_for(): void
+    {
+        // The client's QA on item 10 (2026-11-22): the driver was told
+        // «التوقيع مطلوب» instead of «sent for approval». The owner: approval
+        // first.
+        $order = $this->outForDelivery();
+        $leg = $this->startedLeg($order, TaskType::DeliverToCustomer);
+        $owed = $leg->fresh()->toCollect();
+
+        $this->complete($leg, ['collected_amount' => $owed - 10])
+            ->assertStatus(409)->assertJsonPath('key', 'awaiting_approval');
+        $this->assertSame(TaskHold::COLLECTED_AMOUNT, TaskHold::sole()->kind);
+
+        // Approved, the leg completes without a signature.
+        app(TaskService::class)->approveHold(TaskHold::sole(), $this->platformOperator());
+        $this->assertSame(TaskStatus::Completed, $leg->fresh()->status);
+    }
+
+    #[Test]
+    public function the_right_amount_still_needs_the_signature(): void
+    {
+        $order = $this->outForDelivery();
+        $leg = $this->startedLeg($order, TaskType::DeliverToCustomer);
+
+        $this->complete($leg, ['collected_amount' => $leg->fresh()->toCollect()])
+            ->assertStatus(422)->assertJsonValidationErrors('signature');
+        $this->assertSame(0, TaskHold::count());
+
+        $this->complete($leg, ['collected_amount' => $leg->fresh()->toCollect()] + $this->signed())->assertOk();
     }
 
     #[Test]
@@ -493,6 +551,6 @@ class TaskHoldTest extends TestCase
         $this->app['auth']->forgetGuards();
         Sanctum::actingAs($this->driver);
 
-        return $this->postJson("/api/v1/driver/tasks/{$leg->id}/complete", $data, $this->apiHeaders());
+        return $this->postJson("/api/v1/driver/tasks/{$leg->id}/complete", $this->doorstepDefaults($leg, $data), $this->apiHeaders());
     }
 }

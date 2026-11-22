@@ -94,33 +94,33 @@ class PieceCheckTest extends TestCase
     // ------------------------------------------------------------ the rule
 
     #[Test]
-    public function a_count_sent_at_the_pickup_or_the_handover_is_ignored_and_raises_nothing(): void
+    public function the_pickup_count_is_kept_and_checked_and_the_handover_count_is_ignored(): void
     {
         Notification::fake();
         $order = $this->placedOrder(qty: 1);
 
-        // The owner's screenshot — one ordered, two counted at the door — and
-        // three at the laundry's door, from an app that still asks. Neither is
-        // the driver's to count any more, so neither is stored or compared.
+        // The owner's screenshot: one ordered, two counted at the door. The
+        // pickup is the driver's to count again since 2026-11-22 (the
+        // client's QA on items 5 and 12), so it is stored and compared. It is
+        // recorded, never refused, and never held.
         $this->walk($order, TaskType::PickupFromCustomer, 2, signed: true);
+
+        $pickup = $this->leg($order, TaskType::PickupFromCustomer);
+        $this->assertSame(TaskStatus::Completed, $pickup->status);
+        $this->assertSame(2, $pickup->piece_count);
+        $this->assertSame(1, $pickup->expected_piece_count);
+        $this->assertSame(PieceCountSource::CustomerOrder, $pickup->expected_piece_source);
+        $this->assertSame(1, PieceDiscrepancy::where('order_task_id', $pickup->id)->count());
+        $this->assertSame(0, TaskHold::count());
+
+        // Three at the laundry's door, from an app that still asks: the
+        // laundry's review counts there, so it is neither stored nor compared.
         $this->walk($order, TaskType::DeliverToLaundry, 3);
 
-        foreach ([TaskType::PickupFromCustomer, TaskType::DeliverToLaundry] as $type) {
-            $leg = $this->leg($order, $type);
-            $this->assertSame(TaskStatus::Completed, $leg->status);
-            $this->assertNull($leg->piece_count);
-            $this->assertNull($leg->expected_piece_count);
-            $this->assertNull($leg->expected_piece_source);
-        }
-
-        $this->assertSame(0, PieceDiscrepancy::count());
-        $this->assertSame(0, TaskHold::count());
-        $this->assertSame(0, $this->pieceNotices());
-
-        // Nor do they reach what the collection will be held to: with no
-        // review yet, that is the customer's own list, not a driver's number.
-        $collection = $this->leg($order->fresh(), TaskType::CollectFromLaundry);
-        $this->assertSame([1, PieceCountSource::CustomerOrder], app(PieceCheck::class)->expectedFor($collection));
+        $handover = $this->leg($order, TaskType::DeliverToLaundry);
+        $this->assertSame(TaskStatus::Completed, $handover->status);
+        $this->assertNull($handover->piece_count);
+        $this->assertSame(0, PieceDiscrepancy::where('order_task_id', $handover->id)->count());
     }
 
     #[Test]
@@ -501,7 +501,7 @@ class PieceCheckTest extends TestCase
     // ------------------------------------------------------------ the driver app
 
     #[Test]
-    public function the_app_is_asked_for_a_count_only_at_the_collection_from_the_laundry(): void
+    public function the_app_is_asked_for_a_count_at_the_pickup_and_the_collection_from_the_laundry(): void
     {
         // Walked to «خلص الغسيل» (item 18, 2026-11-08) and the collection given
         // to the driver: before it, that leg is nobody's to open.
@@ -511,7 +511,8 @@ class PieceCheckTest extends TestCase
         app(DriverDispatcher::class)->assign($this->leg($order, TaskType::CollectFromLaundry), $this->driver);
 
         foreach ([
-            TaskType::PickupFromCustomer->value => false,
+            // The pickup again since 2026-11-22 (the client's QA on items 5 and 12).
+            TaskType::PickupFromCustomer->value => true,
             TaskType::DeliverToLaundry->value => false,
             TaskType::CollectFromLaundry->value => true,
             TaskType::DeliverToCustomer->value => false,
@@ -714,7 +715,7 @@ class PieceCheckTest extends TestCase
         $this->app['auth']->forgetGuards();
         Sanctum::actingAs($this->driver);
 
-        $response = $this->postJson("/api/v1/driver/tasks/{$task->id}/complete", $data, $this->apiHeaders());
+        $response = $this->postJson("/api/v1/driver/tasks/{$task->id}/complete", $this->doorstepDefaults($task, $data), $this->apiHeaders());
 
         $this->app['auth']->forgetGuards();
 

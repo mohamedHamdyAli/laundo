@@ -27,12 +27,13 @@ class OrderWashingController extends Controller
 
         abort_unless(self::mayFinish(), 403);
 
-        // The hangers the clothes go out on: the driver collecting them
-        // counts them against this (item 11, 2026-11-09). 0 for none.
-        $data = $request->validate(['hangers_sent' => ['required', 'integer', 'min:0', 'max:999']]);
+        // No longer asked (QA on item 11, 2026-11-22): the hangers the laundry
+        // confirms are the ones handed back by the customer, not the ones the
+        // finished clothes go out on. Still read if a stale form sends it.
+        $data = $request->validate(['hangers_sent' => ['nullable', 'integer', 'min:0', 'max:999']]);
 
         try {
-            $this->washing->mark($order, $request->user(), (int) $data['hangers_sent']);
+            $this->washing->mark($order, $request->user(), isset($data['hangers_sent']) ? (int) $data['hangers_sent'] : null);
         } catch (RuntimeException $e) {
             return back()->with('error', match ($e->getMessage()) {
                 'not_cleaning' => __('Only an order being cleaned can be marked finished.'),

@@ -300,6 +300,7 @@ class OrderTaskController extends Controller
                 'already_confirmed' => __('These hangers have already been confirmed.'),
                 'no_hangers' => __('No hangers were collected on this leg.'),
                 'hangers_too_many' => __('No more than the driver collected.'),
+                'hangers_not_arrived' => __('These hangers have not reached the laundry yet — confirm them once the driver hands them in.'),
                 default => throw $e,
             });
         }

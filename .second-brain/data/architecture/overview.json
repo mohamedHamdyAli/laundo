@@ -69,10 +69,10 @@
             "command": 11,
             "enum": 22,
             "feature": 486,
-            "file": 1125,
+            "file": 1126,
             "integration": 5,
             "interface": 4,
-            "method": 3583,
+            "method": 3587,
             "module": 43,
             "permission": 242,
             "route": 473,
@@ -82,13 +82,13 @@
             "view": 300
         },
         "edges_by_type": {
-            "contains": 5844,
-            "implemented_by": 4964,
-            "tested_by": 3641,
-            "imports": 2940,
-            "references": 2755,
+            "contains": 5849,
+            "implemented_by": 4970,
+            "tested_by": 3643,
+            "imports": 2944,
+            "references": 2761,
             "entry_point": 1760,
-            "depends_on": 1305,
+            "depends_on": 1310,
             "calls": 973,
             "route_to": 914,
             "touches": 648,
@@ -160,7 +160,7 @@
                 "Payment"
             ],
             "routes": 94,
-            "cohesion": 0.44
+            "cohesion": 0.439
         },
         {
             "slug": "user",
@@ -199,7 +199,7 @@
                 "Recurrence"
             ],
             "routes": 57,
-            "cohesion": 0.393
+            "cohesion": 0.392
         },
         {
             "slug": "operations",
@@ -375,6 +375,7 @@
         "docs/mobile-2026-11-08-client-batch.md",
         "docs/mobile-2026-11-11-absent-at-delivery.md",
         "docs/mobile-2026-11-11-still-owed.md",
+        "docs/mobile-2026-11-22-client-qa.md",
         "docs/mobile-api-changes.md",
         "docs/order-cycle-explained.md",
         "docs/order-lifecycle.md",

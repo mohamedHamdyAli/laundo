@@ -1,8 +1,20 @@
 {
     "available": true,
-    "head": "5a2abd70d14b507578252a36c282f1afbf2fefd8",
-    "commits_scanned": 153,
+    "head": "3965ff1840bcc835e42233c18b60f711a856c388",
+    "commits_scanned": 155,
     "recent": [
+        {
+            "sha": "3965ff18",
+            "date": "2026-11-11",
+            "subject": "docs: the 2026-11-08 and 2026-11-11 mobile notes are live",
+            "files": 3
+        },
+        {
+            "sha": "9cb8532f",
+            "date": "2026-11-11",
+            "subject": "fix: absent customer at delivery rebooks the time; still_owed in the orders API",
+            "files": 20
+        },
         {
             "sha": "5a2abd70",
             "date": "2026-11-11",
@@ -80,43 +92,31 @@
             "date": "2026-10-12",
             "subject": "docs: the points release is live",
             "files": 1
-        },
-        {
-            "sha": "ca3e6827",
-            "date": "2026-10-12",
-            "subject": "feat: «النقاط» — customer points, earned per order and per hanger, spent as a discount",
-            "files": 61
-        },
-        {
-            "sha": "fa6ddfcc",
-            "date": "2026-10-12",
-            "subject": "docs: the driver map release is live",
-            "files": 1
         }
     ],
     "hottest_files": {
         "routes/web.php": 31,
-        "docs/postman/Laundo API v1.postman_collection.json": 29,
-        "docs/mobile-api-changes.md": 27,
+        "docs/postman/Laundo API v1.postman_collection.json": 30,
+        "docs/mobile-api-changes.md": 28,
+        "app/Http/Controllers/Api/V1/OrderController.php": 20,
         "app/Helpers/Helpers.php": 20,
-        "app/Http/Controllers/Api/V1/OrderController.php": 19,
         "resources/views/admin/setting/generalSetting/forms/formInput.blade.php": 19,
         "config/menu.php": 18,
+        "docs/architecture.md": 16,
         "app/Modules/Order/Services/OrderService.php": 16,
         "app/Modules/Setting/Requests/GeneralSettingRequest.php": 16,
-        "docs/architecture.md": 15,
         "config/dashboard.php": 14,
         "resources/views/layouts/footer_script.blade.php": 14,
         "resources/views/admin/order/show.blade.php": 13,
+        "app/Modules/Order/Models/OrderTask.php": 12,
         "app/Modules/Order/Services/orderCrudService.php": 12,
         "app/Http/Controllers/Admin/LanguageController.php": 12,
         "app/Services/languages/LanguageService.php": 12,
         "app/Http/Controllers/Api/V1/DriverTaskController.php": 11,
         "app/Modules/Order/Models/Order.php": 11,
-        "app/Modules/Order/Models/OrderTask.php": 11,
         "database/seeders/SettingsSeeder.php": 11,
-        "app/Modules/Order/Services/TaskService.php": 9,
-        "resources/views/admin/order/partials/_tasks.blade.php": 9,
+        "app/Modules/Order/Services/TaskService.php": 10,
+        "resources/views/admin/order/partials/_tasks.blade.php": 10,
         "app/Http/Controllers/Api/V1/DriverController.php": 9,
         "resources/views/admin/order/index.blade.php": 9,
         "routes/api.php": 9,
@@ -124,6 +124,7 @@
         "app/Modules/Driver/Services/DriverCard.php": 9,
         "resources/views/layouts/topbar.blade.php": 9,
         "resources/views/layouts/sidebar.blade.php": 9,
+        "app/Modules/Order/Enums/TaskType.php": 8,
         "app/Http/Requests/Api/V1/OrderRequest.php": 8,
         "app/Modules/Order/Repositories/OrderRepository.php": 8,
         "app/Modules/Order/Services/OrderReviewService.php": 8,
@@ -132,8 +133,7 @@
         "resources/views/admin/home.blade.php": 8,
         "resources/views/admin/banner/forms/formInput.blade.php": 8,
         "app/Services/CachingService.php": 8,
-        "app/Modules/Order/Enums/TaskType.php": 7,
-        "app/Http/Controllers/Api/V1/GeoController.php": 7,
-        "app/Modules/Notification/Enums/NotificationEvent.php": 7
+        "app/Modules/Order/Services/DriverDispatcher.php": 7,
+        "app/Http/Controllers/Api/V1/GeoController.php": 7
     }
 }

@@ -188,7 +188,7 @@ refused**.
   counting other than the laundry's own count (`PieceCheck::expectedFor()`), or
   cash at the door other than what the leg takes (`OrderTask::toCollect()` —
   less **or more**; `collected_amount_too_high` is gone).
-- **And the hangers out of the laundry** (the owner, 2026-11-09, on item 11:
+- **Retired 2026-11-22, see the next section.** **And the hangers out of the laundry** (the owner, 2026-11-09, on item 11:
   «المندوب لما يستلم من المغسلة يأكد إنه استلم نفس العدد اللي أكدته المغسلة»).
   «خلص الغسيل» requires the hangers the clothes go out on (`hangers_sent`, 0
   allowed, stored on the order); the collection's driver sends `hanger_count`
@@ -223,6 +223,56 @@ refused**.
   driver is told (`NotificationEvent::TaskHoldDecided`).
 - Counted in the orders badge and the list's «بانتظار موافقة الإدارة» filter
   (`Order::withPendingHold()`, one definition for both).
+
+### The client's QA on the 2026-11-08 batch (2026-11-22)
+
+The client tried items 2–12 on the live site and sent seven comments (their
+numbering 13–19). Each was probed with throwaway tests outside the repo before
+anything changed. The owner chose every fix below.
+
+- **The pickup counts the pieces again** (their 15, our 5). Item 12 was read as
+  "the driver no longer counts", so `countsPieces()` lost the pickup along with
+  the signature item 5 removed. The client asked only for the signature to go.
+  `countsPieces()` is pickup + collection from the laundry. At the pickup a
+  different count is a `PieceDiscrepancy`, never refused, as before 2026-11-08.
+  It is asked of the app (`requires_piece_count`) but not required by the
+  server: the driver app from before this sends none, and refusing it would
+  stop every pickup until the app ships. `finish()` stamps and checks a count
+  only when one was sent (code review), so an old pickup hold approved now is
+  not recorded as 0 pieces.
+  **"Inspection by the laundry"** (their 19) meant the piece *types*, which the
+  laundry's review already records per item before the platform sends it.
+- **A refused hold says what to do next** (their 16, our 9). The push body and
+  `hold.message` carry `TaskHold::nextStepAfterRefusal()` («عدّ القطع تاني
+  وأكّد» / «حصّل المبلغ الصح…») beside the admin's note. A leg that completed
+  after a refusal shows `hold: null`, because the old «rejected» read as
+  "refused" on a finished leg.
+- **A wrong amount is held before the signature is asked for** (their 17, our
+  10). `complete()` decides the hold first. The signature is required only on a
+  confirmation that completes now, so the driver hears «sent for approval», not
+  «التوقيع مطلوب». An approved hold completes without one if none was sent.
+- **A cash pickup with a trip fee must say what it took** (their 14, our 3).
+  `requiresCollectedAmount()` covers the pickup when `toCollect() > 0`. It was
+  optional so that a driver app from before the trip fee kept working, and the
+  fee then rode along to the delivery. That is exactly what the client saw.
+  **The driver app had to ship first**, or every cash pickup 422s.
+- **The hangers out of the laundry are retired** (their 18, our 11). The client:
+  the laundry confirms the hangers **the customer hands back, when the driver
+  brings them in**, not the ones the finished clothes go out on. So:
+  - «خلص الغسيل» no longer asks for `hangers_sent` (nullable, gone from the form);
+  - `countsHangers()` is false, so there is no `hanger_count` hold; old holds
+    still read;
+  - `accepts_hangers` no longer depends on the points switch;
+  - `OrderTask::hangersReachedLaundry()` gates `HangerReceipt::confirm()`, the
+    order screen's form («مع المندوب — في الطريق للمغسلة» until then) and
+    `Order::withHangersToConfirm()`. A pickup's hangers arrive with the
+    completed trip to the laundry. A delivery's go back with the driver on a
+    drop no leg records, so they can be confirmed once the delivery is done.
+- **The count shows doubled** (their 13, our 2). It could not be reproduced on
+  the backend: `items` is one phase and `items_count` is right. The customer app
+  is adding `estimated_items` to `items`. This was written into the mobile note;
+  the backend did not change.
+- Note for both apps: `docs/mobile-2026-11-22-client-qa.md`.
 
 ### An order placed from the panel — «إنشاء طلب» (2026-11-08)
 

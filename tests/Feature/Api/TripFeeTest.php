@@ -8,6 +8,7 @@ use App\Modules\Order\Enums\TaskStatus;
 use App\Modules\Order\Enums\TaskType;
 use App\Modules\Order\Models\Order;
 use App\Modules\Order\Models\OrderTask;
+use App\Modules\Order\Models\TaskHold;
 use App\Modules\Order\Services\OrderReviewService;
 use App\Modules\Order\Services\OrderService;
 use App\Modules\Order\Services\OrderStateMachine;
@@ -197,7 +198,7 @@ class TripFeeTest extends TestCase
         $pickup->forceFill(['driver_id' => $driver->id, 'status' => TaskStatus::Assigned])->save();
         Sanctum::actingAs($driver);
         $this->postJson("/api/v1/driver/tasks/{$pickup->id}/start", [], $this->apiHeaders())->assertOk();
-        $this->postJson("/api/v1/driver/tasks/{$pickup->id}/complete", ['collected_amount' => 25], $this->apiHeaders())->assertOk();
+        $this->postJson("/api/v1/driver/tasks/{$pickup->id}/complete", ['collected_amount' => 25, 'piece_count' => 2], $this->apiHeaders())->assertOk();
 
         $order = $this->reviewedAndSent($order);
 
@@ -231,8 +232,9 @@ class TripFeeTest extends TestCase
         $detail = $this->getJson("/api/v1/driver/tasks/{$pickup->id}", $this->apiHeaders())->assertOk()->json('data');
         $this->assertTrue($detail['collects_payment']);
         $this->assertEquals(25, $detail['payment']['to_collect']);
-        // Not required: an app that predates the trip fee still completes pickups.
-        $this->assertFalse($detail['payment']['collect_required']);
+        // Required since 2026-11-22: the client saw the pickup's fee taken at
+        // the delivery because the app said nothing at the pickup.
+        $this->assertTrue($detail['payment']['collect_required']);
 
         $this->postJson("/api/v1/driver/tasks/{$pickup->id}/start", [], $this->apiHeaders())->assertOk();
 
@@ -258,8 +260,11 @@ class TripFeeTest extends TestCase
     }
 
     #[Test]
-    public function a_pickup_that_reports_nothing_leaves_the_fee_for_the_delivery(): void
+    public function a_cash_pickup_that_says_nothing_about_the_fee_is_refused(): void
     {
+        // The client's QA on item 3 (2026-11-22): the pickup's fee was being
+        // collected at the delivery, because a pickup that said nothing was
+        // let through and the fee rode along. The owner: refuse it.
         $order = $this->place();
         $pickup = $this->leg($order, TaskType::PickupFromCustomer);
         $driver = $this->driverUser();
@@ -267,11 +272,28 @@ class TripFeeTest extends TestCase
         Sanctum::actingAs($driver);
 
         $this->postJson("/api/v1/driver/tasks/{$pickup->id}/start", [], $this->apiHeaders())->assertOk();
-        $this->postJson("/api/v1/driver/tasks/{$pickup->id}/complete", ['piece_count' => 2], $this->apiHeaders())->assertOk();
+        $this->postJson("/api/v1/driver/tasks/{$pickup->id}/complete", ['piece_count' => 2], $this->apiHeaders())
+            ->assertStatus(422)->assertJsonValidationErrors('collected_amount');
 
-        $order->refresh();
-        $this->assertSame(0.0, $order->paidSoFar());
-        $this->assertEqualsWithDelta((float) $order->estimated_total, $this->leg($order, TaskType::DeliverToCustomer)->toCollect(), 0.01);
+        $this->assertSame(TaskStatus::Started, $pickup->fresh()->status);
+        $this->assertSame(0.0, $order->fresh()->paidSoFar());
+    }
+
+    #[Test]
+    public function a_pickup_with_no_fee_to_take_needs_no_amount(): void
+    {
+        // The second order on a shared visit pays no pickup fee: nothing to
+        // take, so nothing to say.
+        $this->place();
+        $rider = $this->place();
+        $pickup = $this->leg($rider, TaskType::PickupFromCustomer);
+        $driver = $this->driverUser();
+        $pickup->forceFill(['driver_id' => $driver->id, 'status' => TaskStatus::Assigned])->save();
+        Sanctum::actingAs($driver);
+
+        $this->assertFalse($pickup->fresh()->requiresCollectedAmount());
+        $this->postJson("/api/v1/driver/tasks/{$pickup->id}/start", [], $this->apiHeaders())->assertOk();
+        $this->postJson("/api/v1/driver/tasks/{$pickup->id}/complete", ['piece_count' => 2], $this->apiHeaders())->assertOk();
     }
 
     #[Test]
@@ -391,7 +413,9 @@ class TripFeeTest extends TestCase
         $pickup->forceFill(['driver_id' => $driver->id, 'status' => TaskStatus::Assigned])->save();
         Sanctum::actingAs($driver);
         $this->postJson("/api/v1/driver/tasks/{$pickup->id}/start", [], $this->apiHeaders())->assertOk();
-        $this->postJson("/api/v1/driver/tasks/{$pickup->id}/complete", ['piece_count' => 2], $this->apiHeaders())->assertOk();
+        // Nothing taken is said as 0, and held for the platform (item 10).
+        $this->postJson("/api/v1/driver/tasks/{$pickup->id}/complete", ['piece_count' => 2, 'collected_amount' => 0], $this->apiHeaders())->assertStatus(409);
+        app(TaskService::class)->approveHold(TaskHold::firstOrFail(), $this->superAdmin());
 
         $this->app['auth']->forgetGuards();
         Sanctum::actingAs($this->customer);

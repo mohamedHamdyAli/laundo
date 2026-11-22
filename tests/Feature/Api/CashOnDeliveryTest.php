@@ -89,7 +89,7 @@ class CashOnDeliveryTest extends TestCase
         $tasks->complete(
             $task->fresh(),
             $this->driver,
-            $data + ($type->countsPieces() ? ['piece_count' => 2] : []),
+            $this->doorstepDefaults($task, $data + ($type->countsPieces() ? ['piece_count' => 2] : [])),
             [],
             $type->requiresSignature() ? UploadedFile::fake()->image('sig.png') : null,
         );
@@ -205,7 +205,10 @@ class CashOnDeliveryTest extends TestCase
     public function an_unpaid_delivery_must_say_what_was_collected(): void
     {
         $order = $this->atTheDoor();
-        $due = $order->payableTotal();
+        // Less the pickup's trip fee, taken at the pickup (required since
+        // 2026-11-22).
+        $due = $order->stillOwed();
+        $pickupCash = Payment::count();
 
         Sanctum::actingAs($this->driver);
         $payment = $this->getJson("/api/v1/driver/tasks/{$this->leg($order, TaskType::DeliverToCustomer)->id}", $this->apiHeaders())
@@ -217,7 +220,7 @@ class CashOnDeliveryTest extends TestCase
         // More than is owed: held for the platform since 2026-11-08 (item 10),
         // no longer a 422 — and nothing recorded as paid meanwhile.
         $this->deliver($order, ['collected_amount' => $due + 200])->assertStatus(409)->assertJsonPath('key', 'awaiting_approval');
-        $this->assertSame(0, Payment::count());
+        $this->assertSame($pickupCash, Payment::count());
 
         $this->deliver($order, ['collected_amount' => $due])->assertOk();
 
@@ -225,7 +228,7 @@ class CashOnDeliveryTest extends TestCase
         $order->refresh();
         $this->assertSame('paid', $order->payment_status);
         $this->assertSame(OrderStatus::Completed, $order->status);
-        $cash = Payment::sole();
+        $cash = Payment::where('order_task_id', $this->leg($order, TaskType::DeliverToCustomer)->id)->sole();
         $this->assertSame(PaymentMethod::Cash, $cash->method);
         $this->assertSame($this->driver->id, $cash->collected_by);
         $this->assertNull($cash->handed_over_at);
@@ -241,10 +244,10 @@ class CashOnDeliveryTest extends TestCase
         $this->deliver($order, ['collected_amount' => 0])->assertStatus(409);
         app(TaskService::class)->approveHold(TaskHold::firstOrFail(), $this->superAdmin());
 
-        // Delivered, unpaid, and no cash invented.
+        // Delivered, unpaid, and no cash invented at the delivery.
         $this->assertSame(OrderStatus::Delivered, $order->fresh()->status);
         $this->assertSame('unpaid', $order->fresh()->payment_status);
-        $this->assertSame(0, Payment::count());
+        $this->assertSame(0, Payment::where('order_task_id', $this->leg($order, TaskType::DeliverToCustomer)->id)->count());
     }
 
     #[Test]
@@ -263,7 +266,7 @@ class CashOnDeliveryTest extends TestCase
         $this->deliver($order, ['collected_amount' => 50])->assertOk();
 
         $this->assertNull($this->leg($order, TaskType::DeliverToCustomer)->collected_amount);
-        $this->assertSame(0, Payment::count());
+        $this->assertSame(0, Payment::where('order_task_id', $this->leg($order, TaskType::DeliverToCustomer)->id)->count());
         $this->assertSame(OrderStatus::Completed, $order->fresh()->status);
     }
 
