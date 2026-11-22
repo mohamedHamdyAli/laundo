@@ -22,6 +22,7 @@ The client's QA comments on the 2026-11-08 batch (their items 13–19). Each was
   - `OrderTask::hangersReachedLaundry()` gates `HangerReceipt::confirm()` (under the leg's lock), the order screen's form («مع المندوب — في الطريق للمغسلة» until then) and the «hangers to confirm» filter/badge. A pickup's hangers arrive with the completed trip to the laundry.
 - **"The count shows doubled"** (their 13, our 2) could not be reproduced on the backend: `items` is one phase and `items_count` is right. The customer app adds `estimated_items` to `items`. Written into the mobile note; no backend change.
 - Tests: `TaskHoldTest` (+3), `DriverTaskTest` (+1), `HangerReceiptTest` (+1), `TripFeeTest` (+2, one rewritten), `TaskTypeTest` (+1, one rewritten); `FinishedWashingTest`'s hanger tests replaced by three; tests that walk a pickup go through `TestCase::doorstepDefaults()`. Docs: `docs/mobile-2026-11-22-client-qa.md` (new), `mobile-api-changes.md`, Postman, `generate-reference.py` + HTML, `architecture.md`, CLAUDE.md.
+- **Deployed to laundo.nahrdev.net** at `7f068c3` (pull + cache clear, no migration). The owner confirmed the driver app already sends `collected_amount` at a cash pickup. Checked on live: the hanger route, `countsPieces()` / `countsHangers()` and the hangers-to-confirm scope on real rows, `/login` and `/api/v1/app-settings` answer 200, no error in the day's log (Infrastructure).
 
 ## 2026-11-11
 
