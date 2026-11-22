@@ -141,12 +141,12 @@ class OrderTask extends Model
      * driver app's «تفاصيل الدفع», the completion and the payment record all
      * read (2026-11-08).
      *
-     * - **Pickup**: the pickup trip's fee («رسوم المشوار»), on a cash order not
-     *   paid yet — the owner: «لما الدليفري يروح يستلم ياخد منه 25». An order
-     *   paid online pays both trips in its total; an order priced by distance
-     *   (`pickup_fee` null) collects nothing here, as before.
-     * - **Delivery**: whatever is still owed (`Order::stillOwed()`), the pickup's
-     *   fee already taken off.
+     * - **Delivery**: whatever is still owed (`Order::stillOwed()`): the washing
+     *   and **both** trip fees («رسوم المشوار», 25 + 25), less anything paid.
+     * - **Pickup: nothing.** From 2026-11-08 a cash order's pickup took its
+     *   trip fee. The client's item 14, as the owner read it on 2026-11-22: both
+     *   fees are taken together at the delivery («ياخد ال 2 مع بعض»). A pickup
+     *   that took the fee before this left it paid, and `stillOwed()` counts it.
      * - The laundry legs: nothing.
      */
     public function toCollect(): float
@@ -157,38 +157,24 @@ class OrderTask extends Model
             return 0.0;
         }
 
-        return match ($this->type) {
-            TaskType::PickupFromCustomer => $order->payment_method === 'cash' && (float) $order->pickup_fee > 0
-                ? round(min((float) $order->pickup_fee, $order->stillOwed()), 2)
-                : 0.0,
-            TaskType::DeliverToCustomer => $order->stillOwed(),
-            default => 0.0,
-        };
+        // The pickup takes nothing (2026-11-22, the client's item 14 as the
+        // owner read it: «ياخد ال 2 مع بعض» at the delivery). The delivery's
+        // `stillOwed()` carries both trip fees with the rest.
+        return $this->type === TaskType::DeliverToCustomer ? $order->stillOwed() : 0.0;
     }
 
     /**
      * Whether «تأكيد» on this leg must say what changed hands
      * (`collected_amount`, 0 allowed):
      *
-     * - the delivery of an order not paid yet;
-     * - **the pickup, when it has a trip fee to take** (`toCollect()` > 0).
-     *   Until 2026-11-22 the pickup could stay silent so that a driver app from
-     *   before the trip fee kept working, and the fee then rode along to the
-     *   delivery. The client saw exactly that: the pickup's fee collected at
-     *   the delivery (QA on item 3). The owner: refuse a pickup that says
-     *   nothing. **The driver app must send `collected_amount` here first.**
+     * the delivery of an order not paid yet. Never the pickup, which takes
+     * nothing (`toCollect()`; the client's item 14, 2026-11-22).
      */
     public function requiresCollectedAmount(): bool
     {
-        if ($this->order === null || $this->order->payment_status === 'paid') {
-            return false;
-        }
-
-        return match ($this->type) {
-            TaskType::DeliverToCustomer => true,
-            TaskType::PickupFromCustomer => $this->toCollect() > 0,
-            default => false,
-        };
+        return $this->type === TaskType::DeliverToCustomer
+            && $this->order !== null
+            && $this->order->payment_status !== 'paid';
     }
 
     /**

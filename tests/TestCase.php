@@ -341,10 +341,10 @@ abstract class TestCase extends BaseTestCase
     }
 
     /**
-     * What a pickup must say since 2026-11-22, for tests that are not about
-     * it: the trip fee taken in full on a cash order (`requiresCollectedAmount()`)
-     * and the pieces the customer ordered (`countsPieces()`). A test that sends
-     * either keeps its own figure.
+     * What a pickup says, for tests that are not about it: the pieces the
+     * customer ordered (`countsPieces()`), and an amount only where the leg
+     * requires one (`requiresCollectedAmount()`; no pickup since 2026-11-22).
+     * A test that sends either keeps its own figure.
      *
      * @param  array<string, mixed>  $data
      * @return array<string, mixed>

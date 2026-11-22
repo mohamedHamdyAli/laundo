@@ -283,9 +283,9 @@ The full account is long and every rule in it was set by an incident — read
   (`OrderService::handOverTripFees()`). `pickup_fee` null = an order priced by
   distance before the change — only those are re-measured on reassignment.
 - **Cash at the door is a payment.** What a leg takes is `OrderTask::toCollect()`:
-  a cash order's pickup takes its trip fee and **must report it** (since
-  2026-11-22, `requiresCollectedAmount()`; it was optional and the fee rode along
-  to the delivery), the delivery takes `Order::stillOwed()`. The delivery leg on an unpaid order requires
+  **the pickup takes nothing** and the delivery takes `Order::stillOwed()`, both
+  trip fees included (since 2026-11-22, the client's item 14: «ياخد ال 2 مع
+  بعض»; from 2026-11-08 the pickup took its fee). `pay_at_pickup` is always 0. The delivery leg on an unpaid order requires
   `collected_amount` (0 allowed, never above what is owed); anything above 0
   is a captured `cash` payment with `collected_by`, «with the driver» until
   `Payment/Services/CashCustody::receive()` (up to `up_to`, `payment.update`,

@@ -2588,6 +2588,7 @@
     "Confirm hangers received from the driver": "تأكيد استلام الشماعات من المندوب",
     "Order :code: :next — :note": "الطلب :code: :next — :note",
     "The management refused the amount — collect the right amount and confirm again": "الإدارة رفضت المبلغ — حصّل المبلغ الصح وأكّد تاني",
+    "The management refused the amount — confirm the pickup again without an amount; the fees are collected at the delivery": "الإدارة رفضت المبلغ — أكّد الاستلام تاني من غير مبلغ، الرسوم بتتحصّل في التسليم",
     "The management refused the confirmation — confirm the leg again": "الإدارة رفضت التأكيد — أكّد الرحلة تاني",
     "The management refused the count — count the pieces again and confirm": "الإدارة رفضت العدد — عدّ القطع تاني وأكّد",
     "Waiting for the laundry to confirm": "مستني تأكيد المغسلة",

@@ -23,7 +23,6 @@ use App\Modules\Order\Services\PlacementFailure;
 use App\Modules\Order\Services\RecurrenceService;
 use App\Modules\Order\Services\RescheduleService;
 use App\Modules\Order\Services\Turnaround;
-use App\Modules\Payment\Enums\PaymentMethod;
 use App\Modules\TimeSlot\Models\TimeSlot;
 use App\Modules\TimeSlot\Services\SlotCapacity;
 use App\Modules\TimeSlot\Services\SlotClock;
@@ -453,28 +452,16 @@ class OrderController extends Controller
     }
 
     /**
-     * What the driver takes at the pickup: a cash order's pickup trip fee, no
-     * more than is owed — the rule `OrderTask::toCollect()` gives the driver —
-     * and only while the pickup is still ahead (`AwaitingPickup`/`DriverOnWay`;
-     * completing the pickup moves the order on, and a cancelled order never
-     * gets there). It said the trip fee for good, so the customer was still
-     * told «هتدفع 25 للمندوب وقت الاستلام» after paying it (2026-11-11). A
-     * pickup that took nothing leaves the fee to the delivery, where
-     * `still_owed` already counts it.
-     *
-     * Read off the order's status, not its pickup leg: a postponed pickup
-     * leaves its leg `failed`, and stopping an order does not close a failed
-     * leg, so the leg alone said 25 on a cancelled order.
+     * What the driver takes at the pickup. From 2026-11-08 it was a cash
+     * order's pickup trip fee. Since 2026-11-22 it is nothing: both trip fees
+     * are paid together at the delivery, inside `still_owed`.
      */
     private function payAtPickup(Order $order): float
     {
-        $ahead = in_array($order->status, [OrderStatus::AwaitingPickup, OrderStatus::DriverOnWay], true);
-
-        if (! $ahead || $order->payment_method !== PaymentMethod::Cash->value || (float) $order->pickup_fee <= 0) {
-            return 0.0;
-        }
-
-        return round(min((float) $order->pickup_fee, $this->stillOwed($order)), 2);
+        // Nothing since 2026-11-22: both trip fees are taken at the delivery
+        // (the client's item 14), as `OrderTask::toCollect()` says. The field
+        // stays in the payload so an app reading it does not break.
+        return 0.0;
     }
 
     /**

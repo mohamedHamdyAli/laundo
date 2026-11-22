@@ -660,9 +660,20 @@ class TaskService
         $collected = $data['collected_amount'] ?? null;
         $reported = $collected !== null && $collected !== '';
 
-        // Nothing to take here — an order already paid, or a pickup with no trip
-        // fee on it (paid online, or priced by distance): a figure sent anyway is
-        // dropped rather than recorded as cash that never existed.
+        // The pickup takes nothing since 2026-11-22 (both trip fees at the
+        // delivery). But cash a driver says they took there is real cash in
+        // their hand: dropping it would leave it unrecorded and the customer
+        // asked for it again at the delivery (code review). Kept, so that
+        // `TaskHolds` holds it against 0 for the platform, and an approval
+        // records it as a payment that the delivery then takes off.
+        if ($task->type === TaskType::PickupFromCustomer && $reported && (float) $collected > 0
+            && $task->order?->payment_status !== 'paid') {
+            return $data;
+        }
+
+        // Nothing to take here (an order already paid, a laundry leg, or a
+        // pickup that reports nothing): a figure sent anyway is dropped rather
+        // than recorded as cash that never existed.
         if ($task->toCollect() <= 0 && ! $task->requiresCollectedAmount()) {
             unset($data['collected_amount']);
 

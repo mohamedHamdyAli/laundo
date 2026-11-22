@@ -14,6 +14,8 @@ use App\Modules\Order\Services\OrderService;
 use App\Modules\Order\Services\OrderStateMachine;
 use App\Modules\Order\Services\TaskService;
 use App\Modules\Payment\Enums\PaymentMethod;
+use App\Modules\Payment\Enums\PaymentStatus;
+use App\Modules\Payment\Models\Payment;
 use App\Modules\Payment\Services\PaymentService;
 use App\Modules\Setting\Models\Setting;
 use App\Modules\TimeSlot\Models\TimeSlot;
@@ -190,22 +192,24 @@ class TripFeeTest extends TestCase
     }
 
     #[Test]
-    public function paying_online_after_the_pickup_charges_only_what_is_left(): void
+    public function paying_online_after_the_pickup_charges_the_whole_bill(): void
     {
+        // The pickup takes nothing since 2026-11-22 (the client's item 14),
+        // so the card pays both trips with the rest.
         $order = $this->place();
         $driver = $this->driverUser();
         $pickup = $this->leg($order, TaskType::PickupFromCustomer);
         $pickup->forceFill(['driver_id' => $driver->id, 'status' => TaskStatus::Assigned])->save();
         Sanctum::actingAs($driver);
         $this->postJson("/api/v1/driver/tasks/{$pickup->id}/start", [], $this->apiHeaders())->assertOk();
-        $this->postJson("/api/v1/driver/tasks/{$pickup->id}/complete", ['collected_amount' => 25, 'piece_count' => 2], $this->apiHeaders())->assertOk();
+        $this->postJson("/api/v1/driver/tasks/{$pickup->id}/complete", ['piece_count' => 2], $this->apiHeaders())->assertOk();
 
         $order = $this->reviewedAndSent($order);
 
         $payment = app(PaymentService::class)
             ->initiate($order, $this->customer, PaymentMethod::Card);
 
-        $this->assertEqualsWithDelta($order->payableTotal() - 25, (float) $payment->amount, 0.01);
+        $this->assertEqualsWithDelta($order->payableTotal(), (float) $payment->amount, 0.01);
     }
 
     #[Test]
@@ -221,8 +225,10 @@ class TripFeeTest extends TestCase
     }
 
     #[Test]
-    public function a_cash_pickup_collects_the_trip_fee_and_the_delivery_the_rest(): void
+    public function both_trip_fees_are_collected_at_the_delivery(): void
     {
+        // The client's item 14, as the owner read it on 2026-11-22: «ياخد ال 2
+        // مع بعض» at the delivery. The pickup takes nothing.
         $order = $this->place();
         $driver = $this->driverUser();
         $pickup = $this->leg($order, TaskType::PickupFromCustomer);
@@ -230,53 +236,25 @@ class TripFeeTest extends TestCase
         Sanctum::actingAs($driver);
 
         $detail = $this->getJson("/api/v1/driver/tasks/{$pickup->id}", $this->apiHeaders())->assertOk()->json('data');
-        $this->assertTrue($detail['collects_payment']);
-        $this->assertEquals(25, $detail['payment']['to_collect']);
-        // Required since 2026-11-22: the client saw the pickup's fee taken at
-        // the delivery because the app said nothing at the pickup.
-        $this->assertTrue($detail['payment']['collect_required']);
+        $this->assertFalse($detail['collects_payment']);
+        $this->assertSame(0.0, $pickup->fresh()->toCollect());
+        $this->assertFalse($pickup->fresh()->requiresCollectedAmount());
 
+        // Completes with no amount: the pickup takes none.
         $this->postJson("/api/v1/driver/tasks/{$pickup->id}/start", [], $this->apiHeaders())->assertOk();
-
-        // More than the trip fee is held for the platform (item 10), not taken.
-        $this->postJson("/api/v1/driver/tasks/{$pickup->id}/complete", ['collected_amount' => 30, 'piece_count' => 2], $this->apiHeaders())
-            ->assertStatus(409);
-
-        $this->postJson("/api/v1/driver/tasks/{$pickup->id}/complete", ['collected_amount' => 25, 'piece_count' => 2], $this->apiHeaders())
+        $this->postJson("/api/v1/driver/tasks/{$pickup->id}/complete", ['piece_count' => 2], $this->apiHeaders())
             ->assertOk();
 
         $order->refresh();
-        $this->assertSame(25.0, $order->paidSoFar());
-        $this->assertNotSame('paid', $order->payment_status);
-        $this->assertEqualsWithDelta((float) $order->estimated_total - 25, $order->stillOwed(), 0.01);
-        $this->assertDatabaseHas('payments', [
-            'order_id' => $order->id, 'amount' => 25.00, 'collected_by' => $driver->id, 'order_task_id' => $pickup->id,
-        ]);
+        $this->assertSame(0.0, $order->paidSoFar());
+        $this->assertNull($pickup->fresh()->collected_amount);
+        $this->assertDatabaseMissing('payments', ['order_id' => $order->id]);
 
-        // The delivery takes what is left, and that settles it.
+        // The delivery takes the whole bill: the washing and both trips.
+        $this->assertSame('50.00', $order->delivery_fee);
         $delivery = $this->leg($order, TaskType::DeliverToCustomer);
         $delivery->forceFill(['driver_id' => $driver->id, 'status' => TaskStatus::Assigned])->save();
-        $this->assertEqualsWithDelta($order->stillOwed(), $delivery->fresh()->toCollect(), 0.01);
-    }
-
-    #[Test]
-    public function a_cash_pickup_that_says_nothing_about_the_fee_is_refused(): void
-    {
-        // The client's QA on item 3 (2026-11-22): the pickup's fee was being
-        // collected at the delivery, because a pickup that said nothing was
-        // let through and the fee rode along. The owner: refuse it.
-        $order = $this->place();
-        $pickup = $this->leg($order, TaskType::PickupFromCustomer);
-        $driver = $this->driverUser();
-        $pickup->forceFill(['driver_id' => $driver->id, 'status' => TaskStatus::Assigned])->save();
-        Sanctum::actingAs($driver);
-
-        $this->postJson("/api/v1/driver/tasks/{$pickup->id}/start", [], $this->apiHeaders())->assertOk();
-        $this->postJson("/api/v1/driver/tasks/{$pickup->id}/complete", ['piece_count' => 2], $this->apiHeaders())
-            ->assertStatus(422)->assertJsonValidationErrors('collected_amount');
-
-        $this->assertSame(TaskStatus::Started, $pickup->fresh()->status);
-        $this->assertSame(0.0, $order->fresh()->paidSoFar());
+        $this->assertEqualsWithDelta((float) $order->estimated_total, $delivery->fresh()->toCollect(), 0.01);
     }
 
     #[Test]
@@ -307,7 +285,36 @@ class TripFeeTest extends TestCase
     }
 
     #[Test]
-    public function the_customer_is_shown_both_trips_and_what_is_paid_at_the_pickup(): void
+    public function cash_reported_at_the_pickup_is_held_and_once_approved_taken_off_the_delivery(): void
+    {
+        // Code review (2026-11-22): a driver app that still asks may send the
+        // 25 at the pickup. That cash is in the driver's hand, so it is not
+        // dropped: it is held against 0 for the platform, and an approval
+        // records it as a payment the delivery then takes off.
+        $order = $this->place();
+        $driver = $this->driverUser();
+        $pickup = $this->leg($order, TaskType::PickupFromCustomer);
+        $pickup->forceFill(['driver_id' => $driver->id, 'status' => TaskStatus::Assigned])->save();
+        Sanctum::actingAs($driver);
+
+        $this->postJson("/api/v1/driver/tasks/{$pickup->id}/start", [], $this->apiHeaders())->assertOk();
+        $this->postJson("/api/v1/driver/tasks/{$pickup->id}/complete", ['piece_count' => 2, 'collected_amount' => 25], $this->apiHeaders())
+            ->assertStatus(409)->assertJsonPath('key', 'awaiting_approval');
+
+        $hold = TaskHold::sole();
+        $this->assertSame(TaskHold::COLLECTED_AMOUNT, $hold->kind);
+        $this->assertEquals(0, (float) $hold->expected);
+
+        app(TaskService::class)->approveHold($hold, $this->superAdmin());
+
+        $order->refresh();
+        $this->assertSame(25.0, $order->paidSoFar());
+        $this->assertNotSame('paid', $order->payment_status);
+        $this->assertEqualsWithDelta((float) $order->estimated_total - 25, $this->leg($order, TaskType::DeliverToCustomer)->toCollect(), 0.01);
+    }
+
+    #[Test]
+    public function the_customer_is_shown_both_trips_and_nothing_to_pay_at_the_pickup(): void
     {
         $order = $this->place();
         Sanctum::actingAs($this->customer);
@@ -316,42 +323,41 @@ class TripFeeTest extends TestCase
 
         $this->assertEquals(25, $pricing['pickup_fee']);
         $this->assertEquals(25, $pricing['return_fee']);
-        $this->assertEquals(25, $pricing['pay_at_pickup']);
+        // Both are paid at the delivery (the client's item 14, 2026-11-22).
+        $this->assertEquals(0, $pricing['pay_at_pickup']);
         $this->assertEquals(0, $pricing['paid_so_far']);
         $this->assertEquals($pricing['payable_total'], $pricing['still_owed']);
     }
 
     /**
-     * The owner's screenshot (2026-11-11): the driver took the 25 at the pickup
-     * and was told to collect 203 at the delivery, while the customer's app
-     * still showed 228 to pay and «هتدفع 25 للمندوب وقت الاستلام».
+     * A pickup that took its fee before 2026-11-22 left it paid: the delivery
+     * takes only the rest, and the customer is shown the same figure.
      */
     #[Test]
-    public function once_the_pickup_is_paid_the_customer_is_shown_what_is_left(): void
+    public function a_fee_already_taken_at_an_earlier_pickup_is_not_taken_again(): void
     {
         $order = $this->place();
         $driver = $this->driverUser();
         $pickup = $this->leg($order, TaskType::PickupFromCustomer);
-        $pickup->forceFill(['driver_id' => $driver->id, 'status' => TaskStatus::Assigned])->save();
-        Sanctum::actingAs($driver);
+        Payment::create([
+            'order_id' => $order->id,
+            'user_id' => $order->user_id,
+            'provider' => 'cash',
+            'method' => PaymentMethod::Cash,
+            'amount' => 25,
+            'currency' => appCurrency(),
+            'status' => PaymentStatus::Captured,
+            'captured_at' => now(),
+            'collected_by' => $driver->id,
+            'order_task_id' => $pickup->id,
+        ]);
 
-        $this->postJson("/api/v1/driver/tasks/{$pickup->id}/start", [], $this->apiHeaders())->assertOk();
-        $this->postJson("/api/v1/driver/tasks/{$pickup->id}/complete", ['collected_amount' => 25, 'piece_count' => 2], $this->apiHeaders())
-            ->assertOk();
-
-        // The counted price, sent to the customer — «سعر مؤكد» in the screenshot.
-        // A piece more than the basket, so the counted bill is not the estimate.
         $order = $this->reviewedAndSent($order, qty: 3);
-        $this->assertNotEquals((float) $order->estimated_total, (float) $order->final_total);
-        $this->app['auth']->forgetGuards();
         Sanctum::actingAs($this->customer);
-
         $detail = $this->getJson("/api/v1/orders/{$order->id}", $this->apiHeaders())->assertOk()->json('data');
         $pricing = $detail['pricing'];
 
-        $this->assertEquals(0, $pricing['pay_at_pickup'], 'the pickup is paid: nothing more is taken there');
         $this->assertEquals(25, $pricing['paid_so_far']);
-        $this->assertEqualsWithDelta((float) $order->final_total, $pricing['payable_total'], 0.01);
         $this->assertEqualsWithDelta((float) $order->final_total - 25, $pricing['still_owed'], 0.01);
         // The figure the driver collects at the delivery.
         $this->assertEqualsWithDelta($this->leg($order, TaskType::DeliverToCustomer)->toCollect(), $pricing['still_owed'], 0.01);
@@ -384,7 +390,7 @@ class TripFeeTest extends TestCase
      * cancelled order still said «هتدفع 25 للمندوب وقت الاستلام».
      */
     #[Test]
-    public function a_pickup_postponed_and_then_cancelled_takes_nothing(): void
+    public function a_pickup_postponed_and_then_cancelled_owes_nothing(): void
     {
         $order = $this->place();
         $driver = $this->driverUser();
@@ -393,37 +399,12 @@ class TripFeeTest extends TestCase
         app(TaskService::class)->fail($pickup->fresh(), $driver, TaskFailureReason::CustomerPostponed);
 
         Sanctum::actingAs($this->customer);
-        // Still to be collected: postponing is not paying.
-        $this->assertEquals(25, $this->getJson("/api/v1/orders/{$order->id}", $this->apiHeaders())->json('data.pricing.pay_at_pickup'));
-
         $this->putJson("/api/v1/orders/{$order->id}/cancel", [], $this->apiHeaders())->assertOk();
 
         $this->assertSame(TaskStatus::Failed, $pickup->fresh()->status);
         $pricing = $this->getJson("/api/v1/orders/{$order->id}", $this->apiHeaders())->assertOk()->json('data.pricing');
         $this->assertEquals(0, $pricing['pay_at_pickup']);
         $this->assertEquals(0, $pricing['still_owed']);
-    }
-
-    #[Test]
-    public function a_pickup_that_took_nothing_leaves_the_whole_bill_owed_and_nothing_at_the_pickup(): void
-    {
-        $order = $this->place();
-        $driver = $this->driverUser();
-        $pickup = $this->leg($order, TaskType::PickupFromCustomer);
-        $pickup->forceFill(['driver_id' => $driver->id, 'status' => TaskStatus::Assigned])->save();
-        Sanctum::actingAs($driver);
-        $this->postJson("/api/v1/driver/tasks/{$pickup->id}/start", [], $this->apiHeaders())->assertOk();
-        // Nothing taken is said as 0, and held for the platform (item 10).
-        $this->postJson("/api/v1/driver/tasks/{$pickup->id}/complete", ['piece_count' => 2, 'collected_amount' => 0], $this->apiHeaders())->assertStatus(409);
-        app(TaskService::class)->approveHold(TaskHold::firstOrFail(), $this->superAdmin());
-
-        $this->app['auth']->forgetGuards();
-        Sanctum::actingAs($this->customer);
-        $pricing = $this->getJson("/api/v1/orders/{$order->id}", $this->apiHeaders())->assertOk()->json('data.pricing');
-
-        $this->assertEquals(0, $pricing['pay_at_pickup']);
-        $this->assertEquals(0, $pricing['paid_so_far']);
-        $this->assertEquals($pricing['payable_total'], $pricing['still_owed']);
     }
 
     #[Test]

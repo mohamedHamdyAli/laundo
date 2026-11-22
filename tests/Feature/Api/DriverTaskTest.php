@@ -327,9 +327,18 @@ class DriverTaskTest extends TestCase
         $order = $this->placedOrder();
         $task = $this->started($order, TaskType::PickupFromCustomer, $driver);
 
-        Sanctum::actingAs($driver);
-        $this->postJson("/api/v1/driver/tasks/{$task->id}/complete", ['collected_amount' => 0], $this->apiHeaders())
-            ->assertStatus(409);
+        // A cash hold on the pickup, as raised when the pickup still took its
+        // trip fee: no `piece_count` in its payload.
+        TaskHold::create([
+            'order_task_id' => $task->id,
+            'order_id' => $order->id,
+            'kind' => TaskHold::COLLECTED_AMOUNT,
+            'reported' => 0,
+            'expected' => 25,
+            'payload' => ['collected_amount' => 0, 'photos' => [], 'signature' => null],
+            'status' => TaskHold::PENDING,
+            'raised_by' => $driver->id,
+        ]);
 
         app(TaskService::class)->approveHold(TaskHold::sole(), $this->superAdmin());
 

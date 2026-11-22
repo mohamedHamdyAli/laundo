@@ -388,8 +388,9 @@ class TaskHoldTest extends TestCase
     {
         $order = $this->placed();
         $leg = $this->startedLeg($order, TaskType::PickupFromCustomer);
-        // 30 against a 25 trip fee: held.
-        $this->complete($leg, ['collected_amount' => 30])->assertStatus(409);
+        // A pickup held over its trip fee before 2026-11-22, when the pickup
+        // still took one: 30 against 25.
+        $this->oldPickupHold($leg, collected: 30);
 
         app(OrderService::class)->cancel($order->fresh(), $this->customer);
 
@@ -402,7 +403,8 @@ class TaskHoldTest extends TestCase
     {
         // Security review (2026-11-08): 100 at a 25-fee pickup covered the
         // estimate, the order went `paid`, and the delivery of a 400 count was
-        // told to take 0.
+        // told to take 0. Since 2026-11-22 the pickup takes nothing (the
+        // client's item 14), so cash reported there is held against 0.
         $order = $this->placed();
         $leg = $this->startedLeg($order, TaskType::PickupFromCustomer);
         $this->complete($leg, ['collected_amount' => $order->payableTotal() + 50])->assertStatus(409);
@@ -544,6 +546,24 @@ class TaskHoldTest extends TestCase
     private function signed(): array
     {
         return ['signature' => UploadedFile::fake()->image('sig.png')];
+    }
+
+    /**
+     * A pending cash hold on a pickup, as raised before 2026-11-22, when the
+     * pickup still took its trip fee.
+     */
+    private function oldPickupHold(OrderTask $leg, float $collected): TaskHold
+    {
+        return TaskHold::create([
+            'order_task_id' => $leg->id,
+            'order_id' => $leg->order_id,
+            'kind' => TaskHold::COLLECTED_AMOUNT,
+            'reported' => $collected,
+            'expected' => 25,
+            'payload' => ['collected_amount' => $collected, 'photos' => [], 'signature' => null],
+            'status' => TaskHold::PENDING,
+            'raised_by' => $this->driver->id,
+        ]);
     }
 
     private function complete(OrderTask $leg, array $data)

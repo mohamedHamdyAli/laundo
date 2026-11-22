@@ -251,11 +251,17 @@ anything changed. The owner chose every fix below.
   10). `complete()` decides the hold first. The signature is required only on a
   confirmation that completes now, so the driver hears «sent for approval», not
   «التوقيع مطلوب». An approved hold completes without one if none was sent.
-- **A cash pickup with a trip fee must say what it took** (their 14, our 3).
-  `requiresCollectedAmount()` covers the pickup when `toCollect() > 0`. It was
-  optional so that a driver app from before the trip fee kept working, and the
-  fee then rode along to the delivery. That is exactly what the client saw.
-  **The driver app had to ship first**, or every cash pickup 422s.
+- **Both trip fees are collected at the delivery** (their 14, our 3). The first
+  release that day read «رسوم الإستلام يتم تحصيلها عند تسليم الأوردر للعميل و ليس
+  عند الإستلام» as a complaint and made the pickup report its fee. The owner
+  then said it was the request: «ياخد ال 2 مع بعض» at the delivery. So
+  `OrderTask::toCollect()` is 0 on the pickup, `requiresCollectedAmount()` is the
+  delivery only, cash still reported at the pickup is held against 0 for the
+  platform (an approval records it as a payment, which the delivery takes off;
+  dropping it would leave real cash unrecorded), and the customer API's
+  `pay_at_pickup` is always 0. The delivery's
+  `stillOwed()` carries both fees. A fee taken at a pickup before this is a
+  payment, so it is not taken again.
 - **The hangers out of the laundry are retired** (their 18, our 11). The client:
   the laundry confirms the hangers **the customer hands back, when the driver
   brings them in**, not the ones the finished clothes go out on. So:

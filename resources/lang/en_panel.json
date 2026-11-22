@@ -2588,6 +2588,7 @@
     "Confirm hangers received from the driver": "Confirm hangers received from the driver",
     "Order :code: :next — :note": "Order :code: :next — :note",
     "The management refused the amount — collect the right amount and confirm again": "The management refused the amount — collect the right amount and confirm again",
+    "The management refused the amount — confirm the pickup again without an amount; the fees are collected at the delivery": "The management refused the amount — confirm the pickup again without an amount; the fees are collected at the delivery",
     "The management refused the confirmation — confirm the leg again": "The management refused the confirmation — confirm the leg again",
     "The management refused the count — count the pieces again and confirm": "The management refused the count — count the pieces again and confirm",
     "Waiting for the laundry to confirm": "Waiting for the laundry to confirm",

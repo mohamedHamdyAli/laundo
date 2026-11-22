@@ -2,6 +2,7 @@
 
 namespace App\Modules\Order\Models;
 
+use App\Modules\Order\Enums\TaskType;
 use App\Modules\User\Models\User;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -112,7 +113,11 @@ class TaskHold extends Model
     public function nextStepAfterRefusal(): string
     {
         return match ($this->kind) {
-            self::COLLECTED_AMOUNT => __('The management refused the amount — collect the right amount and confirm again'),
+            // At the pickup nothing is collected (both trip fees are taken at
+            // the delivery since 2026-11-22): confirm it again with no amount.
+            self::COLLECTED_AMOUNT => $this->task?->type === TaskType::PickupFromCustomer
+                ? __('The management refused the amount — confirm the pickup again without an amount; the fees are collected at the delivery')
+                : __('The management refused the amount — collect the right amount and confirm again'),
             // Only on holds raised before 2026-11-22: the hangers are no
             // longer counted here, so there is nothing to recount.
             self::HANGER_COUNT => __('The management refused the confirmation — confirm the leg again'),

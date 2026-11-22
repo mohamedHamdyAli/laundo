@@ -1,3 +1,18 @@
+# Item 14 read the other way: both trip fees at the delivery (2026-11-22)
+
+The owner, after the release: «هو عايز الرسوم دي تتاخد وقت التسليم بتاع الاوردر
+ياخد ال 2 مع بعض». The client's «رسوم الإستلام يتم تحصيلها عند تسليم الأوردر
+للعميل و ليس عند الإستلام» was the request, not a complaint. The release made
+the pickup collect the opposite way.
+
+- [x] `OrderTask::toCollect()`: the pickup takes nothing. The delivery's
+      `stillOwed()` already carries both fees.
+- [x] `requiresCollectedAmount()`: the delivery only again.
+- [x] Customer API `pricing.pay_at_pickup`: always 0 (the field stays, so the
+      apps do not break).
+- [x] Tests, full suite, docs (mobile note, Postman, reference, architecture,
+      CLAUDE.md, Changelog), reviews, then deploy when the owner says.
+
 # The client's QA comments on items 13–19 (2026-11-22)
 
 The client's sheet numbers these 13–19 (ours, below: 2, 3, 5, 9, 10, 11, 12).
