@@ -13,6 +13,7 @@ use App\Modules\Order\Services\DriverDispatcher;
 use App\Modules\Order\Services\OrderReviewService;
 use App\Modules\Order\Services\OrderService;
 use App\Modules\Order\Services\OrderStateMachine;
+use App\Modules\Order\Services\PieceCheck;
 use App\Modules\Order\Services\TaskService;
 use App\Modules\Payment\Models\CommissionRule;
 use App\Modules\Payment\Models\DriverEarning;
@@ -179,7 +180,13 @@ class OrderMoneyCycleTest extends TestCase
             $driver,
             // The delivery on an unpaid order says what was collected: nothing
             // here — these tests settle the money by hand.
-            ($type->countsPieces() ? ['piece_count' => 3] : [])
+            // At the laundry the count must match its own (refused otherwise
+            // since 2026-11-24); these tests are not about the count.
+            ($type->countsPieces()
+                ? ['piece_count' => $type === TaskType::CollectFromLaundry
+                    ? (app(PieceCheck::class)->expectedFor($task->fresh())[0] ?? 3)
+                    : 3]
+                : [])
                 + ($type === TaskType::DeliverToCustomer ? ['collected_amount' => 0] : []),
             [],
             $type->requiresSignature() ? UploadedFile::fake()->image('sig.png') : null,

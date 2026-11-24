@@ -72,7 +72,7 @@
             "file": 1126,
             "integration": 5,
             "interface": 4,
-            "method": 3587,
+            "method": 3585,
             "module": 43,
             "permission": 242,
             "route": 473,
@@ -82,13 +82,13 @@
             "view": 300
         },
         "edges_by_type": {
-            "contains": 5849,
+            "contains": 5847,
             "implemented_by": 4970,
-            "tested_by": 3645,
-            "imports": 2946,
-            "references": 2761,
+            "tested_by": 3646,
+            "imports": 2948,
+            "references": 2759,
             "entry_point": 1760,
-            "depends_on": 1312,
+            "depends_on": 1310,
             "calls": 973,
             "route_to": 914,
             "touches": 648,
@@ -97,7 +97,7 @@
             "extends": 266,
             "renders": 181,
             "writes_table": 178,
-            "co_changes": 120,
+            "co_changes": 129,
             "foreign_key": 107,
             "uses_trait": 98,
             "belongs_to": 92,
@@ -199,7 +199,7 @@
                 "Recurrence"
             ],
             "routes": 57,
-            "cohesion": 0.393
+            "cohesion": 0.392
         },
         {
             "slug": "operations",
@@ -211,7 +211,7 @@
                 "TimeSlot"
             ],
             "routes": 42,
-            "cohesion": 0.37
+            "cohesion": 0.369
         },
         {
             "slug": "money",

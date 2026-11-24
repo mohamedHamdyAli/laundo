@@ -167,7 +167,7 @@
             "api-controller": 24
         },
         "files": 24,
-        "lines": 5785,
+        "lines": 5791,
         "classes": [
             {
                 "fqcn": "App\\Http\\Controllers\\Api\\V1\\AddressController",
@@ -1235,7 +1235,7 @@
             "doc": 15
         },
         "files": 15,
-        "lines": 11893,
+        "lines": 11922,
         "classes": [],
         "models": [],
         "owns_tables": [],
@@ -1546,7 +1546,7 @@
             "Api": 10,
             "Payment": 8,
             "Routing": 6,
-            "Notification": 4,
+            "Notification": 5,
             "Database": 1
         }
     },
@@ -2697,7 +2697,7 @@
             "notification": 1
         },
         "files": 30,
-        "lines": 3440,
+        "lines": 3480,
         "classes": [
             {
                 "fqcn": "App\\Modules\\Notification\\Controllers\\NotificationComposeController",
@@ -2901,10 +2901,10 @@
         "summary": "Work waiting for a person because automatic assignment is switched off.",
         "depends_on": {
             "User": 23,
-            "Order": 21,
+            "Order": 22,
             "Platform": 11,
+            "Driver": 5,
             "Laundry": 5,
-            "Driver": 4,
             "Loyalty": 4,
             "LaundryService": 2,
             "Payment": 1
@@ -3038,7 +3038,7 @@
             "repository": 1
         },
         "files": 79,
-        "lines": 16995,
+        "lines": 17019,
         "classes": [
             {
                 "fqcn": "App\\Modules\\Order\\Controllers\\DispatchController",
@@ -3541,7 +3541,7 @@
             "Driver": 34,
             "Payment": 27,
             "Platform": 24,
-            "Notification": 21,
+            "Notification": 22,
             "Database": 13,
             "Coupon": 7,
             "Routing": 7,
@@ -5363,7 +5363,7 @@
             "browser-test": 26
         },
         "files": 174,
-        "lines": 57836,
+        "lines": 57883,
         "classes": [
             {
                 "fqcn": "Tests\\Feature\\Api\\AddressIdDisclosureTest",
@@ -6288,7 +6288,6 @@
             "zones",
             "order_recurrences",
             "laundry_zones",
-            "piece_discrepancies",
             "task_holds",
             "languages",
             "wallets",
@@ -6311,6 +6310,7 @@
             "laundry_slot_capacities",
             "countries",
             "refunds",
+            "piece_discrepancies",
             "services",
             "price_changes",
             "items",

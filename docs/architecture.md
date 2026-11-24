@@ -280,6 +280,31 @@ anything changed. The owner chose every fix below.
   the backend did not change.
 - Note for both apps: `docs/mobile-2026-11-22-client-qa.md`.
 
+### A wrong count at the laundry is refused, not held (2026-11-24)
+
+The client on item 16: «المندوب بيستلم القطع من المغسلة بالعدد و لازم يكون
+مطابق، و فى حالة عدم التطابق لازم السيستم يوقفه و يرجعه يراجع القطع و يدخل العدد
+المظبوط، ولو فى مشكله مؤكده فى العدد هيعمل تعذر الإستلام لعدم تطابق القطع و تروح
+رساله للآدمن علشان يتعامل مع المسئول فى المغسلة». The owner chose this over the
+2026-11-08 "held for the platform".
+
+- `TaskService::complete()` on the collection from the laundry refuses a count
+  other than `PieceCheck::expectedFor()` with `piece_count_mismatch`, which the
+  driver API answers as 422 on `piece_count`. The words never carry the
+  laundry's figure: shown it, a driver would type it back. Nothing is stored
+  and no hold is raised. The driver counts again. Each refused count is a note
+  on the order's history («the driver counted X, the laundry Y»), so trying
+  numbers until one goes through is seen by the platform (code review). The
+  driver never reads the history and the customer's tracking reads only the
+  statuses, so the figure stays hidden from both.
+- A real difference is the driver's «تعذر الاستلام» with `piece_count_mismatch`
+  (`TaskFailureReason::haltsTheOrder()`): the leg fails, no other driver is
+  sent, and after the commit `PieceCountNotifier::collectionStopped()` rings
+  the platform's bell (`order.update`, never the laundry's), with the driver,
+  the laundry and the note, so somebody takes it up with the laundry.
+- `TaskHolds::needed()` no longer raises piece-count holds. Those raised before
+  this can still be approved or refused, and a matching count withdraws them.
+
 ### An order placed from the panel — «إنشاء طلب» (2026-11-08)
 
 The client asked for it so an operator can take an order over the phone. The

@@ -1,8 +1,20 @@
 {
     "available": true,
-    "head": "706a013479cac81fc32c9ba9e68a57abc8f6330a",
-    "commits_scanned": 157,
+    "head": "65f5ba30142abbf7b161a8ee187fb4f05eb129c8",
+    "commits_scanned": 159,
     "recent": [
+        {
+            "sha": "65f5ba30",
+            "date": "2026-11-22",
+            "subject": "docs: trip fees at the delivery are live",
+            "files": 1
+        },
+        {
+            "sha": "03f15dcc",
+            "date": "2026-11-22",
+            "subject": "fix: both trip fees are collected together at the delivery",
+            "files": 12
+        },
         {
             "sha": "706a0134",
             "date": "2026-11-22",
@@ -80,45 +92,33 @@
             "date": "2026-10-25",
             "subject": "docs: the app strings release is live",
             "files": 1
-        },
-        {
-            "sha": "209725ea",
-            "date": "2026-10-25",
-            "subject": "feat: each app's own words, served per app and edited from the panel",
-            "files": 25
-        },
-        {
-            "sha": "e4502939",
-            "date": "2026-10-12",
-            "subject": "Remove outdated loyalty points documentation for QC testing dated 2026-10-12",
-            "files": 1
         }
     ],
     "hottest_files": {
-        "docs/postman/Laundo API v1.postman_collection.json": 31,
+        "docs/postman/Laundo API v1.postman_collection.json": 32,
         "routes/web.php": 31,
-        "docs/mobile-api-changes.md": 29,
-        "app/Http/Controllers/Api/V1/OrderController.php": 20,
+        "docs/mobile-api-changes.md": 30,
+        "app/Http/Controllers/Api/V1/OrderController.php": 21,
         "app/Helpers/Helpers.php": 20,
         "resources/views/admin/setting/generalSetting/forms/formInput.blade.php": 19,
+        "docs/architecture.md": 18,
         "config/menu.php": 18,
-        "docs/architecture.md": 17,
         "app/Modules/Order/Services/OrderService.php": 16,
         "app/Modules/Setting/Requests/GeneralSettingRequest.php": 16,
+        "app/Modules/Order/Models/OrderTask.php": 14,
         "resources/views/admin/order/show.blade.php": 14,
         "config/dashboard.php": 14,
         "resources/views/layouts/footer_script.blade.php": 14,
-        "app/Modules/Order/Models/OrderTask.php": 13,
+        "app/Modules/Order/Services/TaskService.php": 12,
         "app/Http/Controllers/Api/V1/DriverTaskController.php": 12,
         "app/Modules/Order/Models/Order.php": 12,
         "app/Modules/Order/Services/orderCrudService.php": 12,
         "app/Http/Controllers/Admin/LanguageController.php": 12,
         "app/Services/languages/LanguageService.php": 12,
-        "app/Modules/Order/Services/TaskService.php": 11,
         "resources/views/admin/order/partials/_tasks.blade.php": 11,
         "database/seeders/SettingsSeeder.php": 11,
+        "tests/Feature/Api/DriverTaskTest.php": 10,
         "app/Modules/Order/Enums/TaskType.php": 9,
-        "tests/Feature/Api/DriverTaskTest.php": 9,
         "app/Http/Controllers/Api/V1/DriverController.php": 9,
         "resources/views/admin/order/index.blade.php": 9,
         "routes/api.php": 9,
@@ -126,6 +126,7 @@
         "app/Modules/Driver/Services/DriverCard.php": 9,
         "resources/views/layouts/topbar.blade.php": 9,
         "resources/views/layouts/sidebar.blade.php": 9,
+        "tests/TestCase.php": 8,
         "app/Http/Requests/Api/V1/OrderRequest.php": 8,
         "app/Modules/Order/Repositories/OrderRepository.php": 8,
         "app/Modules/Order/Services/OrderReviewService.php": 8,
@@ -133,7 +134,6 @@
         "resources/views/admin/home.blade.php": 8,
         "resources/views/admin/banner/forms/formInput.blade.php": 8,
         "app/Services/CachingService.php": 8,
-        "tests/TestCase.php": 7,
         "app/Modules/Order/Services/DriverDispatcher.php": 7
     }
 }

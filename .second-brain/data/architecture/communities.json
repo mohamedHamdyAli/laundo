@@ -794,7 +794,7 @@
             "admin.order.tasks.assign"
         ],
         "node_count": 909,
-        "cohesion": 0.393,
+        "cohesion": 0.392,
         "screens": [
             {
                 "key": "order",
@@ -911,7 +911,7 @@
             "admin.time_slot.store"
         ],
         "node_count": 710,
-        "cohesion": 0.37,
+        "cohesion": 0.369,
         "screens": [
             {
                 "key": "complaint",
@@ -1293,7 +1293,7 @@
         "tables": [],
         "route_count": 0,
         "routes": [],
-        "node_count": 1811,
+        "node_count": 1809,
         "cohesion": 0.338
     },
     {

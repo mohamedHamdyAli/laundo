@@ -17,6 +17,7 @@ use App\Modules\Order\Services\DriverDispatcher;
 use App\Modules\Order\Services\OrderReviewService;
 use App\Modules\Order\Services\OrderService;
 use App\Modules\Order\Services\OrderStateMachine;
+use App\Modules\Order\Services\PieceCheck;
 use App\Modules\Order\Services\TaskService;
 use App\Modules\Payment\Enums\PaymentMethod;
 use App\Modules\Payment\Enums\PaymentStatus;
@@ -74,46 +75,42 @@ class TaskHoldTest extends TestCase
     // ------------------------------------------------- item 9: the count
 
     #[Test]
-    public function a_count_at_the_laundry_that_does_not_match_its_count_is_held(): void
+    public function a_count_at_the_laundry_that_does_not_match_is_refused_and_counted_again(): void
     {
-        // Somebody at the platform to be told — before the hold, not after it.
-        $admin = $this->superAdmin();
+        // The client, item 16 (2026-11-24): «لازم السيستم يوقفه و يرجعه يراجع
+        // القطع و يدخل العدد المظبوط». Refused, not held for the platform.
         $order = $this->atTheLaundry(laundryCount: 3);
         $leg = $this->startedLeg($order, TaskType::CollectFromLaundry);
 
         $response = $this->complete($leg, ['piece_count' => 2])
-            ->assertStatus(409)
-            ->assertJsonPath('key', 'awaiting_approval')
-            ->assertJsonPath('data.hold.status', 'pending')
-            ->assertJsonPath('data.hold.kind', 'piece_count');
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('piece_count');
 
-        $this->assertEquals(2, $response->json('data.hold.reported'));
-        // Never the laundry's count: shown it, a driver could type it back and
-        // walk the hold away (`countsRevealed()`'s rule).
-        $this->assertNull($response->json('data.hold.expected'));
-        $this->assertStringNotContainsString('3', (string) $response->json('data.hold.message'));
-        $this->assertEquals(3, TaskHold::firstOrFail()->expected);
-
-        // Not completed: still the driver's, still started.
+        // Never the laundry's count: shown it, a driver would type it back.
+        $this->assertStringNotContainsString('3', (string) $response->json('msg'));
+        $this->assertSame(0, TaskHold::count());
         $this->assertSame(TaskStatus::Started, $leg->fresh()->status);
         $this->assertSame(OrderStatus::Finished, $order->fresh()->status);
 
-        // The platform is told, in its bell.
-        $this->assertTrue(
-            $admin->notifications()->get()->contains(
-                fn ($n) => str_contains(json_encode($n->data, JSON_UNESCAPED_UNICODE), 'Waiting for your approval')
-            ),
-        );
+        // On the order's history for the platform, so trying numbers until one
+        // goes through does not go unseen (code review).
+        $this->assertDatabaseHas('order_status_logs', [
+            'order_id' => $order->id,
+            'note' => __('Count refused at the collection from the laundry: the driver counted :counted, the laundry :expected.', ['counted' => 2, 'expected' => 3]),
+        ]);
+
+        // Counted again, and it was three after all.
+        $this->complete($leg, ['piece_count' => 3])->assertOk();
+        $this->assertSame(TaskStatus::Completed, $leg->fresh()->status);
     }
 
     #[Test]
-    public function the_matching_count_completes_at_once_and_withdraws_the_question(): void
+    public function the_matching_count_completes_and_withdraws_a_question_raised_before(): void
     {
         $order = $this->atTheLaundry(laundryCount: 3);
         $leg = $this->startedLeg($order, TaskType::CollectFromLaundry);
+        $this->oldPieceHold($leg, 2);
 
-        $this->complete($leg, ['piece_count' => 2])->assertStatus(409);
-        // Recounted, and it was three after all.
         $this->complete($leg, ['piece_count' => 3])->assertOk();
 
         $this->assertSame(TaskStatus::Completed, $leg->fresh()->status);
@@ -121,16 +118,35 @@ class TaskHoldTest extends TestCase
     }
 
     #[Test]
-    public function a_second_wrong_count_replaces_the_question_rather_than_adding_one(): void
+    public function a_real_difference_is_reported_as_could_not_collect_and_the_platform_is_told(): void
     {
+        // The client, item 16 (2026-11-24): «ولو فى مشكله مؤكده فى العدد هيعمل
+        // تعذر الإستلام لعدم تطابق القطع و تروح رساله للآدمن».
+        $admin = $this->superAdmin();
         $order = $this->atTheLaundry(laundryCount: 3);
         $leg = $this->startedLeg($order, TaskType::CollectFromLaundry);
 
-        $this->complete($leg, ['piece_count' => 2])->assertStatus(409);
-        $this->complete($leg, ['piece_count' => 4])->assertStatus(409);
+        Sanctum::actingAs($this->driver);
+        $this->postJson("/api/v1/driver/tasks/{$leg->id}/fail", [
+            'reason' => 'piece_count_mismatch', 'note' => 'only two on the rack',
+        ], $this->apiHeaders())->assertOk();
 
-        $this->assertSame(1, TaskHold::count());
-        $this->assertEquals(4, TaskHold::firstOrFail()->reported);
+        // The order halts with the leg: no other driver is sent.
+        $this->assertSame(TaskStatus::Failed, $leg->fresh()->status);
+        $this->assertNull($leg->fresh()->driver_id);
+
+        // The platform is told in its bell, with the driver's note.
+        $notice = $admin->notifications()->get()->first(
+            fn ($n) => str_contains(json_encode($n->data, JSON_UNESCAPED_UNICODE), 'Order stopped')
+        );
+        $this->assertNotNull($notice);
+        $this->assertStringContainsString('only two on the rack', json_encode($notice->data, JSON_UNESCAPED_UNICODE));
+        $this->assertStringContainsString("/admin/order/show/{$order->id}", json_encode($notice->data, JSON_UNESCAPED_SLASHES));
+
+        // Not the laundry's own bell: it is the platform's to take up with it.
+        $this->assertFalse($this->tenant['owner']->notifications()->get()->contains(
+            fn ($n) => str_contains(json_encode($n->data, JSON_UNESCAPED_UNICODE), 'Order stopped')
+        ));
     }
 
     #[Test]
@@ -138,7 +154,7 @@ class TaskHoldTest extends TestCase
     {
         $order = $this->atTheLaundry(laundryCount: 3);
         $leg = $this->startedLeg($order, TaskType::CollectFromLaundry);
-        $this->complete($leg, ['piece_count' => 2, 'note' => 'one was missing'])->assertStatus(409);
+        $this->oldPieceHold($leg, 2, note: 'one was missing');
         $hold = TaskHold::firstOrFail();
 
         $this->actingAs($this->superAdmin())
@@ -166,7 +182,7 @@ class TaskHoldTest extends TestCase
     {
         $order = $this->atTheLaundry(laundryCount: 3);
         $leg = $this->startedLeg($order, TaskType::CollectFromLaundry);
-        $this->complete($leg, ['piece_count' => 2])->assertStatus(409);
+        $this->oldPieceHold($leg, 2);
         $hold = TaskHold::firstOrFail();
 
         // A reason is required: it is what the driver is told.
@@ -196,7 +212,7 @@ class TaskHoldTest extends TestCase
         // had no word to recount, and a finished leg still read «rejected».
         $order = $this->atTheLaundry(laundryCount: 3);
         $leg = $this->startedLeg($order, TaskType::CollectFromLaundry);
-        $this->complete($leg, ['piece_count' => 2])->assertStatus(409);
+        $this->oldPieceHold($leg, 2);
 
         app(TaskService::class)->rejectHold(TaskHold::firstOrFail(), $this->platformOperator(), 'the laundry has three');
 
@@ -249,7 +265,7 @@ class TaskHoldTest extends TestCase
     {
         $order = $this->atTheLaundry(laundryCount: 3);
         $leg = $this->startedLeg($order, TaskType::CollectFromLaundry);
-        $this->complete($leg, ['piece_count' => 2])->assertStatus(409);
+        $this->oldPieceHold($leg, 2);
         $hold = TaskHold::firstOrFail();
 
         $this->actingAs($this->tenant['owner'])
@@ -266,7 +282,7 @@ class TaskHoldTest extends TestCase
     {
         $order = $this->atTheLaundry(laundryCount: 3);
         $leg = $this->startedLeg($order, TaskType::CollectFromLaundry);
-        $this->complete($leg, ['piece_count' => 2])->assertStatus(409);
+        $this->oldPieceHold($leg, 2);
         $hold = TaskHold::firstOrFail();
 
         $this->actingAs($this->superAdmin())->get(route('admin.order.show', $order->id))
@@ -466,7 +482,7 @@ class TaskHoldTest extends TestCase
     {
         $order = $this->atTheLaundry(laundryCount: 3);
         $leg = $this->startedLeg($order, TaskType::CollectFromLaundry);
-        $this->complete($leg, ['piece_count' => 2])->assertStatus(409);
+        $this->oldPieceHold($leg, 2);
 
         $this->actingAs($this->superAdmin());
         $platform = MenuBadges::for('order');
@@ -546,6 +562,26 @@ class TaskHoldTest extends TestCase
     private function signed(): array
     {
         return ['signature' => UploadedFile::fake()->image('sig.png')];
+    }
+
+    /**
+     * A pending piece-count hold on the collection from the laundry, as raised
+     * before 2026-11-24, when a different count was held rather than refused.
+     */
+    private function oldPieceHold(OrderTask $leg, int $counted, ?string $note = null): TaskHold
+    {
+        [$expected] = app(PieceCheck::class)->expectedFor($leg->fresh());
+
+        return TaskHold::create([
+            'order_task_id' => $leg->id,
+            'order_id' => $leg->order_id,
+            'kind' => TaskHold::PIECE_COUNT,
+            'reported' => $counted,
+            'expected' => $expected,
+            'payload' => ['piece_count' => $counted, 'note' => $note, 'photos' => [], 'signature' => null, 'hanger_mismatch' => null],
+            'status' => TaskHold::PENDING,
+            'raised_by' => $this->driver->id,
+        ]);
     }
 
     /**

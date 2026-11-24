@@ -2,6 +2,9 @@
 
 namespace App\Modules\Notification\Services;
 
+use App\Modules\Driver\Models\Driver;
+use App\Modules\Order\Enums\TaskType;
+use App\Modules\Order\Models\OrderTask;
 use App\Modules\Order\Models\PieceDiscrepancy;
 use App\Notifications\AdminNotification;
 use Illuminate\Support\Facades\Log;
@@ -59,6 +62,54 @@ class PieceCountNotifier
         } catch (\Throwable $e) {
             Log::warning('[notifications] piece count notice failed', [
                 'piece_discrepancy_id' => $discrepancy->id,
+                'error' => $e->getMessage(),
+            ]);
+        }
+    }
+
+    /**
+     * The driver gave up a leg because the count does not match
+     * («تعذر الاستلام — عدد القطع غير مطابق»), which halts the order. The
+     * platform is told so somebody takes it up with the laundry (the client,
+     * item 16, 2026-11-24). The platform only: it is the platform's
+     * conversation with the laundry, not the laundry's own bell.
+     */
+    public function collectionStopped(OrderTask $task, Driver $driver, ?string $note = null): void
+    {
+        try {
+            $order = $task->order;
+            $recipients = PanelAudience::platform('order.update');
+
+            if (! $order || $recipients->isEmpty()) {
+                return;
+            }
+
+            // The reason can be given on any leg; only a leg at the laundry is
+            // the laundry's to answer for (code review).
+            $atTheLaundry = in_array($task->type, [TaskType::DeliverToLaundry, TaskType::CollectFromLaundry], true)
+                && $order->laundry !== null;
+
+            $notice = $this->withLocale((string) getDefaultLanguage('code'), fn () => new AdminNotification(
+                __('Order stopped: piece count does not match — order #:code', ['code' => $order->code]),
+                ($atTheLaundry
+                    ? __(':driver could not complete «:leg»: the count does not match. Follow it up with :laundry.', [
+                        'driver' => $driver->name,
+                        'leg' => __($task->type->label()),
+                        'laundry' => getLocalizedValueDashboard($order->laundry, 'name'),
+                    ])
+                    : __(':driver could not complete «:leg»: the count does not match.', [
+                        'driver' => $driver->name,
+                        'leg' => __($task->type->label()),
+                    ])).($note ? " — {$note}" : ''),
+                // A path, never `route()` — see NotificationUrlTest.
+                "/admin/order/show/{$order->id}",
+                ['order_id' => (string) $order->id, 'order_task_id' => (string) $task->id],
+            ));
+
+            Notification::send($recipients, $notice);
+        } catch (\Throwable $e) {
+            Log::warning('[notifications] collection stopped notice failed', [
+                'order_task_id' => $task->id,
                 'error' => $e->getMessage(),
             ]);
         }

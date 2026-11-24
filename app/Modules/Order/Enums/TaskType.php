@@ -117,7 +117,8 @@ enum TaskType: string
      *   و لكن تم أيضاً إزالة إضافة عدد القطع المستلمة من العميل»). A different
      *   count is a `PieceDiscrepancy`, never refused.
      * - The collection from the laundry: against the laundry's own count. A
-     *   mismatch is held for the platform (`TaskHolds`, item 9).
+     *   mismatch is refused and counted again (since 2026-11-24, the client's
+     *   item 16; it was held for the platform before).
      *
      * Not at the trip to the laundry: the laundry's review is what counts the
      * bag there (item 12, «فحص القطع من خلال المغسلة»), and a count sent on that

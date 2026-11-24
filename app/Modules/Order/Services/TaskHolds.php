@@ -5,7 +5,6 @@ namespace App\Modules\Order\Services;
 use App\Modules\Driver\Models\Driver;
 use App\Modules\Notification\Services\PanelAudience;
 use App\Modules\Order\Enums\TaskStatus;
-use App\Modules\Order\Enums\TaskType;
 use App\Modules\Order\Models\OrderTask;
 use App\Modules\Order\Models\TaskHold;
 use App\Modules\Order\Repositories\OrderRepository;
@@ -65,14 +64,10 @@ class TaskHolds
             $hangers = ['reported' => (int) $data['hanger_count'], 'expected' => (int) $task->order->hangers_sent];
         }
 
-        if ($task->type === TaskType::CollectFromLaundry && isset($data['piece_count'])) {
-            [$expected] = $this->pieceCheck->expectedFor($task);
-
-            if ($expected !== null && (int) $data['piece_count'] !== (int) $expected) {
-                // Both wrong: one question carrying both figures.
-                return ['kind' => TaskHold::PIECE_COUNT, 'reported' => (float) (int) $data['piece_count'], 'expected' => (float) $expected, 'hangers' => $hangers];
-            }
-        }
+        // A count at the laundry that does not match is no longer held: it is
+        // refused before this (`TaskService::complete()`, the client, item 16,
+        // 2026-11-24). Piece-count holds raised before that can still be
+        // decided.
 
         if ($hangers !== null) {
             return ['kind' => TaskHold::HANGER_COUNT, 'reported' => (float) $hangers['reported'], 'expected' => (float) $hangers['expected']];

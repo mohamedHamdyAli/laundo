@@ -1,3 +1,20 @@
+# Item 16 again: a wrong count at the laundry is refused, not held (2026-11-24)
+
+The client: «المندوب بيستلم القطع من المغسلة بالعدد و لازم يكون مطابق، و فى حالة
+عدم التطابق لازم السيستم يوقفه و يرجعه يراجع القطع و يدخل العدد المظبوط، ولو فى
+مشكله مؤكده فى العدد هيعمل تعذر الإستلام لعدم تطابق القطع و تروح رساله للآدمن
+علشان يتعامل مع المسئول فى المغسلة». The owner: as the client said.
+
+- [x] `complete()` on the collection from the laundry: a count other than the
+      laundry's is **refused** (422 on `piece_count`, «راجع القطع ودخّل العدد
+      الصح»), never held. The laundry's figure is still not given away. Old
+      pending piece holds can still be decided.
+- [x] `fail()` with `piece_count_mismatch`: the order halts as before, and the
+      platform (`order.update`) is told in the bell, naming the order and the
+      laundry.
+- [x] Tests, full suite, docs (mobile note, Postman, reference, architecture,
+      CLAUDE.md, Changelog), reviews, then deploy.
+
 # Item 14 read the other way: both trip fees at the delivery (2026-11-22)
 
 The owner, after the release: «هو عايز الرسوم دي تتاخد وقت التسليم بتاع الاوردر

@@ -987,6 +987,12 @@ class DriverTaskController extends Controller
                 ['piece_count' => [__('Please enter the number of pieces.')]],
                 __('Please enter the number of pieces.')
             ),
+            // The collection from the laundry: count again (the client, item
+            // 16, 2026-11-24). The laundry's figure is not in the message.
+            'piece_count_mismatch' => failReturnValidation(
+                ['piece_count' => [__('The count does not match the laundry\'s. Check the pieces again and enter the right count. If the difference is real, report it as «could not collect».')]],
+                __('The count does not match the laundry\'s. Check the pieces again and enter the right count. If the difference is real, report it as «could not collect».')
+            ),
             'hanger_count_required' => failReturnValidation(
                 ['hanger_count' => [__('Please enter the number of hangers you received.')]],
                 __('Please enter the number of hangers you received.')

@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026-11-24
+
+### Fix
+
+- **A count at the collection from the laundry that does not match the laundry's is refused, not held** (the client, item 16). `TaskService::complete()` throws `piece_count_mismatch`, and the driver API answers 422 on `piece_count` ("check the pieces again and enter the right count"), without the laundry's figure, and no hold is raised. Each refused count goes on the order's history for the platform ("the driver counted X, the laundry Y"), so a driver trying numbers until one goes through does not go unseen (code review); the driver and the customer's tracking never read that history. From 2026-11-08 such a count was held for the platform (409) (Service / API).
+- **A real difference reported as «تعذر الاستلام» tells the platform.** `fail()` with `piece_count_mismatch` still halts the order. After the commit, `PieceCountNotifier::collectionStopped()` now puts it in the platform's bell (`order.update`, not the laundry's), naming the driver and the laundry with the driver's note. On a leg that is not at the laundry it does not name the laundry (code review) (Service / Notification).
+- `TaskHolds::needed()` no longer raises piece-count holds. Those raised before can still be decided (Service).
+- Tests: `TaskHoldTest` (refused and counted again; an old hold withdrawn by the right count; «could not collect» tells the platform; the decision tests build old holds by hand), `PieceCheckTest`, `FinishedWashingTest`. Docs: Postman, `generate-reference.py` + HTML, architecture.md, CLAUDE.md, mobile changes log.
+
 ## 2026-11-22
 
 ### Improvement

@@ -180,9 +180,14 @@ The domain core. Status table and requests in **`docs/order-lifecycle.md`**
   a disagreement is one `PieceDiscrepancy` row, **nothing is ever refused**, and
   only the platform closes it. The driver app is not shown an expected count
   before it could copy it (`DriverTaskController::countsRevealed()`).
-- **Except two figures, which are held** (since 2026-11-08, `Order/Services/TaskHolds`):
-  the collection from the laundry counting other than the laundry's count, and
-  cash at the door other than `OrderTask::toCollect()` (less or more). The leg
+- **The collection from the laundry must match the laundry's count** (since
+  2026-11-24, the client's item 16): another count is **refused** (422
+  `piece_count`, the laundry's figure never in it) and the driver counts again.
+  A real difference is the driver's `fail` with `piece_count_mismatch`, which
+  halts the order and tells the platform (`PieceCountNotifier::collectionStopped()`).
+- **Cash is held** (since 2026-11-08, `Order/Services/TaskHolds`): cash at the
+  door other than `OrderTask::toCollect()` (less or more). Piece-count holds
+  raised before 2026-11-24 can still be decided. The leg
   stays started, the driver API answers **409 `awaiting_approval`** (before the
   signature is asked for, since 2026-11-22), and the platform approves
   (`TaskService::approveHold()` completes it with the held payload; extra cash →

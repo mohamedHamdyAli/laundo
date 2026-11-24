@@ -166,14 +166,27 @@ class PieceCheckTest extends TestCase
         $order = $this->agreed($order);
         $collection = $this->startedLeg($order, TaskType::CollectFromLaundry);
 
-        // Three taken out against the laundry's two: held, not completed — and
-        // nothing recorded yet, because nobody has looked at it.
+        // Three taken out against the laundry's two: refused since 2026-11-24
+        // (the client, item 16), and nothing recorded.
         $this->confirmLeg($collection, ['piece_count' => 3])
-            ->assertStatus(409)
-            ->assertJsonPath('key', 'awaiting_approval');
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('piece_count');
 
         $this->assertSame(TaskStatus::Started, $collection->fresh()->status);
         $this->assertSame(0, PieceDiscrepancy::count());
+
+        // A question raised before that change can still be approved, and the
+        // difference is recorded and closed in the same step.
+        TaskHold::create([
+            'order_task_id' => $collection->id,
+            'order_id' => $order->id,
+            'kind' => TaskHold::PIECE_COUNT,
+            'reported' => 3,
+            'expected' => 2,
+            'payload' => ['piece_count' => 3, 'photos' => [], 'signature' => null, 'hanger_mismatch' => null],
+            'status' => TaskHold::PENDING,
+            'raised_by' => $this->driver->id,
+        ]);
 
         $operator = $this->platformOperator();
         app(TaskService::class)->approveHold(TaskHold::sole(), $operator, 'a sock was inside a shirt at the review');
@@ -533,13 +546,16 @@ class PieceCheckTest extends TestCase
         // Shown the laundry's number first, a driver copies it instead of counting.
         $this->taskScreen($collection)->assertJsonPath('data.expected_pieces', null);
 
-        $this->confirmLeg($collection, ['piece_count' => 3])->assertStatus(409);
-        app(TaskService::class)->approveHold(TaskHold::sole(), $this->platformOperator());
+        // A wrong count is refused without the number in it.
+        $refused = $this->confirmLeg($collection, ['piece_count' => 3])->assertStatus(422);
+        $this->assertStringNotContainsString('2', (string) $refused->json('msg'));
+
+        $this->confirmLeg($collection, ['piece_count' => 2])->assertOk();
 
         // Once it is in, the app can say what it was held to.
         $this->taskScreen($collection)
             ->assertJsonPath('data.expected_pieces', 2)
-            ->assertJsonPath('data.piece_count', 3);
+            ->assertJsonPath('data.piece_count', 2);
     }
 
     #[Test]

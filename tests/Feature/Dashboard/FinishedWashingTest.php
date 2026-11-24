@@ -341,12 +341,14 @@ class FinishedWashingTest extends TestCase
     }
 
     #[Test]
-    public function a_different_piece_count_at_the_collection_is_still_held(): void
+    public function a_different_piece_count_at_the_collection_is_refused(): void
     {
+        // Refused and counted again since 2026-11-24 (the client, item 16).
         $leg = $this->collectionStarted(hangers: null);
 
-        $this->complete($leg, ['piece_count' => 3])->assertStatus(409)
-            ->assertJsonPath('data.hold.kind', 'piece_count');
+        $this->complete($leg, ['piece_count' => 3])->assertStatus(422)
+            ->assertJsonValidationErrors('piece_count');
+        $this->assertSame(0, TaskHold::count());
     }
 
     /**

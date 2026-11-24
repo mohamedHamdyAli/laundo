@@ -153,6 +153,36 @@ class TaskService
             throw new RuntimeException('piece_count_required');
         }
 
+        // The collection from the laundry must match the laundry's count, or
+        // it is refused and the driver counts again (the client, item 16,
+        // 2026-11-24). From 2026-11-08 a different count was held for the
+        // platform instead. A count that really is wrong is the driver's
+        // «تعذر الاستلام» with `piece_count_mismatch`, which halts the order and
+        // tells the platform (`fail()`). The laundry's figure is never given
+        // in the refusal: shown it, a driver would type it back.
+        if ($type === TaskType::CollectFromLaundry) {
+            [$expected] = $this->pieceCheck->expectedFor($task);
+
+            if ($expected !== null && (int) $data['piece_count'] !== (int) $expected) {
+                // On the order's history, for the platform: otherwise a driver
+                // short of a piece could try numbers until one goes through and
+                // nobody would know there was a difference (code review). The
+                // driver never reads the history, so the figure stays hidden
+                // from them; the customer's tracking reads only the statuses.
+                $this->machine->note(
+                    $task->order,
+                    __('Count refused at the collection from the laundry: the driver counted :counted, the laundry :expected.', [
+                        'counted' => (int) $data['piece_count'],
+                        'expected' => (int) $expected,
+                    ]),
+                    'driver',
+                    $driver
+                );
+
+                throw new RuntimeException('piece_count_mismatch');
+            }
+        }
+
         // The hangers are optional to send so an app that does not ask yet
         // keeps completing collections (item 11, 2026-11-09) — but an app that
         // sent them and was held cannot walk the question away by leaving them
@@ -178,8 +208,9 @@ class TaskService
             throw new RuntimeException('hangers_too_many');
         }
 
-        // «بانتظار موافقة الإدارة» (items 9 and 10): a count at the laundry or
-        // cash at the door that does not match is held, not completed.
+        // «بانتظار موافقة الإدارة» (item 10): cash at the door that does not
+        // match is held, not completed. A count at the laundry is refused
+        // above instead (since 2026-11-24).
         $need = $this->holds->needed($task, $data);
 
         // The signature is asked for only on a confirmation that completes
@@ -487,6 +518,20 @@ class TaskService
             throw new RuntimeException('task_finished');
         }
 
+        $failed = $this->failInTransaction($task, $driver, $reason, $note);
+
+        // A count that does not match stops the order, and the platform is told
+        // so somebody takes it up with the laundry (the client, item 16,
+        // 2026-11-24). After the commit, and never failing the leg.
+        if ($reason->haltsTheOrder() && $failed->status === TaskStatus::Failed) {
+            $this->pieceNotifier->collectionStopped($failed, $driver, $note);
+        }
+
+        return $failed;
+    }
+
+    private function failInTransaction(OrderTask $task, Driver $driver, TaskFailureReason $reason, ?string $note): OrderTask
+    {
         return DB::transaction(function () use ($task, $driver, $reason, $note) {
             // A confirmation held for the platform on this leg is moot once the
             // driver gives the leg up (code review, 2026-11-08).
