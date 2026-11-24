@@ -8,6 +8,7 @@
 - **A real difference reported as «تعذر الاستلام» tells the platform.** `fail()` with `piece_count_mismatch` still halts the order. After the commit, `PieceCountNotifier::collectionStopped()` now puts it in the platform's bell (`order.update`, not the laundry's), naming the driver and the laundry with the driver's note. On a leg that is not at the laundry it does not name the laundry (code review) (Service / Notification).
 - `TaskHolds::needed()` no longer raises piece-count holds. Those raised before can still be decided (Service).
 - Tests: `TaskHoldTest` (refused and counted again; an old hold withdrawn by the right count; «could not collect» tells the platform; the decision tests build old holds by hand), `PieceCheckTest`, `FinishedWashingTest`. Docs: Postman, `generate-reference.py` + HTML, architecture.md, CLAUDE.md, mobile changes log.
+- **Deployed to laundo.nahrdev.net** at `662e434` (pull + cache clear, no migration). No pending piece-count hold on live. Checked on live: the notifier is there, the Arabic refusal reads right, `/login` and `/api/v1/app-settings` answer 200, no error in the day's log (Infrastructure).
 
 ## 2026-11-22
 
